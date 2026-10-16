@@ -15,6 +15,7 @@
     <Project Path="src/AiSdk.Mistral/AiSdk.Mistral.csproj" />
     <Project Path="src/AiSdk.OpenAI/AiSdk.OpenAI.csproj" />
     <Project Path="src/AiSdk.PgVector/AiSdk.PgVector.csproj" />
+    <Project Path="src/AiSdk.VectorData/AiSdk.VectorData.csproj" />
     <Project Path="src/AiSdk/AiSdk.csproj" />
   </Folder>
   <Folder Name="/tests/">
