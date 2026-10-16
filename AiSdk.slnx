@@ -8,6 +8,7 @@
     <Project Path="src/AiSdk.AspNetCore/AiSdk.AspNetCore.csproj" />
     <Project Path="src/AiSdk.Extensions.AI/AiSdk.Extensions.AI.csproj" />
     <Project Path="src/AiSdk.Extensions.DependencyInjection/AiSdk.Extensions.DependencyInjection.csproj" />
+    <Project Path="src/AiSdk.Google/AiSdk.Google.csproj" />
     <Project Path="src/AiSdk.Mcp/AiSdk.Mcp.csproj" />
     <Project Path="src/AiSdk.Mistral/AiSdk.Mistral.csproj" />
     <Project Path="src/AiSdk.OpenAI/AiSdk.OpenAI.csproj" />
