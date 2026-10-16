@@ -25,7 +25,9 @@ builder.Services.AddAiSdk(ai => ai
         o.RequireApiKey = false;
     })
     .AddFallback("chat", "anthropic:claude-opus-5-5", "openai:gpt-5")   // si Claude falla, usa GPT
+    .AddGoogle()                                      // GEMINI_API_KEY
     .AddDefaultModel("chat")
+    .AddResumableStreams()                            // useChat({ resume: true })
     .AddAgent<WeatherAgent>());
 
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
@@ -33,17 +35,34 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p => p.AllowAnyOrigin().AllowAn
 var app = builder.Build();
 app.UseCors();
 
-// Chat con streaming en el protocolo UI Message Stream.
-app.MapPost("/api/chat", (UIChatRequest request, WeatherAgent agent, HttpContext http) =>
+// Chat con streaming reanudable en el protocolo UI Message Stream.
+// La generación sigue aunque el cliente se desconecte; al volver, useChat la retoma.
+app.MapPost("/api/chat", (UIChatRequest request, WeatherAgent agent, IResumableStreamStore store, HttpContext http) =>
 {
     var stream = agent.Stream(new AgentCallOptions
     {
         Messages = UIMessageConverter.ToModelMessages(request.Messages),
         Services = http.RequestServices,
-        CancellationToken = http.RequestAborted,
     });
-    return stream.ToUIMessageStreamResult(onError: ex => ex.Message);
+    return stream.ToResumableUIMessageStreamResult(store, request.Id ?? Guid.NewGuid().ToString("N"), onError: ex => ex.Message);
 });
+
+// Reanudación: useChat({ resume: true }) llama a GET /api/chat/{id}/stream al cargar la página.
+app.MapGet("/api/chat/{id}/stream", (string id, IResumableStreamStore store) => UIMessageStreamResults.Resume(store, id));
+
+// Stream propio con datos (partes data-* en useChat) además del texto.
+app.MapPost("/api/report", (UIChatRequest request, ILanguageModel model) =>
+    UIMessageStreamResults.Create(writer =>
+    {
+        writer.WriteData("status", new { step = "generando" }, id: "status");
+        writer.Merge(Ai.StreamText(new GenerateTextOptions
+        {
+            Model = model,
+            Messages = UIMessageConverter.ToModelMessages(request.Messages),
+            StreamTransform = StreamTransforms.Smooth(),
+        }));
+        return Task.CompletedTask;
+    }));
 
 // Texto plano en streaming.
 app.MapGet("/api/haiku", (string topic, ILanguageModel model, HttpContext http) =>
@@ -68,7 +87,11 @@ public sealed class WeatherAgent(ILanguageModel model) : Agent
     protected override IEnumerable<Tool> Tools =>
     [
         Tool.FromDelegate("get_weather", "Obtiene el clima de una ciudad",
-            ([Description("Ciudad")] string city) => new { city, temperatureC = Random.Shared.Next(5, 30) }),
+            ([Description("Ciudad")] string city, ToolExecutionContext ctx) =>
+            {
+                ctx.WriteData("weather-progress", new { city, status = "consultando" }, transient: true);
+                return new { city, temperatureC = Random.Shared.Next(5, 30) };
+            }),
     ];
 
     protected override CallSettings Settings => new()

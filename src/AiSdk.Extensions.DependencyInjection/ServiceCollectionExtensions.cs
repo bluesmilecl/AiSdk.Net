@@ -1,5 +1,10 @@
 using AiSdk.Anthropic;
+using AiSdk.Bedrock;
+using AiSdk.Cohere;
+using AiSdk.Google;
+using AiSdk.Mistral;
 using AiSdk.OpenAI;
+using AiSdk.UI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -47,6 +52,55 @@ public sealed class AiSdkBuilder
             options.HttpClient ??= sp.GetRequiredService<IHttpClientFactory>().CreateClient(clientName);
             return new AnthropicProvider(options);
         });
+    }
+
+    /// <summary>Registra Google Gemini.</summary>
+    public AiSdkBuilder AddGoogle(Action<GoogleProviderOptions>? configure = null) =>
+        AddHttpProvider<GoogleProviderOptions>(configure, o => o.Name, (o, c) => o.HttpClient ??= c, o => new GoogleProvider(o));
+
+    /// <summary>Registra Mistral AI.</summary>
+    public AiSdkBuilder AddMistral(Action<MistralProviderOptions>? configure = null) =>
+        AddHttpProvider<MistralProviderOptions>(configure, o => o.Name, (o, c) => o.HttpClient ??= c, o => new MistralProvider(o));
+
+    /// <summary>Registra Amazon Bedrock.</summary>
+    public AiSdkBuilder AddBedrock(Action<BedrockProviderOptions>? configure = null) =>
+        AddHttpProvider<BedrockProviderOptions>(configure, o => o.Name, (o, c) => o.HttpClient ??= c, o => new BedrockProvider(o));
+
+    /// <summary>Registra Cohere (reranking y embeddings).</summary>
+    public AiSdkBuilder AddCohere(Action<CohereProviderOptions>? configure = null) =>
+        AddHttpProvider<CohereProviderOptions>(configure, o => o.Name, (o, c) => o.HttpClient ??= c, o => new CohereProvider(o));
+
+    private AiSdkBuilder AddHttpProvider<TOptions>(
+        Action<TOptions>? configure,
+        Func<TOptions, string> name,
+        Action<TOptions, HttpClient> setClient,
+        Func<TOptions, IProvider> create)
+        where TOptions : new()
+    {
+        var options = new TOptions();
+        configure?.Invoke(options);
+        var providerName = name(options);
+        var clientName = $"AiSdk.{providerName}";
+        Services.AddHttpClient(clientName, c => c.Timeout = TimeSpan.FromMinutes(10));
+        return AddProvider(providerName, sp =>
+        {
+            setClient(options, sp.GetRequiredService<IHttpClientFactory>().CreateClient(clientName));
+            return create(options);
+        });
+    }
+
+    /// <summary>Registra el almacén de streams reanudables (en memoria por defecto).</summary>
+    public AiSdkBuilder AddResumableStreams(IResumableStreamStore? store = null)
+    {
+        Services.TryAddSingleton(store ?? new InMemoryResumableStreamStore());
+        return this;
+    }
+
+    /// <summary>Registra un modelo de reranking por defecto.</summary>
+    public AiSdkBuilder AddDefaultRerankingModel(string modelId)
+    {
+        Services.TryAddSingleton<IRerankingModel>(sp => sp.GetRequiredService<ProviderRegistry>().RerankingModel(modelId));
+        return this;
     }
 
     /// <summary>Registra un alias de modelo (p. ej. <c>"rapido"</c> → <c>"anthropic:claude-haiku-5-5"</c>).</summary>

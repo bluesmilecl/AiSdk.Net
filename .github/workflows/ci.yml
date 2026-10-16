@@ -3,6 +3,7 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
@@ -14,11 +15,21 @@ jobs:
           dotnet-version: 10.0.x
       - run: dotnet restore
       - run: dotnet build --no-restore -c Release
-      - run: dotnet test --no-build -c Release --verbosity normal
+      - name: Pruebas unitarias
+        run: dotnet test tests/AiSdk.Tests --no-build -c Release --verbosity normal
+      - name: Pruebas de integración (se omiten las que no tienen API key configurada)
+        run: dotnet test tests/AiSdk.IntegrationTests --no-build -c Release --verbosity normal
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
+          AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          AISDK_TEST_BEDROCK_MODEL: ${{ vars.AISDK_TEST_BEDROCK_MODEL }}
       - run: dotnet pack src -c Release -o artifacts --no-build
-        continue-on-error: true
       - uses: actions/upload-artifact@v4
         with:
           name: packages
-          path: artifacts/*.nupkg
-          if-no-files-found: ignore
+          path: artifacts/*

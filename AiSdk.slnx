@@ -17,6 +17,7 @@
     <Project Path="src/AiSdk/AiSdk.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/AiSdk.IntegrationTests/AiSdk.IntegrationTests.csproj" />
     <Project Path="tests/AiSdk.Tests/AiSdk.Tests.csproj" />
   </Folder>
 </Solution>

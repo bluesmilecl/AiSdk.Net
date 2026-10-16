@@ -1,7 +1,7 @@
 ﻿// Ejemplos de AiSdk para .NET.
-// Uso:  dotnet run --project samples/QuickStart -- [anthropic|openai|mock] [ejemplo] [args...]
+// Uso:  dotnet run --project samples/QuickStart -- [anthropic|openai|google|mistral|bedrock|mock] [ejemplo] [args...]
 // Ejemplos: text, stream, tools, agent, object, stream-object, session, subagents,
-//           web-search, fallback, repair, mcp, image, speech, transcribe
+//           web-search, fallback, repair, mcp, image, speech, transcribe, rag, count-tokens, batch
 //
 //   mcp:        ... -- anthropic mcp npx -y @modelcontextprotocol/server-everything
 //   image/speech/transcribe usan OpenAI (OPENAI_API_KEY); transcribe recibe la ruta de un audio.
@@ -11,7 +11,10 @@
 using System.ComponentModel;
 using AiSdk;
 using AiSdk.Anthropic;
+using AiSdk.Bedrock;
+using AiSdk.Google;
 using AiSdk.Mcp;
+using AiSdk.Mistral;
 using AiSdk.OpenAI;
 using AiSdk.Testing;
 
@@ -21,6 +24,9 @@ var example = args.ElementAtOrDefault(1) ?? "agent";
 ILanguageModel model = providerName switch
 {
     "openai" => OpenAIProvider.Default.Responses("gpt-5"),
+    "google" => GoogleProvider.Default.Gemini("gemini-2.5-flash"),
+    "mistral" => MistralProvider.Default.Chat("mistral-large-latest"),
+    "bedrock" => BedrockProvider.Default.Converse(Environment.GetEnvironmentVariable("BEDROCK_MODEL") ?? "amazon.nova-pro-v1:0"),
     "mock" => MockScript(example),
     _ => AnthropicProvider.Default.Messages("claude-opus-5-5"),
 };
@@ -203,7 +209,12 @@ switch (example)
     case "web-search":
     {
         // Herramienta ejecutada en el servidor del proveedor; las fuentes llegan en result.Sources.
-        Tool search = providerName == "openai" ? OpenAITools.WebSearch() : AnthropicTools.WebSearch(maxUses: 3);
+        Tool search = providerName switch
+        {
+            "openai" => OpenAITools.WebSearch(),
+            "google" => GoogleTools.GoogleSearch(),
+            _ => AnthropicTools.WebSearch(maxUses: 3),
+        };
         var result = await Ai.GenerateTextAsync(new GenerateTextOptions
         {
             Model = model,
@@ -315,6 +326,70 @@ switch (example)
         break;
     }
 
+    case "rag":
+    {
+        // RAG agéntico: el agente decide cuándo buscar en la base de conocimiento.
+        IEmbeddingModel embeddings = providerName switch
+        {
+            "openai" => OpenAIProvider.Default.Embedding("text-embedding-3-small"),
+            "google" => GoogleProvider.Default.Embedding(),
+            "mistral" => MistralProvider.Default.Embedding(),
+            _ => new MockEmbeddingModel(dimensions: 64),
+        };
+        var store = new InMemoryVectorStore(embeddings);
+        await store.AddTextsAsync(
+        [
+            ("politicas", "Las devoluciones se aceptan hasta 30 días después de la compra con boleta.\n\nEl envío es gratis sobre $30.000."),
+            ("horarios", "La tienda abre de lunes a sábado de 10:00 a 20:00. Los domingos está cerrada."),
+        ], chunkSize: 200);
+
+        var agent = new ToolLoopAgent(new AgentSettings
+        {
+            Model = model,
+            Instructions = "Responde preguntas de clientes usando la base de conocimiento. Cita el documento.",
+            Tools = [store.AsTool(topK: 2)],
+            ProviderOptions = providerOptions,
+        });
+        Console.WriteLine((await agent.GenerateAsync("¿Hasta cuándo puedo devolver un producto?")).Text);
+        break;
+    }
+
+    case "count-tokens":
+    {
+        var tokens = await Ai.CountTokensAsync(new GenerateTextOptions
+        {
+            Model = model,
+            System = "Eres un asistente útil.",
+            Prompt = "Explica qué es .NET en tres frases.",
+            Tools = [weather],
+        });
+        Console.WriteLine($"Tokens de entrada: {tokens}");
+        break;
+    }
+
+    case "batch":
+    {
+        // Lotes asíncronos a mitad de precio (Anthropic u OpenAI).
+        IBatchClient batches = providerName == "openai"
+            ? OpenAIProvider.Default.Batches("gpt-5")
+            : AnthropicProvider.Default.Batches("claude-opus-5-5");
+        var items = new List<BatchRequestItem>();
+        foreach (var (id, question) in new[] { ("q1", "¿Qué es C#?"), ("q2", "¿Qué es F#?") })
+        {
+            items.Add(await new GenerateTextOptions { Model = model, Prompt = question, MaxOutputTokens = 300 }.ToBatchItemAsync(id));
+        }
+
+        var job = await batches.CreateAsync(items);
+        Console.WriteLine($"Lote {job.Id} creado; esperando resultados...");
+        await batches.WaitForCompletionAsync(job.Id, TimeSpan.FromSeconds(30), new Progress<BatchJob>(j => Console.WriteLine($"  {j.Status}: {j.Counts.Succeeded}/{j.Counts.Total}")));
+        await foreach (var item in batches.GetResultsAsync(job.Id))
+        {
+            Console.WriteLine($"[{item.CustomId}] {(item.Succeeded ? item.Text : "error: " + item.Error)}");
+        }
+
+        break;
+    }
+
     default:
         Console.WriteLine($"Ejemplo desconocido: {example}");
         break;
@@ -348,6 +423,9 @@ static MockLanguageModel MockScript(string example) => example switch
         .ReturnsToolCall("Get-Weather", new { city = "Santiago" })
         .ReturnsText("En Santiago hay 22°C."),
     "mcp" => new MockLanguageModel().ReturnsText("(modo mock: el servidor MCP se conectó, pero el modelo es simulado)"),
+    "rag" => new MockLanguageModel()
+        .ReturnsToolCall("search_knowledge_base", new { query = "plazo de devolución" })
+        .ReturnsText("Puedes devolverlo hasta 30 días después de la compra, con boleta [politicas]."),
     _ => new MockLanguageModel().ReturnsText(".NET es una plataforma de desarrollo multiplataforma y de código abierto."),
 };
 

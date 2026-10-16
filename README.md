@@ -14,14 +14,35 @@ y en el [AI SDK de Laravel](https://laravel.com/docs/ai-sdk). Una sola API, inde
 - **herramientas del proveedor**: búsqueda web, web fetch, ejecución de código, búsqueda en archivos, con **fuentes/citas**
 - **fallback entre proveedores**, **reparación** de llamadas a herramientas inválidas y callbacks `OnChunk`/`OnError`/`OnFinish`/`OnAbort`
 - **imágenes, voz y transcripción** (`GenerateImageAsync`, `GenerateSpeechAsync`, `TranscribeAsync`)
-- backend ASP.NET Core compatible con `useChat` de AI SDK UI (React, Vue, Svelte)
+- **RAG**: almacén vectorial, fragmentación de texto, reranking y búsqueda como herramienta del agente
+- **conteo de tokens**, **batches** (a mitad de precio), **Files API** y **vector stores** de los proveedores
+- backend ASP.NET Core compatible con `useChat` de AI SDK UI (React, Vue, Svelte), con **datos propios** y **streams reanudables**
+
+**Proveedores:** OpenAI (y compatibles: Ollama, Groq, DeepSeek, OpenRouter…), Anthropic Claude, Google Gemini,
+Mistral, Amazon Bedrock, Cohere, y cualquier proveedor de Microsoft.Extensions.AI.
+
+## Instalación
+
+```bash
+dotnet add package AiSdk.Net               # núcleo
+dotnet add package AiSdk.Net.Anthropic     # o AiSdk.Net.OpenAI, .Google, .Mistral, .Bedrock, .Cohere
+dotnet add package AiSdk.Net.Mcp           # cliente MCP
+dotnet add package AiSdk.Net.AspNetCore    # backend para useChat
+```
+
+Los paquetes se llaman `AiSdk.Net.*` (el id `AiSdk` ya existe en nuget.org); los namespaces son `AiSdk.*`.
+Se publican con el workflow `release.yml` al crear un tag `vX.Y.Z` (requiere el secreto `NUGET_API_KEY`).
 
 | Paquete | Contenido |
 |---|---|
 | `AiSdk` | Núcleo: API `Ai.*`, tools, agentes, `Output`, middleware, registro, embeddings, UI stream, `MockLanguageModel` |
 | `AiSdk.OpenAI` | OpenAI: API Responses y Chat Completions, herramientas de servidor, embeddings, imágenes, voz y transcripción. `Chat` funciona con servidores compatibles (Ollama, Groq, DeepSeek, OpenRouter, LM Studio, vLLM…) |
 | `AiSdk.Anthropic` | Claude (Messages API): tools, streaming, razonamiento con firma, salida estructurada, herramientas de servidor (web search, web fetch, code execution), citas, caché de prompts, fallback ante rechazos |
-| `AiSdk.Mcp` | Cliente MCP (Model Context Protocol) con transportes stdio y Streamable HTTP |
+| `AiSdk.Google` | Gemini: tools, razonamiento con firmas, Google Search con fuentes, ejecución de código, URL context, embeddings, conteo de tokens e Imagen |
+| `AiSdk.Mistral` | Mistral AI: chat, razonamiento de Magistral, tools, salida estructurada y embeddings |
+| `AiSdk.Bedrock` | Amazon Bedrock (API Converse): Claude, Llama, Nova, Mistral… con SigV4 o API key; embeddings Titan y Cohere |
+| `AiSdk.Cohere` | Reranking (Rerank) y embeddings (Embed) |
+| `AiSdk.Mcp` | Cliente MCP (Model Context Protocol): herramientas, recursos, prompts, roots, sampling y elicitation; stdio y Streamable HTTP |
 | `AiSdk.Extensions.AI` | Adaptador de `Microsoft.Extensions.AI` (`IChatClient`, `IEmbeddingGenerator`) → cualquier proveedor de ese ecosistema |
 | `AiSdk.Extensions.DependencyInjection` | `services.AddAiSdk(...)`, `IHttpClientFactory`, agentes en el contenedor |
 | `AiSdk.AspNetCore` | `ToUIMessageStreamResult()` / `ToTextStreamResult()` para Minimal APIs y controladores |
@@ -56,6 +77,12 @@ y en el [AI SDK de Laravel](https://laravel.com/docs/ai-sdk). Una sola API, inde
 | `experimental_generateImage` | `Image::of()` | `Ai.GenerateImageAsync(...)` |
 | `experimental_generateSpeech` | `Audio::of()` | `Ai.GenerateSpeechAsync(...)` |
 | `experimental_transcribe` | `Transcription::of()` | `Ai.TranscribeAsync(...)` |
+| `rerank` | `Reranking` | `Ai.RerankAsync(...)` |
+| — | `Stores` / `Files` | `InMemoryVectorStore`, `IVectorStore`, `provider.Files`, `openai.VectorStores` |
+| `smoothStream()` | — | `StreamTransform = StreamTransforms.Smooth()` |
+| `extractReasoningMiddleware` | — | `Middlewares.ExtractReasoning()` |
+| `createUIMessageStream` + `writer.write({ type: 'data-*' })` | — | `UIMessageStreamResults.Create(writer => ...)`, `ctx.WriteData(...)` |
+| `resumable-stream` + `useChat({ resume })` | — | `ToResumableUIMessageStreamResult(store, chatId)` + `UIMessageStreamResults.Resume` |
 
 ## Inicio rápido
 
@@ -285,6 +312,11 @@ List<Tool> tools = [.. await files.GetToolsAsync(), .. await remote.GetToolsAsyn
 var agent = new ToolLoopAgent(new AgentSettings { Model = model, Tools = tools, Instructions = files.Instructions });
 ```
 
+Además de herramientas: `ListResourcesAsync`, `ReadResourceAsync` / `ReadResourceAsPartsAsync`,
+`ListResourceTemplatesAsync`, `ListPromptsAsync` y `GetPromptAsync` (devuelve `ModelMessage` listos para usar).
+Con `McpClientOptions` el cliente también atiende peticiones del servidor: `Roots`, `SamplingModel`
+(el servidor genera texto con un modelo tuyo) y `ElicitationHandler` (pide datos al usuario).
+
 `GetToolsAsync(include, prefix)` filtra herramientas y evita colisiones de nombre. Si una herramienta MCP
 devuelve `isError`, el error se informa al modelo. También están `ListToolsAsync`, `CallToolAsync` y
 `SendRequestAsync` para uso directo.
@@ -388,6 +420,81 @@ Console.WriteLine(transcript.Text);   // y transcript.Segments con tiempos (whis
 Las interfaces `IImageModel`, `ISpeechModel` e `ITranscriptionModel` permiten añadir otros proveedores;
 el registro las resuelve con `registry.ImageModel("openai:gpt-image-1")`, etc.
 
+### RAG: almacén vectorial y reranking
+
+```csharp
+var store = new InMemoryVectorStore(openai.Embedding("text-embedding-3-small"));   // o IVectorStore propio (pgvector, Qdrant...)
+await store.AddTextsAsync([("manual", File.ReadAllText("manual.md"))], chunkSize: 1000, overlap: 100);
+
+// RAG agéntico: el agente busca cuando lo necesita (con reranking opcional)
+var agent = new ToolLoopAgent(new AgentSettings
+{
+    Model = model,
+    Tools = [store.AsTool(topK: 5, reranker: CohereProvider.Default.Reranking())],
+});
+
+// RAG clásico: contexto en el prompt
+var context = await store.BuildContextAsync("¿cómo instalo?");
+
+// Reranking directo (Cohere, o EmbeddingRerankingModel con cualquier modelo de embeddings)
+var ranked = await Ai.RerankAsync(CohereProvider.Default.Reranking(), "capital de Chile", documentos, topN: 3);
+```
+
+### Conteo de tokens, batches y archivos
+
+```csharp
+// Tokens de entrada antes de enviar (Anthropic, OpenAI Responses, Gemini)
+int tokens = await Ai.CountTokensAsync(new GenerateTextOptions { Model = model, Prompt = "...", Tools = [weather] });
+
+// Lotes asíncronos a mitad de precio (Anthropic Message Batches u OpenAI Batch API)
+IBatchClient batches = anthropic.Batches("claude-opus-5-5");     // o openai.Batches("gpt-5")
+var job = await batches.CreateAsync([await options.ToBatchItemAsync("pedido-1"), ...]);
+await batches.WaitForCompletionAsync(job.Id);
+await foreach (var item in batches.GetResultsAsync(job.Id))
+    Console.WriteLine($"{item.CustomId}: {item.Text}");
+
+// Files API: sube una vez y referencia por id
+var file = await anthropic.Files.UploadAsync(bytes, "contrato.pdf", "application/pdf");
+var reply = await Ai.GenerateTextAsync(new() { Model = model, Messages = [ModelMessage.User(FilePart.FromFileId(file.Id), new TextPart("Resume"))] });
+
+// Vector stores de OpenAI para la herramienta FileSearch
+var vs = await openai.VectorStores.CreateAsync("docs");
+await openai.VectorStores.UploadFileAsync(vs.Id, bytes, "guia.md", "text/markdown");
+await openai.VectorStores.WaitUntilReadyAsync(vs.Id);
+Tools = [OpenAITools.FileSearch([vs.Id])];
+```
+
+### Más proveedores
+
+```csharp
+var gemini  = GoogleProvider.Default.Gemini("gemini-2.5-flash");            // GEMINI_API_KEY
+var mistral = MistralProvider.Default.Chat("mistral-large-latest");         // MISTRAL_API_KEY
+var nova    = BedrockProvider.Default.Converse("amazon.nova-pro-v1:0");     // AWS_REGION + AWS_BEARER_TOKEN_BEDROCK o credenciales de AWS
+var claudeBedrock = new BedrockProvider(o => { o.Region = "us-east-1"; o.CredentialsProvider = MisCredencialesAsync; })
+    .Converse("us.anthropic.claude-sonnet-4-5-20250929-v1:0");
+
+Tools = [GoogleTools.GoogleSearch(), GoogleTools.CodeExecution(), GoogleTools.UrlContext()];
+ProviderOptions = GoogleOptions.Create(thinkingBudget: 2048, includeThoughts: true);
+
+var image = await Ai.GenerateImageAsync(new() { Model = GoogleProvider.Default.Image("imagen-4.0-generate-001"), Prompt = "...", AspectRatio = "16:9" });
+```
+
+Bedrock firma las peticiones con AWS SigV4 (o usa la API key de Bedrock) y lee el formato binario
+`event-stream` en streaming, sin depender del SDK de AWS.
+
+### Streaming: suavizado y razonamiento en etiquetas
+
+```csharp
+var stream = Ai.StreamText(new GenerateTextOptions
+{
+    Model = deepseek.WithMiddleware(Middlewares.ExtractReasoning("think")),   // <think>...</think> → ReasoningPart
+    Prompt = "...",
+    StreamTransform = StreamTransforms.Smooth(TimeSpan.FromMilliseconds(15)), // palabra por palabra
+});
+```
+
+`Middlewares.SimulateStreaming()` permite usar en streaming un modelo que solo implementa respuestas completas.
+
 ### ASP.NET Core + `useChat`
 
 ```csharp
@@ -407,6 +514,31 @@ app.MapPost("/api/chat", (UIChatRequest req, SupportAgent agent, HttpContext htt
 ```
 
 En el frontend: `useChat({ transport: new DefaultChatTransport({ api: "/api/chat" }) })`.
+
+**Datos propios** (partes `data-*` en `useChat`): desde una herramienta con `ctx.WriteData("progress", new { percent = 50 }, id: "p")`,
+o componiendo el stream:
+
+```csharp
+app.MapPost("/api/report", (UIChatRequest req, ILanguageModel model) =>
+    UIMessageStreamResults.Create(writer =>
+    {
+        writer.WriteData("status", new { step = "buscando" }, id: "status");
+        writer.Merge(Ai.StreamText(new() { Model = model, Messages = UIMessageConverter.ToModelMessages(req.Messages) }));
+        return Task.CompletedTask;
+    }));
+```
+
+**Streams reanudables**: la generación continúa aunque el usuario recargue la página y `useChat({ resume: true })` la retoma.
+
+```csharp
+builder.Services.AddAiSdk(ai => ai.AddAnthropic().AddResumableStreams());   // o tu IResumableStreamStore sobre Redis
+
+app.MapPost("/api/chat", (UIChatRequest req, SupportAgent agent, IResumableStreamStore store) =>
+    agent.Stream(UIMessageConverter.ToModelMessages(req.Messages)).ToResumableUIMessageStreamResult(store, req.Id!));
+
+app.MapGet("/api/chat/{id}/stream", (string id, IResumableStreamStore store) => UIMessageStreamResults.Resume(store, id));
+```
+
 Ver `samples/ChatApi`.
 
 ### Microsoft.Extensions.AI
@@ -428,6 +560,11 @@ var model = new MockLanguageModel()
 var result = await agent.GenerateAsync("...");
 Assert.Equal(2, model.Requests.Count);
 ```
+
+Pruebas de integración contra las APIs reales en `tests/AiSdk.IntegrationTests`: se ejecutan con
+`dotnet test` y cada proveedor se omite si su API key no está definida (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`,
+`GEMINI_API_KEY`, `MISTRAL_API_KEY`, `COHERE_API_KEY`, Bedrock con `AWS_REGION` + `AISDK_TEST_BEDROCK_MODEL`).
+La CI las ejecuta con los secretos del repositorio.
 
 ### Telemetría
 
@@ -459,6 +596,17 @@ builder.Services.AddOpenTelemetry().WithTracing(t => t.AddSource(AiTelemetry.Sou
 - `ProviderOptions["openai"]` se fusiona en el cuerpo de la petición.
 - `UseLegacyMaxTokens = true` para servidores que solo aceptan `max_tokens`.
 
+**Google Gemini**
+- Las firmas de razonamiento (`thoughtSignature`) se conservan y reenvían junto a las llamadas a funciones.
+- La salida estructurada usa `responseJsonSchema`; las herramientas usan `parametersJsonSchema`.
+- `GoogleOptions.Create(thinkingBudget, includeThoughts, thinkingLevel, safetySettings)`.
+
+**Mistral**: `max_tokens`, `random_seed`, `tool_choice: "any"` y los bloques `thinking` de Magistral se manejan automáticamente.
+
+**Amazon Bedrock**: Converse no tiene modo JSON universal; la salida estructurada se pide con una instrucción
+de sistema y se valida al parsear. Las opciones propias del modelo van en
+`ProviderOptions["bedrock"]["additionalModelRequestFields"]`.
+
 Cualquier opción específica de un proveedor puede pasarse con `ProviderOptions`, que se fusiona
 (en profundidad) con el cuerpo JSON de la petición.
 
@@ -469,6 +617,10 @@ src/
   AiSdk/                      núcleo
   AiSdk.OpenAI/               proveedor OpenAI + compatibles
   AiSdk.Anthropic/            proveedor Claude
+  AiSdk.Google/               proveedor Gemini
+  AiSdk.Mistral/              proveedor Mistral
+  AiSdk.Bedrock/              proveedor Amazon Bedrock
+  AiSdk.Cohere/               reranking y embeddings de Cohere
   AiSdk.Mcp/                  cliente MCP (stdio + HTTP)
   AiSdk.Extensions.AI/        adaptador Microsoft.Extensions.AI
   AiSdk.Extensions.DependencyInjection/
@@ -476,17 +628,17 @@ src/
 samples/
   QuickStart/                 ejemplos de consola
   ChatApi/                    backend para useChat
-tests/AiSdk.Tests/            pruebas (modelos simulados + HTTP falso)
+tests/AiSdk.Tests/            pruebas unitarias (modelos simulados + HTTP falso)
+tests/AiSdk.IntegrationTests/ pruebas contra las APIs reales (opcionales)
 ```
 
 ## Pendiente / ideas
 
-- Pruebas contra las APIs reales (hoy se prueban con respuestas HTTP simuladas)
-- Gemini, Mistral, Amazon Bedrock y Azure OpenAI nativos (hoy: vía Microsoft.Extensions.AI o endpoints compatibles)
-- Reranking, archivos y vector stores, batches y conteo de tokens
-- Partes de datos propias y streams reanudables en el protocolo UI; `smoothStream`, `extractReasoning`
-- MCP: recursos, prompts y capacidades de cliente (sampling, roots, elicitation)
-- Publicación en NuGet
+- Ejecutar las pruebas de integración con API keys reales (configurar los secretos en GitHub)
+- Primera publicación en nuget.org (crear el tag `v0.1.0` con `NUGET_API_KEY` configurado)
+- Azure OpenAI con autenticación Entra ID y Vertex AI nativos (hoy: endpoints compatibles o Microsoft.Extensions.AI)
+- Almacenes vectoriales listos para pgvector/Qdrant y almacén Redis para streams reanudables
+- Generative UI y herramientas de servidor adicionales (computer use, memoria)
 
 ## Licencia
 

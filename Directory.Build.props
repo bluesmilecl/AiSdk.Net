@@ -11,8 +11,22 @@
     <RepositoryUrl>https://github.com/bluesmilecl/sdk-agent-ia-net</RepositoryUrl>
     <PackageTags>ai;llm;agents;openai;anthropic;claude;sdk</PackageTags>
   </PropertyGroup>
-  <PropertyGroup Condition="$(MSBuildProjectDirectory.Contains('/src/'))">
+  <!-- Paquetes NuGet: el id es AiSdk.Net.* (el id "AiSdk" ya existe en nuget.org); los namespaces siguen siendo AiSdk.* -->
+  <PropertyGroup Condition="$(MSBuildProjectDirectory.Replace('\', '/').Contains('/src/'))">
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <IsPackable>true</IsPackable>
+    <PackageId>AiSdk.Net$(MSBuildProjectName.Substring(5))</PackageId>
+    <PackageProjectUrl>https://github.com/bluesmilecl/sdk-agent-ia-net</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
   </PropertyGroup>
+  <ItemGroup Condition="$(MSBuildProjectDirectory.Replace('\', '/').Contains('/src/'))">
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
 </Project>
