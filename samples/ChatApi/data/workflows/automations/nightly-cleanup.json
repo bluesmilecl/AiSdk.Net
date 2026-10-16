@@ -1,1 +1,0 @@
-{"id":"nightly-cleanup","name":"Limpieza nocturna","trigger":{"kind":"cron","expression":"0 3 * * *","timeZone":"America/Santiago"},"workflow":"agent-task","input":{"Task":"limpieza","Prompt":"Resume los reembolsos rechazados de ayer.","Owner":null},"enabled":true,"createdAt":"2026-10-16T23:49:55.1678515+00:00","nextRunAt":"2026-10-17T03:00:00-03:00"}

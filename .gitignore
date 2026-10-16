@@ -5,3 +5,6 @@ obj/
 .idea/
 TestResults/
 *.nupkg
+
+# Datos locales de los ejemplos (artifacts, workflows)
+samples/**/data/
