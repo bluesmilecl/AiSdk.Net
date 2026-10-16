@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Almacén vectorial PostgreSQL + pgvector para AiSdk: búsqueda semántica, híbrida (vectores + texto completo) y filtros por metadatos en la base de datos.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../AiSdk/AiSdk.csproj" />
+    <PackageReference Include="Npgsql" Version="10.0.3" />
+    <PackageReference Include="Pgvector" Version="0.3.2" />
+  </ItemGroup>
+</Project>

@@ -22,7 +22,7 @@ public interface IVectorStore
     Task<IReadOnlyList<VectorSearchResult>> SearchAsync(
         string query,
         int topK = 5,
-        Func<VectorDocument, bool>? filter = null,
+        VectorFilter? filter = null,
         CancellationToken cancellationToken = default);
 
     Task DeleteAsync(IEnumerable<string> ids, CancellationToken cancellationToken = default);
@@ -77,7 +77,7 @@ public sealed class InMemoryVectorStore(IEmbeddingModel embeddingModel) : IVecto
     public async Task<IReadOnlyList<VectorSearchResult>> SearchAsync(
         string query,
         int topK = 5,
-        Func<VectorDocument, bool>? filter = null,
+        VectorFilter? filter = null,
         CancellationToken cancellationToken = default)
     {
         var queryEmbedding = (await Ai.EmbedAsync(embeddingModel, query, cancellationToken).ConfigureAwait(false)).Embedding;
@@ -88,7 +88,7 @@ public sealed class InMemoryVectorStore(IEmbeddingModel embeddingModel) : IVecto
         }
 
         return snapshot
-            .Where(i => filter is null || filter(i.Document))
+            .Where(i => filter is null || filter.Matches(i.Document.Metadata))
             .Select(i => new VectorSearchResult(i.Document, Ai.CosineSimilarity(queryEmbedding, i.Embedding)))
             .OrderByDescending(r => r.Score)
             .Take(topK)
@@ -120,10 +120,16 @@ public static class VectorStoreExtensions
         string name = "search_knowledge_base",
         string description = "Busca información relevante en la base de conocimiento. Úsala antes de responder preguntas sobre los documentos.",
         int topK = 5,
-        IRerankingModel? reranker = null) =>
+        IRerankingModel? reranker = null,
+        VectorFilter? filter = null,
+        bool hybrid = false) =>
         Tool.Create<KnowledgeQuery, IReadOnlyList<KnowledgeHit>>(name, description, async (input, ct) =>
         {
-            var hits = await store.SearchAsync(input.Query, reranker is null ? topK : topK * 3, cancellationToken: ct).ConfigureAwait(false);
+            var take = reranker is null ? topK : topK * 3;
+            // Búsqueda híbrida (vectores + palabras clave) si el almacén la soporta.
+            var hits = hybrid && store is IHybridVectorStore hybridStore
+                ? await hybridStore.HybridSearchAsync(input.Query, take, filter, ct).ConfigureAwait(false)
+                : await store.SearchAsync(input.Query, take, filter, ct).ConfigureAwait(false);
             if (reranker is not null && hits.Count > 0)
             {
                 var reranked = await Ai.RerankAsync(reranker, input.Query, hits, h => h.Document.Text, topK, ct).ConfigureAwait(false);

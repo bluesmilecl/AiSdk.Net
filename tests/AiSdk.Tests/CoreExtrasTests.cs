@@ -196,8 +196,10 @@ public class RetrievalTests
         var hits = await store.SearchAsync("¿habrá lluvia?", topK: 1);
         Assert.Equal("2", hits[0].Document.Id);
 
-        var filtered = await store.SearchAsync("lluvia", topK: 3, filter: d => d.Metadata is null);
+        var filtered = await store.SearchAsync("lluvia", topK: 3, filter: VectorFilter.Ne("tipo", "clima"));
         Assert.DoesNotContain(filtered, h => h.Document.Id == "2");
+        var onlyClima = await store.SearchAsync("dotnet", topK: 3, filter: VectorFilter.Eq("tipo", "clima") | VectorFilter.In("tipo", "x", "y"));
+        Assert.Equal(["2"], onlyClima.Select(h => h.Document.Id));
 
         var model = new MockLanguageModel()
             .ReturnsToolCall("search_knowledge_base", new { query = "clima con lluvia" })
@@ -242,5 +244,31 @@ public class RetrievalTests
 
         Assert.Equal("file_123", Assert.IsType<FilePart>(back.Content[0]).FileId);
         Assert.Equal("file_456", Assert.IsType<ImagePart>(back.Content[1]).FileId);
+    }
+}
+
+public class PgVectorFilterTests
+{
+    [Fact]
+    public void TranslatesFiltersToParameterizedSql()
+    {
+        var parameters = new List<object> { "vector", 5 };
+        var sql = AiSdk.PgVector.PgVectorFilterTranslator.Translate(
+            (VectorFilter.Eq("tipo", "manual") | VectorFilter.In("pais", "CL", "PE")) & !VectorFilter.Exists("borrador"),
+            parameters);
+
+        Assert.Equal(
+            "((COALESCE(metadata->>$3 = $4, false) OR COALESCE(metadata->>$5 = ANY($6), false)) AND NOT jsonb_exists(metadata, $7))",
+            sql);
+        Assert.Equal(["tipo", "manual", "pais"], parameters.Skip(2).Take(3));
+        Assert.Equal(["CL", "PE"], (string[])parameters[5]);
+        Assert.DoesNotContain("manual", sql); // los valores nunca se concatenan en el SQL
+    }
+
+    [Fact]
+    public void RejectsUnsafeIdentifiers()
+    {
+        Assert.Throws<ArgumentException>(() => AiSdk.PgVector.PgVectorStore.Create(
+            "Host=localhost", new MockEmbeddingModel(), new AiSdk.PgVector.PgVectorStoreOptions { Dimensions = 3, Table = "docs; DROP TABLE x" }));
     }
 }

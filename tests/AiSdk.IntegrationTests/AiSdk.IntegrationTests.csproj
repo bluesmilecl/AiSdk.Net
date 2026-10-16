@@ -19,6 +19,7 @@
     <ProjectReference Include="../../src/AiSdk.Mistral/AiSdk.Mistral.csproj" />
     <ProjectReference Include="../../src/AiSdk.Bedrock/AiSdk.Bedrock.csproj" />
     <ProjectReference Include="../../src/AiSdk.Cohere/AiSdk.Cohere.csproj" />
+    <ProjectReference Include="../../src/AiSdk.PgVector/AiSdk.PgVector.csproj" />
   </ItemGroup>
 
   <ItemGroup>
