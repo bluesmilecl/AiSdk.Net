@@ -314,6 +314,10 @@ public class WorkflowTests
 
         // Webhook: la automatización declarada en código se registró al arrancar.
         for (var i = 0; i < 40 && (await engine.ListAutomationsAsync()).Count == 0; i++) await Task.Delay(25);
+        var automationsResponse = await client.GetAsync("/workflows/automations");
+        var automationsJson = await automationsResponse.Content.ReadAsStringAsync();
+        Assert.True(automationsResponse.IsSuccessStatusCode, automationsJson);
+        Assert.Contains("\"kind\":\"webhook\"", automationsJson);
         var bad = new HttpRequestMessage(HttpMethod.Post, "/workflows/hooks/crm") { Content = new StringContent("""{"id":"W-2","amount":5}""", Encoding.UTF8, "application/json") };
         bad.Headers.Add("X-Webhook-Secret", "otra");
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.SendAsync(bad)).StatusCode);

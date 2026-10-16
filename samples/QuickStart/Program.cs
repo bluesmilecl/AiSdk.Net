@@ -2,7 +2,7 @@
 // Uso:  dotnet run --project samples/QuickStart -- [anthropic|openai|google|mistral|bedrock|mock] [ejemplo] [args...]
 // Ejemplos: text, stream, tools, agent, object, stream-object, session, subagents,
 //           web-search, fallback, repair, mcp, image, speech, transcribe, rag, count-tokens, batch,
-//           document, attachments, compress
+//           document, attachments, compress, orchestrate, artifact, generate-docs, workflow
 //
 //   document:    ... -- anthropic document informe.pdf   (PDF, Word, Excel, PowerPoint, imagen, audio, video → Markdown)
 //   attachments: ... -- mistral attachments boleta.png   (modelo sin visión + OCR local con Tesseract)
@@ -15,12 +15,15 @@ using System.ComponentModel;
 using AiSdk;
 using AiSdk.Anthropic;
 using AiSdk.Bedrock;
+using AiSdk.Artifacts;
 using AiSdk.Documents;
+using AiSdk.Documents.Generation;
 using AiSdk.Google;
 using AiSdk.Mcp;
 using AiSdk.Mistral;
 using AiSdk.OpenAI;
 using AiSdk.Testing;
+using AiSdk.Workflows;
 
 var providerName = args.ElementAtOrDefault(0) ?? "anthropic";
 var example = args.ElementAtOrDefault(1) ?? "agent";
@@ -462,6 +465,116 @@ switch (example)
         break;
     }
 
+    case "orchestrate":
+    {
+        // Multi-agente: un router envía a especialistas; el de ventas usa un equipo en paralelo con un agregador.
+        ToolLoopAgent Specialist(string name, string description, string instructions) =>
+            new(new AgentSettings { Name = name, Description = description, Model = model, Instructions = instructions, ProviderOptions = providerOptions });
+
+        var analysis = Orchestrations.Parallel(
+            [
+                Specialist("mercado", "Análisis de mercado", "Analiza el mercado y la competencia en 3 viñetas."),
+                Specialist("finanzas", "Análisis financiero", "Estima costos e ingresos en 3 viñetas."),
+            ],
+            aggregator: Specialist("director", "Síntesis", "Integra los análisis en una recomendación de 5 líneas."));
+
+        var router = Orchestrations.Router(
+            model,
+            Specialist("soporte", "Problemas técnicos con el producto", "Resuelve problemas técnicos paso a paso."),
+            analysis.Named("estrategia", "Preguntas de negocio, precios o expansión"));
+
+        var result = await router.RunAsync("¿Conviene abrir una sucursal en Lima?", new OrchestrationOptions
+        {
+            OnEvent = e =>
+            {
+                Console.WriteLine(e switch
+                {
+                    RoutedEvent r => $"→ ruta: {r.Route} ({r.Reason})",
+                    NodeStartedEvent s => $"  ▶ {s.Node}",
+                    NodeCompletedEvent c => $"  ✓ {c.Node} ({c.Usage.TotalTokens} tokens)",
+                    _ => e.ToString(),
+                });
+                return ValueTask.CompletedTask;
+            },
+        });
+        Console.WriteLine($"\n{result.Text}\n\nTotal: {result.TotalUsage.TotalTokens} tokens en {result.Runs.Count} llamadas");
+        break;
+    }
+
+    case "artifact":
+    {
+        // El agente crea y edita artifacts (como Claude); aquí se guardan en ./artifacts.
+        var store = new FileSystemArtifactStore("artifacts");
+        var agent = new ToolLoopAgent(new AgentSettings
+        {
+            Model = model,
+            Instructions = ArtifactTools.Instructions,
+            Tools = ArtifactTools.Create(store),
+            ProviderOptions = providerOptions,
+        });
+        Console.WriteLine((await agent.GenerateAsync("Crea una calculadora de propinas en HTML y luego cambia el color principal a verde.")).Text);
+        foreach (var artifact in await store.ListAsync())
+        {
+            var path = Path.Combine("artifacts", artifact.Id + ".html");
+            await File.WriteAllTextAsync(path, ArtifactRenderer.ToHtml(artifact));
+            Console.WriteLine($"{artifact.Title} (v{artifact.Version}) → {path}");
+        }
+
+        break;
+    }
+
+    case "generate-docs":
+    {
+        // Word, PDF y Excel sin modelo; con un agente, usa DocumentTools.Create(...).
+        const string informe = """
+            # Informe trimestral
+
+            Las **ventas** crecieron un 12 % frente al trimestre anterior.
+
+            | País | Ventas | Meta |
+            |:-----|-------:|-----:|
+            | Chile | 1.250 | 1.100 |
+            | Perú | 980 | 1.000 |
+
+            1. Reforzar inventario en Perú
+            2. Ampliar canal digital
+            """;
+        var style = new DocumentStyleOptions { Title = "Informe trimestral", Author = "Equipo comercial", TitlePage = true, HeaderText = "Confidencial" };
+        await File.WriteAllBytesAsync("informe.docx", DocumentGenerator.ToDocx(informe, style));
+        await File.WriteAllBytesAsync("informe.pdf", DocumentGenerator.ToPdf(informe, style));
+        await File.WriteAllBytesAsync("ventas.xlsx", new SpreadsheetBuilder()
+            .AddSheet("Ventas", [new Sale("Café", DateTime.Today, 10, 1500.5m), new Sale("Té", DateTime.Today, 4, 980m)], new SheetOptions { Totals = true })
+            .Build());
+        Console.WriteLine("Generados: informe.docx, informe.pdf, ventas.xlsx");
+        break;
+    }
+
+    case "workflow":
+    {
+        // Workflow durable con aprobación humana y un agente como paso.
+        var writer = new ToolLoopAgent(new AgentSettings { Name = "redactor", Model = model, ProviderOptions = providerOptions });
+        var engine = new WorkflowEngine(new FileSystemWorkflowStore("workflows")).Register(Workflow.Create<string, string>("campaign", async (ctx, product) =>
+        {
+            var draft = await ctx.RunAgentAsync(writer, $"Escribe un correo promocional de 3 líneas para {product}.", "draft");
+            ctx.Log("Borrador listo, esperando aprobación");
+            var approval = await ctx.WaitForEventAsync<Approval>("campaign.approval", key: product, timeout: TimeSpan.FromDays(1));
+            if (approval is not { Approved: true })
+            {
+                return "Campaña cancelada";
+            }
+
+            await ctx.StepAsync("send", _ => Task.FromResult($"enviado a {approval.Audience}"));
+            return $"Enviado:\n{draft}";
+        }));
+
+        var run = await engine.StartAsync("campaign", "café de especialidad");
+        Console.WriteLine($"Estado: {run.Status} (esperando {run.Waiting?.EventName})");
+        await engine.SendEventAsync("campaign.approval", new Approval(true, "clientes frecuentes"), key: "café de especialidad");
+        await engine.WhenIdleAsync();
+        Console.WriteLine((await engine.GetRunAsync(run.Id))!.GetOutput<string>());
+        break;
+    }
+
     default:
         Console.WriteLine($"Ejemplo desconocido: {example}");
         break;
@@ -483,6 +596,16 @@ static MockLanguageModel MockScript(string example) => example switch
         .ReturnsText("""{"name":"Empanadas de pino","ingredients":["harina","carne","cebolla","huevo","aceitunas"],"minutes":90}"""),
     "session" => new MockLanguageModel().ReturnsText("¡Hola Ana!").ReturnsText("Te llamas Ana."),
     "attachments" => new MockLanguageModel().ReturnsText("El total es $12.345."),
+    "orchestrate" => new MockLanguageModel()
+        .ReturnsText("""{"route":"estrategia","reason":"pregunta de expansión"}""")
+        .ReturnsText("- Mercado en crecimiento\n- Competencia media\n- Alta demanda digital")
+        .ReturnsText("- Inversión: $200k\n- Retorno: 18 meses\n- Margen: 22%")
+        .ReturnsText("Recomendación: abrir en Lima con foco digital; retorno estimado en 18 meses."),
+    "artifact" => new MockLanguageModel()
+        .ReturnsToolCall("create_artifact", new { title = "Calculadora de propinas", type = "html", content = "<!doctype html><title>Propinas</title><style>button{background:#2563eb;color:#fff}</style><input id=m type=number placeholder=Monto><button onclick=\"r.textContent=(m.value*0.1).toFixed(0)\">10%</button><p id=r></p>" })
+        .ReturnsToolCall("update_artifact", new { id = "calculadora-de-propinas", oldStr = "#2563eb", newStr = "#16a34a" })
+        .ReturnsText("Creé la calculadora y cambié el color a verde."),
+    "workflow" => new MockLanguageModel().ReturnsText("¡Nuevo café de especialidad! 20% de descuento esta semana."),
     "compress" => new MockLanguageModel().ReturnsText("- Cliente i compró 3·i unidades.").ReturnsText("El cliente 2 compró 6 unidades."),
     "web-search" => new MockLanguageModel().Returns(_ => new LanguageModelResult
     {
@@ -512,3 +635,7 @@ public sealed record Recipe(
     [property: Description("Nombre de la receta")] string Name,
     [property: Description("Lista de ingredientes")] List<string> Ingredients,
     [property: Description("Tiempo de preparación en minutos")] int Minutes);
+
+record Sale(string Producto, DateTime Fecha, int Unidades, decimal Monto);
+
+record Approval(bool Approved, string? Audience = null);

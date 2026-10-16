@@ -51,7 +51,8 @@ public static class WorkflowEndpoints
             return Results.Ok(new { runs });
         });
 
-        group.MapGet("/automations", async (HttpContext http) => Results.Ok(await Engine(http).ListAutomationsAsync(http.RequestAborted).ConfigureAwait(false)));
+        // Nota: con solo HttpContext como parámetro la lambda se tomaría como RequestDelegate y se descartaría el IResult.
+        group.MapGet("/automations", async (HttpContext http, CancellationToken ct) => Results.Ok(await Engine(http).ListAutomationsAsync(ct).ConfigureAwait(false)));
         group.MapPost("/automations", async (HttpContext http, Automation automation) =>
             Results.Ok(await Engine(http).AddAutomationAsync(automation, http.RequestAborted).ConfigureAwait(false)));
         group.MapDelete("/automations/{id}", async (HttpContext http, string id) =>

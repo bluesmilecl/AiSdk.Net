@@ -166,6 +166,19 @@ public static class OrchestrationNodes
                 CancellationToken = ct,
             })));
 
+    /// <summary>Da nombre y descripción a un nodo (p. ej. una orquestación usada como ruta de un router o trabajador de un supervisor).</summary>
+    public static IOrchestrationNode Named(this IOrchestrationNode node, string name, string? description = null) =>
+        new NamedNode(name, description ?? node.Description, node);
+
+    private sealed class NamedNode(string name, string? description, IOrchestrationNode inner) : IOrchestrationNode
+    {
+        public string Name => name;
+
+        public string? Description => description;
+
+        public Task<string> RunAsync(string input, OrchestrationContext context) => inner.RunAsync(input, context);
+    }
+
     internal sealed record TaskInput([property: Description("Descripción completa y autocontenida de la tarea.")] string Task);
 
     private sealed class FunctionNode(string name, string? description, Func<string, CancellationToken, Task<string>> run) : IOrchestrationNode

@@ -7,6 +7,11 @@ y en el [AI SDK de Laravel](https://laravel.com/docs/ai-sdk). Una sola API, inde
 - generar objetos tipados con JSON Schema a partir de tus clases (`GenerateObjectAsync<T>`, `StreamObject<T>`)
 - herramientas (*tools*) con esquema automático y bucle de agente (`StopWhen`, `PrepareStep`, `OnStepFinish`)
 - agentes (`ToolLoopAgent` o clases que heredan de `Agent`), memoria de conversación y sub-agentes
+- **orquestación multi-agente**: cadena, paralelo con agregador, router, supervisor, traspasos (handoffs) y evaluador-optimizador
+- **artifacts como Claude**: los agentes crean y editan páginas HTML, componentes React, documentos, código y diagramas versionados
+- **generación de archivos**: Word, PDF y Excel con estilos profesionales, directamente o como herramientas del agente
+- **workflows durables y automatizaciones**: pasos con reintentos, esperas, aprobaciones humanas, cron, eventos y webhooks;
+  los agentes pueden programar sus propias tareas
 - aprobación humana de herramientas (*human-in-the-loop*)
 - middleware de modelos, registro de proveedores con alias, reintentos y trazas OpenTelemetry
 - embeddings y similitud coseno
@@ -33,7 +38,8 @@ dotnet add package AiSdk.Net               # núcleo
 dotnet add package AiSdk.Net.Anthropic     # o AiSdk.Net.OpenAI, .Google, .Mistral, .Bedrock, .Cohere
 dotnet add package AiSdk.Net.Mcp           # cliente MCP
 dotnet add package AiSdk.Net.AspNetCore    # backend para useChat
-dotnet add package AiSdk.Net.Documents     # PDF/Office/imágenes/audio/video → Markdown + OCR
+dotnet add package AiSdk.Net.Documents     # leer (PDF/Office/imágenes/audio/video → Markdown + OCR) y generar Word/PDF/Excel
+dotnet add package AiSdk.Net.Workflows     # workflows durables, triggers y automatizaciones
 dotnet add package AiSdk.Net.PgVector      # almacén PostgreSQL + pgvector
 dotnet add package AiSdk.Net.VectorData    # Qdrant, Pinecone, Azure AI Search… vía Microsoft.Extensions.VectorData
 ```
@@ -43,7 +49,7 @@ Se publican con el workflow `release.yml` al crear un tag `vX.Y.Z` (requiere el 
 
 | Paquete | Contenido |
 |---|---|
-| `AiSdk` | Núcleo: API `Ai.*`, tools, agentes, `Output`, middleware, registro, embeddings, UI stream, `MockLanguageModel` |
+| `AiSdk` | Núcleo: API `Ai.*`, tools, agentes, orquestaciones multi-agente, artifacts, `Output`, middleware, registro, embeddings, UI stream, `MockLanguageModel` |
 | `AiSdk.OpenAI` | OpenAI: API Responses y Chat Completions, herramientas de servidor, embeddings, imágenes, voz y transcripción. `Chat` funciona con servidores compatibles (Ollama, Groq, DeepSeek, OpenRouter, LM Studio, vLLM…) |
 | `AiSdk.Anthropic` | Claude (Messages API): tools, streaming, razonamiento con firma, salida estructurada, herramientas de servidor (web search, web fetch, code execution), citas, caché de prompts, fallback ante rechazos |
 | `AiSdk.Google` | Gemini: tools, razonamiento con firmas, Google Search con fuentes, ejecución de código, URL context, embeddings, conteo de tokens e Imagen |
@@ -53,8 +59,9 @@ Se publican con el workflow `release.yml` al crear un tag `vX.Y.Z` (requiere el 
 | `AiSdk.Mcp` | Cliente MCP (Model Context Protocol): herramientas, recursos, prompts, roots, sampling y elicitation; stdio y Streamable HTTP |
 | `AiSdk.Extensions.AI` | Adaptador de `Microsoft.Extensions.AI` (`IChatClient`, `IEmbeddingGenerator`) → cualquier proveedor de ese ecosistema |
 | `AiSdk.Extensions.DependencyInjection` | `services.AddAiSdk(...)`, `IHttpClientFactory`, agentes en el contenedor |
-| `AiSdk.AspNetCore` | `ToUIMessageStreamResult()` / `ToTextStreamResult()` para Minimal APIs y controladores |
-| `AiSdk.Documents` | `MarkdownConverter` (PDF, Word, Excel, PowerPoint, HTML, CSV/JSON, imágenes, audio, video), OCR con Tesseract, middleware `ConvertAttachments` para modelos sin visión |
+| `AiSdk.AspNetCore` | `ToUIMessageStreamResult()` / `ToTextStreamResult()`, `MapArtifacts()` y `MapWorkflows()` para Minimal APIs |
+| `AiSdk.Documents` | `MarkdownConverter` (PDF, Word, Excel, PowerPoint, HTML, CSV/JSON, imágenes, audio, video), OCR con Tesseract, middleware `ConvertAttachments` para modelos sin visión; generación de Word, PDF y Excel (`DocxWriter`, `PdfWriter`, `SpreadsheetBuilder`, `DocumentTools`) |
+| `AiSdk.Workflows` | `WorkflowEngine`: pasos durables, `SleepAsync`, `WaitForEventAsync`, reintentos; automatizaciones por cron, intervalo, fecha, evento o webhook; `AgentTasks` para que los agentes programen tareas; `AddAiSdkWorkflows()` |
 | `AiSdk.PgVector` | Almacén PostgreSQL + pgvector: HNSW, filtros en `jsonb`, búsqueda híbrida (vectores + texto completo con RRF) |
 | `AiSdk.VectorData` | `VectorDataStore`: cualquier conector de Microsoft.Extensions.VectorData (Qdrant, Pinecone, Azure AI Search, Redis, Weaviate, MongoDB, Cosmos DB, SQL Server, Elasticsearch…) |
 
@@ -94,6 +101,9 @@ Se publican con el workflow `release.yml` al crear un tag `vX.Y.Z` (requiere el 
 | `extractReasoningMiddleware` | — | `Middlewares.ExtractReasoning()` |
 | `createUIMessageStream` + `writer.write({ type: 'data-*' })` | — | `UIMessageStreamResults.Create(writer => ...)`, `ctx.WriteData(...)` |
 | `resumable-stream` + `useChat({ resume })` | — | `ToResumableUIMessageStreamResult(store, chatId)` + `UIMessageStreamResults.Resume` |
+| patrones de agentes (sequential, parallel, routing, orchestrator-worker, evaluator-optimizer) | — | `Orchestrations.Sequential/Parallel/Router/Supervisor/EvaluatorOptimizer` |
+| handoffs (OpenAI Agents SDK) | — | `Orchestrations.Handoffs(...)` |
+| Workflow DevKit (`"use workflow"`, `"use step"`, `sleep`, hooks) | queues / jobs | `Workflow.Create(...)`, `ctx.StepAsync`, `ctx.SleepAsync`, `ctx.WaitForEventAsync` |
 
 ## Inicio rápido
 
@@ -110,7 +120,7 @@ dotnet run --project samples/QuickStart -- openai stream-object
 
 Ejemplos disponibles: `text`, `stream`, `tools`, `agent`, `object`, `stream-object`, `session`, `subagents`,
 `web-search`, `fallback`, `repair`, `mcp`, `image`, `speech`, `transcribe`, `rag`, `count-tokens`, `batch`,
-`document`, `attachments`, `compress`.
+`document`, `attachments`, `compress`, `orchestrate`, `artifact`, `generate-docs`, `workflow`.
 
 ```bash
 # MCP con cualquier servidor (stdio):
@@ -268,6 +278,141 @@ PrepareStep = ctx => ValueTask.FromResult<PrepareStepResult?>(ctx.StepNumber swi
     _ => null,
 }),
 ```
+
+### Orquestación multi-agente
+
+Patrones listos (ver *Building effective agents* de Anthropic). Todos los agentes y orquestaciones son
+`IOrchestrationNode`: se anidan, se exponen como herramienta (`AsTool`) y se ejecutan como pasos de un workflow.
+
+```csharp
+var team = Orchestrations.Parallel([legal, finanzas, mercado], aggregator: director);   // fan-out + síntesis
+var pipeline = Orchestrations.Sequential(investigador, redactor, editor);               // cadena
+var router = Orchestrations.Router(modeloBarato, soporte, ventas, team.Named("estrategia", "Preguntas de negocio"));
+var jefe = Orchestrations.Supervisor(claude, investigador, analista, programador);      // planifica y delega (en paralelo)
+var chat = Orchestrations.Handoffs(triage, ventas, facturacion);                        // se traspasan la conversación
+var revisado = Orchestrations.EvaluatorOptimizer(redactor, evaluador, "Tono formal, sin errores, máx. 200 palabras");
+
+var result = await router.RunAsync("¿Conviene abrir en Lima?", new OrchestrationOptions
+{
+    OnEvent = e => { Console.WriteLine(e); return ValueTask.CompletedTask; },   // inicio/fin de agentes, rutas, traspasos...
+});
+Console.WriteLine($"{result.Text} — {result.TotalUsage.TotalTokens} tokens, {result.Runs.Count} llamadas");
+
+// Funciones como pasos, y orquestaciones como herramientas de otro agente
+var limpiar = OrchestrationNodes.Function("limpiar", texto => texto.Trim());
+var agente = new ToolLoopAgent(new() { Model = claude, Tools = [team.AsTool("comite", "Consulta al comité")] });
+
+// Traspasos dentro de un chat existente (continúa con el agente que corresponda)
+var turno = await chat.RunAsync(historial, startAgent: "triage");
+```
+
+### Artifacts (como Claude)
+
+Los agentes crean contenido sustancial que se muestra aparte del chat (páginas HTML, componentes React,
+documentos, código, diagramas Mermaid/SVG), lo editan con reemplazos exactos y guardan cada versión.
+
+```csharp
+var store = new FileSystemArtifactStore("data/artifacts");          // o InMemoryArtifactStore, o tu IArtifactStore
+var agent = new ToolLoopAgent(new()
+{
+    Model = claude,
+    Instructions = ArtifactTools.Instructions,                     // cuándo y cómo crear artifacts
+    Tools = ArtifactTools.Create(store, new() { Url = a => $"/artifacts/{a.Id}" }),
+});
+
+app.MapArtifacts("/artifacts");   // GET /artifacts/{id}: página renderizada en un origen aislado (CSP sandbox)
+```
+
+Herramientas: `create_artifact`, `update_artifact` (reemplazo exacto), `rewrite_artifact`, `read_artifact`, `list_artifacts`.
+Cada cambio llega a `useChat` como parte `data-artifact` (con id, tipo, versión y contenido) para mostrarlo en un panel;
+`ArtifactRenderer.ToHtml(artifact)` convierte Markdown, Mermaid, React, SVG o CSV en una página autónoma.
+Con `Context["conversationId"]` cada conversación solo ve y edita sus artifacts.
+
+### Generar Word, PDF y Excel
+
+```csharp
+var style = new DocumentStyleOptions { Title = "Informe Q3", Author = "Ventas", TitlePage = true, HeaderText = "Confidencial" };
+File.WriteAllBytes("informe.docx", DocumentGenerator.ToDocx(markdown, style));   // estilos reales de Word, editable
+File.WriteAllBytes("informe.pdf", DocumentGenerator.ToPdf(markdown, style));     // sin navegador ni dependencias nativas
+
+var xlsx = new SpreadsheetBuilder()
+    .AddSheet("Ventas", ventas, new SheetOptions { Totals = true })               // desde objetos: tipos y formatos automáticos
+    .AddSheet("Cálculo", [new("Item"), new("Precio", ColumnType.Currency), new("Cant."), new("Subtotal", ColumnType.Currency)],
+              [["Mesa", 120.5, 2, "=B2*C2"]])                                    // fórmulas con "="
+    .AddMarkdownTables(textoConTablas)                                            // una hoja por tabla Markdown
+    .Build();
+```
+
+- **Word**: títulos, listas numeradas y con viñetas, tablas con encabezado, enlaces, citas, código, portada,
+  encabezado y "Página n de N". Validado con el validador oficial de OpenXml.
+- **PDF**: diagramación propia (ajuste de línea, tablas que se parten entre páginas repitiendo el encabezado, enlaces,
+  código, citas, `\pagebreak`). Incluye las fuentes *AiSdk Sans/Mono* (derivadas de Liberation, licencia OFL) con
+  acentos, ñ, griego y símbolos; para otros alfabetos: `PdfFonts.FromSingle(File.ReadAllBytes("NotoSansCJK.ttf"))`.
+- **Excel**: columnas tipadas (moneda, porcentaje, fechas...), encabezado con estilo, filtros, panel fijo, anchos
+  automáticos, fila de totales con `SUM` y fórmulas; entiende números como `1.234,50` y `12,5%`.
+
+Para que el **agente** genere los archivos (se guardan como artifacts descargables):
+
+```csharp
+Tools = DocumentTools.Create(new DocumentToolOptions { Store = store, ArtifactOptions = new() { Url = a => $"/artifacts/{a.Id}" } }),
+// create_word_document, create_pdf, create_spreadsheet  (+ DocumentTools.Instructions en el system prompt)
+```
+
+### Workflows durables, triggers y automatizaciones
+
+`AiSdk.Workflows` ejecuta procesos largos que sobreviven reinicios (al estilo de Temporal, Inngest o el
+Workflow DevKit de Vercel): cada paso se guarda y, al reanudar, los completados no se repiten.
+
+```csharp
+var refund = Workflow.Create<RefundRequest, string>("refund", async (ctx, r) =>
+{
+    var risk = await ctx.StepAsync("risk-check", ct => scoring.EvaluateAsync(r, ct));          // reintentos con backoff
+    var resumen = await ctx.RunAgentAsync(analista, $"Resume el caso {r.OrderId}");             // agente como paso
+    if (risk.High)
+    {
+        var ok = await ctx.WaitForEventAsync<Approval>("refund.approval", key: r.OrderId,        // aprobación humana
+                                                       timeout: TimeSpan.FromDays(2));
+        if (ok is not { Approved: true }) return "rechazado";
+    }
+
+    await ctx.SleepAsync("cooling-off", TimeSpan.FromHours(24));                               // duerme sin ocupar recursos
+    await ctx.StepAsync("pay", ct => pagos.RefundAsync(r, ct), new StepOptions { MaxAttempts = 5 });
+    return "reembolsado";
+});
+
+builder.Services.AddAiSdkWorkflows(w =>
+{
+    w.UseFileSystemStore("data/workflows");                     // o UseStore(tu IWorkflowStore: SQL, Redis...)
+    w.AddWorkflow(refund);
+    w.AddAutomation(Automation.Create("Informe diario", new CronTrigger("0 9 * * 1-5", "America/Santiago"), "daily-report", new { }));
+    w.AddAutomation(new Automation { Id = "crm", Name = "Leads", Trigger = new WebhookTrigger(secret), Workflow = "lead" });
+    w.AddAutomation(new Automation { Id = "paid", Name = "Pagados", Trigger = new EventTrigger("order.updated", new Dictionary<string, string> { ["status"] = "paid" }), Workflow = "invoice" });
+});
+
+app.MapWorkflows("/workflows").RequireAuthorization();
+// POST /workflows/refund/start · GET /workflows/runs/{id} · POST /workflows/events/refund.approval?key=O-77
+// POST /workflows/hooks/crm (X-Webhook-Secret o firma HMAC X-Signature-256) · /automations · /runs/{id}/retry
+```
+
+Disparadores: `CronTrigger` (5 o 6 campos, con zona horaria), `IntervalTrigger`, `OnceTrigger`, `EventTrigger`
+(con filtro por contenido) y `WebhookTrigger` (secreto o firma HMAC-SHA256 en tiempo constante). Un servicio en segundo
+plano dispara lo programado, reanuda ejecuciones dormidas y recupera las interrumpidas al arrancar.
+`engine.RetryAsync(runId)` reintenta una ejecución fallida desde el paso que falló.
+
+**Tareas programadas por agentes** ("revisa los precios cada día hábil a las 9"):
+
+```csharp
+w.ConfigureEngine((engine, sp) => engine.AddAgentTasks(new AgentTaskOptions
+{
+    Agent = sp => sp!.GetRequiredService<AsistenteAgent>(),
+    OnCompleted = (r, sp, ct) => correo.EnviarAsync(r.Owner, r.Task, r.Text, ct),   // entrega del resultado
+    DefaultTimeZone = "America/Santiago",
+}));
+
+Tools = AgentTasks.CreateTools(engine, options),   // schedule_task, list/cancel/run_scheduled_task_now, get_task_result
+```
+
+Cada usuario (`Context["userId"]`) solo ve y gestiona sus tareas, con un intervalo mínimo y un máximo de tareas configurables.
 
 ### Salida estructurada
 
@@ -741,7 +886,8 @@ src/
   AiSdk.Extensions.AI/        adaptador Microsoft.Extensions.AI
   AiSdk.Extensions.DependencyInjection/
   AiSdk.AspNetCore/
-  AiSdk.Documents/            documentos → Markdown, OCR, middleware de adjuntos
+  AiSdk.Documents/            documentos → Markdown, OCR, middleware de adjuntos; generación de Word/PDF/Excel
+  AiSdk.Workflows/            workflows durables, triggers y automatizaciones
   AiSdk.PgVector/             almacén PostgreSQL + pgvector
   AiSdk.VectorData/           adaptador Microsoft.Extensions.VectorData
 samples/
@@ -759,6 +905,9 @@ tests/AiSdk.IntegrationTests/ pruebas contra las APIs reales (opcionales)
 - Almacén Redis para streams reanudables
 - Detección de tablas en PDF digitales sin OCR (hoy: usar `PdfOcr = Always` con un OCR de modelo)
 - Generative UI y herramientas de servidor adicionales (computer use, memoria)
+- Almacenes `IWorkflowStore` para SQL Server/PostgreSQL/Redis y panel web de ejecuciones
+- Workflows declarativos (JSON) para que los agentes armen flujos completos, no solo tareas
+- Generación de PowerPoint y gráficos en Excel
 
 ## Licencia
 

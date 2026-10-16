@@ -5,5 +5,7 @@
   <ItemGroup>
     <ProjectReference Include="../../src/AiSdk.AspNetCore/AiSdk.AspNetCore.csproj" />
     <ProjectReference Include="../../src/AiSdk.Extensions.DependencyInjection/AiSdk.Extensions.DependencyInjection.csproj" />
+    <ProjectReference Include="../../src/AiSdk.Documents/AiSdk.Documents.csproj" />
+    <ProjectReference Include="../../src/AiSdk.Workflows/AiSdk.Workflows.csproj" />
   </ItemGroup>
 </Project>
