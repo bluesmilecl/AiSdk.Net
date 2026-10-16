@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Proveedor Amazon Bedrock para AiSdk (API Converse): Claude, Llama, Mistral, Nova y otros modelos de Bedrock, con firma AWS SigV4 o API key de Bedrock; embeddings Titan y Cohere.</Description>
+  </PropertyGroup>
+  <ItemGroup><ProjectReference Include="../AiSdk/AiSdk.csproj" /></ItemGroup>
+</Project>

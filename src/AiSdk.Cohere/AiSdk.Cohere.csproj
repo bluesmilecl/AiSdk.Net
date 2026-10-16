@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Proveedor Cohere para AiSdk: reranking (Rerank) y embeddings (Embed).</Description>
+  </PropertyGroup>
+  <ItemGroup><ProjectReference Include="../AiSdk/AiSdk.csproj" /></ItemGroup>
+</Project>

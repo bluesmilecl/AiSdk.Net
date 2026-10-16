@@ -6,6 +6,8 @@
   <Folder Name="/src/">
     <Project Path="src/AiSdk.Anthropic/AiSdk.Anthropic.csproj" />
     <Project Path="src/AiSdk.AspNetCore/AiSdk.AspNetCore.csproj" />
+    <Project Path="src/AiSdk.Bedrock/AiSdk.Bedrock.csproj" />
+    <Project Path="src/AiSdk.Cohere/AiSdk.Cohere.csproj" />
     <Project Path="src/AiSdk.Extensions.AI/AiSdk.Extensions.AI.csproj" />
     <Project Path="src/AiSdk.Extensions.DependencyInjection/AiSdk.Extensions.DependencyInjection.csproj" />
     <Project Path="src/AiSdk.Google/AiSdk.Google.csproj" />
