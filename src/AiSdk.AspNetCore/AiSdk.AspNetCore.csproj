@@ -1,9 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Integración ASP.NET Core: streaming SSE compatible con el protocolo UI Message Stream (useChat).</Description>
+    <Description>Integración ASP.NET Core: streaming SSE compatible con useChat, endpoints de artifacts y de workflows (eventos, aprobaciones y webhooks).</Description>
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <ProjectReference Include="../AiSdk/AiSdk.csproj" />
+    <ProjectReference Include="../AiSdk.Workflows/AiSdk.Workflows.csproj" />
   </ItemGroup>
 </Project>

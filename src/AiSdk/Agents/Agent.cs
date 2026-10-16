@@ -49,7 +49,7 @@ public sealed class AgentCallOptions
 /// }
 /// </code>
 /// </example>
-public abstract class Agent : IAgent
+public abstract class Agent : IAgent, IOrchestrationNode
 {
     /// <summary>Nombre del agente (por defecto, el nombre de la clase).</summary>
     public virtual string Name => GetType().Name;
@@ -121,7 +121,10 @@ public abstract class Agent : IAgent
                 return result.Text;
             });
 
-    internal GenerateTextOptions BuildOptions(AgentCallOptions call)
+    /// <summary>Participa en orquestaciones como un nodo más.</summary>
+    Task<string> IOrchestrationNode.RunAsync(string input, OrchestrationContext context) => context.RunAgentAsync(this, input);
+
+    internal GenerateTextOptions BuildOptions(AgentCallOptions call, IReadOnlyList<Tool>? extraTools = null, StopCondition? extraStop = null)
     {
         var s = Settings;
         return new GenerateTextOptions
@@ -130,9 +133,9 @@ public abstract class Agent : IAgent
             System = Instructions,
             Prompt = call.Prompt,
             Messages = call.Messages,
-            Tools = Tools.ToList(),
+            Tools = [.. Tools, .. extraTools ?? []],
             ToolChoice = ToolChoice,
-            StopWhen = StopWhen,
+            StopWhen = extraStop is null ? StopWhen : StopWhen | extraStop,
             Output = Output,
             PrepareStep = PrepareStepAsync,
             OnStepFinish = call.OnStepFinish is null
