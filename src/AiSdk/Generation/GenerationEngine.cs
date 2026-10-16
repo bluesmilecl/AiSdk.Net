@@ -87,9 +87,10 @@ internal static class GenerationEngine
         StepPlan plan,
         CallSettings settings,
         int stepNumber,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action<StreamPart>? emit = null)
     {
-        var processed = await Task.WhenAll(calls.Select(call => ProcessCallAsync(call, plan, settings, stepNumber, cancellationToken))).ConfigureAwait(false);
+        var processed = await Task.WhenAll(calls.Select(call => ProcessCallAsync(call, plan, settings, stepNumber, emit, cancellationToken))).ConfigureAwait(false);
         return new ToolPhase(
             processed.Select(p => p.Call).ToList(),
             processed.Select(p => p.Result).OfType<ToolResultPart>().ToList());
@@ -100,6 +101,7 @@ internal static class GenerationEngine
         StepPlan plan,
         CallSettings settings,
         int stepNumber,
+        Action<StreamPart>? emit,
         CancellationToken cancellationToken)
     {
         if (call.ProviderExecuted)
@@ -179,6 +181,7 @@ internal static class GenerationEngine
                 StepNumber = stepNumber,
                 Services = settings.Services,
                 Context = settings.Context,
+                Emit = emit,
             }, cancellationToken).ConfigureAwait(false);
 
             return (call, new ToolResultPart(call.ToolCallId, call.ToolName, Tool.SerializeOutput(output, tool.SerializerOptions)));
@@ -372,9 +375,11 @@ internal static class GenerationEngine
                 var plan = await PrepareAsync(o, conversation, steps).ConfigureAwait(false);
                 await Emit(new StartStepPart(steps.Count)).ConfigureAwait(false);
 
-                var result = await StreamStepAsync(plan, o.MaxRetries, Emit, ct).ConfigureAwait(false);
+                var result = await StreamStepAsync(plan, o.MaxRetries, o.StreamTransform, Emit, ct).ConfigureAwait(false);
 
-                var toolPhase = await ExecuteToolsAsync(ToolCallsOf(result), plan, o, steps.Count, ct).ConfigureAwait(false);
+                // Las herramientas pueden emitir datos propios (WriteData) mientras se ejecutan.
+                void EmitFromTool(StreamPart part) => buffer.Add(part);
+                var toolPhase = await ExecuteToolsAsync(ToolCallsOf(result), plan, o, steps.Count, ct, EmitFromTool).ConfigureAwait(false);
                 foreach (var r in toolPhase.Results)
                 {
                     await Emit(new ToolResultStreamPart(r)).ConfigureAwait(false);
@@ -433,7 +438,7 @@ internal static class GenerationEngine
     }
 
     private static bool IsChunk(StreamPart part) => part is TextDeltaPart or ReasoningDeltaPart or ToolInputStartPart
-        or ToolInputDeltaPart or ToolCallStreamPart or ToolResultStreamPart or SourceStreamPart or ContentStreamPart;
+        or ToolInputDeltaPart or ToolCallStreamPart or ToolResultStreamPart or SourceStreamPart or ContentStreamPart or DataStreamPart;
 
     private static async ValueTask SafeInvoke(Func<ValueTask> callback)
     {
@@ -450,6 +455,7 @@ internal static class GenerationEngine
     private static async Task<LanguageModelResult> StreamStepAsync(
         StepPlan plan,
         int maxRetries,
+        Func<IAsyncEnumerable<StreamPart>, IAsyncEnumerable<StreamPart>>? transform,
         Func<StreamPart, ValueTask> emit,
         CancellationToken ct)
     {
@@ -477,7 +483,13 @@ internal static class GenerationEngine
 
             try
             {
-                await foreach (var part in plan.Model.StreamAsync(plan.Request, ct).WithCancellation(ct).ConfigureAwait(false))
+                var source = plan.Model.StreamAsync(plan.Request, ct);
+                if (transform is not null)
+                {
+                    source = transform(source);
+                }
+
+                await foreach (var part in source.WithCancellation(ct).ConfigureAwait(false))
                 {
                     if (part is ErrorPart error)
                     {

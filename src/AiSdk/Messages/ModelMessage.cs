@@ -81,6 +81,11 @@ public sealed record ImagePart : ContentPart
 
     public string MediaType { get; init; } = "image/png";
 
+    /// <summary>Id de un archivo ya subido al proveedor (Files API de Anthropic u OpenAI).</summary>
+    public string? FileId { get; init; }
+
+    public static ImagePart FromFileId(string fileId, string mediaType = "image/png") => new() { FileId = fileId, MediaType = mediaType };
+
     public static ImagePart FromBytes(byte[] data, string mediaType = "image/png") => new() { Data = data, MediaType = mediaType };
 
     public static ImagePart FromUrl(string url, string mediaType = "image/png") => new() { Url = new Uri(url), MediaType = mediaType };
@@ -96,6 +101,12 @@ public sealed record FilePart : ContentPart
     public required string MediaType { get; init; }
 
     public string? Filename { get; init; }
+
+    /// <summary>Id de un archivo ya subido al proveedor (Files API de Anthropic u OpenAI).</summary>
+    public string? FileId { get; init; }
+
+    public static FilePart FromFileId(string fileId, string mediaType = "application/pdf", string? filename = null) =>
+        new() { FileId = fileId, MediaType = mediaType, Filename = filename };
 }
 
 /// <summary>Llamada a una herramienta solicitada por el modelo.</summary>

@@ -150,6 +150,50 @@ public static class Ai
             options.CancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Reordena documentos de texto por relevancia respecto a la consulta.</summary>
+    public static Task<RerankResult<string>> RerankAsync(
+        IRerankingModel model,
+        string query,
+        IReadOnlyList<string> documents,
+        int? topN = null,
+        CancellationToken cancellationToken = default) =>
+        RerankAsync(model, query, documents, d => d, topN, cancellationToken);
+
+    /// <summary>Reordena objetos por relevancia, usando <paramref name="text"/> para obtener su texto.</summary>
+    public static async Task<RerankResult<T>> RerankAsync<T>(
+        IRerankingModel model,
+        string query,
+        IReadOnlyList<T> documents,
+        Func<T, string> text,
+        int? topN = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (documents.Count == 0)
+        {
+            return new RerankResult<T>([]);
+        }
+
+        var result = await model.RerankAsync(
+            new RerankModelRequest(query, documents.Select(text).ToList()) { TopN = topN },
+            cancellationToken).ConfigureAwait(false);
+        return new RerankResult<T>(result.Ranking
+            .Where(r => r.Index >= 0 && r.Index < documents.Count)
+            .Select(r => new RankedDocument<T>(documents[r.Index], r.Index, r.Score))
+            .ToList());
+    }
+
+    /// <summary>
+    /// Cuenta los tokens de entrada que consumiría la llamada (mensajes, sistema y herramientas).
+    /// Requiere un modelo que implemente <see cref="ITokenCountingModel"/>.
+    /// </summary>
+    public static async Task<int> CountTokensAsync(GenerateTextOptions options)
+    {
+        var plan = await GenerationEngine.PrepareAsync(options, GenerationEngine.InitialMessages(options), []).ConfigureAwait(false);
+        return plan.Model is ITokenCountingModel counter
+            ? await counter.CountTokensAsync(plan.Request, options.CancellationToken).ConfigureAwait(false)
+            : throw new NotSupportedException($"El modelo '{plan.Model.Provider}:{plan.Model.ModelId}' no permite contar tokens.");
+    }
+
     /// <summary>Similitud coseno entre dos vectores.</summary>
     public static double CosineSimilarity(ReadOnlySpan<float> a, ReadOnlySpan<float> b)
     {

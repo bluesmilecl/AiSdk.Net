@@ -23,6 +23,19 @@ public sealed class ToolExecutionContext
 
     /// <summary>Estado arbitrario aportado por el llamador (<see cref="CallSettings.Context"/>).</summary>
     public IReadOnlyDictionary<string, object?>? Context { get; init; }
+
+    internal Action<StreamPart>? Emit { get; init; }
+
+    /// <summary>
+    /// Envía datos propios a la interfaz mientras la herramienta se ejecuta (progreso, resultados
+    /// intermedios...). Llegan a <c>useChat</c> como partes <c>data-{type}</c>. Solo tiene efecto en streaming.
+    /// </summary>
+    public void WriteData(string type, object? data, string? id = null, bool transient = false) =>
+        Emit?.Invoke(new DataStreamPart(type, data is null ? null : System.Text.Json.JsonSerializer.SerializeToNode(data, data.GetType(), JsonSchema.DefaultSerializerOptions))
+        {
+            Id = id,
+            Transient = transient,
+        });
 }
 
 /// <summary>Función de ejecución de bajo nivel de una herramienta.</summary>

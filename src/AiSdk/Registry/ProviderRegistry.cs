@@ -19,6 +19,9 @@ public interface IProvider
 
     ITranscriptionModel TranscriptionModel(string modelId) =>
         throw new NotSupportedException($"El proveedor '{Name}' no ofrece modelos de transcripción.");
+
+    IRerankingModel RerankingModel(string modelId) =>
+        throw new NotSupportedException($"El proveedor '{Name}' no ofrece modelos de reranking.");
 }
 
 /// <summary>
@@ -98,6 +101,12 @@ public sealed class ProviderRegistry
     {
         var (provider, modelId) = Split(id);
         return provider.TranscriptionModel(modelId);
+    }
+
+    public IRerankingModel RerankingModel(string id)
+    {
+        var (provider, modelId) = Split(id);
+        return provider.RerankingModel(modelId);
     }
 
     private (IProvider Provider, string ModelId) Split(string id)

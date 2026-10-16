@@ -25,8 +25,16 @@ public interface ILanguageModelMiddleware
         CancellationToken cancellationToken) => next(request, cancellationToken);
 }
 
-internal sealed class WrappedLanguageModel(ILanguageModel inner, ILanguageModelMiddleware middleware) : ILanguageModel
+internal sealed class WrappedLanguageModel(ILanguageModel inner, ILanguageModelMiddleware middleware) : ILanguageModel, ITokenCountingModel
 {
+    public async Task<int> CountTokensAsync(LanguageModelRequest request, CancellationToken cancellationToken = default)
+    {
+        var transformed = await middleware.TransformRequestAsync(request, inner, cancellationToken).ConfigureAwait(false);
+        return inner is ITokenCountingModel counter
+            ? await counter.CountTokensAsync(transformed, cancellationToken).ConfigureAwait(false)
+            : throw new NotSupportedException($"El modelo '{inner.Provider}:{inner.ModelId}' no permite contar tokens.");
+    }
+
     public string Provider => inner.Provider;
 
     public string ModelId => inner.ModelId;
@@ -48,7 +56,7 @@ internal sealed class WrappedLanguageModel(ILanguageModel inner, ILanguageModelM
 }
 
 /// <summary>Middlewares incluidos.</summary>
-public static class Middlewares
+public static partial class Middlewares
 {
     /// <summary>Aplica valores por defecto a las peticiones (solo si no fueron especificados).</summary>
     public static ILanguageModelMiddleware DefaultSettings(

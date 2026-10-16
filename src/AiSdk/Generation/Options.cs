@@ -117,6 +117,12 @@ public sealed class GenerateTextOptions : CallSettings
 
     public Func<StepResult, ValueTask>? OnStepFinish { get; init; }
 
+    /// <summary>
+    /// (streaming) Transforma el stream de cada paso antes de emitirlo, p. ej.
+    /// <see cref="StreamTransforms.Smooth"/> para una salida palabra por palabra.
+    /// </summary>
+    public Func<IAsyncEnumerable<StreamPart>, IAsyncEnumerable<StreamPart>>? StreamTransform { get; init; }
+
     public CancellationToken CancellationToken { get; init; }
 }
 

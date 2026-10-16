@@ -69,5 +69,18 @@ public sealed record FinishStepPart(StepResult Step) : StreamPart;
 
 public sealed record FinishPart(FinishReason FinishReason, Usage TotalUsage) : StreamPart;
 
+/// <summary>
+/// Datos propios para la interfaz (partes <c>data-*</c> del protocolo de <c>useChat</c>),
+/// emitidos desde una herramienta con <see cref="ToolExecutionContext.WriteData"/>.
+/// </summary>
+public sealed record DataStreamPart(string Type, System.Text.Json.Nodes.JsonNode? Data) : StreamPart
+{
+    /// <summary>Id opcional: un dato con el mismo id reemplaza al anterior en el cliente.</summary>
+    public string? Id { get; init; }
+
+    /// <summary>Si es true, el cliente lo recibe pero no lo guarda en el historial del mensaje.</summary>
+    public bool Transient { get; init; }
+}
+
 /// <summary>La generación se canceló (<see cref="System.Threading.CancellationToken"/>).</summary>
 public sealed record AbortPart : StreamPart;

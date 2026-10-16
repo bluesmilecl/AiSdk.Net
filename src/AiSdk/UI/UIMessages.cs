@@ -180,7 +180,7 @@ public static class UIMessageConverter
 /// Escribe un stream en formato <b>UI Message Stream</b> (SSE) compatible con
 /// <c>useChat</c> del AI SDK (cabecera <c>x-vercel-ai-ui-message-stream: v1</c>).
 /// </summary>
-public static class UIMessageStream
+public static partial class UIMessageStream
 {
     public const string HeaderName = "x-vercel-ai-ui-message-stream";
     public const string HeaderValue = "v1";
@@ -226,6 +226,7 @@ public static class UIMessageStream
                 FinishStepPart => new() { ["type"] = "finish-step" },
                 FinishPart => new() { ["type"] = "finish" },
                 AbortPart => new() { ["type"] = "abort" },
+                DataStreamPart d => DataChunk(d.Type, d.Data, d.Id, d.Transient),
                 ErrorPart e => new() { ["type"] = "error", ["errorText"] = onError?.Invoke(e.Error) ?? "Se produjo un error." },
                 _ => null,
             };
@@ -235,6 +236,23 @@ public static class UIMessageStream
                 yield return chunk;
             }
         }
+    }
+
+    internal static JsonObject DataChunk(string type, JsonNode? data, string? id, bool transient)
+    {
+        var chunk = new JsonObject { ["type"] = "data-" + type };
+        if (id is not null)
+        {
+            chunk["id"] = id;
+        }
+
+        chunk["data"] = data?.DeepClone();
+        if (transient)
+        {
+            chunk["transient"] = true;
+        }
+
+        return chunk;
     }
 
     private static JsonObject WithProviderFlag(JsonObject chunk, bool providerExecuted)
@@ -259,24 +277,11 @@ public static class UIMessageStream
     }
 
     /// <summary>Escribe el stream SSE completo (incluido <c>data: [DONE]</c>) en <paramref name="output"/>.</summary>
-    public static async Task WriteAsync(
+    public static Task WriteAsync(
         IAsyncEnumerable<StreamPart> parts,
         Stream output,
         string? messageId = null,
         Func<Exception, string>? onError = null,
-        CancellationToken cancellationToken = default)
-    {
-        await foreach (var chunk in ToChunks(parts, messageId, onError).WithCancellation(cancellationToken).ConfigureAwait(false))
-        {
-            await WriteLineAsync(output, "data: " + chunk.ToJsonString() + "\n\n", cancellationToken).ConfigureAwait(false);
-        }
-
-        await WriteLineAsync(output, "data: [DONE]\n\n", cancellationToken).ConfigureAwait(false);
-    }
-
-    private static async Task WriteLineAsync(Stream output, string text, CancellationToken cancellationToken)
-    {
-        await output.WriteAsync(Encoding.UTF8.GetBytes(text), cancellationToken).ConfigureAwait(false);
-        await output.FlushAsync(cancellationToken).ConfigureAwait(false);
-    }
+        CancellationToken cancellationToken = default) =>
+        WriteChunksAsync(ToChunks(parts, messageId, onError), output, cancellationToken);
 }
