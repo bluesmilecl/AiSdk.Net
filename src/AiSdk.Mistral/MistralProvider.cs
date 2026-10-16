@@ -25,10 +25,12 @@ public sealed class MistralProviderOptions
 public sealed class MistralProvider : IProvider
 {
     private readonly OpenAIProvider _inner;
+    private readonly MistralProviderOptions _options;
 
     public MistralProvider(MistralProviderOptions? options = null)
     {
         options ??= new MistralProviderOptions();
+        _options = options;
         _inner = new OpenAIProvider(new OpenAIProviderOptions
         {
             ApiKey = options.ApiKey,
@@ -66,6 +68,9 @@ public sealed class MistralProvider : IProvider
     public IEmbeddingModel Embedding(string modelId = "mistral-embed") => _inner.Embedding(modelId);
 
     public IEmbeddingModel EmbeddingModel(string modelId) => Embedding(modelId);
+
+    /// <summary>Motor OCR de Mistral (<c>mistral-ocr-latest</c>): imágenes y PDF completos a Markdown.</summary>
+    public IOcrEngine Ocr(string modelId = "mistral-ocr-latest") => new MistralOcr(_options, modelId);
 
     private static MistralProviderOptions Configure(Action<MistralProviderOptions> configure)
     {

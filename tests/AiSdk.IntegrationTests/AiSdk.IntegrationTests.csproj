@@ -20,6 +20,11 @@
     <ProjectReference Include="../../src/AiSdk.Bedrock/AiSdk.Bedrock.csproj" />
     <ProjectReference Include="../../src/AiSdk.Cohere/AiSdk.Cohere.csproj" />
     <ProjectReference Include="../../src/AiSdk.PgVector/AiSdk.PgVector.csproj" />
+    <ProjectReference Include="../../src/AiSdk.Documents/AiSdk.Documents.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../AiSdk.Tests/Fixtures/receipt.png;../AiSdk.Tests/Fixtures/scanned.pdf" LinkBase="Fixtures" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

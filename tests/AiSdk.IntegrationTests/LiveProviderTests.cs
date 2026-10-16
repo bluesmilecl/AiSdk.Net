@@ -29,9 +29,9 @@ public class LiveProviderTests
 
     private static string Env(string name, string fallback) => Environment.GetEnvironmentVariable(name) is { Length: > 0 } v ? v : fallback;
 
-    private static bool Has(string name) => !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(name));
+    internal static bool Has(string name) => !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(name));
 
-    private static ILanguageModel Model(string provider)
+    internal static ILanguageModel Model(string provider)
     {
         switch (provider)
         {

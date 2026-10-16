@@ -21,6 +21,8 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
+      - name: Herramientas para OCR, PDF y video (pruebas de AiSdk.Documents)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-spa poppler-utils ffmpeg
       - run: dotnet restore
       - run: dotnet build --no-restore -c Release
       - name: Pruebas unitarias
