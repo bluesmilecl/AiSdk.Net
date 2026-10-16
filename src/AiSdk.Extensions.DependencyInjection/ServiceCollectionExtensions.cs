@@ -56,6 +56,13 @@ public sealed class AiSdkBuilder
         return this;
     }
 
+    /// <summary>Registra un alias con conmutación por error entre varios modelos.</summary>
+    public AiSdkBuilder AddFallback(string alias, params string[] modelIds)
+    {
+        _registrations.Add((_, registry) => registry.Fallback(alias, modelIds));
+        return this;
+    }
+
     /// <summary>Registra <see cref="ILanguageModel"/> como el modelo indicado (para inyectarlo directamente).</summary>
     public AiSdkBuilder AddDefaultModel(string modelId, params ILanguageModelMiddleware[] middleware)
     {

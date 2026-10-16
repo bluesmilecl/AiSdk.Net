@@ -7,5 +7,6 @@
     <ProjectReference Include="../../src/AiSdk/AiSdk.csproj" />
     <ProjectReference Include="../../src/AiSdk.OpenAI/AiSdk.OpenAI.csproj" />
     <ProjectReference Include="../../src/AiSdk.Anthropic/AiSdk.Anthropic.csproj" />
+    <ProjectReference Include="../../src/AiSdk.Mcp/AiSdk.Mcp.csproj" />
   </ItemGroup>
 </Project>

@@ -150,7 +150,7 @@ public sealed class OpenAIChatLanguageModel : ILanguageModel
             body["stop"] = new JsonArray(stop.Select(s => (JsonNode?)s).ToArray());
         }
 
-        if (request.Tools is { Count: > 0 } tools)
+        if (request.Tools?.Where(t => !t.IsProviderTool).ToList() is { Count: > 0 } tools)
         {
             body["tools"] = new JsonArray(tools.Select(t => (JsonNode?)new JsonObject
             {
@@ -206,6 +206,18 @@ public sealed class OpenAIChatLanguageModel : ILanguageModel
             JsonUtil.DeepMerge(body, request.ProviderOptions?.For(Provider));
         }
 
+        // OpenAIOptions usa el formato de la API Responses; se traduce al de Chat Completions.
+        if (body["reasoning"] is JsonObject reasoning)
+        {
+            if (reasoning["effort"] is { } effort)
+            {
+                body["reasoning_effort"] = effort.DeepClone();
+            }
+
+            body.Remove("reasoning");
+        }
+
+        body.Remove("include");
         return body;
     }
 
@@ -265,7 +277,7 @@ public sealed class OpenAIChatLanguageModel : ILanguageModel
 
                 case ChatRole.Assistant:
                     var text = message.Text;
-                    var calls = message.Content.OfType<ToolCallPart>().ToList();
+                    var calls = message.Content.OfType<ToolCallPart>().Where(c => !c.ProviderExecuted).ToList();
                     var assistant = new JsonObject
                     {
                         ["role"] = "assistant",
@@ -285,7 +297,7 @@ public sealed class OpenAIChatLanguageModel : ILanguageModel
                     break;
 
                 case ChatRole.Tool:
-                    foreach (var r in message.Content.OfType<ToolResultPart>())
+                    foreach (var r in message.Content.OfType<ToolResultPart>().Where(r => !r.ProviderExecuted))
                     {
                         result.Add(new JsonObject
                         {

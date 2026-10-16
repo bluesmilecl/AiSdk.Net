@@ -67,6 +67,89 @@ public static class Ai
         return new EmbedManyResult(values, embeddings, new EmbeddingUsage(tokens));
     }
 
+    /// <summary>
+    /// Genera imágenes. Si se piden más de las que admite el modelo por llamada,
+    /// se hacen varias llamadas en paralelo.
+    /// </summary>
+    public static async Task<GenerateImageResult> GenerateImageAsync(GenerateImageOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        var perCall = Math.Max(1, options.Model.MaxImagesPerCall ?? options.N);
+        var batches = new List<int>();
+        for (var remaining = options.N; remaining > 0; remaining -= perCall)
+        {
+            batches.Add(Math.Min(perCall, remaining));
+        }
+
+        var results = await Task.WhenAll(batches.Select(n => Internal.Retry.ExecuteAsync(
+            ct => options.Model.GenerateAsync(new ImageModelRequest
+            {
+                Prompt = options.Prompt,
+                N = n,
+                Size = options.Size,
+                AspectRatio = options.AspectRatio,
+                Seed = options.Seed,
+                ProviderOptions = options.ProviderOptions,
+                Headers = options.Headers,
+            }, ct),
+            options.MaxRetries,
+            options.CancellationToken))).ConfigureAwait(false);
+
+        var images = results.SelectMany(r => r.Images).ToList();
+        if (images.Count == 0)
+        {
+            throw new AiSdkException("El modelo no generó ninguna imagen.");
+        }
+
+        return new GenerateImageResult(images, results.SelectMany(r => r.Warnings).ToList());
+    }
+
+    /// <summary>Convierte texto en audio.</summary>
+    public static async Task<GenerateSpeechResult> GenerateSpeechAsync(GenerateSpeechOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        var result = await Internal.Retry.ExecuteAsync(
+            ct => options.Model.GenerateAsync(new SpeechModelRequest
+            {
+                Text = options.Text,
+                Voice = options.Voice,
+                OutputFormat = options.OutputFormat,
+                Instructions = options.Instructions,
+                Speed = options.Speed,
+                Language = options.Language,
+                ProviderOptions = options.ProviderOptions,
+                Headers = options.Headers,
+            }, ct),
+            options.MaxRetries,
+            options.CancellationToken).ConfigureAwait(false);
+
+        if (result.Audio.Data.Length == 0)
+        {
+            throw new AiSdkException("El modelo no generó audio.");
+        }
+
+        return new GenerateSpeechResult(result.Audio, result.Warnings);
+    }
+
+    /// <summary>Transcribe audio a texto.</summary>
+    public static async Task<TranscriptionModelResult> TranscribeAsync(TranscribeOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        return await Internal.Retry.ExecuteAsync(
+            ct => options.Model.TranscribeAsync(new TranscriptionModelRequest
+            {
+                Audio = options.Audio,
+                MediaType = options.MediaType,
+                Filename = options.Filename,
+                Language = options.Language,
+                Prompt = options.Prompt,
+                ProviderOptions = options.ProviderOptions,
+                Headers = options.Headers,
+            }, ct),
+            options.MaxRetries,
+            options.CancellationToken).ConfigureAwait(false);
+    }
+
     /// <summary>Similitud coseno entre dos vectores.</summary>
     public static double CosineSimilarity(ReadOnlySpan<float> a, ReadOnlySpan<float> b)
     {
@@ -104,6 +187,8 @@ public static class Ai
         MaxRetries = o.MaxRetries,
         Headers = o.Headers,
         ProviderOptions = o.ProviderOptions,
+        OnError = o.OnError,
+        OnAbort = o.OnAbort,
         CancellationToken = o.CancellationToken,
     };
 }

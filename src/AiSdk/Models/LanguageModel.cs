@@ -59,6 +59,17 @@ public sealed record ToolDefinition(string Name, string? Description, JsonElemen
 {
     /// <summary>Solicita validación estricta del esquema cuando el proveedor lo soporta.</summary>
     public bool Strict { get; init; }
+
+    /// <summary>
+    /// Proveedor dueño de una herramienta de servidor (p. ej. <c>"anthropic"</c>).
+    /// Null para herramientas de función normales.
+    /// </summary>
+    public string? ProviderName { get; init; }
+
+    /// <summary>Definición cruda de la herramienta de servidor, que el proveedor envía tal cual.</summary>
+    public JsonObject? ProviderDefinition { get; init; }
+
+    public bool IsProviderTool => ProviderDefinition is not null;
 }
 
 /// <summary>Estrategia de selección de herramientas.</summary>

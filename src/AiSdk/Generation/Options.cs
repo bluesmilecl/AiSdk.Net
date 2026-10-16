@@ -37,6 +37,50 @@ public class CallSettings
     /// Si es null, las llamadas que requieren aprobación quedan pendientes y el bucle se detiene.
     /// </summary>
     public Func<ToolApprovalRequest, ValueTask<bool>>? OnToolApproval { get; init; }
+
+    /// <summary>
+    /// Repara una llamada a herramienta inválida (JSON roto, entrada que no cumple el esquema
+    /// o herramienta inexistente). Devuelve la llamada corregida o null para informar el error al modelo.
+    /// Ver <see cref="ToolCallRepair.WithModel"/>.
+    /// </summary>
+    public Func<ToolCallRepairContext, ValueTask<ToolCallPart?>>? RepairToolCall { get; init; }
+
+    /// <summary>(streaming) Se invoca con cada parte de contenido: texto, razonamiento, herramientas, fuentes.</summary>
+    public Func<StreamPart, ValueTask>? OnChunk { get; init; }
+
+    /// <summary>Se invoca cuando la generación falla (en streaming el error también llega como <see cref="ErrorPart"/>).</summary>
+    public Func<Exception, ValueTask>? OnError { get; init; }
+
+    /// <summary>Se invoca al terminar correctamente, con el resultado completo.</summary>
+    public Func<GenerateTextResult, ValueTask>? OnFinish { get; init; }
+
+    /// <summary>Se invoca si la operación se cancela, con los pasos completados hasta ese momento.</summary>
+    public Func<IReadOnlyList<StepResult>, ValueTask>? OnAbort { get; init; }
+}
+
+/// <summary>Motivo por el que una llamada a herramienta necesita reparación.</summary>
+public enum ToolCallRepairReason
+{
+    /// <summary>El modelo llamó a una herramienta que no existe.</summary>
+    UnknownTool,
+
+    /// <summary>La entrada no es JSON válido.</summary>
+    InvalidJson,
+
+    /// <summary>La entrada es JSON pero no cumple el esquema de la herramienta.</summary>
+    InvalidInput,
+}
+
+/// <summary>Contexto entregado a <see cref="CallSettings.RepairToolCall"/>.</summary>
+public sealed record ToolCallRepairContext(
+    ToolCallPart ToolCall,
+    ToolCallRepairReason Reason,
+    string Error,
+    IReadOnlyList<Tool> Tools,
+    IReadOnlyList<ModelMessage> Messages)
+{
+    /// <summary>Herramienta destino (null si <see cref="Reason"/> es <see cref="ToolCallRepairReason.UnknownTool"/>).</summary>
+    public Tool? Tool => Tools.FirstOrDefault(t => t.Name == ToolCall.ToolName);
 }
 
 /// <summary>Solicitud de aprobación de una llamada a herramienta.</summary>

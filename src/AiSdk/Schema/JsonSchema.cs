@@ -26,6 +26,8 @@ public static class JsonSchema
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
             RespectNullableAnnotations = true,
             RespectRequiredConstructorParameters = true,
+            // Conserva acentos y símbolos (°, ñ...) sin escapar: menos tokens para el modelo.
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         };
         options.Converters.Add(new JsonStringEnumConverter());
         options.MakeReadOnly();

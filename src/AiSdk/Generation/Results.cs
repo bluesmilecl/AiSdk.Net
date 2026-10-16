@@ -30,6 +30,9 @@ public sealed record StepResult
     public IReadOnlyList<ToolCallPart> ToolCalls => Content.OfType<ToolCallPart>().ToList();
 
     public IReadOnlyList<ToolResultPart> ToolResults => Content.OfType<ToolResultPart>().ToList();
+
+    /// <summary>Fuentes citadas en este paso.</summary>
+    public IReadOnlyList<SourcePart> Sources => Content.OfType<SourcePart>().ToList();
 }
 
 /// <summary>Resultado de <see cref="Ai.GenerateTextAsync(GenerateTextOptions)"/> o de un agente.</summary>
@@ -60,7 +63,10 @@ public sealed class GenerateTextResult
 
     /// <summary>Llamadas del último paso que no tienen resultado (herramientas de cliente o pendientes de aprobación).</summary>
     public IReadOnlyList<ToolCallPart> PendingToolCalls =>
-        ToolCalls.Where(c => ToolResults.All(r => r.ToolCallId != c.ToolCallId)).ToList();
+        ToolCalls.Where(c => !c.ProviderExecuted && ToolResults.All(r => r.ToolCallId != c.ToolCallId)).ToList();
+
+    /// <summary>Fuentes citadas en todos los pasos.</summary>
+    public IReadOnlyList<SourcePart> Sources => Steps.SelectMany(s => s.Sources).ToList();
 
     public FinishReason FinishReason => Last.FinishReason;
 

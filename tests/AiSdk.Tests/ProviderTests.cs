@@ -8,34 +8,6 @@ using AiSdk.UI;
 
 namespace AiSdk.Tests;
 
-/// <summary>Handler HTTP falso que captura peticiones y devuelve respuestas predefinidas.</summary>
-internal sealed class FakeHandler : HttpMessageHandler
-{
-    private readonly Queue<(HttpStatusCode Status, string Body, string ContentType)> _responses = new();
-
-    public List<(HttpRequestMessage Request, JsonObject Body)> Requests { get; } = [];
-
-    public FakeHandler Json(string body, HttpStatusCode status = HttpStatusCode.OK)
-    {
-        _responses.Enqueue((status, body, "application/json"));
-        return this;
-    }
-
-    public FakeHandler Sse(params string[] events)
-    {
-        _responses.Enqueue((HttpStatusCode.OK, string.Concat(events.Select(e => e + "\n\n")), "text/event-stream"));
-        return this;
-    }
-
-    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-    {
-        var body = JsonNode.Parse(await request.Content!.ReadAsStringAsync(cancellationToken))!.AsObject();
-        Requests.Add((request, body));
-        var (status, content, type) = _responses.Dequeue();
-        return new HttpResponseMessage(status) { Content = new StringContent(content, Encoding.UTF8, type) };
-    }
-}
-
 public class OpenAIProviderTests
 {
     private static (OpenAIProvider, FakeHandler) Create()

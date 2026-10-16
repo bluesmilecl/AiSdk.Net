@@ -10,6 +10,15 @@ public interface IProvider
     /// <summary>Devuelve un modelo de embeddings o lanza <see cref="NotSupportedException"/>.</summary>
     IEmbeddingModel EmbeddingModel(string modelId) =>
         throw new NotSupportedException($"El proveedor '{Name}' no ofrece modelos de embeddings.");
+
+    IImageModel ImageModel(string modelId) =>
+        throw new NotSupportedException($"El proveedor '{Name}' no ofrece modelos de imágenes.");
+
+    ISpeechModel SpeechModel(string modelId) =>
+        throw new NotSupportedException($"El proveedor '{Name}' no ofrece modelos de voz.");
+
+    ITranscriptionModel TranscriptionModel(string modelId) =>
+        throw new NotSupportedException($"El proveedor '{Name}' no ofrece modelos de transcripción.");
 }
 
 /// <summary>
@@ -41,6 +50,19 @@ public sealed class ProviderRegistry
 
     public ProviderRegistry Alias(string alias, string target) => Alias(alias, () => LanguageModel(target));
 
+    /// <summary>
+    /// Registra un alias con conmutación por error: <c>Fallback("chat", "anthropic:claude-opus-5-5", "openai:gpt-5")</c>.
+    /// </summary>
+    public ProviderRegistry Fallback(string alias, params string[] modelIds)
+    {
+        if (modelIds.Length == 0)
+        {
+            throw new ArgumentException("Se necesita al menos un modelo.", nameof(modelIds));
+        }
+
+        return Alias(alias, () => new FallbackLanguageModel(modelIds.Select(LanguageModel).ToList()));
+    }
+
     public IReadOnlyCollection<string> Providers => _providers.Keys;
 
     public ILanguageModel LanguageModel(string id)
@@ -58,6 +80,24 @@ public sealed class ProviderRegistry
     {
         var (provider, modelId) = Split(id);
         return provider.EmbeddingModel(modelId);
+    }
+
+    public IImageModel ImageModel(string id)
+    {
+        var (provider, modelId) = Split(id);
+        return provider.ImageModel(modelId);
+    }
+
+    public ISpeechModel SpeechModel(string id)
+    {
+        var (provider, modelId) = Split(id);
+        return provider.SpeechModel(modelId);
+    }
+
+    public ITranscriptionModel TranscriptionModel(string id)
+    {
+        var (provider, modelId) = Split(id);
+        return provider.TranscriptionModel(modelId);
     }
 
     private (IProvider Provider, string ModelId) Split(string id)

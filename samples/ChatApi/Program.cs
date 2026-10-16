@@ -24,7 +24,7 @@ builder.Services.AddAiSdk(ai => ai
         o.BaseUrl = "http://localhost:11434/v1";
         o.RequireApiKey = false;
     })
-    .AddAlias("chat", "anthropic:claude-opus-5-5")
+    .AddFallback("chat", "anthropic:claude-opus-5-5", "openai:gpt-5")   // si Claude falla, usa GPT
     .AddDefaultModel("chat")
     .AddAgent<WeatherAgent>());
 

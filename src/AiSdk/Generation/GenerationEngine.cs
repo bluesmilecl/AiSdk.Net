@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Text.Json;
 using AiSdk.Internal;
 
 namespace AiSdk;
@@ -14,6 +13,8 @@ internal static class GenerationEngine
         LanguageModelRequest Request,
         IReadOnlyList<Tool> Tools,
         IReadOnlyList<ModelMessage> SentMessages);
+
+    internal sealed record ToolPhase(IReadOnlyList<ToolCallPart> Calls, List<ToolResultPart> Results);
 
     public static List<ModelMessage> InitialMessages(GenerateTextOptions o)
     {
@@ -77,51 +78,91 @@ internal static class GenerationEngine
         return new StepPlan(model, request, tools, sent);
     }
 
-    public static async Task<List<ToolResultPart>> ExecuteToolsAsync(
+    // ------------------------------------------------------------------
+    // Ejecución de herramientas (con reparación y aprobación)
+    // ------------------------------------------------------------------
+
+    public static async Task<ToolPhase> ExecuteToolsAsync(
         IReadOnlyList<ToolCallPart> calls,
         StepPlan plan,
         CallSettings settings,
         int stepNumber,
         CancellationToken cancellationToken)
     {
-        var tasks = calls.Select(call => ExecuteToolAsync(call, plan, settings, stepNumber, cancellationToken));
-        var results = await Task.WhenAll(tasks).ConfigureAwait(false);
-        return results.OfType<ToolResultPart>().ToList();
+        var processed = await Task.WhenAll(calls.Select(call => ProcessCallAsync(call, plan, settings, stepNumber, cancellationToken))).ConfigureAwait(false);
+        return new ToolPhase(
+            processed.Select(p => p.Call).ToList(),
+            processed.Select(p => p.Result).OfType<ToolResultPart>().ToList());
     }
 
-    private static async Task<ToolResultPart?> ExecuteToolAsync(
+    private static async Task<(ToolCallPart Call, ToolResultPart? Result)> ProcessCallAsync(
         ToolCallPart call,
         StepPlan plan,
         CallSettings settings,
         int stepNumber,
         CancellationToken cancellationToken)
     {
-        var tool = plan.Tools.FirstOrDefault(t => t.Name == call.ToolName);
+        if (call.ProviderExecuted)
+        {
+            return (call, null); // El proveedor ya la ejecutó; su resultado viene en el contenido del modelo.
+        }
+
+        // Las herramientas de servidor sin Execute las ejecuta el proveedor; las que tienen Execute
+        // (herramientas definidas por el proveedor pero ejecutadas localmente) se tratan como locales.
+        Tool? Find(ToolCallPart c) => plan.Tools.FirstOrDefault(t => t.Name == c.ToolName && (!t.IsProviderTool || t.Execute is not null));
+
+        var tool = Find(call);
         if (tool is null)
         {
-            return Error(call, $"Herramienta desconocida '{call.ToolName}'. Disponibles: {string.Join(", ", plan.Tools.Select(t => t.Name))}.");
+            var error = $"Herramienta desconocida '{call.ToolName}'. Disponibles: {string.Join(", ", plan.Tools.Select(t => t.Name))}.";
+            var repaired = await TryRepairAsync(call, ToolCallRepairReason.UnknownTool, error, plan, settings).ConfigureAwait(false);
+            if (repaired is null || Find(repaired) is null)
+            {
+                return (call, Error(call, error));
+            }
+
+            call = repaired;
+            tool = Find(call)!;
         }
 
         if (tool.Execute is null)
         {
-            return null; // Herramienta de cliente: la resuelve el llamador.
+            return (call, null); // Herramienta de cliente: la resuelve el llamador.
         }
 
         if (call.InvalidInput)
         {
-            return Error(call, "La entrada de la herramienta no es JSON válido.");
+            const string error = "La entrada de la herramienta no es JSON válido.";
+            var repaired = await TryRepairAsync(call, ToolCallRepairReason.InvalidJson, error, plan, settings).ConfigureAwait(false);
+            if (repaired is null || repaired.InvalidInput)
+            {
+                return (call, Error(call, error));
+            }
+
+            call = repaired;
+        }
+
+        if (tool.ValidateInput?.Invoke(call.Input) is { } validationError)
+        {
+            var repaired = await TryRepairAsync(call, ToolCallRepairReason.InvalidInput, validationError, plan, settings).ConfigureAwait(false);
+            if (repaired is null || tool.ValidateInput(repaired.Input) is not null)
+            {
+                return (call, Error(call, $"Entrada inválida: {validationError}"));
+            }
+
+            call = repaired;
         }
 
         if (tool.NeedsApproval is not null && await tool.NeedsApproval(call).ConfigureAwait(false))
         {
             if (settings.OnToolApproval is null)
             {
-                return null; // Queda pendiente de aprobación.
+                return (call, null); // Queda pendiente de aprobación.
             }
 
             if (!await settings.OnToolApproval(new ToolApprovalRequest(call, tool)).ConfigureAwait(false))
             {
-                return Error(call, "El usuario denegó la ejecución de la herramienta.");
+                return (call, Error(call, "El usuario denegó la ejecución de la herramienta."));
             }
         }
 
@@ -140,22 +181,56 @@ internal static class GenerationEngine
                 Context = settings.Context,
             }, cancellationToken).ConfigureAwait(false);
 
-            return new ToolResultPart(call.ToolCallId, call.ToolName, Tool.SerializeOutput(output, tool.SerializerOptions));
+            return (call, new ToolResultPart(call.ToolCallId, call.ToolName, Tool.SerializeOutput(output, tool.SerializerOptions)));
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-            return Error(call, ex is JsonException ? $"Entrada inválida: {ex.Message}" : ex.Message);
+            return (call, Error(call, ex.Message));
+        }
+    }
+
+    private static async ValueTask<ToolCallPart?> TryRepairAsync(
+        ToolCallPart call,
+        ToolCallRepairReason reason,
+        string error,
+        StepPlan plan,
+        CallSettings settings)
+    {
+        if (settings.RepairToolCall is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            var repaired = await settings.RepairToolCall(new ToolCallRepairContext(call, reason, error, plan.Tools, plan.SentMessages)).ConfigureAwait(false);
+            // La reparación conserva siempre el id original para que el resultado empareje.
+            return repaired is null ? null : repaired with { ToolCallId = call.ToolCallId };
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return null;
         }
     }
 
     private static ToolResultPart Error(ToolCallPart call, string message) =>
         new(call.ToolCallId, call.ToolName, Tool.ErrorOutput(message)) { IsError = true };
 
-    public static StepResult BuildStep(int stepNumber, StepPlan plan, LanguageModelResult result, List<ToolResultPart> toolResults)
+    // ------------------------------------------------------------------
+    // Pasos
+    // ------------------------------------------------------------------
+
+    public static StepResult BuildStep(int stepNumber, StepPlan plan, LanguageModelResult result, ToolPhase tools)
     {
+        // Las llamadas reparadas reemplazan a las originales en el contenido.
+        var repaired = tools.Calls.ToDictionary(c => c.ToolCallId);
+        var modelContent = result.Content
+            .Select(p => p is ToolCallPart c && repaired.TryGetValue(c.ToolCallId, out var fixedCall) ? fixedCall : p)
+            .ToList();
+
         var responseMessages = new List<ModelMessage>();
-        var assistantContent = result.Content
+        var assistantContent = modelContent
             .Where(p => p is not TextPart { Text.Length: 0 })
             .ToList();
         if (assistantContent.Count > 0)
@@ -163,15 +238,15 @@ internal static class GenerationEngine
             responseMessages.Add(new ModelMessage(ChatRole.Assistant, assistantContent));
         }
 
-        if (toolResults.Count > 0)
+        if (tools.Results.Count > 0)
         {
-            responseMessages.Add(new ModelMessage(ChatRole.Tool, toolResults));
+            responseMessages.Add(new ModelMessage(ChatRole.Tool, tools.Results));
         }
 
         return new StepResult
         {
             StepNumber = stepNumber,
-            Content = [.. result.Content, .. toolResults],
+            Content = [.. modelContent, .. tools.Results],
             FinishReason = result.FinishReason,
             Usage = result.Usage,
             Request = plan.Request,
@@ -183,14 +258,17 @@ internal static class GenerationEngine
 
     public static bool ShouldContinue(GenerateTextOptions o, StepResult step, List<StepResult> steps)
     {
-        var calls = step.ToolCalls;
-        return calls.Count > 0
-               && step.ToolResults.Count == calls.Count
+        var clientCalls = step.ToolCalls.Where(c => !c.ProviderExecuted).ToList();
+        var clientResults = step.ToolResults.Count(r => !r.ProviderExecuted);
+        return clientCalls.Count > 0
+               && clientResults == clientCalls.Count
                && !(o.StopWhen ?? DefaultStop).IsMet(steps);
     }
 
     public static Lazy<object?>? OutputFor(GenerateTextOptions o, List<StepResult> steps) =>
         o.Output is null ? null : new Lazy<object?>(() => o.Output.ParseUntyped(steps[^1].Text));
+
+    private static List<ToolCallPart> ToolCallsOf(LanguageModelResult result) => result.Content.OfType<ToolCallPart>().ToList();
 
     // ------------------------------------------------------------------
     // generateText
@@ -203,73 +281,26 @@ internal static class GenerationEngine
         root?.SetTag("ai.model.provider", o.Model.Provider);
         root?.SetTag("ai.model.id", o.Model.ModelId);
 
-        var conversation = InitialMessages(o);
         var steps = new List<StepResult>();
-        while (true)
-        {
-            var plan = await PrepareAsync(o, conversation, steps).ConfigureAwait(false);
-            LanguageModelResult result;
-            using (var stepActivity = AiTelemetry.ActivitySource.StartActivity("ai.generateText.step"))
-            {
-                result = await Retry.ExecuteAsync(c => plan.Model.GenerateAsync(plan.Request, c), o.MaxRetries, ct).ConfigureAwait(false);
-                stepActivity?.SetTag("ai.response.finishReason", result.FinishReason.ToString());
-                stepActivity?.SetTag("ai.usage.inputTokens", result.Usage.InputTokens);
-                stepActivity?.SetTag("ai.usage.outputTokens", result.Usage.OutputTokens);
-            }
-
-            var calls = result.Content.OfType<ToolCallPart>().ToList();
-            var toolResults = await ExecuteToolsAsync(calls, plan, o, steps.Count, ct).ConfigureAwait(false);
-            var step = BuildStep(steps.Count, plan, result, toolResults);
-            steps.Add(step);
-            conversation.AddRange(step.ResponseMessages);
-
-            if (o.OnStepFinish is not null)
-            {
-                await o.OnStepFinish(step).ConfigureAwait(false);
-            }
-
-            if (!ShouldContinue(o, step, steps))
-            {
-                break;
-            }
-        }
-
-        return new GenerateTextResult(steps, OutputFor(o, steps));
-    }
-
-    // ------------------------------------------------------------------
-    // streamText
-    // ------------------------------------------------------------------
-
-    public static async Task RunStreamAsync(GenerateTextOptions o, ReplayBuffer<StreamPart> buffer, TaskCompletionSource<GenerateTextResult> completion)
-    {
-        var ct = o.CancellationToken;
-        using var root = AiTelemetry.ActivitySource.StartActivity("ai.streamText");
-        root?.SetTag("ai.model.provider", o.Model.Provider);
-        root?.SetTag("ai.model.id", o.Model.ModelId);
         try
         {
             var conversation = InitialMessages(o);
-            var steps = new List<StepResult>();
-            buffer.Add(new StartPart());
             while (true)
             {
                 var plan = await PrepareAsync(o, conversation, steps).ConfigureAwait(false);
-                buffer.Add(new StartStepPart(steps.Count));
-
-                var result = await StreamStepAsync(plan, o.MaxRetries, buffer, ct).ConfigureAwait(false);
-
-                var calls = result.Content.OfType<ToolCallPart>().ToList();
-                var toolResults = await ExecuteToolsAsync(calls, plan, o, steps.Count, ct).ConfigureAwait(false);
-                foreach (var r in toolResults)
+                LanguageModelResult result;
+                using (var stepActivity = AiTelemetry.ActivitySource.StartActivity("ai.generateText.step"))
                 {
-                    buffer.Add(new ToolResultStreamPart(r));
+                    result = await Retry.ExecuteAsync(c => plan.Model.GenerateAsync(plan.Request, c), o.MaxRetries, ct).ConfigureAwait(false);
+                    stepActivity?.SetTag("ai.response.finishReason", result.FinishReason.ToString());
+                    stepActivity?.SetTag("ai.usage.inputTokens", result.Usage.InputTokens);
+                    stepActivity?.SetTag("ai.usage.outputTokens", result.Usage.OutputTokens);
                 }
 
-                var step = BuildStep(steps.Count, plan, result, toolResults);
+                var toolPhase = await ExecuteToolsAsync(ToolCallsOf(result), plan, o, steps.Count, ct).ConfigureAwait(false);
+                var step = BuildStep(steps.Count, plan, result, toolPhase);
                 steps.Add(step);
                 conversation.AddRange(step.ResponseMessages);
-                buffer.Add(new FinishStepPart(step));
 
                 if (o.OnStepFinish is not null)
                 {
@@ -283,13 +314,116 @@ internal static class GenerationEngine
             }
 
             var final = new GenerateTextResult(steps, OutputFor(o, steps));
-            buffer.Add(new FinishPart(final.FinishReason, final.TotalUsage));
+            if (o.OnFinish is not null)
+            {
+                await o.OnFinish(final).ConfigureAwait(false);
+            }
+
+            return final;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            if (o.OnAbort is not null)
+            {
+                await o.OnAbort(steps).ConfigureAwait(false);
+            }
+
+            throw;
+        }
+        catch (Exception ex)
+        {
+            root?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            if (o.OnError is not null)
+            {
+                await o.OnError(ex).ConfigureAwait(false);
+            }
+
+            throw;
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // streamText
+    // ------------------------------------------------------------------
+
+    public static async Task RunStreamAsync(GenerateTextOptions o, ReplayBuffer<StreamPart> buffer, TaskCompletionSource<GenerateTextResult> completion)
+    {
+        var ct = o.CancellationToken;
+        using var root = AiTelemetry.ActivitySource.StartActivity("ai.streamText");
+        root?.SetTag("ai.model.provider", o.Model.Provider);
+        root?.SetTag("ai.model.id", o.Model.ModelId);
+
+        async ValueTask Emit(StreamPart part)
+        {
+            buffer.Add(part);
+            if (o.OnChunk is not null && IsChunk(part))
+            {
+                await o.OnChunk(part).ConfigureAwait(false);
+            }
+        }
+
+        var steps = new List<StepResult>();
+        try
+        {
+            var conversation = InitialMessages(o);
+            await Emit(new StartPart()).ConfigureAwait(false);
+            while (true)
+            {
+                var plan = await PrepareAsync(o, conversation, steps).ConfigureAwait(false);
+                await Emit(new StartStepPart(steps.Count)).ConfigureAwait(false);
+
+                var result = await StreamStepAsync(plan, o.MaxRetries, Emit, ct).ConfigureAwait(false);
+
+                var toolPhase = await ExecuteToolsAsync(ToolCallsOf(result), plan, o, steps.Count, ct).ConfigureAwait(false);
+                foreach (var r in toolPhase.Results)
+                {
+                    await Emit(new ToolResultStreamPart(r)).ConfigureAwait(false);
+                }
+
+                var step = BuildStep(steps.Count, plan, result, toolPhase);
+                steps.Add(step);
+                conversation.AddRange(step.ResponseMessages);
+                await Emit(new FinishStepPart(step)).ConfigureAwait(false);
+
+                if (o.OnStepFinish is not null)
+                {
+                    await o.OnStepFinish(step).ConfigureAwait(false);
+                }
+
+                if (!ShouldContinue(o, step, steps))
+                {
+                    break;
+                }
+            }
+
+            var final = new GenerateTextResult(steps, OutputFor(o, steps));
+            await Emit(new FinishPart(final.FinishReason, final.TotalUsage)).ConfigureAwait(false);
+            if (o.OnFinish is not null)
+            {
+                await o.OnFinish(final).ConfigureAwait(false);
+            }
+
             completion.TrySetResult(final);
+        }
+        catch (OperationCanceledException ex) when (ct.IsCancellationRequested)
+        {
+            buffer.Add(new AbortPart());
+            if (o.OnAbort is not null)
+            {
+                await SafeInvoke(() => o.OnAbort(steps)).ConfigureAwait(false);
+            }
+
+            completion.TrySetCanceled(ex.CancellationToken);
         }
         catch (Exception ex)
         {
             root?.SetStatus(ActivityStatusCode.Error, ex.Message);
             buffer.Add(new ErrorPart(ex));
+            if (o.OnError is not null)
+            {
+                await SafeInvoke(() => o.OnError(ex)).ConfigureAwait(false);
+            }
+
             completion.TrySetException(ex);
         }
         finally
@@ -298,7 +432,26 @@ internal static class GenerationEngine
         }
     }
 
-    private static async Task<LanguageModelResult> StreamStepAsync(StepPlan plan, int maxRetries, ReplayBuffer<StreamPart> buffer, CancellationToken ct)
+    private static bool IsChunk(StreamPart part) => part is TextDeltaPart or ReasoningDeltaPart or ToolInputStartPart
+        or ToolInputDeltaPart or ToolCallStreamPart or ToolResultStreamPart or SourceStreamPart or ContentStreamPart;
+
+    private static async ValueTask SafeInvoke(Func<ValueTask> callback)
+    {
+        try
+        {
+            await callback().ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            // Un fallo en el callback de error/abort no debe ocultar el error original.
+        }
+    }
+
+    private static async Task<LanguageModelResult> StreamStepAsync(
+        StepPlan plan,
+        int maxRetries,
+        Func<StreamPart, ValueTask> emit,
+        CancellationToken ct)
     {
         for (var attempt = 0; ; attempt++)
         {
@@ -306,6 +459,22 @@ internal static class GenerationEngine
             var emittedAny = false;
             string? openText = null;
             string? openReasoning = null;
+
+            async ValueTask Close()
+            {
+                if (openText is not null)
+                {
+                    await emit(new TextEndPart(openText)).ConfigureAwait(false);
+                    openText = null;
+                }
+
+                if (openReasoning is not null)
+                {
+                    await emit(new ReasoningEndPart(openReasoning)).ConfigureAwait(false);
+                    openReasoning = null;
+                }
+            }
+
             try
             {
                 await foreach (var part in plan.Model.StreamAsync(plan.Request, ct).WithCancellation(ct).ConfigureAwait(false))
@@ -321,66 +490,54 @@ internal static class GenerationEngine
                         case TextDeltaPart t:
                             if (openText != t.Id)
                             {
-                                Close(ref openText, ref openReasoning, buffer);
-                                buffer.Add(new TextStartPart(t.Id));
+                                await Close().ConfigureAwait(false);
+                                await emit(new TextStartPart(t.Id)).ConfigureAwait(false);
                                 openText = t.Id;
                             }
 
-                            buffer.Add(part);
+                            await emit(part).ConfigureAwait(false);
                             break;
                         case ReasoningDeltaPart r:
                             if (openReasoning != r.Id)
                             {
-                                Close(ref openText, ref openReasoning, buffer);
-                                buffer.Add(new ReasoningStartPart(r.Id));
+                                await Close().ConfigureAwait(false);
+                                await emit(new ReasoningStartPart(r.Id)).ConfigureAwait(false);
                                 openReasoning = r.Id;
                             }
 
-                            buffer.Add(part);
+                            await emit(part).ConfigureAwait(false);
                             break;
                         case ReasoningEndPart e:
                             if (openReasoning != e.Id)
                             {
-                                buffer.Add(new ReasoningStartPart(e.Id));
+                                await emit(new ReasoningStartPart(e.Id)).ConfigureAwait(false);
                             }
 
                             openReasoning = null;
-                            buffer.Add(part);
+                            await emit(part).ConfigureAwait(false);
                             break;
                         case ModelFinishPart:
                         case ResponseMetadataPart:
                             break;
+                        case SourceStreamPart:
+                            await emit(part).ConfigureAwait(false);
+                            break;
                         default:
-                            Close(ref openText, ref openReasoning, buffer);
-                            buffer.Add(part);
+                            await Close().ConfigureAwait(false);
+                            await emit(part).ConfigureAwait(false);
                             break;
                     }
 
                     emittedAny = true;
                 }
 
-                Close(ref openText, ref openReasoning, buffer);
+                await Close().ConfigureAwait(false);
                 return accumulator.Build();
             }
             catch (Exception ex) when (!emittedAny && attempt < maxRetries && Retry.IsRetryable(ex) && !ct.IsCancellationRequested)
             {
                 await Task.Delay(Retry.Delay(attempt, ex), ct).ConfigureAwait(false);
             }
-        }
-    }
-
-    private static void Close(ref string? openText, ref string? openReasoning, ReplayBuffer<StreamPart> buffer)
-    {
-        if (openText is not null)
-        {
-            buffer.Add(new TextEndPart(openText));
-            openText = null;
-        }
-
-        if (openReasoning is not null)
-        {
-            buffer.Add(new ReasoningEndPart(openReasoning));
-            openReasoning = null;
         }
     }
 }

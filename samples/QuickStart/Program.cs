@@ -1,12 +1,17 @@
 ﻿// Ejemplos de AiSdk para .NET.
-// Uso:  dotnet run --project samples/QuickStart -- [anthropic|openai|mock] [ejemplo]
-// Ejemplos: text, stream, tools, agent, object, stream-object, session, subagents
+// Uso:  dotnet run --project samples/QuickStart -- [anthropic|openai|mock] [ejemplo] [args...]
+// Ejemplos: text, stream, tools, agent, object, stream-object, session, subagents,
+//           web-search, fallback, repair, mcp, image, speech, transcribe
+//
+//   mcp:        ... -- anthropic mcp npx -y @modelcontextprotocol/server-everything
+//   image/speech/transcribe usan OpenAI (OPENAI_API_KEY); transcribe recibe la ruta de un audio.
 //
 // Variables de entorno: ANTHROPIC_API_KEY u OPENAI_API_KEY (el modo "mock" no necesita ninguna).
 
 using System.ComponentModel;
 using AiSdk;
 using AiSdk.Anthropic;
+using AiSdk.Mcp;
 using AiSdk.OpenAI;
 using AiSdk.Testing;
 
@@ -15,7 +20,7 @@ var example = args.ElementAtOrDefault(1) ?? "agent";
 
 ILanguageModel model = providerName switch
 {
-    "openai" => OpenAIProvider.Default.Chat("gpt-5"),
+    "openai" => OpenAIProvider.Default.Responses("gpt-5"),
     "mock" => MockScript(example),
     _ => AnthropicProvider.Default.Messages("claude-opus-5-5"),
 };
@@ -195,6 +200,121 @@ switch (example)
         break;
     }
 
+    case "web-search":
+    {
+        // Herramienta ejecutada en el servidor del proveedor; las fuentes llegan en result.Sources.
+        Tool search = providerName == "openai" ? OpenAITools.WebSearch() : AnthropicTools.WebSearch(maxUses: 3);
+        var result = await Ai.GenerateTextAsync(new GenerateTextOptions
+        {
+            Model = model,
+            Prompt = "¿Cuál es la última versión estable de .NET? Responde en una frase.",
+            Tools = [search],
+            ProviderOptions = providerOptions,
+        });
+        Console.WriteLine(result.Text);
+        foreach (var source in result.Sources)
+        {
+            Console.WriteLine($"  [{source.Title}] {source.Url}");
+        }
+
+        break;
+    }
+
+    case "fallback":
+    {
+        // Si el modelo principal falla, se usa el siguiente.
+        var resilient = (providerName == "mock"
+                ? new MockLanguageModel("principal").ReturnsError(new ApiCallException("Servicio no disponible", 503, null, null))
+                : model)
+            .WithFallback(providerName == "mock" ? MockScript("text") : OpenAIProvider.Default.Responses("gpt-5-mini"));
+        var result = await Ai.GenerateTextAsync(new GenerateTextOptions { Model = resilient, Prompt = "¿Qué es .NET?", MaxRetries = 0 });
+        Console.WriteLine(result.Text);
+        break;
+    }
+
+    case "repair":
+    {
+        // Corrige nombres de herramienta mal escritos y, si no basta, pide a un modelo que repare la entrada.
+        var result = await Ai.GenerateTextAsync(new GenerateTextOptions
+        {
+            Model = model,
+            Prompt = "¿Qué temperatura hace en Santiago?",
+            Tools = [weather],
+            StopWhen = StopCondition.StepCountIs(5),
+            RepairToolCall = ToolCallRepair.FirstOf(ToolCallRepair.FixToolNameCase(), ToolCallRepair.WithModel(model)),
+            OnStepFinish = step =>
+            {
+                foreach (var call in step.ToolCalls)
+                {
+                    Console.WriteLine($"  → {call.ToolName}({call.Input})");
+                }
+
+                return ValueTask.CompletedTask;
+            },
+        });
+        Console.WriteLine(result.Text);
+        break;
+    }
+
+    case "mcp":
+    {
+        var command = args.ElementAtOrDefault(2) ?? "npx";
+        string[] commandArgs = args.Length > 3 ? args[3..] : ["-y", "@modelcontextprotocol/server-everything"];
+        await using var mcp = await McpClient.ConnectAsync(new StdioMcpTransport(command, commandArgs));
+        var tools = await mcp.GetToolsAsync();
+        Console.WriteLine($"Servidor MCP '{mcp.ServerInfo.Name}' con {tools.Count} herramientas: {string.Join(", ", tools.Select(t => t.Name))}");
+
+        var agent = new ToolLoopAgent(new AgentSettings
+        {
+            Model = model,
+            Instructions = mcp.Instructions,
+            Tools = tools,
+            ProviderOptions = providerOptions,
+        });
+        Console.WriteLine((await agent.GenerateAsync("Usa una de tus herramientas y explica el resultado en una frase.")).Text);
+        break;
+    }
+
+    case "image":
+    {
+        var result = await Ai.GenerateImageAsync(new GenerateImageOptions
+        {
+            Model = OpenAIProvider.Default.Image("gpt-image-1"),
+            Prompt = "Un robot morado programando en C#, ilustración plana",
+            Size = "1024x1024",
+        });
+        await result.Image.SaveAsync("robot.png");
+        Console.WriteLine("Imagen guardada en robot.png");
+        break;
+    }
+
+    case "speech":
+    {
+        var result = await Ai.GenerateSpeechAsync(new GenerateSpeechOptions
+        {
+            Model = OpenAIProvider.Default.Speech("gpt-4o-mini-tts"),
+            Text = "Hola, este audio lo generó AiSdk para .NET.",
+            Voice = "nova",
+        });
+        await result.Audio.SaveAsync("hola.mp3");
+        Console.WriteLine("Audio guardado en hola.mp3");
+        break;
+    }
+
+    case "transcribe":
+    {
+        var path = args.ElementAtOrDefault(2) ?? "hola.mp3";
+        var result = await Ai.TranscribeAsync(new TranscribeOptions
+        {
+            Model = OpenAIProvider.Default.Transcription("gpt-4o-transcribe"),
+            Audio = await File.ReadAllBytesAsync(path),
+            MediaType = "audio/mpeg",
+            Language = "es",
+        });
+        Console.WriteLine(result.Text);
+        break;
+    }
+
     default:
         Console.WriteLine($"Ejemplo desconocido: {example}");
         break;
@@ -215,6 +335,19 @@ static MockLanguageModel MockScript(string example) => example switch
     "object" or "stream-object" => new MockLanguageModel()
         .ReturnsText("""{"name":"Empanadas de pino","ingredients":["harina","carne","cebolla","huevo","aceitunas"],"minutes":90}"""),
     "session" => new MockLanguageModel().ReturnsText("¡Hola Ana!").ReturnsText("Te llamas Ana."),
+    "web-search" => new MockLanguageModel().Returns(_ => new LanguageModelResult
+    {
+        Content =
+        [
+            new SourcePart("s1", "https://dotnet.microsoft.com") { Title = ".NET" },
+            new TextPart("La última versión estable es .NET 10 (LTS)."),
+        ],
+        FinishReason = FinishReason.Stop,
+    }),
+    "repair" => new MockLanguageModel()
+        .ReturnsToolCall("Get-Weather", new { city = "Santiago" })
+        .ReturnsText("En Santiago hay 22°C."),
+    "mcp" => new MockLanguageModel().ReturnsText("(modo mock: el servidor MCP se conectó, pero el modelo es simulado)"),
     _ => new MockLanguageModel().ReturnsText(".NET es una plataforma de desarrollo multiplataforma y de código abierto."),
 };
 

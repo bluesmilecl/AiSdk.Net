@@ -35,8 +35,9 @@ public sealed class OpenAIProviderOptions
 }
 
 /// <summary>
-/// Proveedor OpenAI (Chat Completions + Embeddings). Funciona con cualquier
-/// servidor compatible: Azure AI Foundry, Ollama, Groq, DeepSeek, OpenRouter, LM Studio, vLLM...
+/// Proveedor OpenAI: Chat Completions, Responses, embeddings, imágenes, voz y transcripción.
+/// <see cref="Chat"/> funciona con cualquier servidor compatible: Ollama, Groq, DeepSeek,
+/// OpenRouter, LM Studio, vLLM...
 /// </summary>
 public sealed class OpenAIProvider : IProvider
 {
@@ -67,13 +68,39 @@ public sealed class OpenAIProvider : IProvider
 
     public string Name => _options.Name;
 
-    /// <summary>Modelo de chat, p. ej. <c>"gpt-5"</c>.</summary>
+    /// <summary>Modelo sobre Chat Completions (<c>/chat/completions</c>), compatible con servidores tipo OpenAI.</summary>
     public ILanguageModel Chat(string modelId) => new OpenAIChatLanguageModel(modelId, this);
 
-    public ILanguageModel LanguageModel(string modelId) => Chat(modelId);
+    /// <summary>
+    /// Modelo sobre la API Responses (<c>/responses</c>), recomendada por OpenAI: admite
+    /// herramientas de servidor (<see cref="OpenAITools"/>) y resúmenes de razonamiento.
+    /// </summary>
+    public ILanguageModel Responses(string modelId) => new OpenAIResponsesLanguageModel(modelId, this);
 
-    /// <summary>Atajo: <c>openai["gpt-5"]</c>.</summary>
-    public ILanguageModel this[string modelId] => Chat(modelId);
+    /// <summary>
+    /// Modelo por defecto del registro (<c>"openai:gpt-5"</c>): la API Responses en OpenAI y
+    /// Chat Completions en servidores compatibles (cuando se cambia <c>BaseUrl</c>).
+    /// </summary>
+    public ILanguageModel LanguageModel(string modelId) =>
+        _options.BaseUrl.StartsWith("https://api.openai.com", StringComparison.OrdinalIgnoreCase) ? Responses(modelId) : Chat(modelId);
+
+    /// <summary>Atajo: <c>openai["gpt-5"]</c> (equivale a <see cref="LanguageModel"/>).</summary>
+    public ILanguageModel this[string modelId] => LanguageModel(modelId);
+
+    /// <summary>Modelo de imágenes, p. ej. <c>"gpt-image-1"</c>.</summary>
+    public IImageModel Image(string modelId) => new OpenAIImageModel(modelId, this);
+
+    public IImageModel ImageModel(string modelId) => Image(modelId);
+
+    /// <summary>Modelo de voz, p. ej. <c>"gpt-4o-mini-tts"</c>.</summary>
+    public ISpeechModel Speech(string modelId) => new OpenAISpeechModel(modelId, this);
+
+    public ISpeechModel SpeechModel(string modelId) => Speech(modelId);
+
+    /// <summary>Modelo de transcripción, p. ej. <c>"gpt-4o-transcribe"</c> o <c>"whisper-1"</c>.</summary>
+    public ITranscriptionModel Transcription(string modelId) => new OpenAITranscriptionModel(modelId, this);
+
+    public ITranscriptionModel TranscriptionModel(string modelId) => Transcription(modelId);
 
     /// <summary>Modelo de embeddings, p. ej. <c>"text-embedding-3-small"</c>.</summary>
     public IEmbeddingModel Embedding(string modelId, int? dimensions = null) => new OpenAIEmbeddingModel(modelId, dimensions, this);

@@ -13,6 +13,15 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel
     public const string SignatureKey = "anthropic.signature";
     public const string RedactedDataKey = "anthropic.redactedData";
 
+    /// <summary>Bloque original de la API, reenviado tal cual en turnos siguientes (herramientas de servidor).</summary>
+    public const string RawBlockKey = "anthropic.rawBlock";
+
+    /// <summary><c>stop_reason</c> original de la API.</summary>
+    public const string StopReasonKey = "anthropic.stopReason";
+
+    /// <summary>Máximo de reanudaciones automáticas tras <c>pause_turn</c>.</summary>
+    private const int MaxPauseTurnContinuations = 10;
+
     private readonly AnthropicProvider _provider;
 
     internal AnthropicMessagesLanguageModel(string modelId, AnthropicProvider provider)
@@ -25,24 +34,82 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel
 
     public string ModelId { get; }
 
+    // ------------------------------------------------------------------
+    // Generate (con reanudación de pause_turn)
+    // ------------------------------------------------------------------
+
     public async Task<LanguageModelResult> GenerateAsync(LanguageModelRequest request, CancellationToken cancellationToken = default)
     {
-        var (body, betas) = BuildBody(request, stream: false);
-        using var http = ProviderHttp.CreateJsonRequest(_provider.Url("messages"), body, _provider.Headers(request.Headers, betas), stream: false);
-        using var response = await ProviderHttp.SendAsync(_provider.Http, http, stream: false, cancellationToken).ConfigureAwait(false);
-        var json = await ProviderHttp.ReadJsonAsync(response, cancellationToken).ConfigureAwait(false);
-        return ParseResponse(json);
+        var content = new List<ContentPart>();
+        var usage = Usage.Empty;
+        var warnings = new List<string>();
+        for (var round = 0; ; round++)
+        {
+            var (body, betas, bodyWarnings) = BuildBody(request, stream: false);
+            warnings.AddRange(bodyWarnings);
+            using var http = ProviderHttp.CreateJsonRequest(_provider.Url("messages"), body, _provider.Headers(request.Headers, betas), stream: false);
+            using var response = await ProviderHttp.SendAsync(_provider.Http, http, stream: false, cancellationToken).ConfigureAwait(false);
+            var json = await ProviderHttp.ReadJsonAsync(response, cancellationToken).ConfigureAwait(false);
+            var result = ParseResponse(json);
+
+            content.AddRange(result.Content);
+            usage += result.Usage;
+            var paused = (string?)json["stop_reason"] == "pause_turn";
+            if (!paused || round >= MaxPauseTurnContinuations)
+            {
+                return result with { Content = content, Usage = usage, Warnings = warnings.Distinct().ToList() };
+            }
+
+            // pause_turn: una herramienta de servidor necesita más tiempo; se reenvía el turno para continuar.
+            request = request with { Messages = [.. request.Messages, new ModelMessage(ChatRole.Assistant, result.Content)] };
+        }
     }
+
+    // ------------------------------------------------------------------
+    // Stream (con reanudación de pause_turn)
+    // ------------------------------------------------------------------
 
     public async IAsyncEnumerable<StreamPart> StreamAsync(LanguageModelRequest request, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var (body, betas) = BuildBody(request, stream: true);
+        var state = new StreamState();
+        for (var round = 0; ; round++)
+        {
+            state.BeginRound(round);
+            await foreach (var part in StreamRoundAsync(request, state, cancellationToken).ConfigureAwait(false))
+            {
+                yield return part;
+                if (part is ErrorPart)
+                {
+                    yield break;
+                }
+            }
+
+            if (state.RawStopReason != "pause_turn" || round >= MaxPauseTurnContinuations)
+            {
+                break;
+            }
+
+            request = request with { Messages = [.. request.Messages, new ModelMessage(ChatRole.Assistant, state.RoundContent.BuildContent())] };
+        }
+
+        yield return new ModelFinishPart(state.Finish, state.Usage);
+    }
+
+    private async IAsyncEnumerable<StreamPart> StreamRoundAsync(LanguageModelRequest request, StreamState state, [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var (body, betas, _) = BuildBody(request, stream: true);
         using var http = ProviderHttp.CreateJsonRequest(_provider.Url("messages"), body, _provider.Headers(request.Headers, betas), stream: true);
         using var response = await ProviderHttp.SendAsync(_provider.Http, http, stream: true, cancellationToken).ConfigureAwait(false);
 
         var blocks = new Dictionary<int, BlockState>();
-        var usage = Usage.Empty;
-        var finish = FinishReason.Unknown;
+        var roundUsage = Usage.Empty;
+
+        // Toda parte emitida también se acumula para poder reenviar el turno tras pause_turn.
+        StreamPart Track(StreamPart part)
+        {
+            state.RoundContent.Add(part);
+            return part;
+        }
 
         await foreach (var sse in ProviderHttp.ReadSseAsync(response, cancellationToken).ConfigureAwait(false))
         {
@@ -55,10 +122,14 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel
             {
                 case "message_start":
                     var message = evt["message"] as JsonObject;
-                    yield return new ResponseMetadataPart(new ResponseMetadata((string?)message?["id"], (string?)message?["model"], DateTimeOffset.UtcNow));
+                    if (state.Round == 0)
+                    {
+                        yield return new ResponseMetadataPart(new ResponseMetadata((string?)message?["id"], (string?)message?["model"], DateTimeOffset.UtcNow));
+                    }
+
                     if (message?["usage"] is JsonObject startUsage)
                     {
-                        usage = ParseUsage(startUsage);
+                        roundUsage = ParseUsage(startUsage);
                     }
 
                     break;
@@ -66,21 +137,37 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel
                 case "content_block_start":
                 {
                     var index = (int?)evt["index"] ?? 0;
-                    var block = evt["content_block"] as JsonObject;
-                    var state = new BlockState((string?)block?["type"] ?? "unknown")
+                    var block = evt["content_block"] as JsonObject ?? [];
+                    var type = (string?)block["type"] ?? "unknown";
+                    var blockState = new BlockState(type, block)
                     {
-                        Id = (string?)block?["id"],
-                        Name = (string?)block?["name"],
-                        RedactedData = (string?)block?["data"],
+                        Id = (string?)block["id"],
+                        Name = (string?)block["name"],
+                        RedactedData = (string?)block["data"],
                     };
-                    blocks[index] = state;
-                    if (state.Type == "tool_use")
+                    blocks[index] = blockState;
+
+                    if (type is "tool_use" or "server_tool_use" or "mcp_tool_use")
                     {
-                        yield return new ToolInputStartPart(state.Id!, state.Name!);
+                        state.ToolNames[blockState.Id ?? string.Empty] = blockState.Name ?? type;
+                        yield return Track(new ToolInputStartPart(blockState.Id!, blockState.Name!));
                     }
-                    else if (state.Type == "text" && (string?)block?["text"] is { Length: > 0 } initial)
+                    else if (type == "text" && (string?)block["text"] is { Length: > 0 } initial)
                     {
-                        yield return new TextDeltaPart($"text-{index}", initial);
+                        yield return Track(new TextDeltaPart(state.Id("text", index), initial));
+                    }
+                    else if (IsServerToolResult(type))
+                    {
+                        // Los resultados de herramientas de servidor llegan completos en el inicio del bloque.
+                        foreach (var part in ServerToolResultParts(block, state.ToolNames, state.SeenSources))
+                        {
+                            yield return Track(part switch
+                            {
+                                ToolResultPart r => new ToolResultStreamPart(r),
+                                SourcePart s => new SourceStreamPart(s),
+                                _ => new ContentStreamPart(part),
+                            });
+                        }
                     }
 
                     break;
@@ -90,32 +177,39 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel
                 {
                     var index = (int?)evt["index"] ?? 0;
                     var delta = evt["delta"] as JsonObject;
-                    blocks.TryGetValue(index, out var state);
+                    blocks.TryGetValue(index, out var blockState);
                     switch ((string?)delta?["type"])
                     {
                         case "text_delta":
-                            yield return new TextDeltaPart($"text-{index}", (string?)delta["text"] ?? string.Empty);
+                            yield return Track(new TextDeltaPart(state.Id("text", index), (string?)delta["text"] ?? string.Empty));
                             break;
                         case "thinking_delta":
                             if ((string?)delta["thinking"] is { Length: > 0 } thinking)
                             {
-                                yield return new ReasoningDeltaPart($"reasoning-{index}", thinking);
+                                yield return Track(new ReasoningDeltaPart(state.Id("reasoning", index), thinking));
                             }
 
                             break;
                         case "signature_delta":
-                            if (state is not null)
+                            if (blockState is not null)
                             {
-                                state.Signature = (string?)delta["signature"];
+                                blockState.Signature = (string?)delta["signature"];
                             }
 
                             break;
                         case "input_json_delta":
                             var partial = (string?)delta["partial_json"] ?? string.Empty;
-                            state?.Json.Append(partial);
-                            if (state?.Id is not null && partial.Length > 0)
+                            blockState?.Json.Append(partial);
+                            if (blockState?.Id is not null && partial.Length > 0)
                             {
-                                yield return new ToolInputDeltaPart(state.Id, partial);
+                                yield return Track(new ToolInputDeltaPart(blockState.Id, partial));
+                            }
+
+                            break;
+                        case "citations_delta":
+                            if (delta["citation"] is JsonObject citation && SourceFromCitation(citation, state.SeenSources) is { } source)
+                            {
+                                yield return Track(new SourceStreamPart(source));
                             }
 
                             break;
@@ -127,19 +221,47 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel
                 case "content_block_stop":
                 {
                     var index = (int?)evt["index"] ?? 0;
-                    if (!blocks.TryGetValue(index, out var state))
+                    if (!blocks.TryGetValue(index, out var blockState))
                     {
                         break;
                     }
 
-                    if (state.Type == "tool_use")
+                    switch (blockState.Type)
                     {
-                        var ok = JsonUtil.TryParseElement(state.Json.ToString(), out var input);
-                        yield return new ToolCallStreamPart(new ToolCallPart(state.Id!, state.Name!, input) { InvalidInput = !ok });
-                    }
-                    else if (state.Type is "thinking" or "redacted_thinking")
-                    {
-                        yield return new ReasoningEndPart($"reasoning-{index}") { ProviderMetadata = ReasoningMetadata(state.Signature, state.RedactedData) };
+                        case "tool_use":
+                        {
+                            var ok = JsonUtil.TryParseElement(blockState.Json.ToString(), out var input);
+                            yield return Track(new ToolCallStreamPart(new ToolCallPart(blockState.Id!, blockState.Name!, input) { InvalidInput = !ok }));
+                            break;
+                        }
+
+                        case "server_tool_use" or "mcp_tool_use":
+                        {
+                            JsonUtil.TryParseElement(blockState.Json.ToString(), out var input);
+                            var raw = (JsonObject)blockState.Start.DeepClone();
+                            raw["input"] = JsonUtil.ToNode(input);
+                            yield return Track(new ToolCallStreamPart(ServerToolCall(raw)));
+                            break;
+                        }
+
+                        case "thinking" or "redacted_thinking":
+                            yield return Track(new ReasoningEndPart(state.Id("reasoning", index))
+                            {
+                                ProviderMetadata = ReasoningMetadata(blockState.Signature, blockState.RedactedData),
+                            });
+                            break;
+
+                        case "text":
+                            break;
+
+                        default:
+                            if (!IsServerToolResult(blockState.Type))
+                            {
+                                // Bloque desconocido (p. ej. de una beta): se conserva para reenviarlo.
+                                yield return Track(new ContentStreamPart(new RawProviderPart("anthropic", JsonSerializer.SerializeToElement(blockState.Start))));
+                            }
+
+                            break;
                     }
 
                     break;
@@ -148,12 +270,13 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel
                 case "message_delta":
                     if ((string?)evt["delta"]?["stop_reason"] is { } stop)
                     {
-                        finish = MapStopReason(stop);
+                        state.RawStopReason = stop;
+                        state.Finish = MapStopReason(stop);
                     }
 
                     if (evt["usage"] is JsonObject deltaUsage)
                     {
-                        usage = usage with { OutputTokens = (int?)deltaUsage["output_tokens"] ?? usage.OutputTokens };
+                        roundUsage = roundUsage with { OutputTokens = (int?)deltaUsage["output_tokens"] ?? roundUsage.OutputTokens };
                     }
 
                     break;
@@ -170,12 +293,17 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel
             }
         }
 
-        yield return new ModelFinishPart(finish, usage);
+        state.Usage += roundUsage;
     }
 
-    internal (JsonObject Body, List<string> Betas) BuildBody(LanguageModelRequest request, bool stream)
+    // ------------------------------------------------------------------
+    // Petición
+    // ------------------------------------------------------------------
+
+    internal (JsonObject Body, List<string> Betas, List<string> Warnings) BuildBody(LanguageModelRequest request, bool stream)
     {
         var options = _provider.Options;
+        var warnings = new List<string>();
         var system = string.Join("\n\n", request.Messages.Where(m => m.Role == ChatRole.System).Select(m => m.Text));
         var body = new JsonObject
         {
@@ -214,8 +342,23 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel
 
         if (request.Tools is { Count: > 0 } tools)
         {
-            body["tools"] = new JsonArray(tools.Select(t =>
+            var toolArray = new JsonArray();
+            foreach (var t in tools)
             {
+                if (t.IsProviderTool)
+                {
+                    if (string.Equals(t.ProviderName, "anthropic", StringComparison.OrdinalIgnoreCase))
+                    {
+                        toolArray.Add(t.ProviderDefinition!.DeepClone());
+                    }
+                    else
+                    {
+                        warnings.Add($"La herramienta '{t.Name}' es de '{t.ProviderName}' y se omitió en Anthropic.");
+                    }
+
+                    continue;
+                }
+
                 var tool = new JsonObject
                 {
                     ["name"] = t.Name,
@@ -236,18 +379,22 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel
                     tool["eager_input_streaming"] = true;
                 }
 
-                return (JsonNode?)tool;
-            }).ToArray());
+                toolArray.Add(tool);
+            }
 
-            if (request.ToolChoice is { } choice)
+            if (toolArray.Count > 0)
             {
-                body["tool_choice"] = choice.Kind switch
+                body["tools"] = toolArray;
+                if (request.ToolChoice is { } choice)
                 {
-                    ToolChoiceKind.Auto => new JsonObject { ["type"] = "auto" },
-                    ToolChoiceKind.None => new JsonObject { ["type"] = "none" },
-                    ToolChoiceKind.Required => new JsonObject { ["type"] = "any" },
-                    _ => new JsonObject { ["type"] = "tool", ["name"] = choice.ToolName },
-                };
+                    body["tool_choice"] = choice.Kind switch
+                    {
+                        ToolChoiceKind.Auto => new JsonObject { ["type"] = "auto" },
+                        ToolChoiceKind.None => new JsonObject { ["type"] = "none" },
+                        ToolChoiceKind.Required => new JsonObject { ["type"] = "any" },
+                        _ => new JsonObject { ["type"] = "tool", ["name"] = choice.ToolName },
+                    };
+                }
             }
         }
 
@@ -273,7 +420,7 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel
         }
 
         JsonUtil.DeepMerge(body, providerOptions);
-        return (body, betas);
+        return (body, betas, warnings);
     }
 
     private static JsonArray ConvertMessages(IReadOnlyList<ModelMessage> messages)
@@ -312,6 +459,9 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel
 
         return result;
     }
+
+    private static JsonObject? RawBlock(ContentPart part) =>
+        part.ProviderMetadata?.TryGetValue(RawBlockKey, out var raw) == true ? JsonUtil.ToNode(raw) as JsonObject : null;
 
     private static JsonObject? ConvertPart(ContentPart part)
     {
@@ -354,8 +504,14 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel
 
                 return null;
 
+            case ToolCallPart { ProviderExecuted: true } c:
+                return RawBlock(c) ?? new JsonObject { ["type"] = "server_tool_use", ["id"] = c.ToolCallId, ["name"] = c.ToolName, ["input"] = JsonUtil.ToNode(c.Input) };
+
             case ToolCallPart c:
                 return new JsonObject { ["type"] = "tool_use", ["id"] = c.ToolCallId, ["name"] = c.ToolName, ["input"] = JsonUtil.ToNode(c.Input) };
+
+            case ToolResultPart { ProviderExecuted: true } r:
+                return RawBlock(r); // Sin el bloque original no se puede reconstruir (otro proveedor): se omite.
 
             case ToolResultPart r:
                 var result = new JsonObject
@@ -371,6 +527,9 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel
 
                 return result;
 
+            case RawProviderPart { Provider: "anthropic" } raw:
+                return JsonUtil.ToNode(raw.Data) as JsonObject;
+
             default:
                 return null;
         }
@@ -380,15 +539,30 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel
         ? new JsonObject { ["type"] = "base64", ["media_type"] = mediaType, ["data"] = Convert.ToBase64String(data) }
         : new JsonObject { ["type"] = "url", ["url"] = url?.ToString() };
 
+    // ------------------------------------------------------------------
+    // Respuesta
+    // ------------------------------------------------------------------
+
     internal static LanguageModelResult ParseResponse(JsonObject json)
     {
         var content = new List<ContentPart>();
+        var toolNames = new Dictionary<string, string>();
+        var seenSources = new HashSet<string>(StringComparer.Ordinal);
         foreach (var block in (json["content"] as JsonArray ?? []).OfType<JsonObject>())
         {
-            switch ((string?)block["type"])
+            var type = (string?)block["type"] ?? "unknown";
+            switch (type)
             {
                 case "text":
                     content.Add(new TextPart((string?)block["text"] ?? string.Empty));
+                    foreach (var citation in (block["citations"] as JsonArray ?? []).OfType<JsonObject>())
+                    {
+                        if (SourceFromCitation(citation, seenSources) is { } source)
+                        {
+                            content.Add(source);
+                        }
+                    }
+
                     break;
                 case "thinking":
                     content.Add(new ReasoningPart((string?)block["thinking"] ?? string.Empty)
@@ -405,15 +579,92 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel
                         (string?)block["name"] ?? string.Empty,
                         block["input"] is { } input ? JsonSerializer.SerializeToElement(input) : JsonUtil.EmptyObject));
                     break;
+                case "server_tool_use" or "mcp_tool_use":
+                    toolNames[(string?)block["id"] ?? string.Empty] = (string?)block["name"] ?? type;
+                    content.Add(ServerToolCall(block));
+                    break;
+                default:
+                    if (IsServerToolResult(type))
+                    {
+                        content.AddRange(ServerToolResultParts(block, toolNames, seenSources));
+                    }
+                    else
+                    {
+                        content.Add(new RawProviderPart("anthropic", JsonSerializer.SerializeToElement(block)));
+                    }
+
+                    break;
             }
         }
 
+        var stopReason = (string?)json["stop_reason"];
         return new LanguageModelResult
         {
             Content = content,
-            FinishReason = MapStopReason((string?)json["stop_reason"]),
+            FinishReason = MapStopReason(stopReason),
             Usage = json["usage"] is JsonObject u ? ParseUsage(u) : Usage.Empty,
             Response = new ResponseMetadata((string?)json["id"], (string?)json["model"], DateTimeOffset.UtcNow),
+            ProviderMetadata = stopReason is null ? null : new Dictionary<string, JsonElement> { [StopReasonKey] = JsonSerializer.SerializeToElement(stopReason) },
+        };
+    }
+
+    private static bool IsServerToolResult(string type) => type.EndsWith("_tool_result", StringComparison.Ordinal) && type != "tool_result";
+
+    private static ToolCallPart ServerToolCall(JsonObject block) =>
+        new(
+            (string?)block["id"] ?? Guid.NewGuid().ToString("N"),
+            (string?)block["name"] ?? (string?)block["type"] ?? "server_tool",
+            block["input"] is { } input ? JsonSerializer.SerializeToElement(input) : JsonUtil.EmptyObject)
+        {
+            ProviderExecuted = true,
+            ProviderMetadata = new Dictionary<string, JsonElement> { [RawBlockKey] = JsonSerializer.SerializeToElement(block) },
+        };
+
+    private static IEnumerable<ContentPart> ServerToolResultParts(JsonObject block, IReadOnlyDictionary<string, string> toolNames, HashSet<string> seenSources)
+    {
+        var toolUseId = (string?)block["tool_use_id"] ?? string.Empty;
+        var type = (string?)block["type"] ?? string.Empty;
+        var name = toolNames.TryGetValue(toolUseId, out var n) ? n : type[..^"_tool_result".Length];
+        var output = block["content"]?.DeepClone() ?? new JsonObject();
+        var isError = output is JsonObject o && ((string?)o["type"])?.EndsWith("_error", StringComparison.Ordinal) == true;
+
+        yield return new ToolResultPart(toolUseId, name, JsonSerializer.SerializeToElement(output))
+        {
+            ProviderExecuted = true,
+            IsError = isError,
+            ProviderMetadata = new Dictionary<string, JsonElement> { [RawBlockKey] = JsonSerializer.SerializeToElement(block) },
+        };
+
+        // Resultados de búsqueda web → fuentes.
+        if (output is JsonArray items)
+        {
+            foreach (var item in items.OfType<JsonObject>().Where(i => (string?)i["type"] == "web_search_result"))
+            {
+                var url = (string?)item["url"];
+                if (url is not null && seenSources.Add(url))
+                {
+                    yield return new SourcePart($"src-{seenSources.Count}", url) { Title = (string?)item["title"] };
+                }
+            }
+        }
+        else if (output is JsonObject fetch && (string?)fetch["url"] is { } fetchedUrl && seenSources.Add(fetchedUrl))
+        {
+            yield return new SourcePart($"src-{seenSources.Count}", fetchedUrl) { Title = (string?)fetch["content"]?["title"] };
+        }
+    }
+
+    private static SourcePart? SourceFromCitation(JsonObject citation, HashSet<string> seenSources)
+    {
+        var url = (string?)citation["url"];
+        if (url is null || !seenSources.Add(url))
+        {
+            return null;
+        }
+
+        return new SourcePart($"src-{seenSources.Count}", url)
+        {
+            Title = (string?)citation["title"],
+            CitedText = (string?)citation["cited_text"],
         };
     }
 
@@ -456,9 +707,11 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel
         _ => FinishReason.Other,
     };
 
-    private sealed class BlockState(string type)
+    private sealed class BlockState(string type, JsonObject start)
     {
         public string Type { get; } = type;
+
+        public JsonObject Start { get; } = start;
 
         public string? Id { get; init; }
 
@@ -469,5 +722,32 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel
         public string? RedactedData { get; init; }
 
         public StringBuilder Json { get; } = new();
+    }
+
+    private sealed class StreamState
+    {
+        public int Round { get; private set; }
+
+        public FinishReason Finish { get; set; } = FinishReason.Unknown;
+
+        public string? RawStopReason { get; set; }
+
+        public Usage Usage { get; set; } = Usage.Empty;
+
+        public Dictionary<string, string> ToolNames { get; } = [];
+
+        public HashSet<string> SeenSources { get; } = new(StringComparer.Ordinal);
+
+        public StreamAccumulator RoundContent { get; private set; } = new();
+
+        public void BeginRound(int round)
+        {
+            Round = round;
+            RawStopReason = null;
+            RoundContent = new StreamAccumulator();
+        }
+
+        /// <summary>Id único por ronda y bloque, para no mezclar bloques de distintas reanudaciones.</summary>
+        public string Id(string kind, int index) => Round == 0 ? $"{kind}-{index}" : $"{kind}-{Round}-{index}";
     }
 }

@@ -83,7 +83,8 @@ public sealed class ChatClientLanguageModel(IChatClient client, string provider,
                 ChatRole.Assistant => MEAI.ChatRole.Assistant,
                 _ => MEAI.ChatRole.Tool,
             };
-            result.Add(new ChatMessage(role, m.Content.Select(ToAIContent).OfType<AIContent>().ToList()));
+            var parts = m.Content.Where(p => p is not ToolCallPart { ProviderExecuted: true } and not ToolResultPart { ProviderExecuted: true });
+            result.Add(new ChatMessage(role, parts.Select(ToAIContent).OfType<AIContent>().ToList()));
         }
 
         return result;
@@ -127,7 +128,7 @@ public sealed class ChatClientLanguageModel(IChatClient client, string provider,
             StopSequences = request.StopSequences?.ToList(),
         };
 
-        if (request.Tools is { Count: > 0 } tools)
+        if (request.Tools?.Where(t => !t.IsProviderTool).ToList() is { Count: > 0 } tools)
         {
             options.Tools = tools
                 .Select(t => (AITool)AIFunctionFactory.CreateDeclaration(t.Name, t.Description, t.InputSchema))

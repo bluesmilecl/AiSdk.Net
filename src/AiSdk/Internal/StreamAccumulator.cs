@@ -32,6 +32,15 @@ public sealed class StreamAccumulator
             case ToolCallStreamPart c:
                 _blocks.Add(c.ToolCall);
                 break;
+            case ToolResultStreamPart r:
+                _blocks.Add(r.ToolResult);
+                break;
+            case SourceStreamPart src:
+                _blocks.Add(src.Source);
+                break;
+            case ContentStreamPart cp:
+                _blocks.Add(cp.Content);
+                break;
             case ResponseMetadataPart m:
                 Response = m.Metadata;
                 break;
@@ -59,8 +68,8 @@ public sealed class StreamAccumulator
                     }
 
                     break;
-                case ToolCallPart call:
-                    content.Add(call);
+                case ContentPart part:
+                    content.Add(part);
                     break;
             }
         }

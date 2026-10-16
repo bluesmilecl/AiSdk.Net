@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Cliente MCP (Model Context Protocol) para AiSdk: usa las herramientas de cualquier servidor MCP (stdio o HTTP) en tus agentes.</Description>
+  </PropertyGroup>
+  <ItemGroup><ProjectReference Include="../AiSdk/AiSdk.csproj" /></ItemGroup>
+</Project>

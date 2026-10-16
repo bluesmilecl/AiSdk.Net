@@ -55,6 +55,8 @@ public sealed record ModelMessage
 [JsonDerivedType(typeof(FilePart), "file")]
 [JsonDerivedType(typeof(ToolCallPart), "tool-call")]
 [JsonDerivedType(typeof(ToolResultPart), "tool-result")]
+[JsonDerivedType(typeof(SourcePart), "source")]
+[JsonDerivedType(typeof(RawProviderPart), "raw")]
 public abstract record ContentPart
 {
     /// <summary>
@@ -101,10 +103,31 @@ public sealed record ToolCallPart(string ToolCallId, string ToolName, JsonElemen
 {
     /// <summary>True si el proveedor no pudo interpretar el JSON de entrada (p. ej. salida truncada).</summary>
     public bool InvalidInput { get; init; }
+
+    /// <summary>True si la herramienta la ejecutó el proveedor (búsqueda web, ejecución de código...).</summary>
+    public bool ProviderExecuted { get; init; }
 }
 
 /// <summary>Resultado de la ejecución de una herramienta.</summary>
 public sealed record ToolResultPart(string ToolCallId, string ToolName, JsonElement Output) : ContentPart
 {
     public bool IsError { get; init; }
+
+    /// <summary>True si el resultado lo produjo el proveedor (herramienta de servidor).</summary>
+    public bool ProviderExecuted { get; init; }
 }
+
+/// <summary>Fuente o cita usada por el modelo (búsqueda web, documentos citados...).</summary>
+public sealed record SourcePart(string Id, string Url) : ContentPart
+{
+    public string? Title { get; init; }
+
+    /// <summary>Texto citado de la fuente, si el proveedor lo indica.</summary>
+    public string? CitedText { get; init; }
+}
+
+/// <summary>
+/// Bloque específico de un proveedor que el SDK no interpreta pero que debe
+/// conservarse y reenviarse tal cual al mismo proveedor en los turnos siguientes.
+/// </summary>
+public sealed record RawProviderPart(string Provider, JsonElement Data) : ContentPart;

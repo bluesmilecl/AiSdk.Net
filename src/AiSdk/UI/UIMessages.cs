@@ -126,6 +126,10 @@ public static class UIMessageConverter
             {
                 content.Add(new TextPart((string?)part["text"] ?? string.Empty));
             }
+            else if (type == "source-url")
+            {
+                content.Add(new SourcePart((string?)part["sourceId"] ?? Guid.NewGuid().ToString("N"), (string?)part["url"] ?? string.Empty) { Title = (string?)part["title"] });
+            }
             else if (type == "reasoning")
             {
                 content.Add(new ReasoningPart((string?)part["text"] ?? string.Empty));
@@ -141,13 +145,29 @@ public static class UIMessageConverter
                     content.Add(new ToolCallPart(id, toolName, input));
                 }
 
-                if (state == "output-available")
+                var providerExecuted = (bool?)part["providerExecuted"] == true;
+                if (providerExecuted && content.Count > 0 && content[^1] is ToolCallPart last && last.ToolCallId == id)
                 {
-                    toolResults.Add(new ToolResultPart(id, toolName, JsonSerializer.SerializeToElement(part["output"])));
+                    content[^1] = last with { ProviderExecuted = true };
                 }
-                else if (state == "output-error")
+
+                ToolResultPart? toolResult = state switch
                 {
-                    toolResults.Add(new ToolResultPart(id, toolName, JsonSerializer.SerializeToElement((string?)part["errorText"])) { IsError = true });
+                    "output-available" => new ToolResultPart(id, toolName, JsonSerializer.SerializeToElement(part["output"])) { ProviderExecuted = providerExecuted },
+                    "output-error" => new ToolResultPart(id, toolName, JsonSerializer.SerializeToElement((string?)part["errorText"])) { IsError = true, ProviderExecuted = providerExecuted },
+                    _ => null,
+                };
+                if (toolResult is not null)
+                {
+                    // Los resultados de herramientas del proveedor forman parte del mensaje del asistente.
+                    if (providerExecuted)
+                    {
+                        content.Add(toolResult);
+                    }
+                    else
+                    {
+                        toolResults.Add(toolResult);
+                    }
                 }
             }
         }
@@ -183,27 +203,29 @@ public static class UIMessageStream
                 ReasoningEndPart r => new() { ["type"] = "reasoning-end", ["id"] = r.Id },
                 ToolInputStartPart t => new() { ["type"] = "tool-input-start", ["toolCallId"] = t.ToolCallId, ["toolName"] = t.ToolName },
                 ToolInputDeltaPart t => new() { ["type"] = "tool-input-delta", ["toolCallId"] = t.ToolCallId, ["inputTextDelta"] = t.Delta },
-                ToolCallStreamPart c => new()
+                ToolCallStreamPart c => WithProviderFlag(new()
                 {
                     ["type"] = "tool-input-available",
                     ["toolCallId"] = c.ToolCall.ToolCallId,
                     ["toolName"] = c.ToolCall.ToolName,
                     ["input"] = JsonUtil.ToNode(c.ToolCall.Input),
-                },
+                }, c.ToolCall.ProviderExecuted),
                 ToolResultStreamPart { ToolResult.IsError: true } r => new()
                 {
                     ["type"] = "tool-output-error",
                     ["toolCallId"] = r.ToolResult.ToolCallId,
                     ["errorText"] = r.ToolResult.Output.ValueKind == JsonValueKind.String ? r.ToolResult.Output.GetString() : r.ToolResult.Output.GetRawText(),
                 },
-                ToolResultStreamPart r => new()
+                ToolResultStreamPart r => WithProviderFlag(new()
                 {
                     ["type"] = "tool-output-available",
                     ["toolCallId"] = r.ToolResult.ToolCallId,
                     ["output"] = JsonUtil.ToNode(r.ToolResult.Output),
-                },
+                }, r.ToolResult.ProviderExecuted),
+                SourceStreamPart src => SourceChunk(src.Source),
                 FinishStepPart => new() { ["type"] = "finish-step" },
                 FinishPart => new() { ["type"] = "finish" },
+                AbortPart => new() { ["type"] = "abort" },
                 ErrorPart e => new() { ["type"] = "error", ["errorText"] = onError?.Invoke(e.Error) ?? "Se produjo un error." },
                 _ => null,
             };
@@ -213,6 +235,27 @@ public static class UIMessageStream
                 yield return chunk;
             }
         }
+    }
+
+    private static JsonObject WithProviderFlag(JsonObject chunk, bool providerExecuted)
+    {
+        if (providerExecuted)
+        {
+            chunk["providerExecuted"] = true;
+        }
+
+        return chunk;
+    }
+
+    private static JsonObject SourceChunk(SourcePart source)
+    {
+        var chunk = new JsonObject { ["type"] = "source-url", ["sourceId"] = source.Id, ["url"] = source.Url };
+        if (source.Title is not null)
+        {
+            chunk["title"] = source.Title;
+        }
+
+        return chunk;
     }
 
     /// <summary>Escribe el stream SSE completo (incluido <c>data: [DONE]</c>) en <paramref name="output"/>.</summary>

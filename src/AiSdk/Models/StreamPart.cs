@@ -32,6 +32,12 @@ public sealed record ToolInputDeltaPart(string ToolCallId, string Delta) : Strea
 /// <summary>(modelo) Llamada a herramienta completa.</summary>
 public sealed record ToolCallStreamPart(ToolCallPart ToolCall) : StreamPart;
 
+/// <summary>(modelo) Fuente o cita.</summary>
+public sealed record SourceStreamPart(SourcePart Source) : StreamPart;
+
+/// <summary>(modelo) Parte de contenido completa que no tiene representación incremental (p. ej. bloques crudos del proveedor).</summary>
+public sealed record ContentStreamPart(ContentPart Content) : StreamPart;
+
 /// <summary>(modelo) Metadatos de la respuesta.</summary>
 public sealed record ResponseMetadataPart(ResponseMetadata Metadata) : StreamPart;
 
@@ -53,9 +59,15 @@ public sealed record TextEndPart(string Id) : StreamPart;
 
 public sealed record ReasoningStartPart(string Id) : StreamPart;
 
-/// <summary>Resultado de la ejecución de una herramienta.</summary>
+/// <summary>
+/// Resultado de una herramienta. Lo emite el bucle tras ejecutar herramientas locales,
+/// o el propio modelo para herramientas de servidor (<see cref="ToolResultPart.ProviderExecuted"/>).
+/// </summary>
 public sealed record ToolResultStreamPart(ToolResultPart ToolResult) : StreamPart;
 
 public sealed record FinishStepPart(StepResult Step) : StreamPart;
 
 public sealed record FinishPart(FinishReason FinishReason, Usage TotalUsage) : StreamPart;
+
+/// <summary>La generación se canceló (<see cref="System.Threading.CancellationToken"/>).</summary>
+public sealed record AbortPart : StreamPart;

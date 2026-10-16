@@ -28,12 +28,28 @@ public static class LanguageModelExtensions
                     yield return new ToolInputDeltaPart(c.ToolCallId, c.Input.GetRawText());
                     yield return new ToolCallStreamPart(c);
                     break;
+                case ToolResultPart r:
+                    yield return new ToolResultStreamPart(r);
+                    break;
+                case SourcePart src:
+                    yield return new SourceStreamPart(src);
+                    break;
+                default:
+                    yield return new ContentStreamPart(part);
+                    break;
             }
         }
 
         yield return new ModelFinishPart(result.FinishReason, result.Usage);
         await Task.CompletedTask.ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Devuelve un modelo que, si este falla, prueba los modelos de respaldo en orden
+    /// (p. ej. Claude → GPT → Ollama local).
+    /// </summary>
+    public static ILanguageModel WithFallback(this ILanguageModel model, params ILanguageModel[] fallbacks) =>
+        new FallbackLanguageModel([model, .. fallbacks]);
 
     /// <summary>Envuelve el modelo con middleware.</summary>
     public static ILanguageModel WithMiddleware(this ILanguageModel model, params ILanguageModelMiddleware[] middleware) =>

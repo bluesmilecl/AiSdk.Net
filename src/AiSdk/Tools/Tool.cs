@@ -44,6 +44,13 @@ public sealed class Tool
     public ToolExecuteFunc? Execute { get; init; }
 
     /// <summary>
+    /// Valida la entrada antes de ejecutar (devuelve el mensaje de error o null si es válida).
+    /// <see cref="Create{TInput,TOutput}(string,string,Func{TInput,ToolExecutionContext,CancellationToken,Task{TOutput}},JsonSerializerOptions?)"/>
+    /// y <see cref="FromDelegate"/> la configuran automáticamente.
+    /// </summary>
+    public Func<JsonElement, string?>? ValidateInput { get; init; }
+
+    /// <summary>
     /// Si devuelve true, la ejecución requiere aprobación mediante
     /// <see cref="CallSettings.OnToolApproval"/> (human-in-the-loop).
     /// </summary>
@@ -54,7 +61,33 @@ public sealed class Tool
 
     public JsonSerializerOptions SerializerOptions { get; init; } = JsonSchema.DefaultSerializerOptions;
 
-    public ToolDefinition ToDefinition() => new(Name, Description, InputSchema) { Strict = Strict };
+    /// <summary>Proveedor que ejecuta esta herramienta en su servidor (null = herramienta local).</summary>
+    public string? ProviderName { get; init; }
+
+    /// <summary>Definición cruda que se envía al proveedor (solo herramientas de servidor).</summary>
+    public JsonObject? ProviderDefinition { get; init; }
+
+    public bool IsProviderTool => ProviderDefinition is not null;
+
+    public ToolDefinition ToDefinition() => new(Name, Description, InputSchema)
+    {
+        Strict = Strict,
+        ProviderName = ProviderName,
+        ProviderDefinition = ProviderDefinition,
+    };
+
+    /// <summary>
+    /// Herramienta ejecutada por el proveedor (búsqueda web, ejecución de código...).
+    /// Normalmente se crea con las fábricas de cada proveedor (<c>AnthropicTools</c>, <c>OpenAITools</c>).
+    /// </summary>
+    public static Tool ProviderDefined(string providerName, string name, JsonObject definition) => new()
+    {
+        Name = name,
+        Description = null,
+        InputSchema = JsonUtil.EmptyObject,
+        ProviderName = providerName,
+        ProviderDefinition = definition,
+    };
 
     /// <summary>Marca la herramienta como sujeta a aprobación humana.</summary>
     public Tool RequireApproval(Func<ToolCallPart, bool>? predicate = null) => new()
@@ -63,8 +96,11 @@ public sealed class Tool
         Description = Description,
         InputSchema = InputSchema,
         Execute = Execute,
+        ValidateInput = ValidateInput,
         Strict = Strict,
         SerializerOptions = SerializerOptions,
+        ProviderName = ProviderName,
+        ProviderDefinition = ProviderDefinition,
         NeedsApproval = call => ValueTask.FromResult(predicate?.Invoke(call) ?? true),
     };
 
@@ -86,6 +122,17 @@ public sealed class Tool
             Description = description,
             InputSchema = JsonSchema.For<TInput>(options),
             SerializerOptions = options,
+            ValidateInput = input =>
+            {
+                try
+                {
+                    return input.Deserialize<TInput>(options) is null ? "La entrada es nula." : null;
+                }
+                catch (Exception ex) when (ex is JsonException or NotSupportedException or InvalidOperationException)
+                {
+                    return ex.Message;
+                }
+            },
             Execute = async (input, ctx, ct) =>
             {
                 var typed = input.Deserialize<TInput>(options)
@@ -150,44 +197,62 @@ public sealed class Tool
             props.Add((PropertyName(p, options), schema, !p.HasDefaultValue));
         }
 
+        object?[] BindArguments(JsonElement input, ToolExecutionContext? ctx, CancellationToken ct)
+        {
+            var args = new object?[parameters.Length];
+            for (var i = 0; i < parameters.Length; i++)
+            {
+                var p = parameters[i];
+                if (p.ParameterType == typeof(CancellationToken))
+                {
+                    args[i] = ct;
+                }
+                else if (p.ParameterType == typeof(ToolExecutionContext))
+                {
+                    args[i] = ctx;
+                }
+                else if (p.ParameterType == typeof(IServiceProvider))
+                {
+                    args[i] = ctx?.Services;
+                }
+                else if (input.ValueKind == JsonValueKind.Object && input.TryGetProperty(PropertyName(p, options), out var value))
+                {
+                    args[i] = value.Deserialize(p.ParameterType, options);
+                }
+                else if (p.HasDefaultValue)
+                {
+                    args[i] = p.DefaultValue;
+                }
+                else
+                {
+                    throw new JsonException($"Falta el parámetro requerido '{PropertyName(p, options)}'.");
+                }
+            }
+
+            return args;
+        }
+
         return new Tool
         {
             Name = name,
             Description = description ?? method.GetCustomAttribute<DescriptionAttribute>()?.Description,
             InputSchema = JsonSchema.Object(props),
             SerializerOptions = options,
+            ValidateInput = input =>
+            {
+                try
+                {
+                    BindArguments(input, null, CancellationToken.None);
+                    return null;
+                }
+                catch (Exception ex) when (ex is JsonException or NotSupportedException or InvalidOperationException)
+                {
+                    return ex.Message;
+                }
+            },
             Execute = async (input, ctx, ct) =>
             {
-                var args = new object?[parameters.Length];
-                for (var i = 0; i < parameters.Length; i++)
-                {
-                    var p = parameters[i];
-                    if (p.ParameterType == typeof(CancellationToken))
-                    {
-                        args[i] = ct;
-                    }
-                    else if (p.ParameterType == typeof(ToolExecutionContext))
-                    {
-                        args[i] = ctx;
-                    }
-                    else if (p.ParameterType == typeof(IServiceProvider))
-                    {
-                        args[i] = ctx.Services;
-                    }
-                    else if (input.ValueKind == JsonValueKind.Object && input.TryGetProperty(PropertyName(p, options), out var value))
-                    {
-                        args[i] = value.Deserialize(p.ParameterType, options);
-                    }
-                    else if (p.HasDefaultValue)
-                    {
-                        args[i] = p.DefaultValue;
-                    }
-                    else
-                    {
-                        throw new JsonException($"Falta el parámetro requerido '{p.Name}'.");
-                    }
-                }
-
+                var args = BindArguments(input, ctx, ct);
                 object? result;
                 try
                 {
