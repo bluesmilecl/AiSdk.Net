@@ -17,6 +17,21 @@ public sealed class McpClientOptions
 
     /// <summary>Tiempo máximo de espera por respuesta.</summary>
     public TimeSpan RequestTimeout { get; init; } = TimeSpan.FromSeconds(60);
+
+    /// <summary>Raíces que el servidor puede consultar con <c>roots/list</c> (declara la capacidad <c>roots</c>).</summary>
+    public IReadOnlyList<McpRoot>? Roots { get; init; }
+
+    /// <summary>
+    /// Modelo con el que se atienden las peticiones <c>sampling/createMessage</c> del servidor
+    /// (declara la capacidad <c>sampling</c>). Alternativa: <see cref="SamplingHandler"/>.
+    /// </summary>
+    public ILanguageModel? SamplingModel { get; init; }
+
+    /// <summary>Atiende <c>sampling/createMessage</c> con lógica propia (p. ej. pedir aprobación al usuario).</summary>
+    public Func<McpSamplingRequest, CancellationToken, Task<McpSamplingResult>>? SamplingHandler { get; init; }
+
+    /// <summary>Atiende <c>elicitation/create</c>: el servidor pide datos al usuario (declara la capacidad <c>elicitation</c>).</summary>
+    public Func<McpElicitationRequest, CancellationToken, Task<McpElicitationResult>>? ElicitationHandler { get; init; }
 }
 
 /// <summary>Información del servidor devuelta en <c>initialize</c>.</summary>
@@ -65,10 +80,13 @@ public sealed class McpClient : IAsyncDisposable
     private Task? _dispatchLoop;
     private long _nextId;
 
+    private IReadOnlyList<McpRoot>? _roots;
+
     private McpClient(IMcpTransport transport, McpClientOptions options)
     {
         _transport = transport;
         _options = options;
+        _roots = options.Roots;
     }
 
     public McpServerInfo ServerInfo { get; private set; } = new("unknown", null);
@@ -104,10 +122,26 @@ public sealed class McpClient : IAsyncDisposable
         await _transport.StartAsync(cancellationToken).ConfigureAwait(false);
         _dispatchLoop = Task.Run(DispatchLoopAsync);
 
+        var capabilities = new JsonObject();
+        if (_roots is not null)
+        {
+            capabilities["roots"] = new JsonObject { ["listChanged"] = true };
+        }
+
+        if (_options.SamplingModel is not null || _options.SamplingHandler is not null)
+        {
+            capabilities["sampling"] = new JsonObject();
+        }
+
+        if (_options.ElicitationHandler is not null)
+        {
+            capabilities["elicitation"] = new JsonObject();
+        }
+
         var result = await SendRequestAsync("initialize", new JsonObject
         {
             ["protocolVersion"] = _options.ProtocolVersion,
-            ["capabilities"] = new JsonObject(),
+            ["capabilities"] = capabilities,
             ["clientInfo"] = new JsonObject { ["name"] = _options.ClientName, ["version"] = _options.ClientVersion },
         }, cancellationToken).ConfigureAwait(false);
 
@@ -197,6 +231,114 @@ public sealed class McpClient : IAsyncDisposable
         return blocks.All(b => (string?)b["type"] == "text") ? result.Text : result.Content;
     }
 
+    // ------------------------------------------------------------------
+    // Recursos
+    // ------------------------------------------------------------------
+
+    /// <summary>Lista los recursos del servidor (recorre la paginación).</summary>
+    public async Task<IReadOnlyList<McpResource>> ListResourcesAsync(CancellationToken cancellationToken = default) =>
+        (await ListAllAsync("resources/list", "resources", cancellationToken).ConfigureAwait(false))
+            .Select(r => new McpResource((string?)r["uri"] ?? string.Empty, (string?)r["name"] ?? string.Empty)
+            {
+                Title = (string?)r["title"],
+                Description = (string?)r["description"],
+                MimeType = (string?)r["mimeType"],
+            })
+            .ToList();
+
+    /// <summary>Lista las plantillas de recursos del servidor.</summary>
+    public async Task<IReadOnlyList<McpResourceTemplate>> ListResourceTemplatesAsync(CancellationToken cancellationToken = default) =>
+        (await ListAllAsync("resources/templates/list", "resourceTemplates", cancellationToken).ConfigureAwait(false))
+            .Select(r => new McpResourceTemplate((string?)r["uriTemplate"] ?? string.Empty, (string?)r["name"] ?? string.Empty)
+            {
+                Description = (string?)r["description"],
+                MimeType = (string?)r["mimeType"],
+            })
+            .ToList();
+
+    /// <summary>Lee un recurso por su URI.</summary>
+    public async Task<IReadOnlyList<McpResourceContent>> ReadResourceAsync(string uri, CancellationToken cancellationToken = default)
+    {
+        var result = await SendRequestAsync("resources/read", new JsonObject { ["uri"] = uri }, cancellationToken).ConfigureAwait(false);
+        return (result?["contents"] as JsonArray ?? [])
+            .OfType<JsonObject>()
+            .Select(c => new McpResourceContent(
+                (string?)c["uri"] ?? uri,
+                (string?)c["mimeType"],
+                (string?)c["text"],
+                (string?)c["blob"] is { } blob ? Convert.FromBase64String(blob) : null))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Lee un recurso y lo devuelve como partes de contenido (texto o archivo) para añadirlo a un mensaje.
+    /// </summary>
+    public async Task<IReadOnlyList<ContentPart>> ReadResourceAsPartsAsync(string uri, CancellationToken cancellationToken = default) =>
+        (await ReadResourceAsync(uri, cancellationToken).ConfigureAwait(false))
+            .Select(c => c.Text is not null
+                ? (ContentPart)new TextPart(c.Text)
+                : (c.MimeType ?? string.Empty).StartsWith("image/", StringComparison.Ordinal)
+                    ? new ImagePart { Data = c.Blob, MediaType = c.MimeType! }
+                    : new FilePart { Data = c.Blob, MediaType = c.MimeType ?? "application/octet-stream", Filename = c.Uri })
+            .ToList();
+
+    // ------------------------------------------------------------------
+    // Prompts
+    // ------------------------------------------------------------------
+
+    /// <summary>Lista los prompts del servidor.</summary>
+    public async Task<IReadOnlyList<McpPrompt>> ListPromptsAsync(CancellationToken cancellationToken = default) =>
+        (await ListAllAsync("prompts/list", "prompts", cancellationToken).ConfigureAwait(false))
+            .Select(p => new McpPrompt(
+                (string?)p["name"] ?? string.Empty,
+                (string?)p["description"],
+                (p["arguments"] as JsonArray ?? [])
+                    .OfType<JsonObject>()
+                    .Select(a => new McpPromptArgument((string?)a["name"] ?? string.Empty, (string?)a["description"], (bool?)a["required"] ?? false))
+                    .ToList())
+            {
+                Title = (string?)p["title"],
+            })
+            .ToList();
+
+    /// <summary>Obtiene un prompt con sus argumentos y lo convierte en mensajes del modelo.</summary>
+    public async Task<McpPromptResult> GetPromptAsync(string name, IReadOnlyDictionary<string, string>? arguments = null, CancellationToken cancellationToken = default)
+    {
+        var args = new JsonObject();
+        foreach (var (key, value) in arguments ?? new Dictionary<string, string>())
+        {
+            args[key] = value;
+        }
+
+        var result = await SendRequestAsync("prompts/get", new JsonObject { ["name"] = name, ["arguments"] = args }, cancellationToken).ConfigureAwait(false);
+        return new McpPromptResult(
+            (string?)result?["description"],
+            (result?["messages"] as JsonArray ?? []).OfType<JsonObject>().Select(McpConvert.ToModelMessage).ToList());
+    }
+
+    /// <summary>Cambia las raíces expuestas y avisa al servidor (<c>notifications/roots/list_changed</c>).</summary>
+    public Task SetRootsAsync(IReadOnlyList<McpRoot> roots, CancellationToken cancellationToken = default)
+    {
+        _roots = roots;
+        return SendNotificationAsync("notifications/roots/list_changed", null, cancellationToken);
+    }
+
+    private async Task<List<JsonObject>> ListAllAsync(string method, string property, CancellationToken cancellationToken)
+    {
+        var items = new List<JsonObject>();
+        string? cursor = null;
+        do
+        {
+            var parameters = cursor is null ? new JsonObject() : new JsonObject { ["cursor"] = cursor };
+            var result = await SendRequestAsync(method, parameters, cancellationToken).ConfigureAwait(false);
+            items.AddRange((result?[property] as JsonArray ?? []).OfType<JsonObject>().Select(i => (JsonObject)i.DeepClone()));
+            cursor = (string?)result?["nextCursor"];
+        }
+        while (!string.IsNullOrEmpty(cursor));
+
+        return items;
+    }
+
     /// <summary>Envía una petición JSON-RPC arbitraria y devuelve su <c>result</c>.</summary>
     public async Task<JsonNode?> SendRequestAsync(string method, JsonObject? parameters, CancellationToken cancellationToken = default)
     {
@@ -250,7 +392,8 @@ public sealed class McpClient : IAsyncDisposable
                 }
                 else if (hasMethod && idNode is not null)
                 {
-                    await HandleServerRequestAsync(message, idNode).ConfigureAwait(false);
+                    // Sampling y elicitation pueden tardar: se atienden sin bloquear el resto de mensajes.
+                    _ = Task.Run(() => HandleServerRequestAsync(message, idNode));
                 }
                 else if (hasMethod)
                 {
@@ -300,21 +443,114 @@ public sealed class McpClient : IAsyncDisposable
         }
     }
 
-    private Task HandleServerRequestAsync(JsonObject message, JsonNode idNode)
+    private async Task HandleServerRequestAsync(JsonObject message, JsonNode idNode)
     {
         var method = (string?)message["method"];
+        var parameters = message["params"] as JsonObject ?? [];
         var response = new JsonObject { ["jsonrpc"] = "2.0", ["id"] = idNode.DeepClone() };
-        if (method == "ping")
+        try
         {
-            response["result"] = new JsonObject();
+            JsonNode? result = method switch
+            {
+                "ping" => new JsonObject(),
+                "roots/list" when _roots is not null => new JsonObject
+                {
+                    ["roots"] = new JsonArray(_roots.Select(r =>
+                    {
+                        var root = new JsonObject { ["uri"] = r.Uri };
+                        if (r.Name is not null)
+                        {
+                            root["name"] = r.Name;
+                        }
+
+                        return (JsonNode?)root;
+                    }).ToArray()),
+                },
+                "sampling/createMessage" when _options.SamplingModel is not null || _options.SamplingHandler is not null =>
+                    await SampleAsync(parameters).ConfigureAwait(false),
+                "elicitation/create" when _options.ElicitationHandler is not null =>
+                    await ElicitAsync(parameters).ConfigureAwait(false),
+                _ => null,
+            };
+
+            if (result is null)
+            {
+                response["error"] = new JsonObject { ["code"] = -32601, ["message"] = $"Método no soportado: {method}" };
+            }
+            else
+            {
+                response["result"] = result;
+            }
+        }
+        catch (Exception ex)
+        {
+            response["error"] = new JsonObject { ["code"] = -32603, ["message"] = ex.Message };
+        }
+
+        try
+        {
+            await _transport.SendAsync(response, _cts.Token).ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            // El transporte pudo cerrarse mientras se atendía la petición.
+        }
+    }
+
+    private async Task<JsonNode> SampleAsync(JsonObject parameters)
+    {
+        var request = new McpSamplingRequest(
+            (parameters["messages"] as JsonArray ?? []).OfType<JsonObject>().Select(McpConvert.ToModelMessage).ToList(),
+            (string?)parameters["systemPrompt"],
+            (int?)parameters["maxTokens"],
+            (double?)parameters["temperature"],
+            (parameters["stopSequences"] as JsonArray)?.Select(s => (string?)s).OfType<string>().ToList(),
+            parameters["modelPreferences"]?.DeepClone());
+
+        McpSamplingResult sampled;
+        if (_options.SamplingHandler is not null)
+        {
+            sampled = await _options.SamplingHandler(request, _cts.Token).ConfigureAwait(false);
         }
         else
         {
-            // Este cliente no declara capacidades de sampling, roots ni elicitation.
-            response["error"] = new JsonObject { ["code"] = -32601, ["message"] = $"Método no soportado: {method}" };
+            var model = _options.SamplingModel!;
+            var generated = await Ai.GenerateTextAsync(new GenerateTextOptions
+            {
+                Model = model,
+                System = request.SystemPrompt,
+                Messages = request.Messages,
+                MaxOutputTokens = request.MaxTokens,
+                Temperature = request.Temperature,
+                StopSequences = request.StopSequences,
+                CancellationToken = _cts.Token,
+            }).ConfigureAwait(false);
+            sampled = new McpSamplingResult(
+                generated.Text,
+                generated.Response?.ModelId ?? model.ModelId,
+                generated.FinishReason == FinishReason.Length ? "maxTokens" : "endTurn");
         }
 
-        return _transport.SendAsync(response, _cts.Token);
+        return new JsonObject
+        {
+            ["role"] = "assistant",
+            ["content"] = new JsonObject { ["type"] = "text", ["text"] = sampled.Text },
+            ["model"] = sampled.Model,
+            ["stopReason"] = sampled.StopReason,
+        };
+    }
+
+    private async Task<JsonNode> ElicitAsync(JsonObject parameters)
+    {
+        var schema = parameters["requestedSchema"] is JsonObject s ? JsonSerializer.SerializeToElement(s) : Internal.JsonUtil.EmptyObject;
+        var result = await _options.ElicitationHandler!(new McpElicitationRequest((string?)parameters["message"] ?? string.Empty, schema), _cts.Token).ConfigureAwait(false);
+        var node = new JsonObject { ["action"] = result.Action };
+        if (result.Content is not null)
+        {
+            node["content"] = result.Content.DeepClone();
+        }
+
+        return node;
     }
 
     public async ValueTask DisposeAsync()
