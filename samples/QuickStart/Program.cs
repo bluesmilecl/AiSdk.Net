@@ -1,8 +1,11 @@
 ﻿// Ejemplos de AiSdk para .NET.
 // Uso:  dotnet run --project samples/QuickStart -- [anthropic|openai|google|mistral|bedrock|mock] [ejemplo] [args...]
 // Ejemplos: text, stream, tools, agent, object, stream-object, session, subagents,
-//           web-search, fallback, repair, mcp, image, speech, transcribe, rag, count-tokens, batch
+//           web-search, fallback, repair, mcp, image, speech, transcribe, rag, count-tokens, batch,
+//           document, attachments, compress
 //
+//   document:    ... -- anthropic document informe.pdf   (PDF, Word, Excel, PowerPoint, imagen, audio, video → Markdown)
+//   attachments: ... -- mistral attachments boleta.png   (modelo sin visión + OCR local con Tesseract)
 //   mcp:        ... -- anthropic mcp npx -y @modelcontextprotocol/server-everything
 //   image/speech/transcribe usan OpenAI (OPENAI_API_KEY); transcribe recibe la ruta de un audio.
 //
@@ -12,6 +15,7 @@ using System.ComponentModel;
 using AiSdk;
 using AiSdk.Anthropic;
 using AiSdk.Bedrock;
+using AiSdk.Documents;
 using AiSdk.Google;
 using AiSdk.Mcp;
 using AiSdk.Mistral;
@@ -390,6 +394,74 @@ switch (example)
         break;
     }
 
+    case "document":
+    {
+        // Documento → Markdown. OCR local con Tesseract si está instalado; el modelo describe imágenes.
+        var path = args.ElementAtOrDefault(2) ?? throw new ArgumentException("Indique la ruta de un archivo.");
+        var converter = new MarkdownConverter(new MarkdownConverterOptions
+        {
+            Ocr = new TesseractOcr() is { IsAvailable: true } tesseract ? tesseract : new VisionModelOcr(model),
+            VisionModel = providerName == "mock" ? null : model,
+            Transcription = Environment.GetEnvironmentVariable("OPENAI_API_KEY") is { Length: > 0 } ? OpenAIProvider.Default.Transcription("gpt-4o-transcribe") : null,
+            Language = "es",
+        });
+        var result = await converter.ConvertFileAsync(path);
+        Console.WriteLine(result.Markdown);
+        Console.WriteLine($"\n--- {result.Pages.Count} página(s), ~{result.EstimatedTokens} tokens{(result.Warnings.Count > 0 ? ", avisos: " + string.Join(" | ", result.Warnings) : string.Empty)}");
+
+        // Indexar y preguntar sobre el documento.
+        var store = new InMemoryVectorStore(new MockEmbeddingModel(dimensions: 64));
+        await store.UpsertAsync(result.ToVectorDocuments(Path.GetFileName(path)));
+        Console.WriteLine($"Indexado en {(await store.SearchAsync("resumen", topK: 100)).Count} fragmentos.");
+        break;
+    }
+
+    case "attachments":
+    {
+        // Un modelo sin visión ni soporte de PDF recibe los adjuntos ya convertidos a Markdown.
+        var path = args.ElementAtOrDefault(2);
+        var bytes = path is null ? "Boleta: TOTAL $12.345"u8.ToArray() : await File.ReadAllBytesAsync(path);
+        var textOnly = model.WithMiddleware(DocumentMiddlewares.ConvertAttachments(
+            new MarkdownConverter(new MarkdownConverterOptions { Ocr = new TesseractOcr(), Language = "es" }),
+            new AttachmentConversionOptions { MaxTokensPerAttachment = 4000 }));
+        var answer = await Ai.GenerateTextAsync(new GenerateTextOptions
+        {
+            Model = textOnly,
+            Messages =
+            [
+                ModelMessage.User(
+                    new TextPart("¿Cuál es el total de este documento?"),
+                    new FilePart { Data = bytes, MediaType = "application/octet-stream", Filename = path is null ? "boleta.txt" : Path.GetFileName(path) }),
+            ],
+            ProviderOptions = providerOptions,
+        });
+        Console.WriteLine(answer.Text);
+        break;
+    }
+
+    case "compress":
+    {
+        // Conversaciones largas: los turnos antiguos se resumen con un modelo económico.
+        var summarizer = providerName switch
+        {
+            "anthropic" => AnthropicProvider.Default.Messages("claude-haiku-5-5"),
+            "openai" => OpenAIProvider.Default.Responses("gpt-5-mini"),
+            _ => model,
+        };
+        var compact = model.WithMiddleware(Middlewares.CompressContext(maxInputTokens: 2_000, summarizer, keepRecentMessages: 4));
+        var history = new List<ModelMessage>();
+        for (var i = 1; i <= 12; i++)
+        {
+            history.Add(ModelMessage.User($"Dato {i}: el cliente {i} compró {i * 3} unidades. " + new string('·', 800)));
+            history.Add(ModelMessage.Assistant($"Anotado el dato {i}."));
+        }
+
+        history.Add(ModelMessage.User("¿Cuántas unidades compró el cliente 2?"));
+        Console.WriteLine($"Historial: ~{TokenEstimator.Estimate(history)} tokens (límite 2.000)");
+        Console.WriteLine((await Ai.GenerateTextAsync(new GenerateTextOptions { Model = compact, Messages = history, ProviderOptions = providerOptions })).Text);
+        break;
+    }
+
     default:
         Console.WriteLine($"Ejemplo desconocido: {example}");
         break;
@@ -410,6 +482,8 @@ static MockLanguageModel MockScript(string example) => example switch
     "object" or "stream-object" => new MockLanguageModel()
         .ReturnsText("""{"name":"Empanadas de pino","ingredients":["harina","carne","cebolla","huevo","aceitunas"],"minutes":90}"""),
     "session" => new MockLanguageModel().ReturnsText("¡Hola Ana!").ReturnsText("Te llamas Ana."),
+    "attachments" => new MockLanguageModel().ReturnsText("El total es $12.345."),
+    "compress" => new MockLanguageModel().ReturnsText("- Cliente i compró 3·i unidades.").ReturnsText("El cliente 2 compró 6 unidades."),
     "web-search" => new MockLanguageModel().Returns(_ => new LanguageModelResult
     {
         Content =

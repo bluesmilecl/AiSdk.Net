@@ -14,7 +14,12 @@ y en el [AI SDK de Laravel](https://laravel.com/docs/ai-sdk). Una sola API, inde
 - **herramientas del proveedor**: búsqueda web, web fetch, ejecución de código, búsqueda en archivos, con **fuentes/citas**
 - **fallback entre proveedores**, **reparación** de llamadas a herramientas inválidas y callbacks `OnChunk`/`OnError`/`OnFinish`/`OnAbort`
 - **imágenes, voz y transcripción** (`GenerateImageAsync`, `GenerateSpeechAsync`, `TranscribeAsync`)
-- **RAG**: almacén vectorial, fragmentación de texto, reranking y búsqueda como herramienta del agente
+- **RAG**: almacén vectorial, filtros por metadatos, búsqueda híbrida, reranking y búsqueda como herramienta del agente;
+  **PostgreSQL + pgvector** nativo y adaptador para **Qdrant, Pinecone, Azure AI Search, Redis, Weaviate, Mongo…**
+  (Microsoft.Extensions.VectorData)
+- **documentos a Markdown**: PDF, Word, Excel, PowerPoint, HTML, imágenes, audio y video, con **OCR** (Tesseract local,
+  modelos con visión o Mistral OCR), para dar contexto a la IA y usar **modelos sin visión** con cualquier adjunto
+- **compresión de contexto**: resumen incremental de conversaciones largas, compresión extractiva por relevancia y map-reduce
 - **conteo de tokens**, **batches** (a mitad de precio), **Files API** y **vector stores** de los proveedores
 - backend ASP.NET Core compatible con `useChat` de AI SDK UI (React, Vue, Svelte), con **datos propios** y **streams reanudables**
 
@@ -28,6 +33,9 @@ dotnet add package AiSdk.Net               # núcleo
 dotnet add package AiSdk.Net.Anthropic     # o AiSdk.Net.OpenAI, .Google, .Mistral, .Bedrock, .Cohere
 dotnet add package AiSdk.Net.Mcp           # cliente MCP
 dotnet add package AiSdk.Net.AspNetCore    # backend para useChat
+dotnet add package AiSdk.Net.Documents     # PDF/Office/imágenes/audio/video → Markdown + OCR
+dotnet add package AiSdk.Net.PgVector      # almacén PostgreSQL + pgvector
+dotnet add package AiSdk.Net.VectorData    # Qdrant, Pinecone, Azure AI Search… vía Microsoft.Extensions.VectorData
 ```
 
 Los paquetes se llaman `AiSdk.Net.*` (el id `AiSdk` ya existe en nuget.org); los namespaces son `AiSdk.*`.
@@ -46,6 +54,9 @@ Se publican con el workflow `release.yml` al crear un tag `vX.Y.Z` (requiere el 
 | `AiSdk.Extensions.AI` | Adaptador de `Microsoft.Extensions.AI` (`IChatClient`, `IEmbeddingGenerator`) → cualquier proveedor de ese ecosistema |
 | `AiSdk.Extensions.DependencyInjection` | `services.AddAiSdk(...)`, `IHttpClientFactory`, agentes en el contenedor |
 | `AiSdk.AspNetCore` | `ToUIMessageStreamResult()` / `ToTextStreamResult()` para Minimal APIs y controladores |
+| `AiSdk.Documents` | `MarkdownConverter` (PDF, Word, Excel, PowerPoint, HTML, CSV/JSON, imágenes, audio, video), OCR con Tesseract, middleware `ConvertAttachments` para modelos sin visión |
+| `AiSdk.PgVector` | Almacén PostgreSQL + pgvector: HNSW, filtros en `jsonb`, búsqueda híbrida (vectores + texto completo con RRF) |
+| `AiSdk.VectorData` | `VectorDataStore`: cualquier conector de Microsoft.Extensions.VectorData (Qdrant, Pinecone, Azure AI Search, Redis, Weaviate, MongoDB, Cosmos DB, SQL Server, Elasticsearch…) |
 
 ## Equivalencias
 
@@ -98,11 +109,16 @@ dotnet run --project samples/QuickStart -- openai stream-object
 ```
 
 Ejemplos disponibles: `text`, `stream`, `tools`, `agent`, `object`, `stream-object`, `session`, `subagents`,
-`web-search`, `fallback`, `repair`, `mcp`, `image`, `speech`, `transcribe`.
+`web-search`, `fallback`, `repair`, `mcp`, `image`, `speech`, `transcribe`, `rag`, `count-tokens`, `batch`,
+`document`, `attachments`, `compress`.
 
 ```bash
 # MCP con cualquier servidor (stdio):
 dotnet run --project samples/QuickStart -- anthropic mcp npx -y @modelcontextprotocol/server-everything
+# Cualquier documento a Markdown (PDF, Word, Excel, PowerPoint, imagen, audio, video):
+dotnet run --project samples/QuickStart -- anthropic document informe.pdf
+# Modelo sin visión leyendo una boleta escaneada (OCR local):
+dotnet run --project samples/QuickStart -- mistral attachments boleta.png
 ```
 
 ### Generar texto
@@ -440,6 +456,106 @@ var context = await store.BuildContextAsync("¿cómo instalo?");
 var ranked = await Ai.RerankAsync(CohereProvider.Default.Reranking(), "capital de Chile", documentos, topN: 3);
 ```
 
+**Filtros por metadatos** (los traduce cada almacén a su lenguaje: SQL, filtros de Qdrant, OData…):
+
+```csharp
+var filtro = VectorFilter.Eq("tipo", "manual") & (VectorFilter.In("pais", "CL", "PE") | !VectorFilter.Exists("pais"));
+var hits = await store.SearchAsync("garantía", topK: 5, filter: filtro);
+var tool = store.AsTool(filter: VectorFilter.Eq("cliente", clienteId));   // multi-tenant
+```
+
+**PostgreSQL + pgvector** (`AiSdk.PgVector`): crea la tabla e índices (HNSW, GIN) automáticamente, y ofrece
+búsqueda híbrida, que encuentra códigos, nombres y siglas que los embeddings pierden:
+
+```csharp
+await using var store = PgVectorStore.Create(connectionString, embeddings, new PgVectorStoreOptions
+{
+    Dimensions = 1536,
+    Table = "documentos",
+    TextSearchConfig = "spanish",
+});
+var hits = await store.HybridSearchAsync("error SKU-77812", topK: 5);
+await store.DeleteWhereAsync(VectorFilter.Eq("source", "manual-viejo.pdf"));
+var tool = store.AsTool(hybrid: true);
+```
+
+**Qdrant, Pinecone, Azure AI Search, Redis, Weaviate…** (`AiSdk.VectorData`): un adaptador sobre
+Microsoft.Extensions.VectorData sirve para todos sus conectores. Los metadatos por los que se filtra se
+declaran en `FilterableFields`:
+
+```csharp
+var qdrant = new QdrantVectorStore(new QdrantClient("localhost"), ownsClient: true);
+var store = new VectorDataStore(qdrant, embeddings, new VectorDataStoreOptions
+{
+    CollectionName = "documentos",
+    Dimensions = 1536,
+    FilterableFields = ["tipo", "pais", "source"],
+});
+```
+
+### Documentos a Markdown y OCR
+
+`AiSdk.Documents` convierte archivos al formato que los modelos leen mejor y con menos tokens
+(similar a MarkItDown o Docling). Las imágenes y páginas escaneadas pasan por OCR; los modelos con visión
+describen gráficos y fotos; el audio y el video se transcriben.
+
+| Formato | Resultado |
+|---|---|
+| PDF | Texto en orden de lectura, títulos por tamaño de fuente, sin encabezados/pies repetidos; páginas escaneadas con OCR |
+| Word (.docx) | Títulos, listas numeradas y con viñetas, negrita/cursiva, enlaces, tablas, imágenes incrustadas (OCR/descripción) |
+| Excel (.xlsx) | Una tabla por hoja, fechas y resultados de fórmulas, límite de filas configurable |
+| PowerPoint (.pptx) | Una sección por diapositiva con título, viñetas, tablas, imágenes y notas del orador |
+| HTML, CSV/TSV, JSON, XML, YAML, texto | Markdown limpio, tablas y bloques de código |
+| Imágenes | Texto (OCR) y/o descripción con un modelo de visión |
+| Audio / video | Transcripción con marcas de tiempo; en video, línea de tiempo con escenas (fotogramas con `ffmpeg`) |
+
+```csharp
+var converter = new MarkdownConverter(new MarkdownConverterOptions
+{
+    Ocr = new TesseractOcr("spa+eng"),            // local; o MistralProvider.Default.Ocr(), o new VisionModelOcr(claude)
+    VisionModel = anthropic.Messages("claude-opus-5-5"),   // opcional: describe gráficos, fotos y fotogramas
+    Transcription = openai.Transcription("gpt-4o-transcribe"),   // opcional: audio y video
+    Language = "es",
+});
+
+var result = await converter.ConvertFileAsync("contrato-escaneado.pdf");
+Console.WriteLine(result.Markdown);          // también: Pages, Title, Warnings, EstimatedTokens
+
+// Directo a RAG: por página y fragmento, con metadatos source/page/title
+await store.IngestAsync(converter, await DocumentSource.FromFileAsync("manual.docx"));
+```
+
+Motores OCR incluidos: `TesseractOcr` (sin enviar datos a terceros; `apt install tesseract-ocr tesseract-ocr-spa`),
+`VisionModelOcr` (cualquier modelo con visión; lee tablas y escritura a mano) y `MistralOcr` (acepta PDF completos).
+Para PDF escaneados se usa `pdftoppm` (poppler-utils) si está instalado o, si no, la imagen incrustada de cada página.
+
+**Modelos sin visión ni soporte de archivos**: el middleware reemplaza imágenes, PDF, Office, audio y video por su
+Markdown antes de llamar al modelo (con caché, para no reprocesar el historial en cada turno):
+
+```csharp
+var model = mistral.Chat("mistral-small-latest")
+    .WithMiddleware(DocumentMiddlewares.ConvertAttachments(converter, new AttachmentConversionOptions
+    {
+        Native = NativeAttachments.None,              // o Images | Pdf si el modelo los soporta
+        MaxTokensPerAttachment = 8000,
+        CompressionEmbeddings = openai.Embedding("text-embedding-3-small"),   // conserva lo relevante a la pregunta
+    }));
+```
+
+### Compresión de contexto
+
+```csharp
+// Conversaciones largas: recorta resultados de herramientas antiguos y resume los turnos viejos
+// (incremental y cacheado) con un modelo barato; nunca separa una llamada a herramienta de su resultado.
+var model = claude.WithMiddleware(Middlewares.CompressContext(
+    maxInputTokens: 50_000, summarizer: anthropic.Messages("claude-haiku-5-5"), keepRecentMessages: 8));
+
+// Textos largos
+var relevante = await ContextCompressor.SelectRelevantAsync(embeddings, textoLargo, pregunta, maxTokens: 3000);
+var resumen = await ContextCompressor.SummarizeAsync(modeloBarato, textoLargo, targetTokens: 2000, focus: "plazos y montos");
+var tokens = TokenEstimator.Estimate(textoLargo);
+```
+
 ### Conteo de tokens, batches y archivos
 
 ```csharp
@@ -625,6 +741,9 @@ src/
   AiSdk.Extensions.AI/        adaptador Microsoft.Extensions.AI
   AiSdk.Extensions.DependencyInjection/
   AiSdk.AspNetCore/
+  AiSdk.Documents/            documentos → Markdown, OCR, middleware de adjuntos
+  AiSdk.PgVector/             almacén PostgreSQL + pgvector
+  AiSdk.VectorData/           adaptador Microsoft.Extensions.VectorData
 samples/
   QuickStart/                 ejemplos de consola
   ChatApi/                    backend para useChat
@@ -637,7 +756,8 @@ tests/AiSdk.IntegrationTests/ pruebas contra las APIs reales (opcionales)
 - Ejecutar las pruebas de integración con API keys reales (configurar los secretos en GitHub)
 - Primera publicación en nuget.org (crear el tag `v0.1.0` con `NUGET_API_KEY` configurado)
 - Azure OpenAI con autenticación Entra ID y Vertex AI nativos (hoy: endpoints compatibles o Microsoft.Extensions.AI)
-- Almacenes vectoriales listos para pgvector/Qdrant y almacén Redis para streams reanudables
+- Almacén Redis para streams reanudables
+- Detección de tablas en PDF digitales sin OCR (hoy: usar `PdfOcr = Always` con un OCR de modelo)
 - Generative UI y herramientas de servidor adicionales (computer use, memoria)
 
 ## Licencia
