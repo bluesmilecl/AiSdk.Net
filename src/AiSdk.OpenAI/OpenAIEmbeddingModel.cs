@@ -28,8 +28,11 @@ public sealed class OpenAIEmbeddingModel : IEmbeddingModel
         {
             ["model"] = ModelId,
             ["input"] = new JsonArray(values.Select(v => (JsonNode?)v).ToArray()),
-            ["encoding_format"] = "float",
         };
+        if (_provider.Options.SendEmbeddingEncodingFormat)
+        {
+            body["encoding_format"] = "float";
+        }
         if (_dimensions is { } d)
         {
             body["dimensions"] = d;

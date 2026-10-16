@@ -41,6 +41,65 @@ public static class ProviderHttp
         return request;
     }
 
+    /// <summary>Crea una petición sin cuerpo (GET, DELETE...) con las cabeceras indicadas.</summary>
+    public static HttpRequestMessage CreateRequest(HttpMethod method, Uri url, IEnumerable<KeyValuePair<string, string>> headers)
+    {
+        var request = new HttpRequestMessage(method, url);
+        foreach (var (key, value) in headers)
+        {
+            request.Headers.TryAddWithoutValidation(key, value);
+        }
+
+        return request;
+    }
+
+    /// <summary>Envía una petición y devuelve el JSON de la respuesta (lanza <see cref="ApiCallException"/> si falla).</summary>
+    public static async Task<JsonObject> SendJsonAsync(HttpClient client, HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        using (request)
+        using (var response = await SendAsync(client, request, stream: false, cancellationToken).ConfigureAwait(false))
+        {
+            var text = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            return string.IsNullOrWhiteSpace(text) ? [] : JsonNode.Parse(text) as JsonObject ?? [];
+        }
+    }
+
+    /// <summary>Lee un cuerpo JSONL (una línea JSON por elemento).</summary>
+    public static async IAsyncEnumerable<JsonObject> ReadJsonLinesAsync(HttpResponseMessage response, [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+        while (await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false) is { } line)
+        {
+            if (!string.IsNullOrWhiteSpace(line) && JsonNode.Parse(line) is JsonObject obj)
+            {
+                yield return obj;
+            }
+        }
+    }
+
+    /// <summary>Contenido multipart con un archivo y campos de texto.</summary>
+    public static MultipartFormDataContent FileForm(byte[] data, string filename, string mediaType, IEnumerable<KeyValuePair<string, string>>? fields = null)
+    {
+        var form = new MultipartFormDataContent();
+        foreach (var (key, value) in fields ?? [])
+        {
+            form.Add(new StringContent(value), key);
+        }
+
+        var file = new ByteArrayContent(data);
+        file.Headers.ContentType = new MediaTypeHeaderValue(mediaType);
+        form.Add(file, "file", filename);
+        return form;
+    }
+
+    public static DateTimeOffset? ParseTimestamp(JsonNode? node) => node switch
+    {
+        JsonValue v when v.TryGetValue<long>(out var unix) => DateTimeOffset.FromUnixTimeSeconds(unix),
+        JsonValue v when v.TryGetValue<string>(out var text) && DateTimeOffset.TryParse(text, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var date) => date,
+        _ => null,
+    };
+
     /// <summary>Envía la petición y lanza <see cref="ApiCallException"/> si la respuesta no es exitosa.</summary>
     public static async Task<HttpResponseMessage> SendAsync(HttpClient client, HttpRequestMessage request, bool stream, CancellationToken cancellationToken)
     {

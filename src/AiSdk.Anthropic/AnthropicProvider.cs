@@ -67,6 +67,12 @@ public sealed class AnthropicProvider : IProvider
     /// <summary>Atajo: <c>anthropic["claude-opus-5-5"]</c>.</summary>
     public ILanguageModel this[string modelId] => Messages(modelId);
 
+    /// <summary>Message Batches para el modelo indicado.</summary>
+    public AnthropicBatchClient Batches(string modelId) => new(this, modelId);
+
+    /// <summary>Files API.</summary>
+    public AnthropicFileClient Files => new(this);
+
     internal AnthropicProviderOptions Options => _options;
 
     internal HttpClient Http => _options.HttpClient ?? ProviderHttp.DefaultClient;

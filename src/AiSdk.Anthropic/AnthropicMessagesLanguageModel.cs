@@ -8,7 +8,7 @@ using AiSdk.Internal;
 namespace AiSdk.Anthropic;
 
 /// <summary>Modelo de lenguaje sobre la Messages API de Anthropic (<c>POST /v1/messages</c>).</summary>
-public sealed class AnthropicMessagesLanguageModel : ILanguageModel
+public sealed class AnthropicMessagesLanguageModel : ILanguageModel, ITokenCountingModel
 {
     public const string SignatureKey = "anthropic.signature";
     public const string RedactedDataKey = "anthropic.redactedData";
@@ -63,6 +63,25 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel
             // pause_turn: una herramienta de servidor necesita más tiempo; se reenvía el turno para continuar.
             request = request with { Messages = [.. request.Messages, new ModelMessage(ChatRole.Assistant, result.Content)] };
         }
+    }
+
+    /// <summary>Cuenta los tokens de entrada con <c>/v1/messages/count_tokens</c> (no consume la cuota de generación).</summary>
+    public async Task<int> CountTokensAsync(LanguageModelRequest request, CancellationToken cancellationToken = default)
+    {
+        var (body, betas, _) = BuildBody(request, stream: false);
+        var countBody = new JsonObject();
+        foreach (var key in new[] { "model", "messages", "system", "tools", "tool_choice", "thinking" })
+        {
+            if (body[key] is { } value)
+            {
+                countBody[key] = value.DeepClone();
+            }
+        }
+
+        using var http = ProviderHttp.CreateJsonRequest(_provider.Url("messages/count_tokens"), countBody, _provider.Headers(request.Headers, betas), stream: false);
+        using var response = await ProviderHttp.SendAsync(_provider.Http, http, stream: false, cancellationToken).ConfigureAwait(false);
+        var json = await ProviderHttp.ReadJsonAsync(response, cancellationToken).ConfigureAwait(false);
+        return (int?)json["input_tokens"] ?? 0;
     }
 
     // ------------------------------------------------------------------
@@ -471,7 +490,16 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel
                 return new JsonObject { ["type"] = "text", ["text"] = t.Text };
 
             case ImagePart i:
-                return new JsonObject { ["type"] = "image", ["source"] = Source(i.Data, i.Url, i.MediaType) };
+                return new JsonObject { ["type"] = "image", ["source"] = Source(i.Data, i.Url, i.MediaType, i.FileId) };
+
+            case FilePart { FileId: { } fileId } f:
+                var fileDoc = new JsonObject { ["type"] = "document", ["source"] = new JsonObject { ["type"] = "file", ["file_id"] = fileId } };
+                if (f.Filename is not null)
+                {
+                    fileDoc["title"] = f.Filename;
+                }
+
+                return fileDoc;
 
             case FilePart { MediaType: "text/plain", Data: not null } f:
                 return new JsonObject
@@ -535,8 +563,9 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel
         }
     }
 
-    private static JsonObject Source(byte[]? data, Uri? url, string mediaType) => data is not null
-        ? new JsonObject { ["type"] = "base64", ["media_type"] = mediaType, ["data"] = Convert.ToBase64String(data) }
+    private static JsonObject Source(byte[]? data, Uri? url, string mediaType, string? fileId = null) =>
+        fileId is not null ? new JsonObject { ["type"] = "file", ["file_id"] = fileId }
+        : data is not null ? new JsonObject { ["type"] = "base64", ["media_type"] = mediaType, ["data"] = Convert.ToBase64String(data) }
         : new JsonObject { ["type"] = "url", ["url"] = url?.ToString() };
 
     // ------------------------------------------------------------------

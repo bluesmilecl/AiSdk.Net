@@ -32,6 +32,18 @@ public sealed class OpenAIProviderOptions
 
     /// <summary>Permite no requerir API key (p. ej. Ollama local).</summary>
     public bool RequireApiKey { get; set; } = true;
+
+    /// <summary>Valor de <c>tool_choice</c> para <see cref="ToolChoiceKind.Required"/> (Mistral usa <c>"any"</c>).</summary>
+    public string RequiredToolChoice { get; set; } = "required";
+
+    /// <summary>Nombre del parámetro de semilla (Mistral usa <c>"random_seed"</c>).</summary>
+    public string SeedParameterName { get; set; } = "seed";
+
+    /// <summary>Envía <c>stream_options.include_usage</c> en streaming (algunos servidores no lo aceptan).</summary>
+    public bool SendStreamOptions { get; set; } = true;
+
+    /// <summary>Envía <c>encoding_format: "float"</c> en embeddings.</summary>
+    public bool SendEmbeddingEncodingFormat { get; set; } = true;
 }
 
 /// <summary>
@@ -96,6 +108,15 @@ public sealed class OpenAIProvider : IProvider
     public ISpeechModel Speech(string modelId) => new OpenAISpeechModel(modelId, this);
 
     public ISpeechModel SpeechModel(string modelId) => Speech(modelId);
+
+    /// <summary>Files API (<c>/files</c>).</summary>
+    public OpenAIFileClient Files => new(this);
+
+    /// <summary>Vector stores para la herramienta <see cref="OpenAITools.FileSearch"/>.</summary>
+    public OpenAIVectorStoreClient VectorStores => new(this);
+
+    /// <summary>Batch API para el modelo indicado (por defecto sobre la API Responses).</summary>
+    public OpenAIBatchClient Batches(string modelId, bool useResponsesApi = true) => new(this, modelId, useResponsesApi);
 
     /// <summary>Modelo de transcripción, p. ej. <c>"gpt-4o-transcribe"</c> o <c>"whisper-1"</c>.</summary>
     public ITranscriptionModel Transcription(string modelId) => new OpenAITranscriptionModel(modelId, this);

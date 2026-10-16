@@ -19,6 +19,7 @@
     <ProjectReference Include="../../src/AiSdk.Extensions.DependencyInjection/AiSdk.Extensions.DependencyInjection.csproj" />
     <ProjectReference Include="../../src/AiSdk.AspNetCore/AiSdk.AspNetCore.csproj" />
     <ProjectReference Include="../../src/AiSdk.Mcp/AiSdk.Mcp.csproj" />
+    <ProjectReference Include="../../src/AiSdk.Mistral/AiSdk.Mistral.csproj" />
   </ItemGroup>
 
   <ItemGroup>

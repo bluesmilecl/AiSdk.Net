@@ -92,9 +92,15 @@ public sealed class OpenAIChatLanguageModel : ILanguageModel
                 yield return new ReasoningDeltaPart("reasoning-0", reasoning);
             }
 
-            if ((string?)delta["content"] is { Length: > 0 } content)
+            var (deltaText, deltaThinking) = ContentText(delta["content"]);
+            if (deltaThinking is { Length: > 0 })
             {
-                yield return new TextDeltaPart("text-0", content);
+                yield return new ReasoningDeltaPart("reasoning-0", deltaThinking);
+            }
+
+            if (deltaText is { Length: > 0 })
+            {
+                yield return new TextDeltaPart("text-0", deltaText);
             }
 
             if (delta["tool_calls"] is JsonArray calls)
@@ -144,7 +150,7 @@ public sealed class OpenAIChatLanguageModel : ILanguageModel
         Set(body, "top_p", request.TopP);
         Set(body, "presence_penalty", request.PresencePenalty);
         Set(body, "frequency_penalty", request.FrequencyPenalty);
-        Set(body, "seed", request.Seed);
+        Set(body, _provider.Options.SeedParameterName, request.Seed);
         if (request.StopSequences is { Count: > 0 } stop)
         {
             body["stop"] = new JsonArray(stop.Select(s => (JsonNode?)s).ToArray());
@@ -170,7 +176,7 @@ public sealed class OpenAIChatLanguageModel : ILanguageModel
                 {
                     ToolChoiceKind.Auto => "auto",
                     ToolChoiceKind.None => "none",
-                    ToolChoiceKind.Required => "required",
+                    ToolChoiceKind.Required => _provider.Options.RequiredToolChoice,
                     _ => new JsonObject { ["type"] = "function", ["function"] = new JsonObject { ["name"] = choice.ToolName } },
                 };
             }
@@ -196,7 +202,10 @@ public sealed class OpenAIChatLanguageModel : ILanguageModel
         if (stream)
         {
             body["stream"] = true;
-            body["stream_options"] = new JsonObject { ["include_usage"] = true };
+            if (_provider.Options.SendStreamOptions)
+            {
+                body["stream_options"] = new JsonObject { ["include_usage"] = true };
+            }
         }
 
         RemoveNulls(body);
@@ -245,6 +254,8 @@ public sealed class OpenAIChatLanguageModel : ILanguageModel
                         JsonNode? converted = part switch
                         {
                             TextPart t => new JsonObject { ["type"] = "text", ["text"] = t.Text },
+                            ImagePart { FileId: not null } => throw new NotSupportedException(
+                                "Chat Completions no admite imágenes por file_id; usa openai.Responses(...) o envía la imagen como bytes/URL."),
                             ImagePart i => new JsonObject
                             {
                                 ["type"] = "image_url",
@@ -254,6 +265,11 @@ public sealed class OpenAIChatLanguageModel : ILanguageModel
                             {
                                 ["type"] = "input_audio",
                                 ["input_audio"] = new JsonObject { ["data"] = Convert.ToBase64String(f.Data), ["format"] = mt.Contains("mp3") || mt.Contains("mpeg") ? "mp3" : "wav" },
+                            },
+                            FilePart { FileId: { } fileId } => new JsonObject
+                            {
+                                ["type"] = "file",
+                                ["file"] = new JsonObject { ["file_id"] = fileId },
                             },
                             FilePart f => new JsonObject
                             {
@@ -325,7 +341,13 @@ public sealed class OpenAIChatLanguageModel : ILanguageModel
             content.Add(new ReasoningPart(reasoning));
         }
 
-        if ((string?)message?["content"] is { Length: > 0 } text)
+        var (text, thinking) = ContentText(message?["content"]);
+        if (thinking is { Length: > 0 })
+        {
+            content.Add(new ReasoningPart(thinking));
+        }
+
+        if (text is { Length: > 0 })
         {
             content.Add(new TextPart(text));
         }
@@ -348,6 +370,49 @@ public sealed class OpenAIChatLanguageModel : ILanguageModel
             Usage = json["usage"] is JsonObject u ? ParseUsage(u) : Usage.Empty,
             Response = Metadata(json),
         };
+    }
+
+    /// <summary>
+    /// Extrae texto y razonamiento de <c>content</c>, que puede ser un string o (en Mistral y otros)
+    /// un array de bloques <c>{type: "text"}</c> / <c>{type: "thinking"}</c>.
+    /// </summary>
+    private static (string? Text, string? Thinking) ContentText(JsonNode? content)
+    {
+        switch (content)
+        {
+            case JsonValue v when v.TryGetValue<string>(out var s):
+                return (s, null);
+            case JsonArray blocks:
+                var text = new StringBuilder();
+                var thinking = new StringBuilder();
+                foreach (var block in blocks.OfType<JsonObject>())
+                {
+                    switch ((string?)block["type"])
+                    {
+                        case "text":
+                            text.Append((string?)block["text"]);
+                            break;
+                        case "thinking":
+                            if (block["thinking"] is JsonArray inner)
+                            {
+                                foreach (var t in inner.OfType<JsonObject>())
+                                {
+                                    thinking.Append((string?)t["text"]);
+                                }
+                            }
+                            else if (block["thinking"] is JsonValue tv && tv.TryGetValue<string>(out var ts))
+                            {
+                                thinking.Append(ts);
+                            }
+
+                            break;
+                    }
+                }
+
+                return (text.ToString(), thinking.ToString());
+            default:
+                return (null, null);
+        }
     }
 
     private static ToolCallPart ToToolCall(string id, string name, string? arguments)

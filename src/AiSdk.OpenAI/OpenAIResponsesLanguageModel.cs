@@ -12,7 +12,7 @@ namespace AiSdk.OpenAI;
 /// recomendada por OpenAI: herramientas de función y de servidor (búsqueda web, intérprete
 /// de código, búsqueda en archivos), razonamiento con resumen y salida estructurada.
 /// </summary>
-public sealed class OpenAIResponsesLanguageModel : ILanguageModel
+public sealed class OpenAIResponsesLanguageModel : ILanguageModel, ITokenCountingModel
 {
     /// <summary>Id del item de salida (para reenviar razonamiento y llamadas con <c>item_reference</c>).</summary>
     public const string ItemIdKey = "openai.itemId";
@@ -47,6 +47,25 @@ public sealed class OpenAIResponsesLanguageModel : ILanguageModel
         }
 
         return ParseResponse(json) with { Warnings = warnings };
+    }
+
+    /// <summary>Cuenta los tokens de entrada con <c>/responses/input_tokens</c>.</summary>
+    public async Task<int> CountTokensAsync(LanguageModelRequest request, CancellationToken cancellationToken = default)
+    {
+        var (body, _) = BuildBody(request, stream: false);
+        var countBody = new JsonObject();
+        foreach (var key in new[] { "model", "input", "instructions", "tools", "tool_choice", "text", "reasoning", "parallel_tool_calls" })
+        {
+            if (body[key] is { } value)
+            {
+                countBody[key] = value.DeepClone();
+            }
+        }
+
+        using var http = ProviderHttp.CreateJsonRequest(_provider.Url("responses/input_tokens"), countBody, _provider.Headers(request.Headers), stream: false);
+        using var response = await ProviderHttp.SendAsync(_provider.Http, http, stream: false, cancellationToken).ConfigureAwait(false);
+        var json = await ProviderHttp.ReadJsonAsync(response, cancellationToken).ConfigureAwait(false);
+        return (int?)json["input_tokens"] ?? 0;
     }
 
     public async IAsyncEnumerable<StreamPart> StreamAsync(LanguageModelRequest request, [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -315,7 +334,9 @@ public sealed class OpenAIResponsesLanguageModel : ILanguageModel
                         JsonObject? converted = part switch
                         {
                             TextPart t => new JsonObject { ["type"] = "input_text", ["text"] = t.Text },
+                            ImagePart { FileId: { } imageFileId } => new JsonObject { ["type"] = "input_image", ["file_id"] = imageFileId },
                             ImagePart i => new JsonObject { ["type"] = "input_image", ["image_url"] = i.Url?.ToString() ?? ProviderHttp.ToDataUrl(i.Data!, i.MediaType) },
+                            FilePart { FileId: { } fileId } => new JsonObject { ["type"] = "input_file", ["file_id"] = fileId },
                             FilePart { Url: not null } f => new JsonObject { ["type"] = "input_file", ["file_url"] = f.Url.ToString() },
                             FilePart f => new JsonObject
                             {
