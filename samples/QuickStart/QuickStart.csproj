@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/AiSdk/AiSdk.csproj" />
+    <ProjectReference Include="../../src/AiSdk.OpenAI/AiSdk.OpenAI.csproj" />
+    <ProjectReference Include="../../src/AiSdk.Anthropic/AiSdk.Anthropic.csproj" />
+  </ItemGroup>
+</Project>

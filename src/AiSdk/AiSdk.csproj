@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Núcleo del SDK: GenerateText, StreamText, GenerateObject, tools, agentes, middleware y embeddings.</Description>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,18 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <Version>0.1.0</Version>
+    <Authors>bluesmilecl</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/bluesmilecl/sdk-agent-ia-net</RepositoryUrl>
+    <PackageTags>ai;llm;agents;openai;anthropic;claude;sdk</PackageTags>
+  </PropertyGroup>
+  <PropertyGroup Condition="$(MSBuildProjectDirectory.Contains('/src/'))">
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+</Project>

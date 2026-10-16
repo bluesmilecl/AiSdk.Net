@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Integración con Microsoft.Extensions.DependencyInjection para AiSdk.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../AiSdk/AiSdk.csproj" />
+    <ProjectReference Include="../AiSdk.OpenAI/AiSdk.OpenAI.csproj" />
+    <ProjectReference Include="../AiSdk.Anthropic/AiSdk.Anthropic.csproj" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
+  </ItemGroup>
+</Project>
