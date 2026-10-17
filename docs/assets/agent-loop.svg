@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="980" height="470" viewBox="0 0 980 470" role="img" aria-label="The agent loop: call the model → run tools → repeat until done">
+<defs>
+  <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="10"/></filter>
+  <linearGradient id="bgl" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b1020"/><stop offset="1" stop-color="#16123a"/></linearGradient>
+  <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#4b5582"/></marker>
+</defs>
+<style>
+  text{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,'DejaVu Sans',sans-serif;white-space:pre}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono','DejaVu Sans Mono',monospace}
+  .flow{stroke-dasharray:6 8;animation:dash 1.2s linear infinite}
+  @keyframes dash{to{stroke-dashoffset:-28}}
+  .gm{animation:gm 12s infinite}@keyframes gm{0%{opacity:0}12.704%{opacity:0}13.537%{opacity:1}20.620%{opacity:0}34.967%{opacity:0}35.800%{opacity:1}42.884%{opacity:0}57.231%{opacity:0}58.064%{opacity:1}65.147%{opacity:0}100%{opacity:0}}.gt{animation:gt 12s infinite}@keyframes gt{0%{opacity:0}22.630%{opacity:0}23.464%{opacity:1}30.547%{opacity:0}44.894%{opacity:0}45.727%{opacity:1}52.810%{opacity:0}100%{opacity:0}}.ga{animation:ga 12s infinite}@keyframes ga{0%{opacity:0}74.583%{opacity:0}75.417%{opacity:1}82.500%{opacity:0}100%{opacity:0}}.gu{animation:gu 12s infinite}@keyframes gu{0%{opacity:0}0.000%{opacity:0}0.833%{opacity:1}7.917%{opacity:0}100%{opacity:0}}.q{opacity:0;animation:q 12s infinite}@keyframes q{0%,0.000%{opacity:0}1.667%,16.454%{opacity:1}18.954%,100%{opacity:0}}.c1{opacity:0;animation:c1 12s infinite}@keyframes c1{0%,13.870%{opacity:0}15.620%,35.384%{opacity:1}37.884%,100%{opacity:0}}.c2{opacity:0;animation:c2 12s infinite}@keyframes c2{0%,36.134%{opacity:0}37.884%,57.647%{opacity:1}60.147%,100%{opacity:0}}.s1{opacity:0;animation:s1 12s infinite}@keyframes s1{0%,13.037%{opacity:0}14.787%,35.384%{opacity:1}37.884%,100%{opacity:0}}.s2{opacity:0;animation:s2 12s infinite}@keyframes s2{0%,35.300%{opacity:0}37.050%,57.647%{opacity:1}60.147%,100%{opacity:0}}.s3{opacity:0;animation:s3 12s infinite}@keyframes s3{0%,57.564%{opacity:0}59.314%,95.000%{opacity:1}97.500%,100%{opacity:0}}.ans{opacity:0;animation:ans 12s infinite}@keyframes ans{0%,74.083%{opacity:0}75.833%,95.000%{opacity:1}97.500%,100%{opacity:0}}.stop{opacity:0;animation:stop 12s infinite}@keyframes stop{0%,59.231%{opacity:0}60.981%,95.000%{opacity:1}97.500%,100%{opacity:0}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+<rect width="980" height="470" rx="18" fill="url(#bgl)"/>
+<text x="40" y="52" font-size="24" font-weight="800" fill="#ffffff">The agent loop</text>
+<text x="40" y="80" font-size="15" fill="#94a3b8">call the model → run tools → repeat until done</text>
+<g fill="none" stroke="#4b5582" stroke-width="2.5">
+  <path class="flow" d="M180,230 L388,230" marker-end="url(#arr)"/>
+  <path class="flow" d="M480,258 C520,300 560,340 590,340" marker-end="url(#arr)"/>
+  <path class="flow" d="M634,292 C560,170 520,160 490,212" marker-end="url(#arr)"/>
+  <path class="flow" d="M492,230 L798,230" marker-end="url(#arr)"/>
+</g>
+<g>
+  <circle class="gu" cx="130" cy="230" r="58" fill="#fbbf24" opacity="0" filter="url(#glow)"/>
+  <circle cx="130" cy="230" r="46" fill="#111833" stroke="#fbbf24" stroke-width="2.5"/>
+  <circle cx="130" cy="220" r="11" fill="#fbbf24"/><path d="M110 252c3-18 37-18 40 0" fill="#fbbf24"/>
+  <text x="130" y="306" font-size="16" font-weight="700" fill="#e6e9ff" text-anchor="middle">User</text>
+</g>
+<g>
+  <circle class="gm" cx="440" cy="230" r="58" fill="#a78bfa" opacity="0" filter="url(#glow)"/>
+  <circle cx="440" cy="230" r="46" fill="#111833" stroke="#a78bfa" stroke-width="2.5"/>
+  <path d="M440 206l7 17 17 7-17 7-7 17-7-17-17-7 17-7z" fill="#a78bfa"/>
+  <text x="440" y="306" font-size="16" font-weight="700" fill="#e6e9ff" text-anchor="middle">Model</text>
+</g>
+<g>
+  <circle class="gt" cx="640" cy="340" r="58" fill="#22d3ee" opacity="0" filter="url(#glow)"/>
+  <circle cx="640" cy="340" r="46" fill="#111833" stroke="#22d3ee" stroke-width="2.5"/>
+  <path d="M626 356l18-18m6-14a10 10 0 1 0 8 8l-6 2-4-4z" fill="none" stroke="#22d3ee" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="640" y="416" font-size="16" font-weight="700" fill="#e6e9ff" text-anchor="middle">Tools</text>
+</g>
+<g>
+  <circle class="ga" cx="850" cy="230" r="58" fill="#34d399" opacity="0" filter="url(#glow)"/>
+  <circle cx="850" cy="230" r="46" fill="#111833" stroke="#34d399" stroke-width="2.5"/>
+  <path d="M834 230l10 11 22-22" fill="none" stroke="#34d399" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="850" y="306" font-size="16" font-weight="700" fill="#e6e9ff" text-anchor="middle">Answer</text>
+</g>
+<g class="mono" font-size="13">
+  <g class="q"><rect x="60" y="128" width="210" height="30" rx="8" fill="#fbbf2422" stroke="#fbbf2466"/><text x="165" y="148" fill="#fde68a" text-anchor="middle">"Will it rain in Santiago?"</text></g>
+  <g class="c1"><rect x="700" y="395" width="260" height="30" rx="8" fill="#22d3ee1f" stroke="#22d3ee66"/><text x="830" y="415" fill="#a5f3fc" text-anchor="middle">tool call: weather("Santiago")</text></g>
+  <g class="c2"><rect x="700" y="395" width="260" height="30" rx="8" fill="#22d3ee1f" stroke="#22d3ee66"/><text x="830" y="415" fill="#a5f3fc" text-anchor="middle">tool call: forecast("Santiago")</text></g>
+  <g class="s1"><text x="440" y="140" fill="#c4b5fd" text-anchor="middle">step 1</text></g>
+  <g class="s2"><text x="440" y="140" fill="#c4b5fd" text-anchor="middle">step 2</text></g>
+  <g class="s3"><text x="440" y="140" fill="#c4b5fd" text-anchor="middle">step 3</text></g>
+  <g class="stop"><rect x="650" y="190" width="120" height="28" rx="8" fill="#34d3991f" stroke="#34d39966"/><text x="710" y="209" fill="#6ee7b7" text-anchor="middle">StopWhen ✓</text></g>
+  <g class="ans"><rect x="720" y="128" width="240" height="30" rx="8" fill="#34d3991f" stroke="#34d39966"/><text x="840" y="148" fill="#a7f3d0" text-anchor="middle">14°C, rain 80% ☂</text></g>
+</g>
+<circle r="14" fill="#ffffff" opacity=".25">
+  <animateMotion dur="12s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;0.750;1" calcMode="linear" path="M130,230 L440,230 C520,300 560,340 640,340 C560,170 520,160 440,230 C520,300 560,340 640,340 C560,170 520,160 440,230 L850,230"/>
+</circle>
+<circle r="5" fill="#ffffff">
+  <animateMotion dur="12s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;0.750;1" calcMode="linear" path="M130,230 L440,230 C520,300 560,340 640,340 C560,170 520,160 440,230 C520,300 560,340 640,340 C560,170 520,160 440,230 L850,230"/>
+</circle>
+</svg>

@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="1280" height="440" viewBox="0 0 1280 440" role="img" aria-labelledby="title desc">
+<title id="title">AiSdk.Net</title>
+<desc id="desc">El SDK de IA y agentes para .NET 10. Animated code sample: an agent with tools streams an answer.</desc>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b1020"/><stop offset="1" stop-color="#1c1147"/></linearGradient>
+  <linearGradient id="brand" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#a78bfa"/><stop offset=".5" stop-color="#60a5fa"/><stop offset="1" stop-color="#22d3ee"/></linearGradient>
+  <linearGradient id="logo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c3aed"/><stop offset="1" stop-color="#06b6d4"/></linearGradient>
+  <filter id="blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="40"/></filter>
+  <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#ffffff" stroke-opacity=".04"/></pattern>
+  <clipPath id="card"><rect x="672" y="46" width="572" height="350" rx="14"/></clipPath>
+</defs>
+<style>
+  text{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,'DejaVu Sans',sans-serif;white-space:pre}
+  .mono text,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono','DejaVu Sans Mono',monospace}
+  .orb1{animation:o1 14s ease-in-out infinite alternate}
+  .orb2{animation:o2 18s ease-in-out infinite alternate}
+  .orb3{animation:o1 22s ease-in-out infinite alternate-reverse}
+  @keyframes o1{to{transform:translate(120px,40px)}}
+  @keyframes o2{to{transform:translate(-140px,-30px)}}
+  .logo{animation:pulse 3s ease-in-out infinite;transform-origin:100px 106px}
+  @keyframes pulse{50%{transform:scale(1.06)}}
+  .ring{animation:ring 3s ease-out infinite;transform-origin:100px 106px}
+  @keyframes ring{from{transform:scale(1);opacity:.6}to{transform:scale(1.7);opacity:0}}
+  .chip{opacity:0;animation:pop .6s ease-out forwards}
+  @keyframes pop{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .spark{animation:rise linear infinite;opacity:0}
+  @keyframes rise{0%{opacity:0;transform:translateY(0)}20%{opacity:.7}100%{opacity:0;transform:translateY(-160px)}}
+  .code{animation:fade 15s infinite}
+  @keyframes fade{0%,93%{opacity:1}97%,100%{opacity:0}}
+  .cursor{animation:blink 1s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+  .shine{animation:shine 6s ease-in-out infinite}
+  @keyframes shine{0%,60%{transform:translateX(-200px)}100%{transform:translateX(700px)}}
+  .h1{animation:h1 15s steps(47,end) infinite}@keyframes h1{0%,4.000%{transform:translateX(0)}14.967%,100%{transform:translateX(383.3px)}}
+.h2{animation:h2 15s steps(1,end) infinite}@keyframes h2{0%,15.767%{transform:translateX(0)}16.000%,100%{transform:translateX(19.9px)}}
+.h3{animation:h3 15s steps(38,end) infinite}@keyframes h3{0%,16.800%{transform:translateX(0)}25.667%,100%{transform:translateX(312.2px)}}
+.h4{animation:h4 15s steps(20,end) infinite}@keyframes h4{0%,26.467%{transform:translateX(0)}31.133%,100%{transform:translateX(170.0px)}}
+.h5{animation:h5 15s steps(20,end) infinite}@keyframes h5{0%,31.933%{transform:translateX(0)}36.600%,100%{transform:translateX(170.0px)}}
+.h6{animation:h6 15s steps(3,end) infinite}@keyframes h6{0%,37.400%{transform:translateX(0)}38.100%,100%{transform:translateX(35.7px)}}
+.h7{animation:h7 15s steps(60,end) infinite}@keyframes h7{0%,38.900%{transform:translateX(0)}52.900%,100%{transform:translateX(486.0px)}}
+.h8{animation:h8 15s steps(21,end) infinite}@keyframes h8{0%,53.700%{transform:translateX(0)}58.600%,100%{transform:translateX(177.9px)}}
+.h9{animation:h9 15s steps(1,end) infinite}@keyframes h9{0%,62.733%{transform:translateX(0)}63.067%,100%{transform:translateX(162.1px)}}
+.h10{animation:h10 15s steps(1,end) infinite}@keyframes h10{0%,67.733%{transform:translateX(0)}68.067%,100%{transform:translateX(162.1px)}}
+.h11{animation:h11 15s steps(50,end) infinite}@keyframes h11{0%,71.400%{transform:translateX(0)}81.400%,100%{transform:translateX(407.0px)}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+<rect width="1280" height="440" rx="18" fill="url(#bg)"/>
+<rect width="1280" height="440" rx="18" fill="url(#grid)"/>
+<g filter="url(#blur)" opacity=".55">
+  <circle class="orb1" cx="220" cy="90" r="120" fill="#7c3aed"/>
+  <circle class="orb2" cx="1060" cy="360" r="130" fill="#0891b2"/>
+  <circle class="orb3" cx="560" cy="420" r="90" fill="#db2777"/>
+</g>
+<circle class="spark" cx="80" cy="410" r="1" fill="#ffffff" style="animation-delay:0.0s;animation-duration:6s"/><circle class="spark" cx="127" cy="373" r="2" fill="#ffffff" style="animation-delay:0.7s;animation-duration:7s"/><circle class="spark" cx="174" cy="396" r="3" fill="#ffffff" style="animation-delay:1.4s;animation-duration:8s"/><circle class="spark" cx="221" cy="359" r="1" fill="#ffffff" style="animation-delay:2.1s;animation-duration:9s"/><circle class="spark" cx="268" cy="382" r="2" fill="#ffffff" style="animation-delay:2.8s;animation-duration:10s"/><circle class="spark" cx="315" cy="405" r="3" fill="#ffffff" style="animation-delay:3.5s;animation-duration:6s"/><circle class="spark" cx="362" cy="368" r="1" fill="#ffffff" style="animation-delay:4.2s;animation-duration:7s"/><circle class="spark" cx="409" cy="391" r="2" fill="#ffffff" style="animation-delay:4.9s;animation-duration:8s"/><circle class="spark" cx="456" cy="354" r="3" fill="#ffffff" style="animation-delay:5.6s;animation-duration:9s"/><circle class="spark" cx="503" cy="377" r="1" fill="#ffffff" style="animation-delay:6.3s;animation-duration:10s"/><circle class="spark" cx="550" cy="400" r="2" fill="#ffffff" style="animation-delay:7.0s;animation-duration:6s"/><circle class="spark" cx="597" cy="363" r="3" fill="#ffffff" style="animation-delay:7.7s;animation-duration:7s"/><circle class="spark" cx="124" cy="386" r="1" fill="#ffffff" style="animation-delay:8.4s;animation-duration:8s"/><circle class="spark" cx="171" cy="409" r="2" fill="#ffffff" style="animation-delay:9.1s;animation-duration:9s"/>
+<g>
+  <circle class="ring" cx="100" cy="106" r="38" fill="none" stroke="#a78bfa" stroke-width="2"/>
+  <g class="logo">
+    <rect x="64" y="70" width="72" height="72" rx="18" fill="url(#logo)"/>
+    <path d="M88 92l-10 14 10 14M112 92l10 14-10 14" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M100 96l3 7 7 3-7 3-3 7-3-7-7-3 7-3z" fill="#fde68a"/>
+  </g>
+  <text x="156" y="100" font-size="15" fill="#a5b4fc" letter-spacing="3">OPEN SOURCE</text>
+  <text x="156" y="128" font-size="15" fill="#94a3b8">by Esteban Cortes · @ecr17dev</text>
+</g>
+<g>
+  <text x="62" y="222" font-size="72" font-weight="800" fill="url(#brand)" letter-spacing="-1">AiSdk.Net</text>
+  <clipPath id="title"><text x="62" y="222" font-size="72" font-weight="800" letter-spacing="-1">AiSdk.Net</text></clipPath>
+  <g clip-path="url(#title)"><rect class="shine" x="0" y="150" width="90" height="90" fill="#ffffff" opacity=".35" transform="skewX(-20)"/></g>
+  <text x="64" y="264" font-size="26" fill="#e0e7ff" font-weight="600">El SDK de IA y agentes para .NET 10</text>
+  <text x="64" y="298" font-size="17" fill="#94a3b8">Agentes · Herramientas · RAG · Skills · Workflows · MCP</text>
+  <g class="chip" style="animation-delay:0.20s"><rect x="64" y="318" width="120" height="32" rx="16" fill="#ffffff10" stroke="#ffffff30"/><circle cx="79" cy="334" r="4" fill="#34d399"/><text x="89" y="339" font-size="14" fill="#e6e9ff">Open source</text></g><g class="chip" style="animation-delay:0.35s"><rect x="194.2" y="318" width="55" height="32" rx="16" fill="#ffffff10" stroke="#ffffff30"/><circle cx="209.2" cy="334" r="4" fill="#fbbf24"/><text x="219.2" y="339" font-size="14" fill="#e6e9ff">MIT</text></g><g class="chip" style="animation-delay:0.50s"><rect x="258.79999999999995" y="318" width="137" height="32" rx="16" fill="#ffffff10" stroke="#ffffff30"/><circle cx="273.79999999999995" cy="334" r="4" fill="#22d3ee"/><text x="283.79999999999995" y="339" font-size="14" fill="#e6e9ff">7 proveedores</text></g><g class="chip" style="animation-delay:0.65s"><rect x="405.4" y="318" width="87" height="32" rx="16" fill="#ffffff10" stroke="#ffffff30"/><circle cx="420.4" cy="334" r="4" fill="#a78bfa"/><text x="430.4" y="339" font-size="14" fill="#e6e9ff">.NET 10</text></g>
+</g>
+<g>
+  <rect x="672" y="46" width="572" height="350" rx="14" fill="#0f1530" stroke="#ffffff22"/>
+  <g clip-path="url(#card)">
+    <rect x="672" y="46" width="572" height="36" fill="#ffffff0d"/>
+    <circle cx="694" cy="64" r="6" fill="#ff5f57"/><circle cx="714" cy="64" r="6" fill="#febc2e"/><circle cx="734" cy="64" r="6" fill="#28c840"/>
+    <text x="958" y="69" font-size="13" fill="#94a3b8" text-anchor="middle" class="mono">Program.cs</text>
+    <line x1="690" y1="296" x2="1226" y2="296" stroke="#ffffff1f" stroke-dasharray="4 4"/>
+    <text x="1226" y="290" font-size="11" fill="#7f8ab0" text-anchor="end" class="mono">salida</text>
+    <g class="mono code">
+      <text x="700" y="114" font-size="13"><tspan fill="#c792ea">var </tspan><tspan fill="#e6e9ff">agent</tspan><tspan fill="#e6e9ff"> = </tspan><tspan fill="#c792ea">new </tspan><tspan fill="#82aaff">ToolLoopAgent</tspan><tspan fill="#e6e9ff">(</tspan><tspan fill="#c792ea">new </tspan><tspan fill="#82aaff">AgentSettings</tspan></text><rect class="h1" x="698" y="99" width="383.3" height="21" fill="#0f1530"/><text x="700" y="134" font-size="13"><tspan fill="#e6e9ff">{</tspan></text><rect class="h2" x="698" y="119" width="19.9" height="21" fill="#0f1530"/><text x="700" y="154" font-size="13"><tspan fill="#e6e9ff">    Model </tspan><tspan fill="#e6e9ff">= openai.</tspan><tspan fill="#ffcb6b">Responses</tspan><tspan fill="#e6e9ff">(</tspan><tspan fill="#c3e88d">"gpt-5"</tspan><tspan fill="#e6e9ff">),</tspan></text><rect class="h3" x="698" y="139" width="312.2" height="21" fill="#0f1530"/><text x="700" y="174" font-size="13"><tspan fill="#e6e9ff">    Tools </tspan><tspan fill="#e6e9ff">= [</tspan><tspan fill="#e6e9ff">clima</tspan><tspan fill="#e6e9ff">],</tspan></text><rect class="h4" x="698" y="159" width="170.0" height="21" fill="#0f1530"/><text x="700" y="194" font-size="13"><tspan fill="#e6e9ff">    Skills </tspan><tspan fill="#e6e9ff">= skills,</tspan></text><rect class="h5" x="698" y="179" width="170.0" height="21" fill="#0f1530"/><text x="700" y="214" font-size="13"><tspan fill="#e6e9ff">});</tspan></text><rect class="h6" x="698" y="199" width="35.7" height="21" fill="#0f1530"/><text x="700" y="254" font-size="13"><tspan fill="#c792ea">await foreach </tspan><tspan fill="#e6e9ff">(</tspan><tspan fill="#c792ea">var </tspan><tspan fill="#e6e9ff">t </tspan><tspan fill="#c792ea">in </tspan><tspan fill="#e6e9ff">agent.</tspan><tspan fill="#ffcb6b">Stream</tspan><tspan fill="#e6e9ff">(</tspan><tspan fill="#c3e88d">"¿Llueve?"</tspan><tspan fill="#e6e9ff">).</tspan><tspan fill="#ffcb6b">TextStream</tspan><tspan fill="#e6e9ff">)</tspan></text><rect class="h7" x="698" y="239" width="486.0" height="21" fill="#0f1530"/><text x="700" y="274" font-size="13"><tspan fill="#e6e9ff">    Console.</tspan><tspan fill="#ffcb6b">Write</tspan><tspan fill="#e6e9ff">(t);</tspan></text><rect class="h8" x="698" y="259" width="177.9" height="21" fill="#0f1530"/><text x="700" y="326" font-size="13"><tspan fill="#22d3ee">→ clima("Santiago")</tspan></text><rect class="h9" x="698" y="311" width="162.1" height="21" fill="#0f1530"/><text x="700" y="347" font-size="13"><tspan fill="#34d399">← 14°C · lluvia 80%</tspan></text><rect class="h10" x="698" y="332" width="162.1" height="21" fill="#0f1530"/><text x="700" y="372" font-size="13"><tspan fill="#ffffff">Sí, lleva paraguas: 80% de probabilidad de lluvia.</tspan></text><rect class="h11" x="698" y="357" width="407.0" height="21" fill="#0f1530"/>
+      <rect class="cursor" x="1099" y="359" width="8" height="16" fill="#22d3ee"/>
+    </g>
+  </g>
+</g>
+</svg>

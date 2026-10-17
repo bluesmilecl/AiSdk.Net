@@ -10,9 +10,12 @@
     <IsPackable>true</IsPackable>
     <PackageId>AiSdk.Net$(MSBuildProjectName.Substring(5))</PackageId>
     <Version>0.1.0</Version>
-    <Authors>bluesmilecl</Authors>
+    <Authors>Esteban Cortes</Authors>
+    <Copyright>Copyright © Esteban Cortes (@ecr17dev)</Copyright>
+    <Description>AiSdk.Net: the open-source AI and agents SDK for .NET 10. Text, streaming, typed objects, tools, agents, multi-agent orchestration, RAG, Skills, durable workflows and MCP with OpenAI, Claude, Gemini, Mistral, Bedrock and Cohere.</Description>
+    <PackageIcon>icon.png</PackageIcon>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageTags>ai;llm;agents;openai;anthropic;claude;sdk</PackageTags>
+    <PackageTags>ai;llm;agents;openai;anthropic;claude;gemini;mistral;rag;mcp;skills;workflows;sdk</PackageTags>
     <PackageProjectUrl>https://github.com/bluesmilecl/sdk-agent-ia-net</PackageProjectUrl>
     <RepositoryUrl>https://github.com/bluesmilecl/sdk-agent-ia-net</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -30,6 +33,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="$(MSBuildThisFileDirectory)../README.md" Pack="true" PackagePath="\" Visible="false" />
+    <!-- README sin SVG ni rutas relativas: nuget.org no los muestra. El README visual está en la raíz del repositorio. -->
+    <None Include="$(MSBuildThisFileDirectory)../docs/nuget/README.md" Pack="true" PackagePath="\" Visible="false" />
+    <None Include="$(MSBuildThisFileDirectory)../docs/assets/icon.png" Pack="true" PackagePath="\" Visible="false" />
   </ItemGroup>
 </Project>

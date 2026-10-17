@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Proveedor Google Gemini para AiSdk: chat, razonamiento, tools, Google Search con fuentes, ejecución de código, embeddings, conteo de tokens e Imagen.</Description>
+    <Description>Google Gemini provider for AiSdk.Net: chat, reasoning, tools, Google Search grounding with sources, code execution, embeddings, token counting and Imagen.</Description>
   </PropertyGroup>
   <ItemGroup><ProjectReference Include="../AiSdk/AiSdk.csproj" /></ItemGroup>
 </Project>

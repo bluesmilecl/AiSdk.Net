@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Integración ASP.NET Core: streaming SSE compatible con useChat, endpoints de artifacts y de workflows (eventos, aprobaciones y webhooks).</Description>
+    <Description>ASP.NET Core integration for AiSdk.Net: SSE streaming compatible with AI SDK UI useChat, plus artifacts, workflows (events, approvals, webhooks) and skills endpoints.</Description>
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="900" height="330" viewBox="0 0 900 330" role="img" aria-label="Terminal: install AiSdk.Net and run an agent that uses a skill">
+<style>
+  text{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono','DejaVu Sans Mono',monospace;white-space:pre}
+  .all{animation:fade 14s infinite}
+  @keyframes fade{0%,93%{opacity:1}97%,100%{opacity:0}}
+  .t1{animation:t1 14s steps(30,end) infinite}@keyframes t1{0%,3.571%{transform:translateX(0)}13.214%,100%{transform:translateX(249.0px)}}
+.t2{animation:t2 14s steps(35,end) infinite}@keyframes t2{0%,15.714%{transform:translateX(0)}26.964%,100%{transform:translateX(288.5px)}}
+.t3{animation:t3 14s steps(1,end) infinite}@keyframes t3{0%,29.464%{transform:translateX(0)}29.821%,100%{transform:translateX(280.6px)}}
+.t4{animation:t4 14s steps(10,end) infinite}@keyframes t4{0%,34.107%{transform:translateX(0)}37.321%,100%{transform:translateX(91.0px)}}
+.t5{animation:t5 14s steps(1,end) infinite}@keyframes t5{0%,39.821%{transform:translateX(0)}40.179%,100%{transform:translateX(264.8px)}}
+.t6{animation:t6 14s steps(1,end) infinite}@keyframes t6{0%,44.464%{transform:translateX(0)}44.821%,100%{transform:translateX(249.0px)}}
+.t7{animation:t7 14s steps(1,end) infinite}@keyframes t7{0%,48.393%{transform:translateX(0)}48.750%,100%{transform:translateX(343.8px)}}
+.t8{animation:t8 14s steps(1,end) infinite}@keyframes t8{0%,53.750%{transform:translateX(0)}54.107%,100%{transform:translateX(304.3px)}}
+.t9{animation:t9 14s steps(1,end) infinite}@keyframes t9{0%,55.179%{transform:translateX(0)}55.536%,100%{transform:translateX(304.3px)}}
+.t10{animation:t10 14s steps(1,end) infinite}@keyframes t10{0%,56.607%{transform:translateX(0)}56.964%,100%{transform:translateX(304.3px)}}
+.t11{animation:t11 14s steps(1,end) infinite}@keyframes t11{0%,61.250%{transform:translateX(0)}61.607%,100%{transform:translateX(249.0px)}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+<rect width="900" height="330" rx="14" fill="#0d1117" stroke="#30363d"/>
+<rect width="900" height="40" rx="14" fill="#161b22"/><rect y="26" width="900" height="14" fill="#161b22"/>
+<circle cx="24" cy="20" r="6" fill="#ff5f57"/><circle cx="44" cy="20" r="6" fill="#febc2e"/><circle cx="64" cy="20" r="6" fill="#28c840"/>
+<text x="450.0" y="25" font-size="13" fill="#8b949e" text-anchor="middle">bash — AiSdk.Net</text>
+<g class="all"><text x="28" y="82" font-size="13" fill="#7ee787">$</text><text x="44" y="82" font-size="13"><tspan fill="#e6edf3">dotnet new console -n MiAgente</tspan></text><rect class="t1" x="42" y="67" width="249.0" height="21" fill="#0d1117"/><text x="28" y="104" font-size="13" fill="#7ee787">$</text><text x="44" y="104" font-size="13"><tspan fill="#e6edf3">dotnet add package AiSdk.Net.OpenAI</tspan></text><rect class="t2" x="42" y="89" width="288.5" height="21" fill="#0d1117"/><text x="44" y="126" font-size="13"><tspan fill="#3fb950">✓ AiSdk.Net.OpenAI 0.1.0 instalado</tspan></text><rect class="t3" x="42" y="111" width="280.6" height="21" fill="#0d1117"/><text x="28" y="148" font-size="13" fill="#7ee787">$</text><text x="44" y="148" font-size="13"><tspan fill="#e6edf3">dotnet run</tspan></text><rect class="t4" x="42" y="133" width="91.0" height="21" fill="#0d1117"/><text x="44" y="170" font-size="13"><tspan fill="#d2a8ff">[skill activada: cotizar-envios]</tspan></text><rect class="t5" x="42" y="155" width="264.8" height="21" fill="#0d1117"/><text x="44" y="192" font-size="13"><tspan fill="#79c0ff">→ load_skill("cotizar-envios")</tspan></text><rect class="t6" x="42" y="177" width="249.0" height="21" fill="#0d1117"/><text x="44" y="214" font-size="13"><tspan fill="#79c0ff">→ read_skill_file("references/tarifas.md")</tspan></text><rect class="t7" x="42" y="199" width="343.8" height="21" fill="#0d1117"/><text x="44" y="236" font-size="13"><tspan fill="#e6edf3">| Región | Base   | 4 kg   | Total  |</tspan></text><rect class="t8" x="42" y="221" width="304.3" height="21" fill="#0d1117"/><text x="44" y="258" font-size="13"><tspan fill="#8b949e">|--------|--------|--------|--------|</tspan></text><rect class="t9" x="42" y="243" width="304.3" height="21" fill="#0d1117"/><text x="44" y="280" font-size="13"><tspan fill="#ffa657">| Sur    | $5.000 | $3.200 | $8.200 |</tspan></text><rect class="t10" x="42" y="265" width="304.3" height="21" fill="#0d1117"/><text x="44" y="302" font-size="13"><tspan fill="#3fb950">✓ 3 pasos · 412 tokens · 1,8 s</tspan></text><rect class="t11" x="42" y="287" width="249.0" height="21" fill="#0d1117"/></g>
+</svg>

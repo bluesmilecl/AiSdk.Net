@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Questions and ideas / Preguntas e ideas
+    url: https://github.com/bluesmilecl/sdk-agent-ia-net/discussions
+    about: Ask how to use AiSdk.Net or discuss ideas with the community.
+  - name: 📖 Documentation / Documentación
+    url: https://github.com/bluesmilecl/sdk-agent-ia-net/wiki
+    about: Guides in English and Spanish.
+  - name: 🔐 Security vulnerability / Vulnerabilidad
+    url: https://github.com/bluesmilecl/sdk-agent-ia-net/security/advisories/new
+    about: Report security issues privately, never in a public issue.

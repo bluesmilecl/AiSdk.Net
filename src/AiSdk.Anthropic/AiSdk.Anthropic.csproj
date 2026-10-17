@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Proveedor Anthropic (Claude) para AiSdk.</Description>
+    <Description>Anthropic (Claude) provider for AiSdk.Net: tools, streaming, extended thinking, server tools, citations, prompt caching and Skills.</Description>
   </PropertyGroup>
   <ItemGroup><ProjectReference Include="../AiSdk/AiSdk.csproj" /></ItemGroup>
 </Project>

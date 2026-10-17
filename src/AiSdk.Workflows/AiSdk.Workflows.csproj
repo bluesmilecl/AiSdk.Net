@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Workflows durables para agentes de IA: pasos con reintentos y memoria, esperas, eventos y aprobaciones humanas; triggers por cron, intervalo, evento y webhook; automatizaciones que los agentes pueden programar.</Description>
+    <Description>Durable workflows for AI agents: memoized steps with retries, sleeps, events and human approvals; cron, interval, event and webhook triggers; automations that agents can schedule.</Description>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../AiSdk/AiSdk.csproj" />

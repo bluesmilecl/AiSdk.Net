@@ -21,13 +21,13 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      - name: Herramientas para OCR, PDF y video (pruebas de AiSdk.Documents)
+      - name: OCR, PDF and video tools (AiSdk.Documents tests)
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-spa poppler-utils ffmpeg
       - run: dotnet restore
       - run: dotnet build --no-restore -c Release
-      - name: Pruebas unitarias
+      - name: Unit tests
         run: dotnet test tests/AiSdk.Tests --no-build -c Release --verbosity normal
-      - name: Pruebas de integración (se omiten las que no tienen API key configurada)
+      - name: Integration tests (skipped when the API key is not configured)
         run: dotnet test tests/AiSdk.IntegrationTests --no-build -c Release --verbosity normal
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -38,6 +38,7 @@ jobs:
           AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
           AWS_REGION: ${{ vars.AWS_REGION }}
           AISDK_TEST_BEDROCK_MODEL: ${{ vars.AISDK_TEST_BEDROCK_MODEL }}
+          AISDK_TEST_OPENAI_MODEL: ${{ vars.AISDK_TEST_OPENAI_MODEL }}
           AISDK_TEST_PG: Host=localhost;Port=5432;Username=postgres;Password=postgres;Database=postgres
       - run: dotnet pack AiSdk.slnx -c Release -o artifacts --no-build
       - uses: actions/upload-artifact@v4

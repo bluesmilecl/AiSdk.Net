@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Adaptador de Microsoft.Extensions.AI (IChatClient / IEmbeddingGenerator) para AiSdk.</Description>
+    <Description>Microsoft.Extensions.AI adapter (IChatClient / IEmbeddingGenerator) for AiSdk.Net.</Description>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../AiSdk/AiSdk.csproj" />

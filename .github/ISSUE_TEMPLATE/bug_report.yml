@@ -1,0 +1,67 @@
+name: 🐛 Bug report
+description: Something does not work as expected / Algo no funciona como se espera
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! You can write in **English or Spanish**.
+        ¡Gracias por reportar! Puedes escribir en **inglés o español**.
+        ⚠️ Never paste API keys. For security issues use [SECURITY.md](https://github.com/bluesmilecl/sdk-agent-ia-net/blob/HEAD/SECURITY.md).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: A clear description of the bug and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: The smallest code sample that reproduces the problem (MockLanguageModel is great for this).
+      render: csharp
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Exception / logs
+      description: Stack trace or relevant output.
+      render: shell
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package
+      multiple: true
+      options:
+        - AiSdk.Net (core)
+        - AiSdk.Net.OpenAI
+        - AiSdk.Net.Anthropic
+        - AiSdk.Net.Google
+        - AiSdk.Net.Mistral
+        - AiSdk.Net.Bedrock
+        - AiSdk.Net.Cohere
+        - AiSdk.Net.Mcp
+        - AiSdk.Net.AspNetCore
+        - AiSdk.Net.Documents
+        - AiSdk.Net.Workflows
+        - AiSdk.Net.PgVector
+        - AiSdk.Net.VectorData
+        - AiSdk.Net.Extensions.AI
+        - AiSdk.Net.Extensions.DependencyInjection
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Package version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      description: .NET version, OS and model/provider used.
+      placeholder: ".NET 10.0.1, Ubuntu 24.04, OpenAI gpt-5"

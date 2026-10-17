@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Proveedor OpenAI (y compatibles: Ollama, Groq, DeepSeek, OpenRouter...) para AiSdk.</Description>
+    <Description>OpenAI provider for AiSdk.Net (Responses and Chat Completions), also for compatible servers: Ollama, Groq, DeepSeek, OpenRouter and more.</Description>
   </PropertyGroup>
   <ItemGroup><ProjectReference Include="../AiSdk/AiSdk.csproj" /></ItemGroup>
 </Project>

@@ -1,36 +1,38 @@
-# Auditoría de pruebas (skill `dotnet-test:test-anti-patterns`)
+# Test Audit (`dotnet-test:test-anti-patterns` skill)
 
-Revisión de 210 métodos de prueba (198 unitarios, 12 de integración) con la skill
-`test-anti-patterns` de [dotnet/skills](https://github.com/dotnet/skills).
+> 🇪🇸 [Leer en español](test-anti-patterns.es.md)
 
-**Resultado:** 0 críticos, 7 altos, 2 medios, 7 bajos. Los 7 altos están corregidos.
+Review of 210 test methods (198 unit, 12 integration) with the
+`test-anti-patterns` skill from [dotnet/skills](https://github.com/dotnet/skills).
 
-## Altos (corregidos)
+**Result:** 0 critical, 7 high, 2 medium, 7 low. All 7 high-severity findings are fixed.
 
-| # | Prueba | Problema | Corrección |
+## High (fixed)
+
+| # | Test | Problem | Fix |
 |---|---|---|---|
-| H1 | `ResumableStreamCanBeReadAgainAfterDisconnect` | `Task.Delay(50)` esperando que el chat quedara sin stream activo | **Producción:** `ResumableUIMessageStream` libera el chat antes de completar el stream; se quita el retardo |
-| H2 | `AnswersRootsSamplingAndElicitationRequests` | `Task.Delay(100)` esperando una notificación MCP | Sondeo acotado (máx. 5 s) |
-| H3 | `ScheduledAutomationsFireOnCronOnceAndEvents` | Asumía 24 h entre ejecuciones; falla en cambios de horario de Chile | Compara fecha y hora local en `America/Santiago` |
-| H4 | `PdfFallsBackForMissingGlyphsAndCustomFonts` | Ruta de fuente de Linux fija | DejaVuSans (con su licencia) en `Fixtures/` |
-| H5 | `LaunchesRealStdioProcess` | `return` silencioso sin python3 (pasaba sin probar nada) | `Assert.SkipWhen` |
-| H6 | `LoadsFromDirectoriesAndSavesSkills` | `ContinueWith` aceptaba cualquier excepción | `Assert.ThrowsAsync<ArgumentException>` |
-| H7 | `ScriptsDoNotInheritSecretsAndTimeOut` | Timeout de 500 ms aplicado también al script que debe terminar | Runner por defecto para `env.py`; el corto solo para `lento.py` |
+| H1 | `ResumableStreamCanBeReadAgainAfterDisconnect` | `Task.Delay(50)` waiting for the chat to have no active stream | **Production:** `ResumableUIMessageStream` releases the chat before completing the stream; the delay is removed |
+| H2 | `AnswersRootsSamplingAndElicitationRequests` | `Task.Delay(100)` waiting for an MCP notification | Bounded polling (max. 5 s) |
+| H3 | `ScheduledAutomationsFireOnCronOnceAndEvents` | Assumed 24 h between runs; fails across Chile's daylight-saving changes | Compares local date and time in `America/Santiago` |
+| H4 | `PdfFallsBackForMissingGlyphsAndCustomFonts` | Hard-coded Linux font path | DejaVuSans (with its license) in `Fixtures/` |
+| H5 | `LaunchesRealStdioProcess` | Silent `return` without python3 (passed without testing anything) | `Assert.SkipWhen` |
+| H6 | `LoadsFromDirectoriesAndSavesSkills` | `ContinueWith` accepted any exception | `Assert.ThrowsAsync<ArgumentException>` |
+| H7 | `ScriptsDoNotInheritSecretsAndTimeOut` | 500 ms timeout also applied to the script that must finish | Default runner for `env.py`; the short one only for `lento.py` |
 
-También se corrigieron L1 (detección de python3 por `PATH`) y L2 (variable de entorno restaurada en `finally`),
-y `SummarizeUsesMapReduceForLongTexts`, que dependía del orden de llegada de llamadas paralelas.
+L1 (python3 detection via `PATH`) and L2 (environment variable restored in `finally`) were also fixed,
+as was `SummarizeUsesMapReduceForLongTexts`, which depended on the arrival order of parallel calls.
 
-## Pendientes (medios y bajos)
+## Pending (medium and low)
 
-- **M1:** `WorkflowEngine` lee `DateTimeOffset.UtcNow` directamente; agregar `TimeProvider` a las opciones
-  permitiría probar el cron en el cambio de horario sin editar estado interno.
-- **M2:** nueve pruebas largas que verifican varios comportamientos; dividir al modificarlas.
-- **L3–L7:** sondeo de 1 s en `WorkflowTests`, aserciones débiles (solapamiento del chunker, texto de warnings,
-  `Assert.All` sobre listas posiblemente vacías), nombre de `OtherConversationsCannotEditArtifacts`,
-  `HttpClient`/scopes sin `using`, y tablas `aisdk_test_*` que quedan en PostgreSQL.
+- **M1:** `WorkflowEngine` reads `DateTimeOffset.UtcNow` directly; adding a `TimeProvider` to the options
+  would allow testing cron across daylight-saving changes without editing internal state.
+- **M2:** nine long tests that verify several behaviors; split them when they are next modified.
+- **L3–L7:** 1 s polling in `WorkflowTests`, weak assertions (chunker overlap, warning text,
+  `Assert.All` over possibly empty lists), the name of `OtherConversationsCannotEditArtifacts`,
+  `HttpClient`/scopes without `using`, and `aisdk_test_*` tables left behind in PostgreSQL.
 
-## Fortalezas observadas
+## Observed strengths
 
-Pruebas de proveedores que capturan la petición HTTP real y comparan URL, cabeceras y JSON exactos; valores
-esperados de fuentes independientes (vector de prueba de AWS SigV4, CRC32 `0xCBF43926`); excepciones con tipo
-específico; fakes pequeños y deterministas; directorios temporales únicos y limpiados en `finally`.
+Provider tests that capture the real HTTP request and compare exact URLs, headers and JSON; expected
+values from independent sources (AWS SigV4 test vector, CRC32 `0xCBF43926`); exceptions with a specific
+type; small, deterministic fakes; unique temporary directories cleaned up in `finally`.

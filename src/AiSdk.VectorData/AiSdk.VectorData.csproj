@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Adaptador de Microsoft.Extensions.VectorData para AiSdk: usa como IVectorStore cualquier conector compatible (Qdrant, Pinecone, Azure AI Search, Redis, Weaviate, SQL Server, MongoDB, pgvector...).</Description>
+    <Description>Microsoft.Extensions.VectorData adapter for AiSdk.Net: use any compatible connector (Qdrant, Pinecone, Azure AI Search, Redis, Weaviate, SQL Server, MongoDB, pgvector...) as an IVectorStore.</Description>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../AiSdk/AiSdk.csproj" />

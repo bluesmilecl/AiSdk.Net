@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Almacén vectorial PostgreSQL + pgvector para AiSdk: búsqueda semántica, híbrida (vectores + texto completo) y filtros por metadatos en la base de datos.</Description>
+    <Description>PostgreSQL + pgvector vector store for AiSdk.Net: semantic and hybrid (vector + full-text) search with metadata filters in the database.</Description>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../AiSdk/AiSdk.csproj" />

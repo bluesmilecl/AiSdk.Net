@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Proveedor Mistral AI para AiSdk (chat, razonamiento de Magistral, tools, salida estructurada y embeddings).</Description>
+    <Description>Mistral AI provider for AiSdk.Net: chat, Magistral reasoning, tools, structured output, embeddings and OCR.</Description>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../AiSdk/AiSdk.csproj" />

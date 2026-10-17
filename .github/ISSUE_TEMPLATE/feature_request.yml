@@ -1,0 +1,33 @@
+name: ✨ Feature request
+description: Suggest an idea or a new provider / Propón una idea o un nuevo proveedor
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ideas are welcome in **English or Spanish**. If it is a big change, describing the use case first helps a lot.
+        Las ideas son bienvenidas en **inglés o español**.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / use case
+      description: What are you trying to do, and why is it hard today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed API or behavior
+      description: How would you like it to work? A short code sample is ideal.
+      render: csharp
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and references
+      description: Workarounds you tried, or how other SDKs (Vercel AI SDK, Laravel AI, provider SDKs) solve it.
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contribution
+      options:
+        - label: I would like to implement this myself (with guidance)

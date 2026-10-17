@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Lee y genera documentos para la IA: PDF, Word, Excel, PowerPoint, HTML, imágenes, audio y video a Markdown con OCR; y Markdown/datos a Word, PDF y Excel con herramientas para agentes.</Description>
+    <Description>Read and generate documents for AI: PDF, Word, Excel, PowerPoint, HTML, images, audio and video to Markdown with OCR; and Markdown or data to Word, PDF and Excel, with agent tools.</Description>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../AiSdk/AiSdk.csproj" />

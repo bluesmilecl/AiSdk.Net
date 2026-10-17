@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Integración con Microsoft.Extensions.DependencyInjection para AiSdk.</Description>
+    <Description>Microsoft.Extensions.DependencyInjection integration for AiSdk.Net: providers, agents and skills in the container.</Description>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../AiSdk/AiSdk.csproj" />

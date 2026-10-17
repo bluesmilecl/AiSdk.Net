@@ -1,36 +1,38 @@
-# Publicación en NuGet con trusted publishing (OIDC)
+# Publishing to NuGet with Trusted Publishing (OIDC)
 
-Aplicado con la skill `dotnet-nuget:nuget-trusted-publishing` de [dotnet/skills](https://github.com/dotnet/skills).
+> 🇪🇸 [Leer en español](nuget-trusted-publishing.es.md)
 
-`.github/workflows/release.yml` ya no usa una API key de larga duración. Al hacer push de un tag `vX.Y.Z`,
-el job pide a GitHub un token OIDC (`permissions: id-token: write`), la acción `NuGet/login@v1` lo cambia
-en nuget.org por una API key temporal (≈1 hora) y `dotnet nuget push` la usa.
+Applied with the `dotnet-nuget:nuget-trusted-publishing` skill from [dotnet/skills](https://github.com/dotnet/skills).
 
-## Configuración única
+`.github/workflows/release.yml` no longer uses a long-lived API key. When a `vX.Y.Z` tag is pushed,
+the job requests an OIDC token from GitHub (`permissions: id-token: write`), the `NuGet/login@v1` action exchanges it
+on nuget.org for a temporary API key (≈1 hour), and `dotnet nuget push` uses it.
 
-1. **nuget.org** → tu cuenta → *Trusted Publishing* → *Add policy*:
-   | Campo | Valor |
+## One-time setup
+
+1. **nuget.org** → your account → *Trusted Publishing* → *Add policy*:
+   | Field | Value |
    |---|---|
    | Repository owner | `bluesmilecl` |
    | Repository | `sdk-agent-ia-net` |
-   | Workflow file | `release.yml` (solo el nombre, sin `.github/workflows/`) |
+   | Workflow file | `release.yml` (file name only, without `.github/workflows/`) |
    | Environment | `release` |
 
-   El dueño de la política debe ser el mismo usuario u organización dueño de los paquetes `AiSdk.Net.*`.
-2. **GitHub** → *Settings* → *Environments* → crear `release` (opcional: reglas de aprobación o restricción a tags `v*`).
-3. En ese environment, crear el secreto `NUGET_USER` con el **nombre de perfil** de nuget.org (no el correo).
+   The policy owner must be the same user or organization that owns the `AiSdk.Net.*` packages.
+2. **GitHub** → *Settings* → *Environments* → create `release` (optional: approval rules or a restriction to `v*` tags).
+3. In that environment, create the `NUGET_USER` secret with the nuget.org **profile name** (not the email address).
 
-## Verificación
+## Verification
 
-1. Crear un tag de prueba con versión preliminar, p. ej. `git tag v0.1.1-preview.1 && git push origin v0.1.1-preview.1`.
-2. Confirmar en Actions que el paso *NuGet login (OIDC)* termina bien y que los paquetes aparecen en nuget.org.
-3. Solo después de un publish exitoso, revocar la API key antigua en nuget.org y borrar el secreto `NUGET_API_KEY` de GitHub.
+1. Create a test tag with a prerelease version, e.g. `git tag v0.1.1-preview.1 && git push origin v0.1.1-preview.1`.
+2. Confirm in Actions that the *NuGet login (OIDC)* step succeeds and that the packages show up on nuget.org.
+3. Only after a successful publish, revoke the old API key on nuget.org and delete the `NUGET_API_KEY` secret from GitHub.
 
-## Problemas frecuentes
+## Troubleshooting
 
-| Síntoma | Causa |
+| Symptom | Cause |
 |---|---|
-| `Unable to get ACTIONS_ID_TOKEN_REQUEST_URL` | Falta `id-token: write` en `permissions`. |
-| `403` / política no encontrada | Owner, repo, nombre de workflow o environment no coinciden exactamente con la política. |
-| `401` en push | `NUGET_USER` es el correo o un usuario sin permisos sobre los paquetes. |
-| El paquete existe | `--skip-duplicate` evita fallar si se reintenta el mismo tag. |
+| `Unable to get ACTIONS_ID_TOKEN_REQUEST_URL` | `id-token: write` is missing from `permissions`. |
+| `403` / policy not found | Owner, repo, workflow name or environment do not exactly match the policy. |
+| `401` on push | `NUGET_USER` is the email address, or a user without permissions on the packages. |
+| The package already exists | `--skip-duplicate` avoids failing when the same tag is retried. |

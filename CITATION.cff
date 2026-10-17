@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use AiSdk.Net in your work, please cite it as below."
+title: "AiSdk.Net: the AI and agents SDK for .NET"
+type: software
+authors:
+  - family-names: Cortes
+    given-names: Esteban
+    alias: ecr17dev
+repository-code: "https://github.com/bluesmilecl/sdk-agent-ia-net"
+license: MIT
+version: 0.1.0
+keywords:
+  - dotnet
+  - ai
+  - llm
+  - agents
+  - rag
+  - mcp

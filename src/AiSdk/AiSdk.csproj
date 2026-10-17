@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Núcleo del SDK: GenerateText, StreamText, GenerateObject, tools, agentes, middleware y embeddings.</Description>
+    <Description>AiSdk.Net core: GenerateText, StreamText, GenerateObject, tools, agents, multi-agent orchestration, artifacts, Skills, middleware and embeddings.</Description>
   </PropertyGroup>
 
 </Project>
