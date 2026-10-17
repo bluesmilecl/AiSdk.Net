@@ -73,6 +73,9 @@ public sealed class AnthropicProvider : IProvider
     /// <summary>Files API.</summary>
     public AnthropicFileClient Files => new(this);
 
+    /// <summary>API de Skills (<c>/v1/skills</c>): sube skills propias para usarlas en el contenedor de Claude.</summary>
+    public AnthropicSkillsClient Skills => new(this);
+
     internal AnthropicProviderOptions Options => _options;
 
     internal HttpClient Http => _options.HttpClient ?? ProviderHttp.DefaultClient;

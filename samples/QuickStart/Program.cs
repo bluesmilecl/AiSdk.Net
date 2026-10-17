@@ -2,7 +2,7 @@
 // Uso:  dotnet run --project samples/QuickStart -- [anthropic|openai|google|mistral|bedrock|mock] [ejemplo] [args...]
 // Ejemplos: text, stream, tools, agent, object, stream-object, session, subagents,
 //           web-search, fallback, repair, mcp, image, speech, transcribe, rag, count-tokens, batch,
-//           document, attachments, compress, orchestrate, artifact, generate-docs, workflow
+//           document, attachments, compress, orchestrate, artifact, generate-docs, workflow, skills
 //
 //   document:    ... -- anthropic document informe.pdf   (PDF, Word, Excel, PowerPoint, imagen, audio, video → Markdown)
 //   attachments: ... -- mistral attachments boleta.png   (modelo sin visión + OCR local con Tesseract)
@@ -22,6 +22,7 @@ using AiSdk.Google;
 using AiSdk.Mcp;
 using AiSdk.Mistral;
 using AiSdk.OpenAI;
+using AiSdk.Skills;
 using AiSdk.Testing;
 using AiSdk.Workflows;
 
@@ -575,6 +576,35 @@ switch (example)
         break;
     }
 
+    case "skills":
+    {
+        // Skills (estándar Agent Skills): el agente ve solo el catálogo y carga cada skill cuando la necesita.
+        var library = new SkillLibrary();
+        library.Add(new SkillBuilder("cotizar-envios")
+            .WithDescription("Calcula el costo de envíos nacionales. USE FOR: cotizar envíos, costo de despacho, tarifas por peso.")
+            .WithInstructions("""
+                # Cotizar envíos
+
+                1. Pide peso (kg) y región de destino si faltan.
+                2. Lee las tarifas en [references/tarifas.md](references/tarifas.md).
+                3. Responde con el total y el desglose en una tabla.
+                """)
+            .AddFile("references/tarifas.md", "| Región | Base | Por kg |\n|---|---|---|\n| RM | $3.000 | $500 |\n| Sur | $5.000 | $800 |")
+            .Build());
+        if (Directory.Exists("skills"))
+        {
+            library.LoadDirectory("skills", new SkillLoadOptions { Trusted = true });   // las del proyecto (p. ej. skills/aisdk-net)
+        }
+
+        library.Activated += a => Console.WriteLine($"[skill activada: {a.Skill}]");
+        var agent = new ToolLoopAgent(new AgentSettings { Model = model, Skills = library, ProviderOptions = providerOptions });
+        Console.WriteLine((await agent.GenerateAsync("¿Cuánto cuesta enviar 4 kg al sur?")).Text);
+
+        // El usuario también puede invocarlas como comando: /cotizar-envios 2 kg a la RM
+        Console.WriteLine(library.TryInvokeSlashCommand("/cotizar-envios 2 kg a la RM")?[..60] + "…");
+        break;
+    }
+
     default:
         Console.WriteLine($"Ejemplo desconocido: {example}");
         break;
@@ -605,6 +635,10 @@ static MockLanguageModel MockScript(string example) => example switch
         .ReturnsToolCall("create_artifact", new { title = "Calculadora de propinas", type = "html", content = "<!doctype html><title>Propinas</title><style>button{background:#2563eb;color:#fff}</style><input id=m type=number placeholder=Monto><button onclick=\"r.textContent=(m.value*0.1).toFixed(0)\">10%</button><p id=r></p>" })
         .ReturnsToolCall("update_artifact", new { id = "calculadora-de-propinas", oldStr = "#2563eb", newStr = "#16a34a" })
         .ReturnsText("Creé la calculadora y cambié el color a verde."),
+    "skills" => new MockLanguageModel()
+        .ReturnsToolCall("load_skill", new { name = "cotizar-envios" })
+        .ReturnsToolCall("read_skill_file", new { skill = "cotizar-envios", path = "references/tarifas.md" })
+        .ReturnsText("Envío de 4 kg al sur: $5.000 + 4 × $800 = $8.200."),
     "workflow" => new MockLanguageModel().ReturnsText("¡Nuevo café de especialidad! 20% de descuento esta semana."),
     "compress" => new MockLanguageModel().ReturnsText("- Cliente i compró 3·i unidades.").ReturnsText("El cliente 2 compró 6 unidades."),
     "web-search" => new MockLanguageModel().Returns(_ => new LanguageModelResult

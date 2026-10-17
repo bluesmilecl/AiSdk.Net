@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text.Json;
+using AiSdk.Skills;
 
 namespace AiSdk;
 
@@ -70,6 +71,14 @@ public abstract class Agent : IAgent, IOrchestrationNode
 
     protected virtual Output? Output => null;
 
+    /// <summary>
+    /// Skills disponibles: se agrega su catálogo al prompt de sistema y las herramientas
+    /// <c>load_skill</c>/<c>read_skill_file</c> (divulgación progresiva).
+    /// </summary>
+    protected virtual SkillLibrary? Skills => null;
+
+    protected virtual SkillToolOptions? SkillOptions => null;
+
     protected virtual CallSettings Settings => new();
 
     protected virtual ValueTask<PrepareStepResult?> PrepareStepAsync(PrepareStepContext context) => ValueTask.FromResult<PrepareStepResult?>(null);
@@ -127,13 +136,14 @@ public abstract class Agent : IAgent, IOrchestrationNode
     internal GenerateTextOptions BuildOptions(AgentCallOptions call, IReadOnlyList<Tool>? extraTools = null, StopCondition? extraStop = null)
     {
         var s = Settings;
+        var skills = Skills is { Count: > 0 } library ? library : null;
         return new GenerateTextOptions
         {
             Model = Model,
-            System = Instructions,
+            System = skills is null ? Instructions : string.Join("\n\n", new[] { Instructions, skills.SystemPrompt() }.Where(x => !string.IsNullOrWhiteSpace(x))),
             Prompt = call.Prompt,
             Messages = call.Messages,
-            Tools = [.. Tools, .. extraTools ?? []],
+            Tools = [.. Tools, .. skills is null ? [] : SkillTools.Create(skills, SkillOptions), .. extraTools ?? []],
             ToolChoice = ToolChoice,
             StopWhen = extraStop is null ? StopWhen : StopWhen | extraStop,
             Output = Output,
@@ -193,6 +203,12 @@ public sealed class AgentSettings : CallSettings
 
     public Output? Output { get; init; }
 
+    /// <summary>Skills del agente (catálogo en el prompt y herramientas para cargarlas).</summary>
+    public SkillLibrary? Skills { get; init; }
+
+    /// <summary>Opciones de las herramientas de skills (p. ej. ejecutor de scripts).</summary>
+    public SkillToolOptions? SkillOptions { get; init; }
+
     public Func<PrepareStepContext, ValueTask<PrepareStepResult?>>? PrepareStep { get; init; }
 
     public Func<StepResult, ValueTask>? OnStepFinish { get; init; }
@@ -221,6 +237,10 @@ public class ToolLoopAgent(AgentSettings settings) : Agent
     protected override StopCondition StopWhen => AgentSettings.StopWhen ?? base.StopWhen;
 
     protected override Output? Output => AgentSettings.Output;
+
+    protected override SkillLibrary? Skills => AgentSettings.Skills;
+
+    protected override SkillToolOptions? SkillOptions => AgentSettings.SkillOptions;
 
     protected override CallSettings Settings => AgentSettings;
 

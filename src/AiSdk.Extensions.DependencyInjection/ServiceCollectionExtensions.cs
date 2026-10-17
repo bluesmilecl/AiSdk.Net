@@ -96,6 +96,30 @@ public sealed class AiSdkBuilder
         return this;
     }
 
+    /// <summary>
+    /// Registra una <see cref="AiSdk.Skills.SkillLibrary"/> singleton con las skills de las carpetas indicadas
+    /// (de confianza, por ser del propio proyecto). Úsela en agentes con <c>Skills = sp.GetRequiredService&lt;SkillLibrary&gt;()</c>.
+    /// </summary>
+    public AiSdkBuilder AddSkills(params string[] directories) => AddSkills(library =>
+    {
+        foreach (var directory in directories)
+        {
+            library.LoadDirectory(directory, new AiSdk.Skills.SkillLoadOptions { Trusted = true });
+        }
+    });
+
+    /// <summary>Registra una <see cref="AiSdk.Skills.SkillLibrary"/> singleton configurada por código.</summary>
+    public AiSdkBuilder AddSkills(Action<AiSdk.Skills.SkillLibrary> configure)
+    {
+        Services.TryAddSingleton(_ =>
+        {
+            var library = new AiSdk.Skills.SkillLibrary();
+            configure(library);
+            return library;
+        });
+        return this;
+    }
+
     /// <summary>Registra un modelo de reranking por defecto.</summary>
     public AiSdkBuilder AddDefaultRerankingModel(string modelId)
     {

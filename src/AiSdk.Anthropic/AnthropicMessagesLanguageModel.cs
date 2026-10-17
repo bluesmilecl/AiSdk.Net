@@ -146,6 +146,12 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel, ITokenCount
                         yield return new ResponseMetadataPart(new ResponseMetadata((string?)message?["id"], (string?)message?["model"], DateTimeOffset.UtcNow));
                     }
 
+                    if (message?["container"] is JsonObject startContainer && (string?)startContainer["id"] is { } startContainerId && startContainerId != state.ContainerId)
+                    {
+                        state.ContainerId = startContainerId;
+                        yield return new ContentStreamPart(ContainerMarker(startContainerId, startContainer["expires_at"]?.ToString()));
+                    }
+
                     if (message?["usage"] is JsonObject startUsage)
                     {
                         roundUsage = ParseUsage(startUsage);
@@ -287,6 +293,12 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel, ITokenCount
                 }
 
                 case "message_delta":
+                    if (evt["delta"]?["container"] is JsonObject deltaContainer && (string?)deltaContainer["id"] is { } deltaContainerId && deltaContainerId != state.ContainerId)
+                    {
+                        state.ContainerId = deltaContainerId;
+                        yield return new ContentStreamPart(ContainerMarker(deltaContainerId, deltaContainer["expires_at"]?.ToString()));
+                    }
+
                     if ((string?)evt["delta"]?["stop_reason"] is { } stop)
                     {
                         state.RawStopReason = stop;
@@ -439,7 +451,43 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel, ITokenCount
         }
 
         JsonUtil.DeepMerge(body, providerOptions);
+
+        // Reutiliza el contenedor de la conversación (skills y archivos ya cargados) si no se indicó uno.
+        if (body["container"] is JsonObject container && container["id"] is null && FindContainerId(request.Messages) is { } containerId)
+        {
+            container["id"] = containerId;
+        }
+
         return (body, betas, warnings);
+    }
+
+    internal const string ContainerMarkerType = "aisdk_container";
+
+    internal static bool IsContainerMarker(JsonElement data) =>
+        data.ValueKind == JsonValueKind.Object && data.TryGetProperty("type", out var type) && type.GetString() == ContainerMarkerType;
+
+    internal static RawProviderPart ContainerMarker(string id, string? expiresAt) =>
+        new("anthropic", JsonSerializer.SerializeToElement(new Dictionary<string, string?> { ["type"] = ContainerMarkerType, ["id"] = id, ["expires_at"] = expiresAt }));
+
+    /// <summary>Último contenedor usado en la conversación (si no venció).</summary>
+    internal static string? FindContainerId(IEnumerable<ModelMessage> messages)
+    {
+        foreach (var part in messages.Reverse().SelectMany(m => m.Content.Reverse()))
+        {
+            if (part is RawProviderPart { Provider: "anthropic" } raw && IsContainerMarker(raw.Data))
+            {
+                if (raw.Data.TryGetProperty("expires_at", out var expires) && expires.ValueKind == JsonValueKind.String
+                    && DateTimeOffset.TryParse(expires.GetString(), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var at)
+                    && at <= DateTimeOffset.UtcNow)
+                {
+                    return null;
+                }
+
+                return raw.Data.GetProperty("id").GetString();
+            }
+        }
+
+        return null;
     }
 
     private static JsonArray ConvertMessages(IReadOnlyList<ModelMessage> messages)
@@ -555,6 +603,9 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel, ITokenCount
 
                 return result;
 
+            case RawProviderPart { Provider: "anthropic" } raw when IsContainerMarker(raw.Data):
+                return null; // marcador interno del contenedor: no es un bloque de la API
+
             case RawProviderPart { Provider: "anthropic" } raw:
                 return JsonUtil.ToNode(raw.Data) as JsonObject;
 
@@ -624,6 +675,11 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel, ITokenCount
 
                     break;
             }
+        }
+
+        if (json["container"] is JsonObject responseContainer && (string?)responseContainer["id"] is { } responseContainerId)
+        {
+            content.Add(ContainerMarker(responseContainerId, responseContainer["expires_at"]?.ToString()));
         }
 
         var stopReason = (string?)json["stop_reason"];
@@ -766,6 +822,9 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel, ITokenCount
         public Dictionary<string, string> ToolNames { get; } = [];
 
         public HashSet<string> SeenSources { get; } = new(StringComparer.Ordinal);
+
+        /// <summary>Contenedor ya informado (se emite un solo marcador por respuesta).</summary>
+        public string? ContainerId { get; set; }
 
         public StreamAccumulator RoundContent { get; private set; } = new();
 

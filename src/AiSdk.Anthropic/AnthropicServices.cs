@@ -93,11 +93,13 @@ public sealed class AnthropicFileClient : IFileClient
 {
     private readonly AnthropicProvider _provider;
 
+    internal const string Beta = "files-api-2025-04-14";
+
     internal AnthropicFileClient(AnthropicProvider provider) => _provider = provider;
 
     public async Task<UploadedFile> UploadAsync(byte[] data, string filename, string mediaType, string? purpose = null, CancellationToken cancellationToken = default)
     {
-        var request = ProviderHttp.CreateRequest(HttpMethod.Post, _provider.Url("files"), _provider.Headers(null, []));
+        var request = ProviderHttp.CreateRequest(HttpMethod.Post, _provider.Url("files"), _provider.Headers(null, [Beta]));
         request.Content = ProviderHttp.FileForm(data, filename, mediaType);
         return Parse(await ProviderHttp.SendJsonAsync(_provider.Http, request, cancellationToken).ConfigureAwait(false));
     }
@@ -106,7 +108,7 @@ public sealed class AnthropicFileClient : IFileClient
     {
         var json = await ProviderHttp.SendJsonAsync(
             _provider.Http,
-            ProviderHttp.CreateRequest(HttpMethod.Get, _provider.Url("files"), _provider.Headers(null, [])),
+            ProviderHttp.CreateRequest(HttpMethod.Get, _provider.Url("files"), _provider.Headers(null, [Beta])),
             cancellationToken).ConfigureAwait(false);
         return (json["data"] as JsonArray ?? []).OfType<JsonObject>().Select(Parse).ToList();
     }
@@ -114,8 +116,26 @@ public sealed class AnthropicFileClient : IFileClient
     public async Task DeleteAsync(string fileId, CancellationToken cancellationToken = default) =>
         await ProviderHttp.SendJsonAsync(
             _provider.Http,
-            ProviderHttp.CreateRequest(HttpMethod.Delete, _provider.Url($"files/{fileId}"), _provider.Headers(null, [])),
+            ProviderHttp.CreateRequest(HttpMethod.Delete, _provider.Url($"files/{fileId}"), _provider.Headers(null, [Beta])),
             cancellationToken).ConfigureAwait(false);
+
+    /// <summary>Metadatos de un archivo (nombre, tipo y tamaño).</summary>
+    public async Task<UploadedFile> GetAsync(string fileId, CancellationToken cancellationToken = default) =>
+        Parse(await ProviderHttp.SendJsonAsync(
+            _provider.Http,
+            ProviderHttp.CreateRequest(HttpMethod.Get, _provider.Url($"files/{Uri.EscapeDataString(fileId)}"), _provider.Headers(null, [Beta])),
+            cancellationToken).ConfigureAwait(false));
+
+    /// <summary>
+    /// Descarga el contenido de un archivo, p. ej. los que generan las skills o la ejecución de código
+    /// (ver <see cref="AnthropicSkills.GetGeneratedFileIds"/>).
+    /// </summary>
+    public async Task<byte[]> DownloadAsync(string fileId, CancellationToken cancellationToken = default)
+    {
+        using var request = ProviderHttp.CreateRequest(HttpMethod.Get, _provider.Url($"files/{Uri.EscapeDataString(fileId)}/content"), _provider.Headers(null, [Beta]));
+        using var response = await ProviderHttp.SendAsync(_provider.Http, request, stream: false, cancellationToken).ConfigureAwait(false);
+        return await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+    }
 
     private static UploadedFile Parse(JsonObject f) => new(
         (string?)f["id"] ?? string.Empty,
