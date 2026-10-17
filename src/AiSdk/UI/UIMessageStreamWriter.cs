@@ -265,11 +265,13 @@ public static class ResumableUIMessageStream
             }
             finally
             {
-                await store.CompleteAsync(streamId).ConfigureAwait(false);
+                // Primero se libera el chat y luego se completa: quien vea el fin del stream ya no lo encuentra activo.
                 if (await store.GetActiveStreamAsync(chatId).ConfigureAwait(false) == streamId)
                 {
                     await store.SetActiveStreamAsync(chatId, null).ConfigureAwait(false);
                 }
+
+                await store.CompleteAsync(streamId).ConfigureAwait(false);
             }
         });
         return streamId;

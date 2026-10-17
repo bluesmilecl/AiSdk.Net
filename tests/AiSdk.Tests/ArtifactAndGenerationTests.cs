@@ -236,7 +236,7 @@ public class DocumentGenerationTests
         using var pdf = UglyToad.PdfPig.PdfDocument.Open(bytes);
         Assert.Contains("Emoji ? y chino ??", pdf.GetPage(1).Text);
 
-        var fonts = PdfFonts.FromSingle(File.ReadAllBytes("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf") is { } f ? f : []);
+        var fonts = PdfFonts.FromSingle(File.ReadAllBytes(DocumentConverterTests.Fixture("DejaVuSans.ttf")));
         var custom = PdfWriter.FromMarkdown("Привет мир", new DocumentStyleOptions { PdfFonts = fonts, PageNumbers = false });
         using var pdf2 = UglyToad.PdfPig.PdfDocument.Open(custom);
         Assert.Contains("Привет", pdf2.GetPage(1).Text);

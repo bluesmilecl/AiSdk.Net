@@ -127,7 +127,6 @@ public class StreamExtrasTests
         Assert.Equal("data: [DONE]\n\n", first[^1]);
         Assert.Equal(3, first.Count(e => e.Contains("text-delta")));
         // Al terminar, el chat ya no tiene stream activo (el endpoint de reanudación responde 204).
-        await Task.Delay(50, TestContext.Current.CancellationToken);
         Assert.Null(await store.GetActiveStreamAsync("chat-1", TestContext.Current.CancellationToken));
     }
 

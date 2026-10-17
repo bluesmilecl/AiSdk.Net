@@ -130,7 +130,7 @@ public class SkillTests
             var skill = Assert.Single(loaded);
             Assert.True(skill.Trusted);
             Assert.Equal("La multa no puede superar un mes de arriendo.", Encoding.UTF8.GetString((await skill.Files.ReadAsync("references/clausulas.md", TestContext.Current.CancellationToken))!));
-            Assert.Null(await skill.Files.ReadAsync("references/../../../../etc/passwd", TestContext.Current.CancellationToken).ContinueWith(t => t.IsFaulted ? null : t.Result));
+            await Assert.ThrowsAsync<ArgumentException>(() => skill.Files.ReadAsync("references/../../../../etc/passwd", TestContext.Current.CancellationToken));
             Assert.Single(library.LoadErrors); // "Rota" es inválida y se informa sin detener la carga
         }
         finally
@@ -232,7 +232,7 @@ public class SkillTests
     [Fact]
     public async Task TrustedSkillsCanRunScripts()
     {
-        Assert.SkipUnless(File.Exists("/usr/bin/python3"), "python3 no instalado");
+        Assert.SkipWhen(McpTests.FindExecutable("python3") is null, "python3 no instalado");
         var runner = new ProcessSkillScriptRunner();
         var trusted = new SkillLibrary([ContractSkillWithFiles(trusted: true)]);
         var model = new MockLanguageModel()
@@ -261,18 +261,28 @@ public class SkillTests
     [Fact]
     public async Task ScriptsDoNotInheritSecretsAndTimeOut()
     {
-        Assert.SkipUnless(File.Exists("/usr/bin/python3"), "python3 no instalado");
-        Environment.SetEnvironmentVariable("AISDK_TEST_SECRET", "s3cr3t");
+        Assert.SkipWhen(McpTests.FindExecutable("python3") is null, "python3 no instalado");
         var skill = new SkillBuilder("entorno")
             .WithDescription("Prueba de entorno. Úsala cuando se pruebe el ejecutor.")
             .WithInstructions("# Entorno\n\n1. Ejecuta el script.")
             .AddFile("scripts/env.py", "import os\nprint(os.environ.get('AISDK_TEST_SECRET', 'sin-secreto'))")
             .AddFile("scripts/lento.py", "import time\ntime.sleep(5)")
             .Build();
-        var runner = new ProcessSkillScriptRunner(new ProcessSkillScriptRunnerOptions { Timeout = TimeSpan.FromMilliseconds(500) });
+        // El script que debe terminar usa el timeout por defecto; solo el lento usa el límite corto.
+        var runner = new ProcessSkillScriptRunner();
+        var shortRunner = new ProcessSkillScriptRunner(new ProcessSkillScriptRunnerOptions { Timeout = TimeSpan.FromMilliseconds(500) });
 
-        Assert.Equal("sin-secreto", (await runner.RunAsync(skill, "scripts/env.py", [], TestContext.Current.CancellationToken)).Stdout.Trim());
-        Assert.Equal(-1, (await runner.RunAsync(skill, "scripts/lento.py", [], TestContext.Current.CancellationToken)).ExitCode);
+        Environment.SetEnvironmentVariable("AISDK_TEST_SECRET", "s3cr3t");
+        try
+        {
+            Assert.Equal("sin-secreto", (await runner.RunAsync(skill, "scripts/env.py", [], TestContext.Current.CancellationToken)).Stdout.Trim());
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("AISDK_TEST_SECRET", null);
+        }
+
+        Assert.Equal(-1, (await shortRunner.RunAsync(skill, "scripts/lento.py", [], TestContext.Current.CancellationToken)).ExitCode);
         await Assert.ThrowsAsync<NotSupportedException>(() => runner.RunAsync(skill, "references/x.exe", [], TestContext.Current.CancellationToken));
     }
 

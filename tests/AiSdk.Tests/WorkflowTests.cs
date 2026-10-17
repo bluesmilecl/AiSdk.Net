@@ -183,7 +183,11 @@ public class WorkflowTests
         await engine.WhenIdleAsync();
         Assert.Contains("schedule:" + cron.Id + ":{\"tipo\":\"diario\"}", calls);
         var afterCron = (await engine.ListAutomationsAsync(TestContext.Current.CancellationToken)).Single(a => a.Id == cron.Id);
-        Assert.Equal(cron.NextRunAt.Value.AddDays(1), afterCron.NextRunAt);
+        // Se compara en hora local de Santiago: entre dos ejecuciones puede haber un cambio de horario (23 h o 25 h).
+        var santiago = TimeZoneInfo.FindSystemTimeZoneById("America/Santiago");
+        var nextLocal = TimeZoneInfo.ConvertTime(afterCron.NextRunAt!.Value, santiago);
+        Assert.Equal(TimeZoneInfo.ConvertTime(cron.NextRunAt.Value, santiago).Date.AddDays(1), nextLocal.Date);
+        Assert.Equal(9, nextLocal.Hour);
 
         await engine.SendEventAsync("order.updated", new { status = "pending" }, cancellationToken: TestContext.Current.CancellationToken);
         await engine.SendEventAsync("order.updated", new { status = "paid", id = 7 }, cancellationToken: TestContext.Current.CancellationToken);

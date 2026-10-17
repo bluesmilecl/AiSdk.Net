@@ -182,7 +182,13 @@ public class McpFeatureTests
         Assert.Equal("Ana", (string?)elicitation["result"]!["content"]!["nombre"]);
 
         await client.SetRootsAsync([new McpRoot("file:///otro")], TestContext.Current.CancellationToken);
-        await Task.Delay(100, TestContext.Current.CancellationToken);
+        // La notificación no tiene respuesta: se espera con un sondeo acotado en vez de un retardo fijo.
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (!server.Notifications.Contains("notifications/roots/list_changed") && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(10, TestContext.Current.CancellationToken);
+        }
+
         Assert.Contains("notifications/roots/list_changed", server.Notifications);
     }
 

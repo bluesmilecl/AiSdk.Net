@@ -200,10 +200,7 @@ public class McpTests
     public async Task LaunchesRealStdioProcess()
     {
         var python = FindExecutable("python3");
-        if (python is null)
-        {
-            return; // Sin python3 en el entorno: se omite.
-        }
+        Assert.SkipWhen(python is null, "python3 no instalado");
 
         var script = Path.Combine(Path.GetTempPath(), $"mcp-server-{Guid.NewGuid():N}.py");
         await File.WriteAllTextAsync(script, """
@@ -238,7 +235,7 @@ public class McpTests
         }
     }
 
-    private static string? FindExecutable(string name) =>
+    internal static string? FindExecutable(string name) =>
         (Environment.GetEnvironmentVariable("PATH") ?? string.Empty)
             .Split(Path.PathSeparator)
             .Select(dir => Path.Combine(dir, name))
