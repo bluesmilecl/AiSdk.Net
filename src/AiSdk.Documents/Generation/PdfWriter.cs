@@ -54,11 +54,14 @@ public static class PdfWriter
     public static byte[] FromMarkdown(string markdown, DocumentStyleOptions? options = null) =>
         Write(MarkdownModel.Parse(markdown), options);
 
-    public static byte[] Write(IReadOnlyList<DocBlock> blocks, DocumentStyleOptions? options = null) =>
-        new PdfLayout(options ?? new DocumentStyleOptions()).Render(blocks);
+    public static byte[] Write(IReadOnlyList<DocBlock> blocks, DocumentStyleOptions? options = null)
+    {
+        using var layout = new PdfLayout(options ?? new DocumentStyleOptions());
+        return layout.Render(blocks);
+    }
 }
 
-internal sealed class PdfLayout
+internal sealed class PdfLayout : IDisposable
 {
     private const double LineFactor = 1.38;
 
@@ -98,6 +101,8 @@ internal sealed class PdfLayout
         _builder.DocumentInformation.Author = options.Author;
         _builder.DocumentInformation.Producer = "AiSdk.Documents";
     }
+
+    public void Dispose() => _builder.Dispose();
 
     private double Left => _margin;
 

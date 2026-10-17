@@ -29,23 +29,23 @@ public class WorkflowTests
             return email;
         }));
 
-        var run = await engine.StartAsync("onboarding", new Order("A1", 10));
+        var run = await engine.StartAsync("onboarding", new Order("A1", 10), cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(WorkflowStatus.Sleeping, run.Status);
         Assert.True(run.ResumeAt > DateTimeOffset.UtcNow.AddHours(23));
 
-        await engine.TickAsync(DateTimeOffset.UtcNow.AddHours(1)); // aún no vence
+        await engine.TickAsync(DateTimeOffset.UtcNow.AddHours(1), TestContext.Current.CancellationToken); // aún no vence
         await engine.WhenIdleAsync();
-        Assert.Equal(WorkflowStatus.Sleeping, (await engine.GetRunAsync(run.Id))!.Status);
+        Assert.Equal(WorkflowStatus.Sleeping, (await engine.GetRunAsync(run.Id, TestContext.Current.CancellationToken))!.Status);
 
         // Simula que pasó el día: se reanuda y el cobro NO se repite.
-        var stored = (await engine.GetRunAsync(run.Id))!;
+        var stored = (await engine.GetRunAsync(run.Id, TestContext.Current.CancellationToken))!;
         stored.Steps["sleep:wait-1-day"] = stored.Steps["sleep:wait-1-day"] with { Output = JsonSerializer.SerializeToElement(DateTimeOffset.UtcNow.AddSeconds(-1)) };
         stored.ResumeAt = DateTimeOffset.UtcNow.AddSeconds(-1);
-        await engine.Store.SaveRunAsync(stored);
-        await engine.TickAsync();
+        await engine.Store.SaveRunAsync(stored, TestContext.Current.CancellationToken);
+        await engine.TickAsync(cancellationToken: TestContext.Current.CancellationToken);
         await engine.WhenIdleAsync();
 
-        var done = (await engine.GetRunAsync(run.Id))!;
+        var done = (await engine.GetRunAsync(run.Id, TestContext.Current.CancellationToken))!;
         Assert.Equal(WorkflowStatus.Completed, done.Status);
         Assert.Equal("correo para recibo-A1-1", done.GetOutput<string>());
         Assert.Equal(1, charges);
@@ -65,14 +65,14 @@ public class WorkflowTests
             return await ctx.StepAsync("final", _ => broken ? throw new NonRetryableException("dato inválido") : Task.FromResult(b * 10), FastRetry);
         }));
 
-        var run = await engine.StartAsync("calc", 5);
+        var run = await engine.StartAsync("calc", 5, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(WorkflowStatus.Failed, run.Status);
         Assert.Equal("dato inválido", run.Error);
         Assert.Equal(3, run.Steps["flaky"].Attempts);
         Assert.Contains(run.Logs, l => l.Contains("falló (intento 1/3)"));
 
         broken = false;
-        var retried = await engine.RetryAsync(run.Id);
+        var retried = await engine.RetryAsync(run.Id, TestContext.Current.CancellationToken);
         Assert.Equal(WorkflowStatus.Completed, retried.Status);
         Assert.Equal(60, retried.GetOutput<int>());
         Assert.Equal(1, firstStep); // no se repitió
@@ -97,16 +97,16 @@ public class WorkflowTests
     public async Task HumanApprovalWithEvents()
     {
         var engine = ApprovalEngine();
-        var run = await engine.StartAsync("approval", new Order("P-9", 5000));
+        var run = await engine.StartAsync("approval", new Order("P-9", 5000), cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(WorkflowStatus.WaitingForEvent, run.Status);
         Assert.Equal("order.approval", run.Waiting!.EventName);
 
-        Assert.Empty(await engine.SendEventAsync("order.approval", new { approved = true }, key: "OTRO"));
-        var resumed = await engine.SendEventAsync("order.approval", new { approved = true }, key: "P-9");
+        Assert.Empty(await engine.SendEventAsync("order.approval", new { approved = true }, key: "OTRO", cancellationToken: TestContext.Current.CancellationToken));
+        var resumed = await engine.SendEventAsync("order.approval", new { approved = true }, key: "P-9", cancellationToken: TestContext.Current.CancellationToken);
         await engine.WhenIdleAsync();
 
         Assert.Equal([run.Id], resumed);
-        var done = (await engine.GetRunAsync(run.Id))!;
+        var done = (await engine.GetRunAsync(run.Id, TestContext.Current.CancellationToken))!;
         Assert.Equal("aprobado por gerente", done.GetOutput<string>());
         Assert.True(done.Steps.ContainsKey("notify-manager"));
     }
@@ -115,20 +115,20 @@ public class WorkflowTests
     public async Task EventWaitsTimeOut()
     {
         var engine = ApprovalEngine();
-        var run = await engine.StartAsync("approval", new Order("P-1", 500));
+        var run = await engine.StartAsync("approval", new Order("P-1", 500), cancellationToken: TestContext.Current.CancellationToken);
 
-        await engine.TickAsync(DateTimeOffset.UtcNow.AddHours(49));
+        await engine.TickAsync(DateTimeOffset.UtcNow.AddHours(49), TestContext.Current.CancellationToken);
         await engine.WhenIdleAsync();
 
         // El plazo se evalúa contra el reloj real: forzamos el vencimiento en la espera guardada.
-        var stored = (await engine.GetRunAsync(run.Id))!;
+        var stored = (await engine.GetRunAsync(run.Id, TestContext.Current.CancellationToken))!;
         stored.Waiting = stored.Waiting! with { TimeoutAt = DateTimeOffset.UtcNow.AddSeconds(-1) };
         stored.ResumeAt = DateTimeOffset.UtcNow.AddSeconds(-1);
-        await engine.Store.SaveRunAsync(stored);
-        await engine.TickAsync();
+        await engine.Store.SaveRunAsync(stored, TestContext.Current.CancellationToken);
+        await engine.TickAsync(cancellationToken: TestContext.Current.CancellationToken);
         await engine.WhenIdleAsync();
 
-        Assert.Equal("vencido", (await engine.GetRunAsync(run.Id))!.GetOutput<string>());
+        Assert.Equal("vencido", (await engine.GetRunAsync(run.Id, TestContext.Current.CancellationToken))!.GetOutput<string>());
     }
 
     [Fact]
@@ -137,14 +137,14 @@ public class WorkflowTests
         var dir = Path.Combine(Path.GetTempPath(), "aisdk-wf-" + Guid.NewGuid().ToString("N"));
         try
         {
-            var run = await ApprovalEngine(new FileSystemWorkflowStore(dir)).StartAsync("approval", new Order("P-7", 900));
+            var run = await ApprovalEngine(new FileSystemWorkflowStore(dir)).StartAsync("approval", new Order("P-7", 900), cancellationToken: TestContext.Current.CancellationToken);
             Assert.Equal(WorkflowStatus.WaitingForEvent, run.Status);
 
             // "Reinicio": un motor nuevo con el mismo almacén retoma la ejecución.
             var engine = ApprovalEngine(new FileSystemWorkflowStore(dir));
-            await engine.SendEventAsync("order.approval", new { approved = false }, key: "P-7");
+            await engine.SendEventAsync("order.approval", new { approved = false }, key: "P-7", cancellationToken: TestContext.Current.CancellationToken);
             await engine.WhenIdleAsync();
-            Assert.Equal("rechazado", (await engine.GetRunAsync(run.Id))!.GetOutput<string>());
+            Assert.Equal("rechazado", (await engine.GetRunAsync(run.Id, TestContext.Current.CancellationToken))!.GetOutput<string>());
         }
         finally
         {
@@ -162,31 +162,31 @@ public class WorkflowTests
             return Task.FromResult("ok");
         }));
 
-        var cron = await engine.AddAutomationAsync(Automation.Create("Informe diario", new CronTrigger("0 9 * * *", "America/Santiago"), "report", new { tipo = "diario" }));
-        var once = await engine.AddAutomationAsync(Automation.Create("Recordatorio", new OnceTrigger(DateTimeOffset.UtcNow.AddMinutes(30)), "report", new { tipo = "una-vez" }));
-        await engine.AddAutomationAsync(new Automation { Id = "on-paid", Name = "Pagos", Trigger = new EventTrigger("order.updated", new Dictionary<string, string> { ["status"] = "paid" }), Workflow = "report" });
+        var cron = await engine.AddAutomationAsync(Automation.Create("Informe diario", new CronTrigger("0 9 * * *", "America/Santiago"), "report", new { tipo = "diario" }), TestContext.Current.CancellationToken);
+        var once = await engine.AddAutomationAsync(Automation.Create("Recordatorio", new OnceTrigger(DateTimeOffset.UtcNow.AddMinutes(30)), "report", new { tipo = "una-vez" }), TestContext.Current.CancellationToken);
+        await engine.AddAutomationAsync(new Automation { Id = "on-paid", Name = "Pagos", Trigger = new EventTrigger("order.updated", new Dictionary<string, string> { ["status"] = "paid" }), Workflow = "report" }, TestContext.Current.CancellationToken);
 
         Assert.Equal(9, TimeZoneInfo.ConvertTime(cron.NextRunAt!.Value, TimeZoneInfo.FindSystemTimeZoneById("America/Santiago")).Hour);
 
-        await engine.TickAsync(DateTimeOffset.UtcNow.AddMinutes(1));
+        await engine.TickAsync(DateTimeOffset.UtcNow.AddMinutes(1), TestContext.Current.CancellationToken);
         await engine.WhenIdleAsync();
         Assert.Empty(calls);
 
-        await engine.TickAsync(once.NextRunAt!.Value.AddSeconds(1));
+        await engine.TickAsync(once.NextRunAt!.Value.AddSeconds(1), TestContext.Current.CancellationToken);
         await engine.WhenIdleAsync();
         Assert.Equal(["schedule:" + once.Id + ":{\"tipo\":\"una-vez\"}"], calls);
-        var afterOnce = (await engine.ListAutomationsAsync()).Single(a => a.Id == once.Id);
+        var afterOnce = (await engine.ListAutomationsAsync(TestContext.Current.CancellationToken)).Single(a => a.Id == once.Id);
         Assert.False(afterOnce.Enabled);
         Assert.Null(afterOnce.NextRunAt);
 
-        await engine.TickAsync(cron.NextRunAt!.Value);
+        await engine.TickAsync(cron.NextRunAt!.Value, TestContext.Current.CancellationToken);
         await engine.WhenIdleAsync();
         Assert.Contains("schedule:" + cron.Id + ":{\"tipo\":\"diario\"}", calls);
-        var afterCron = (await engine.ListAutomationsAsync()).Single(a => a.Id == cron.Id);
+        var afterCron = (await engine.ListAutomationsAsync(TestContext.Current.CancellationToken)).Single(a => a.Id == cron.Id);
         Assert.Equal(cron.NextRunAt.Value.AddDays(1), afterCron.NextRunAt);
 
-        await engine.SendEventAsync("order.updated", new { status = "pending" });
-        await engine.SendEventAsync("order.updated", new { status = "paid", id = 7 });
+        await engine.SendEventAsync("order.updated", new { status = "pending" }, cancellationToken: TestContext.Current.CancellationToken);
+        await engine.SendEventAsync("order.updated", new { status = "paid", id = 7 }, cancellationToken: TestContext.Current.CancellationToken);
         await engine.WhenIdleAsync();
         Assert.Contains("event:order.updated:{\"status\":\"paid\",\"id\":7}", calls);
         Assert.DoesNotContain(calls, c => c.Contains("pending"));
@@ -196,16 +196,16 @@ public class WorkflowTests
     public async Task WebhooksVerifySecretsAndSignatures()
     {
         var engine = new WorkflowEngine().Register(Workflow.Create<JsonElement, string>("hook", (_, input) => Task.FromResult(input.GetProperty("event").GetString()!)));
-        await engine.AddAutomationAsync(new Automation { Id = "github", Name = "GitHub", Trigger = new WebhookTrigger("s3cr3t"), Workflow = "hook" });
+        await engine.AddAutomationAsync(new Automation { Id = "github", Name = "GitHub", Trigger = new WebhookTrigger("s3cr3t"), Workflow = "hook" }, TestContext.Current.CancellationToken);
         var body = """{"event":"push"}"""u8.ToArray();
         var signature = "sha256=" + Convert.ToHexStringLower(HMACSHA256.HashData("s3cr3t"u8, body));
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => engine.TriggerWebhookAsync("github", body, signatureHeader: "sha256=00"));
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => engine.TriggerWebhookAsync("github", body));
-        var run = await engine.TriggerWebhookAsync("github", body, signatureHeader: signature);
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => engine.TriggerWebhookAsync("github", body, signatureHeader: "sha256=00", cancellationToken: TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => engine.TriggerWebhookAsync("github", body, cancellationToken: TestContext.Current.CancellationToken));
+        var run = await engine.TriggerWebhookAsync("github", body, signatureHeader: signature, cancellationToken: TestContext.Current.CancellationToken);
         await engine.WhenIdleAsync();
 
-        Assert.Equal("push", (await engine.GetRunAsync(run.Id))!.GetOutput<string>());
+        Assert.Equal("push", (await engine.GetRunAsync(run.Id, TestContext.Current.CancellationToken))!.GetOutput<string>());
         Assert.Equal("webhook:github", run.TriggeredBy);
     }
 
@@ -222,10 +222,10 @@ public class WorkflowTests
             return shout;
         }));
 
-        var run = await engine.StartAsync("digest", "IA");
+        var run = await engine.StartAsync("digest", "IA", cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal("RESUMEN DEL DÍA", run.GetOutput<string>());
-        Assert.Equal("Resume: noticias de IA", writer.Requests[0].Messages.Last().Text);
+        Assert.Equal("Resume: noticias de IA", writer.Requests[0].Messages[^1].Text);
         Assert.True(run.Steps.ContainsKey("agent:redactor"));
     }
 
@@ -262,12 +262,12 @@ public class WorkflowTests
         Assert.Equal(1, listed.GetArrayLength());
         Assert.Contains("0 9 * * 1-5", listed[0].GetProperty("schedule").GetString());
 
-        var automation = (await engine.ListAutomationsAsync()).Single();
+        var automation = (await engine.ListAutomationsAsync(TestContext.Current.CancellationToken)).Single();
         Assert.Equal("ana", automation.Owner);
-        var run = await engine.RunAutomationNowAsync(automation.Id);
+        var run = await engine.RunAutomationNowAsync(automation.Id, TestContext.Current.CancellationToken);
         await engine.WhenIdleAsync();
 
-        Assert.Equal("Precios revisados: sin cambios.", (await engine.GetRunAsync(run.Id))!.GetOutput<string>());
+        Assert.Equal("Precios revisados: sin cambios.", (await engine.GetRunAsync(run.Id, TestContext.Current.CancellationToken))!.GetOutput<string>());
         Assert.Equal(("Revisar precios", "ana"), (notified.Single().Task, notified.Single().Owner));
 
         // Otro usuario no ve ni puede cancelar la tarea.
@@ -281,7 +281,7 @@ public class WorkflowTests
             Context = new Dictionary<string, object?> { ["userId"] = "pedro" },
         });
         Assert.True(denied.Steps[0].ToolResults[0].IsError);
-        Assert.Single(await engine.ListAutomationsAsync());
+        Assert.Single(await engine.ListAutomationsAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -297,36 +297,36 @@ public class WorkflowTests
         });
         await using var app = builder.Build();
         app.MapWorkflows();
-        await app.StartAsync();
+        await app.StartAsync(TestContext.Current.CancellationToken);
         var client = app.GetTestClient();
         var engine = app.Services.GetRequiredService<WorkflowEngine>();
 
-        var start = await client.PostAsJsonAsync("/workflows/approval/start?wait=true", new { id = "W-1", amount = 2000 });
+        var start = await client.PostAsJsonAsync("/workflows/approval/start?wait=true", new { id = "W-1", amount = 2000 }, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Accepted, start.StatusCode);
-        var runId = (await start.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString()!;
-        Assert.Equal("WaitingForEvent", (await client.GetFromJsonAsync<JsonElement>($"/workflows/runs/{runId}")).GetProperty("status").GetString());
+        var runId = (await start.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken)).GetProperty("id").GetString()!;
+        Assert.Equal("WaitingForEvent", (await client.GetFromJsonAsync<JsonElement>($"/workflows/runs/{runId}", cancellationToken: TestContext.Current.CancellationToken)).GetProperty("status").GetString());
 
-        await client.PostAsJsonAsync("/workflows/events/order.approval?key=W-1", new { approved = true });
+        await client.PostAsJsonAsync("/workflows/events/order.approval?key=W-1", new { approved = true }, cancellationToken: TestContext.Current.CancellationToken);
         await engine.WhenIdleAsync();
-        var run = await client.GetFromJsonAsync<JsonElement>($"/workflows/runs/{runId}");
+        var run = await client.GetFromJsonAsync<JsonElement>($"/workflows/runs/{runId}", cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal("Completed", run.GetProperty("status").GetString());
         Assert.Equal("aprobado por gerente", run.GetProperty("output").GetString());
 
         // Webhook: la automatización declarada en código se registró al arrancar.
-        for (var i = 0; i < 40 && (await engine.ListAutomationsAsync()).Count == 0; i++) await Task.Delay(25);
-        var automationsResponse = await client.GetAsync("/workflows/automations");
-        var automationsJson = await automationsResponse.Content.ReadAsStringAsync();
+        for (var i = 0; i < 40 && (await engine.ListAutomationsAsync(TestContext.Current.CancellationToken)).Count == 0; i++) await Task.Delay(25, TestContext.Current.CancellationToken);
+        var automationsResponse = await client.GetAsync("/workflows/automations", TestContext.Current.CancellationToken);
+        var automationsJson = await automationsResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         Assert.True(automationsResponse.IsSuccessStatusCode, automationsJson);
         Assert.Contains("\"kind\":\"webhook\"", automationsJson);
         var bad = new HttpRequestMessage(HttpMethod.Post, "/workflows/hooks/crm") { Content = new StringContent("""{"id":"W-2","amount":5}""", Encoding.UTF8, "application/json") };
         bad.Headers.Add("X-Webhook-Secret", "otra");
-        Assert.Equal(HttpStatusCode.Unauthorized, (await client.SendAsync(bad)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.SendAsync(bad, TestContext.Current.CancellationToken)).StatusCode);
         var good = new HttpRequestMessage(HttpMethod.Post, "/workflows/hooks/crm") { Content = new StringContent("""{"id":"W-2","amount":5}""", Encoding.UTF8, "application/json") };
         good.Headers.Add("X-Webhook-Secret", "clave");
-        var hook = await client.SendAsync(good);
+        var hook = await client.SendAsync(good, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Accepted, hook.StatusCode);
         await engine.WhenIdleAsync();
-        var hookRun = (await hook.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("runId").GetString()!;
-        Assert.Equal("aprobado automáticamente", (await engine.GetRunAsync(hookRun))!.GetOutput<string>());
+        var hookRun = (await hook.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken)).GetProperty("runId").GetString()!;
+        Assert.Equal("aprobado automáticamente", (await engine.GetRunAsync(hookRun, TestContext.Current.CancellationToken))!.GetOutput<string>());
     }
 }

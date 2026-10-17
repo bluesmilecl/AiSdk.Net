@@ -39,7 +39,7 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
           AISDK_TEST_BEDROCK_MODEL: ${{ vars.AISDK_TEST_BEDROCK_MODEL }}
           AISDK_TEST_PG: Host=localhost;Port=5432;Username=postgres;Password=postgres;Database=postgres
-      - run: dotnet pack src -c Release -o artifacts --no-build
+      - run: dotnet pack AiSdk.slnx -c Release -o artifacts --no-build
       - uses: actions/upload-artifact@v4
         with:
           name: packages

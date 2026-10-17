@@ -35,7 +35,7 @@ public class DocumentConverterTests
     [Fact]
     public async Task WordToMarkdownKeepsStructure()
     {
-        var result = await new MarkdownConverter().ConvertFileAsync(Fixture("sample.docx"));
+        var result = await new MarkdownConverter().ConvertFileAsync(Fixture("sample.docx"), TestContext.Current.CancellationToken);
 
         Assert.Equal("Informe Trimestral", result.Title);
         Assert.Contains("# Informe Trimestral", result.Markdown);
@@ -50,7 +50,7 @@ public class DocumentConverterTests
     [Fact]
     public async Task ExcelToMarkdownTables()
     {
-        var result = await new MarkdownConverter().ConvertFileAsync(Fixture("sample.xlsx"));
+        var result = await new MarkdownConverter().ConvertFileAsync(Fixture("sample.xlsx"), TestContext.Current.CancellationToken);
 
         Assert.Equal(2, result.Pages.Count);
         Assert.Equal("Hoja: Ventas", result.Pages[0].Label);
@@ -58,7 +58,7 @@ public class DocumentConverterTests
         Assert.Contains("| Total |  | 2480.5 |", result.Markdown); // valor calculado de la fórmula
         Assert.DoesNotContain("secreto", result.Markdown); // hoja oculta
 
-        var limited = await new MarkdownConverter(new() { MaxRowsPerSheet = 1, IncludeHiddenSheets = true }).ConvertFileAsync(Fixture("sample.xlsx"));
+        var limited = await new MarkdownConverter(new() { MaxRowsPerSheet = 1, IncludeHiddenSheets = true }).ConvertFileAsync(Fixture("sample.xlsx"), TestContext.Current.CancellationToken);
         Assert.Contains("secreto", limited.Markdown);
         Assert.Contains("filas más omitidas", limited.Markdown);
         Assert.NotEmpty(limited.Warnings);
@@ -67,7 +67,7 @@ public class DocumentConverterTests
     [Fact]
     public async Task PowerPointToMarkdownSlides()
     {
-        var result = await new MarkdownConverter().ConvertFileAsync(Fixture("sample.pptx"));
+        var result = await new MarkdownConverter().ConvertFileAsync(Fixture("sample.pptx"), TestContext.Current.CancellationToken);
 
         Assert.Equal(3, result.Pages.Count);
         Assert.StartsWith("## Diapositiva 1: Plan 2027", result.Markdown);
@@ -79,7 +79,7 @@ public class DocumentConverterTests
     [Fact]
     public async Task PdfTextWithHeadingsAndWithoutRepeatedHeaders()
     {
-        var result = await new MarkdownConverter().ConvertFileAsync(Fixture("text.pdf"));
+        var result = await new MarkdownConverter().ConvertFileAsync(Fixture("text.pdf"), TestContext.Current.CancellationToken);
 
         Assert.Equal("Manual de Usuario", result.Title);
         Assert.Equal(3, result.Pages.Count);
@@ -99,7 +99,7 @@ public class DocumentConverterTests
     [Fact]
     public async Task ScannedPdfWithoutOcrWarns()
     {
-        var result = await new MarkdownConverter(new() { PdfRasterizer = null }).ConvertFileAsync(Fixture("scanned.pdf"));
+        var result = await new MarkdownConverter(new() { PdfRasterizer = null }).ConvertFileAsync(Fixture("scanned.pdf"), TestContext.Current.CancellationToken);
 
         Assert.Equal(string.Empty, result.Markdown);
         Assert.Contains(result.Warnings, w => w.Contains("escaneadas", StringComparison.Ordinal));
@@ -109,7 +109,7 @@ public class DocumentConverterTests
     public async Task ScannedPdfUsesEmbeddedPageImageForOcr()
     {
         var ocr = new FakeOcr("CONTRATO DE ARRIENDO");
-        var result = await new MarkdownConverter(new() { Ocr = ocr, PdfRasterizer = null }).ConvertFileAsync(Fixture("scanned.pdf"));
+        var result = await new MarkdownConverter(new() { Ocr = ocr, PdfRasterizer = null }).ConvertFileAsync(Fixture("scanned.pdf"), TestContext.Current.CancellationToken);
 
         Assert.Equal("CONTRATO DE ARRIENDO", result.Markdown);
         Assert.Equal(PageTextSource.Ocr, result.Pages[0].Source);
@@ -121,7 +121,7 @@ public class DocumentConverterTests
     public async Task PdfCapableOcrReceivesWholeDocument()
     {
         var ocr = new FakeOcr("texto", MediaTypes.Pdf);
-        var result = await new MarkdownConverter(new() { Ocr = ocr }).ConvertFileAsync(Fixture("scanned.pdf"));
+        var result = await new MarkdownConverter(new() { Ocr = ocr }).ConvertFileAsync(Fixture("scanned.pdf"), TestContext.Current.CancellationToken);
 
         Assert.Equal(1, ocr.Calls);
         Assert.Equal(MediaTypes.Pdf, ocr.MediaTypesSeen[0]);
@@ -132,7 +132,7 @@ public class DocumentConverterTests
     public async Task ScannedPdfWithVisionModelTranscribesPage()
     {
         var vision = new MockLanguageModel().ReturnsText("# CONTRATO DE ARRIENDO\n\nEl arrendatario pagará la renta el día cinco.");
-        var result = await new MarkdownConverter(new() { VisionModel = vision, PdfRasterizer = null }).ConvertFileAsync(Fixture("scanned.pdf"));
+        var result = await new MarkdownConverter(new() { VisionModel = vision, PdfRasterizer = null }).ConvertFileAsync(Fixture("scanned.pdf"), TestContext.Current.CancellationToken);
 
         Assert.StartsWith("# CONTRATO", result.Markdown);
         Assert.Equal(PageTextSource.Vision, result.Pages[0].Source);
@@ -146,13 +146,13 @@ public class DocumentConverterTests
     {
         var vision = new MockLanguageModel().ReturnsText("Una boleta impresa sobre fondo blanco.");
         var ocr = new FakeOcr("TOTAL: $12.345");
-        var result = await new MarkdownConverter(new() { VisionModel = vision, Ocr = ocr }).ConvertFileAsync(Fixture("receipt.png"));
+        var result = await new MarkdownConverter(new() { VisionModel = vision, Ocr = ocr }).ConvertFileAsync(Fixture("receipt.png"), TestContext.Current.CancellationToken);
 
         Assert.Contains("## Imagen: receipt.png", result.Markdown);
         Assert.Contains("Una boleta impresa", result.Markdown);
         Assert.Contains("**Texto detectado (OCR):**\n\nTOTAL: $12.345", result.Markdown);
 
-        var none = await new MarkdownConverter().ConvertFileAsync(Fixture("receipt.png"));
+        var none = await new MarkdownConverter().ConvertFileAsync(Fixture("receipt.png"), TestContext.Current.CancellationToken);
         Assert.NotEmpty(none.Warnings);
     }
 
@@ -161,15 +161,13 @@ public class DocumentConverterTests
     {
         var converter = new MarkdownConverter();
 
-        var csv = await converter.ConvertAsync(Encoding.UTF8.GetBytes("nombre;nota\n\"Pérez; Ana\";7\nLuis;5\n"), fileName: "notas.csv");
+        var csv = await converter.ConvertAsync(Encoding.UTF8.GetBytes("nombre;nota\n\"Pérez; Ana\";7\nLuis;5\n"), fileName: "notas.csv", cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal("| nombre | nota |\n| --- | --- |\n| Pérez; Ana | 7 |\n| Luis | 5 |", csv.Markdown);
 
-        var json = await converter.ConvertAsync(Encoding.UTF8.GetBytes("{\"a\":1,\"ñ\":\"sí\"}"), "application/json");
+        var json = await converter.ConvertAsync(Encoding.UTF8.GetBytes("{\"a\":1,\"ñ\":\"sí\"}"), "application/json", cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal("```json\n{\n  \"a\": 1,\n  \"ñ\": \"sí\"\n}\n```", json.Markdown);
 
-        var html = await converter.ConvertAsync(
-            Encoding.UTF8.GetBytes("<html><head><title>Hola</title><style>p{}</style></head><body><script>alert(1)</script><h1>Título</h1><p>Texto <b>importante</b> y <a href=\"https://x.cl\">enlace</a></p><ul><li>uno</li></ul></body></html>"),
-            fileName: "pagina.html");
+        var html = await converter.ConvertAsync(Encoding.UTF8.GetBytes("<html><head><title>Hola</title><style>p{}</style></head><body><script>alert(1)</script><h1>Título</h1><p>Texto <b>importante</b> y <a href=\"https://x.cl\">enlace</a></p><ul><li>uno</li></ul></body></html>"), fileName: "pagina.html", cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal("Hola", html.Title);
         Assert.Contains("# Título", html.Markdown);
         Assert.Contains("**importante**", html.Markdown);
@@ -194,19 +192,19 @@ public class DocumentConverterTests
     public async Task CustomConvertersTakePriority()
     {
         var converter = new MarkdownConverter().Use(new UpperCaseConverter());
-        var result = await converter.ConvertAsync(Encoding.UTF8.GetBytes("hola"), "text/plain");
+        var result = await converter.ConvertAsync(Encoding.UTF8.GetBytes("hola"), "text/plain", cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal("HOLA", result.Markdown);
-        await Assert.ThrowsAsync<NotSupportedException>(() => converter.ConvertAsync([0, 1, 2, 0], "application/x-desconocido"));
+        await Assert.ThrowsAsync<NotSupportedException>(() => converter.ConvertAsync([0, 1, 2, 0], "application/x-desconocido", cancellationToken: TestContext.Current.CancellationToken));
     }
 
     [Fact]
     public async Task IngestIntoVectorStore()
     {
         var store = new InMemoryVectorStore(new MockEmbeddingModel());
-        var result = await store.IngestAsync(new MarkdownConverter(), await DocumentSource.FromFileAsync(Fixture("sample.pptx")), id: "plan");
+        var result = await store.IngestAsync(new MarkdownConverter(), await DocumentSource.FromFileAsync(Fixture("sample.pptx"), cancellationToken: TestContext.Current.CancellationToken), id: "plan", cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(3, result.Pages.Count);
-        var hits = await store.SearchAsync("presupuesto", topK: 10, filter: VectorFilter.Eq("section", "Diapositiva 3"));
+        var hits = await store.SearchAsync("presupuesto", topK: 10, filter: VectorFilter.Eq("section", "Diapositiva 3"), cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal("plan:p3:c0", Assert.Single(hits).Document.Id);
     }
 
@@ -215,8 +213,8 @@ public class DocumentConverterTests
     {
         var model = new MockLanguageModel().ReturnsText("(sin texto)").ReturnsText("| a | b |");
         var ocr = new VisionModelOcr(model);
-        Assert.Equal(string.Empty, (await ocr.RecognizeAsync(new OcrRequest { Data = [1], MediaType = "image/png" })).Markdown);
-        Assert.Equal("| a | b |", (await ocr.RecognizeAsync(new OcrRequest { Data = [1], MediaType = "image/png" })).Markdown);
+        Assert.Equal(string.Empty, (await ocr.RecognizeAsync(new OcrRequest { Data = [1], MediaType = "image/png" }, TestContext.Current.CancellationToken)).Markdown);
+        Assert.Equal("| a | b |", (await ocr.RecognizeAsync(new OcrRequest { Data = [1], MediaType = "image/png" }, TestContext.Current.CancellationToken)).Markdown);
         Assert.Equal(0, model.Requests[0].Temperature);
     }
 
@@ -226,7 +224,7 @@ public class DocumentConverterTests
         var handler = new FakeHandler().Json("""{"pages":[{"index":0,"markdown":"# Uno"},{"index":1,"markdown":"Dos"}],"model":"mistral-ocr-latest"}""");
         var ocr = new MistralProvider(new MistralProviderOptions { ApiKey = "k", HttpClient = new HttpClient(handler) }).Ocr();
 
-        var result = await ocr.RecognizeAsync(new OcrRequest { Data = "%PDF-1.4"u8.ToArray(), MediaType = MediaTypes.Pdf });
+        var result = await ocr.RecognizeAsync(new OcrRequest { Data = "%PDF-1.4"u8.ToArray(), MediaType = MediaTypes.Pdf }, TestContext.Current.CancellationToken);
 
         Assert.Equal("# Uno\n\nDos", result.Markdown);
         Assert.Equal(2, result.Pages[1].Number);
@@ -237,27 +235,27 @@ public class DocumentConverterTests
         Assert.True(ocr.Supports("image/png"));
     }
 
-    [SkippableFact]
+    [Fact]
     public async Task TesseractReadsImagesAndScannedPdfs()
     {
         var tesseract = new TesseractOcr();
-        Skip.IfNot(tesseract.IsAvailable, "tesseract no instalado");
+        Assert.SkipUnless(tesseract.IsAvailable, "tesseract no instalado");
 
         var converter = new MarkdownConverter(new() { Ocr = tesseract, Language = "es" });
-        var receipt = await converter.ConvertFileAsync(Fixture("receipt.png"));
+        var receipt = await converter.ConvertFileAsync(Fixture("receipt.png"), TestContext.Current.CancellationToken);
         Assert.Contains("TOTAL: $12.345", receipt.Markdown);
         Assert.Contains("Juan Perez", receipt.Markdown);
 
-        var scanned = await converter.ConvertFileAsync(Fixture("scanned.pdf"));
+        var scanned = await converter.ConvertFileAsync(Fixture("scanned.pdf"), TestContext.Current.CancellationToken);
         Assert.Contains("CONTRATO DE ARRIENDO", scanned.Markdown);
         Assert.Contains("renta", scanned.Markdown);
     }
 
-    [SkippableFact]
+    [Fact]
     public async Task VideoBecomesTimelineWithTranscriptAndFrames()
     {
         var tesseract = new TesseractOcr();
-        Skip.IfNot(ExternalProcess.Exists("ffmpeg") && tesseract.IsAvailable, "ffmpeg o tesseract no instalados");
+        Assert.SkipUnless(ExternalProcess.Exists("ffmpeg") && tesseract.IsAvailable, "ffmpeg o tesseract no instalados");
 
         var transcription = new FakeTranscription();
         var converter = new MarkdownConverter(new()
@@ -266,7 +264,7 @@ public class DocumentConverterTests
             Transcription = transcription,
             VideoFrameInterval = TimeSpan.FromSeconds(2),
         });
-        var result = await converter.ConvertFileAsync(Fixture("clip.mp4"));
+        var result = await converter.ConvertFileAsync(Fixture("clip.mp4"), TestContext.Current.CancellationToken);
 
         Assert.Equal("audio/mpeg", transcription.MediaType);
         Assert.Contains("Duración: 00:06", result.Markdown);
@@ -425,7 +423,7 @@ public class CompressionTests
             ? "El certificado digital vence cada año y debe renovarse."
             : $"Párrafo {i} sobre el clima y los gatos del barrio, sin relación."));
 
-        var compressed = await ContextCompressor.SelectRelevantAsync(new KeywordEmbeddings(), text, "¿cuándo vence el certificado?", maxTokens: 20, chunkChars: 80);
+        var compressed = await ContextCompressor.SelectRelevantAsync(new KeywordEmbeddings(), text, "¿cuándo vence el certificado?", maxTokens: 20, chunkChars: 80, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal("El certificado digital vence cada año y debe renovarse.", compressed);
     }
@@ -433,10 +431,17 @@ public class CompressionTests
     [Fact]
     public async Task SummarizeUsesMapReduceForLongTexts()
     {
-        var model = new MockLanguageModel().ReturnsText("Resumen A").ReturnsText("Resumen B");
+        // La fase map corre en paralelo: la respuesta depende del fragmento recibido, no del orden de llegada.
+        static LanguageModelResult SummaryFor(LanguageModelRequest request) => new()
+        {
+            Content = [new TextPart(JsonSerializer.Serialize(request.Messages).Contains("aaaa", StringComparison.Ordinal) ? "Resumen A" : "Resumen B")],
+            FinishReason = FinishReason.Stop,
+            Usage = new Usage { InputTokens = 10, OutputTokens = 5 },
+        };
+        var model = new MockLanguageModel().Returns(SummaryFor).Returns(SummaryFor);
         var text = new string('a', 300) + "\n\n" + new string('b', 300);
 
-        var summary = await ContextCompressor.SummarizeAsync(model, text, targetTokens: 50, chunkTokens: 80);
+        var summary = await ContextCompressor.SummarizeAsync(model, text, targetTokens: 50, chunkTokens: 80, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(2, model.Requests.Count);
         Assert.Equal("Resumen A\n\nResumen B", summary);

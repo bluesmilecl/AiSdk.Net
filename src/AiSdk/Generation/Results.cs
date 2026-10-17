@@ -89,4 +89,4 @@ public sealed class GenerateTextResult
 }
 
 /// <summary>Resultado de <see cref="Ai.GenerateObjectAsync{T}"/>.</summary>
-public sealed record GenerateObjectResult<T>(T Object, FinishReason FinishReason, Usage Usage, ResponseMetadata? Response, string RawText);
+public sealed record GenerateObjectResult<T>([property: System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1720:Identifier contains type name", Justification = "Mismo nombre que en el AI SDK (Output.object / result.object) para facilitar la migración.")][param: System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1720:Identifier contains type name", Justification = "Ídem.")] T Object, FinishReason FinishReason, Usage Usage, ResponseMetadata? Response, string RawText);

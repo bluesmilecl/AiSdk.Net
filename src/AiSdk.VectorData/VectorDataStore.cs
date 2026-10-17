@@ -45,7 +45,7 @@ public sealed class VectorDataStoreOptions
 /// var store = new VectorDataStore(qdrant, embeddings, new() { CollectionName = "docs", Dimensions = 1536, FilterableFields = ["tipo"] });
 /// </code>
 /// </example>
-public sealed class VectorDataStore : IHybridVectorStore
+public sealed class VectorDataStore : IHybridVectorStore, IDisposable
 {
     public const string KeyField = "Id";
     public const string TextField = "Text";
@@ -77,6 +77,8 @@ public sealed class VectorDataStore : IHybridVectorStore
 
         _collection = vectorStore.GetDynamicCollection(options.CollectionName, BuildDefinition(options));
     }
+
+    public void Dispose() => _initLock.Dispose();
 
     /// <summary>Colección subyacente de Microsoft.Extensions.VectorData (para operaciones avanzadas).</summary>
     public VectorStoreCollection<object, Dictionary<string, object?>> Collection => _collection;

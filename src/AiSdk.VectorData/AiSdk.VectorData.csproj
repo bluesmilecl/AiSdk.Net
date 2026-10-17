@@ -4,6 +4,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../AiSdk/AiSdk.csproj" />
-    <PackageReference Include="Microsoft.Extensions.VectorData.Abstractions" Version="10.11.0" />
+    <PackageReference Include="Microsoft.Extensions.VectorData.Abstractions" />
   </ItemGroup>
 </Project>

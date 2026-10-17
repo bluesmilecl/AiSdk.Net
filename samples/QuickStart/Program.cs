@@ -25,6 +25,7 @@ using AiSdk.OpenAI;
 using AiSdk.Skills;
 using AiSdk.Testing;
 using AiSdk.Workflows;
+using QuickStart;
 
 var providerName = args.ElementAtOrDefault(0) ?? "anthropic";
 var example = args.ElementAtOrDefault(1) ?? "agent";
@@ -659,17 +660,3 @@ static MockLanguageModel MockScript(string example) => example switch
         .ReturnsText("Puedes devolverlo hasta 30 días después de la compra, con boleta [politicas]."),
     _ => new MockLanguageModel().ReturnsText(".NET es una plataforma de desarrollo multiplataforma y de código abierto."),
 };
-
-public sealed record WeatherQuery([property: Description("Nombre de la ciudad")] string City);
-
-public sealed record Weather(string City, int TemperatureC, string Conditions);
-
-[Description("Una receta de cocina")]
-public sealed record Recipe(
-    [property: Description("Nombre de la receta")] string Name,
-    [property: Description("Lista de ingredientes")] List<string> Ingredients,
-    [property: Description("Tiempo de preparación en minutos")] int Minutes);
-
-record Sale(string Producto, DateTime Fecha, int Unidades, decimal Monto);
-
-record Approval(bool Approved, string? Audience = null);

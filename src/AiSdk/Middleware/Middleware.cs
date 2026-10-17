@@ -12,12 +12,14 @@ public interface ILanguageModelMiddleware
     ValueTask<LanguageModelRequest> TransformRequestAsync(LanguageModelRequest request, ILanguageModel model, CancellationToken cancellationToken) =>
         ValueTask.FromResult(request);
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1716:Identifiers should not match keywords", Justification = "\"next\" es el nombre convencional del siguiente eslabón en middleware (como en ASP.NET Core); no hay consumidores en Visual Basic.")]
     Task<LanguageModelResult> WrapGenerateAsync(
         LanguageModelRequest request,
         ILanguageModel model,
         Func<LanguageModelRequest, CancellationToken, Task<LanguageModelResult>> next,
         CancellationToken cancellationToken) => next(request, cancellationToken);
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1716:Identifiers should not match keywords", Justification = "\"next\" es el nombre convencional del siguiente eslabón en middleware (como en ASP.NET Core); no hay consumidores en Visual Basic.")]
     IAsyncEnumerable<StreamPart> WrapStream(
         LanguageModelRequest request,
         ILanguageModel model,

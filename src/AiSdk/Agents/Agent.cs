@@ -83,7 +83,7 @@ public abstract class Agent : IAgent, IOrchestrationNode
 
     protected virtual ValueTask<PrepareStepResult?> PrepareStepAsync(PrepareStepContext context) => ValueTask.FromResult<PrepareStepResult?>(null);
 
-    protected virtual ValueTask OnStepFinishAsync(StepResult step) => ValueTask.CompletedTask;
+    protected virtual ValueTask OnStepFinishAsync(StepResult stepResult) => ValueTask.CompletedTask;
 
     protected virtual ValueTask<bool> ApproveToolCallAsync(ToolApprovalRequest request) => ValueTask.FromResult(false);
 
@@ -247,6 +247,6 @@ public class ToolLoopAgent(AgentSettings settings) : Agent
     protected override ValueTask<PrepareStepResult?> PrepareStepAsync(PrepareStepContext context) =>
         AgentSettings.PrepareStep?.Invoke(context) ?? base.PrepareStepAsync(context);
 
-    protected override ValueTask OnStepFinishAsync(StepResult step) =>
-        AgentSettings.OnStepFinish?.Invoke(step) ?? ValueTask.CompletedTask;
+    protected override ValueTask OnStepFinishAsync(StepResult stepResult) =>
+        AgentSettings.OnStepFinish?.Invoke(stepResult) ?? ValueTask.CompletedTask;
 }

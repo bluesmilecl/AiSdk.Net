@@ -16,6 +16,8 @@ public enum ColumnType
     Auto,
     Text,
     Number,
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1720:Identifier contains type name", Justification = "Tipo de columna de hoja de cálculo; coincide con el valor que envían los modelos (\"integer\").")]
     Integer,
     Currency,
     Percent,

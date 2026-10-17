@@ -28,7 +28,7 @@ public class PgVectorTests
     private static async Task<PgVectorStore> CreateStoreAsync()
     {
         var connection = Environment.GetEnvironmentVariable("AISDK_TEST_PG");
-        Skip.If(string.IsNullOrEmpty(connection), "AISDK_TEST_PG no configurada");
+        Assert.SkipWhen(string.IsNullOrEmpty(connection), "AISDK_TEST_PG no configurada");
         var store = PgVectorStore.Create(connection!, new KeywordEmbeddings(), new PgVectorStoreOptions
         {
             Dimensions = KeywordEmbeddings.Vocabulary.Length,
@@ -45,46 +45,46 @@ public class PgVectorTests
         return store;
     }
 
-    [SkippableFact]
+    [Fact]
     public async Task UpsertSearchFilterAndDelete()
     {
         await using var store = await CreateStoreAsync();
-        Assert.Equal(4, await store.CountAsync());
+        Assert.Equal(4, await store.CountAsync(TestContext.Current.CancellationToken));
 
-        var hits = await store.SearchAsync("¿cómo hago una devolucion?", topK: 2);
+        var hits = await store.SearchAsync("¿cómo hago una devolucion?", topK: 2, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal("d1", hits[0].Document.Id);
         Assert.Equal("CL", hits[0].Document.Metadata!["pais"]);
         Assert.True(hits[0].Score > hits[1].Score);
 
-        var peru = await store.SearchAsync("devolucion", topK: 5, filter: VectorFilter.Eq("pais", "PE"));
+        var peru = await store.SearchAsync("devolucion", topK: 5, filter: VectorFilter.Eq("pais", "PE"), cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(["d2"], peru.Select(h => h.Document.Id));
 
-        var notPolicies = await store.SearchAsync("devolucion", topK: 5, filter: VectorFilter.Ne("tipo", "politica"));
+        var notPolicies = await store.SearchAsync("devolucion", topK: 5, filter: VectorFilter.Ne("tipo", "politica"), cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(["d3", "d4"], notPolicies.Select(h => h.Document.Id).Order());
 
         // Upsert actualiza en lugar de duplicar.
-        await store.UpsertAsync([new VectorDocument("d3", "Horario nuevo: todos los días.") { Metadata = new Dictionary<string, string> { ["tipo"] = "faq" } }]);
-        Assert.Equal(4, await store.CountAsync());
+        await store.UpsertAsync([new VectorDocument("d3", "Horario nuevo: todos los días.") { Metadata = new Dictionary<string, string> { ["tipo"] = "faq" } }], TestContext.Current.CancellationToken);
+        Assert.Equal(4, await store.CountAsync(TestContext.Current.CancellationToken));
 
-        Assert.Equal(2, await store.DeleteWhereAsync(VectorFilter.Eq("tipo", "politica")));
-        await store.DeleteAsync(["d3"]);
-        Assert.Equal(1, await store.CountAsync());
+        Assert.Equal(2, await store.DeleteWhereAsync(VectorFilter.Eq("tipo", "politica"), TestContext.Current.CancellationToken));
+        await store.DeleteAsync(["d3"], TestContext.Current.CancellationToken);
+        Assert.Equal(1, await store.CountAsync(TestContext.Current.CancellationToken));
     }
 
-    [SkippableFact]
+    [Fact]
     public async Task HybridSearchFindsExactCodes()
     {
         await using var store = await CreateStoreAsync();
 
         // "SKU-77812" no aporta nada a los embeddings de prueba; la parte de texto completo lo encuentra.
-        var hybrid = await store.HybridSearchAsync("SKU-77812", topK: 1);
+        var hybrid = await store.HybridSearchAsync("SKU-77812", topK: 1, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal("d4", hybrid[0].Document.Id);
 
-        var withFilter = await store.HybridSearchAsync("devolucion", topK: 3, filter: VectorFilter.In("pais", "CL", "PE"));
+        var withFilter = await store.HybridSearchAsync("devolucion", topK: 3, filter: VectorFilter.In("pais", "CL", "PE"), cancellationToken: TestContext.Current.CancellationToken);
         Assert.All(withFilter, h => Assert.Equal("politica", h.Document.Metadata!["tipo"]));
     }
 
-    [SkippableFact]
+    [Fact]
     public async Task WorksAsAgentTool()
     {
         await using var store = await CreateStoreAsync();

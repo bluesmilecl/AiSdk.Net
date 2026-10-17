@@ -182,7 +182,7 @@ public sealed class GoogleGenerativeLanguageModel : ILanguageModel, ITokenCounti
     // Petición
     // ------------------------------------------------------------------
 
-    internal (JsonObject Body, List<string> Warnings) BuildBody(LanguageModelRequest request)
+    internal static (JsonObject Body, List<string> Warnings) BuildBody(LanguageModelRequest request)
     {
         var warnings = new List<string>();
         var body = new JsonObject { ["contents"] = ConvertContents(request.Messages) };

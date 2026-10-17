@@ -8,6 +8,8 @@ namespace AiSdk.Tests;
 
 public class SkillTests
 {
+    private static readonly string[] ScriptArguments = ["a", "b", "c"];
+
     private const string ContractSkill =
         """
         ---
@@ -118,17 +120,17 @@ public class SkillTests
         var root = Path.Combine(Path.GetTempPath(), "aisdk-skills-" + Guid.NewGuid().ToString("N"));
         try
         {
-            await SkillLibrary.SaveAsync(ContractSkillWithFiles(), Path.Combine(root, "plugins", "legal", "skills"));
+            await SkillLibrary.SaveAsync(ContractSkillWithFiles(), Path.Combine(root, "plugins", "legal", "skills"), TestContext.Current.CancellationToken);
             Directory.CreateDirectory(Path.Combine(root, "rota"));
-            await File.WriteAllTextAsync(Path.Combine(root, "rota", "SKILL.md"), "---\nname: Rota\ndescription: x\n---\nhola");
+            await File.WriteAllTextAsync(Path.Combine(root, "rota", "SKILL.md"), "---\nname: Rota\ndescription: x\n---\nhola", TestContext.Current.CancellationToken);
 
             var library = new SkillLibrary();
             var loaded = library.LoadDirectory(root, new SkillLoadOptions { Trusted = true });
 
             var skill = Assert.Single(loaded);
             Assert.True(skill.Trusted);
-            Assert.Equal("La multa no puede superar un mes de arriendo.", Encoding.UTF8.GetString((await skill.Files.ReadAsync("references/clausulas.md"))!));
-            Assert.Null(await skill.Files.ReadAsync("references/../../../../etc/passwd").ContinueWith(t => t.IsFaulted ? null : t.Result));
+            Assert.Equal("La multa no puede superar un mes de arriendo.", Encoding.UTF8.GetString((await skill.Files.ReadAsync("references/clausulas.md", TestContext.Current.CancellationToken))!));
+            Assert.Null(await skill.Files.ReadAsync("references/../../../../etc/passwd", TestContext.Current.CancellationToken).ContinueWith(t => t.IsFaulted ? null : t.Result));
             Assert.Single(library.LoadErrors); // "Rota" es inválida y se informa sin detener la carga
         }
         finally
@@ -140,7 +142,7 @@ public class SkillTests
     [Fact]
     public async Task LoadsFromZipPackagesLikeGitHubArchives()
     {
-        var packed = await SkillLibrary.PackAsync(ContractSkillWithFiles());
+        var packed = await SkillLibrary.PackAsync(ContractSkillWithFiles(), TestContext.Current.CancellationToken);
 
         // Simula el ZIP de un repositorio: carpeta raíz "repo-main/" con skills en subcarpetas.
         using var repo = new MemoryStream();
@@ -151,7 +153,7 @@ public class SkillTests
             {
                 using var from = entry.Open();
                 using var to = archive.CreateEntry("repo-main/skills/" + entry.FullName).Open();
-                await from.CopyToAsync(to);
+                await from.CopyToAsync(to, TestContext.Current.CancellationToken);
             }
 
             using var other = new StreamWriter(archive.CreateEntry("repo-main/otros/ignorada/SKILL.md").Open());
@@ -198,7 +200,7 @@ public class SkillTests
             .ReturnsText("La multa del contrato es abusiva.");
         var agent = new ToolLoopAgent(new AgentSettings { Model = model, Instructions = "Eres abogado.", Skills = library });
 
-        var result = await agent.GenerateAsync("Revisa este contrato: multa de 3 meses.");
+        var result = await agent.GenerateAsync("Revisa este contrato: multa de 3 meses.", TestContext.Current.CancellationToken);
 
         var request = model.Requests[0];
         Assert.Contains("Eres abogado.", request.Messages[0].Text);
@@ -227,18 +229,18 @@ public class SkillTests
         Assert.Null(library.TryInvokeSlashCommand("hola"));
     }
 
-    [SkippableFact]
+    [Fact]
     public async Task TrustedSkillsCanRunScripts()
     {
-        Skip.IfNot(File.Exists("/usr/bin/python3"), "python3 no instalado");
+        Assert.SkipUnless(File.Exists("/usr/bin/python3"), "python3 no instalado");
         var runner = new ProcessSkillScriptRunner();
         var trusted = new SkillLibrary([ContractSkillWithFiles(trusted: true)]);
         var model = new MockLanguageModel()
-            .ReturnsToolCall("run_skill_script", new { skill = "revisar-contratos", script = "scripts/contar.py", arguments = new[] { "a", "b", "c" } })
+            .ReturnsToolCall("run_skill_script", new { skill = "revisar-contratos", script = "scripts/contar.py", arguments = ScriptArguments })
             .ReturnsText("listo");
 
         var result = await new ToolLoopAgent(new AgentSettings { Model = model, Skills = trusted, SkillOptions = new SkillToolOptions { ScriptRunner = runner } })
-            .GenerateAsync("x");
+            .GenerateAsync("x", TestContext.Current.CancellationToken);
 
         var output = result.Steps[0].ToolResults[0].Output;
         Assert.Equal(0, output.GetProperty("exitCode").GetInt32());
@@ -252,14 +254,14 @@ public class SkillTests
             Model = new MockLanguageModel().ReturnsToolCall("run_skill_script", new { skill = "revisar-contratos", script = "scripts/contar.py" }).ReturnsText("x"),
             Skills = untrusted,
             SkillOptions = new SkillToolOptions { ScriptRunner = runner },
-        }).GenerateAsync("x");
+        }).GenerateAsync("x", TestContext.Current.CancellationToken);
         Assert.True(denied.Steps[0].ToolResults[0].IsError);
     }
 
-    [SkippableFact]
+    [Fact]
     public async Task ScriptsDoNotInheritSecretsAndTimeOut()
     {
-        Skip.IfNot(File.Exists("/usr/bin/python3"), "python3 no instalado");
+        Assert.SkipUnless(File.Exists("/usr/bin/python3"), "python3 no instalado");
         Environment.SetEnvironmentVariable("AISDK_TEST_SECRET", "s3cr3t");
         var skill = new SkillBuilder("entorno")
             .WithDescription("Prueba de entorno. Úsala cuando se pruebe el ejecutor.")
@@ -269,9 +271,9 @@ public class SkillTests
             .Build();
         var runner = new ProcessSkillScriptRunner(new ProcessSkillScriptRunnerOptions { Timeout = TimeSpan.FromMilliseconds(500) });
 
-        Assert.Equal("sin-secreto", (await runner.RunAsync(skill, "scripts/env.py", [])).Stdout.Trim());
-        Assert.Equal(-1, (await runner.RunAsync(skill, "scripts/lento.py", [])).ExitCode);
-        await Assert.ThrowsAsync<NotSupportedException>(() => runner.RunAsync(skill, "references/x.exe", []));
+        Assert.Equal("sin-secreto", (await runner.RunAsync(skill, "scripts/env.py", [], TestContext.Current.CancellationToken)).Stdout.Trim());
+        Assert.Equal(-1, (await runner.RunAsync(skill, "scripts/lento.py", [], TestContext.Current.CancellationToken)).ExitCode);
+        await Assert.ThrowsAsync<NotSupportedException>(() => runner.RunAsync(skill, "references/x.exe", [], TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -323,11 +325,11 @@ public class SkillTests
             .ReturnsText("""{"name":"Bad Name","description":"Hace X. USE FOR: X.","instructions":"# X\n\n1. Paso"}""")
             .ReturnsText("""{"name":"hacer-x","description":"Hace X. USE FOR: X.","instructions":"# X\n\n1. Paso","references":[{"path":"references/x.md","content":"detalle"}]}""");
 
-        var skill = await SkillGenerator.GenerateAsync(model, "Una skill para hacer X");
+        var skill = await SkillGenerator.GenerateAsync(model, "Una skill para hacer X", cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal("hacer-x", skill.Name);
         Assert.Equal(["references/x.md"], skill.Files.List());
-        Assert.Contains("solo puede tener minúsculas", model.Requests[1].Messages.Last().Text);
+        Assert.Contains("solo puede tener minúsculas", model.Requests[1].Messages[^1].Text);
     }
 
     [Fact]
@@ -384,8 +386,8 @@ public class SkillTests
             .Json("{}").Json("{}").Json("{}");
         var anthropic = new AnthropicProvider(new AnthropicProviderOptions { ApiKey = "k", HttpClient = new HttpClient(handler) });
 
-        var created = await anthropic.Skills.CreateAsync(ContractSkillWithFiles(), "Contratos");
-        await anthropic.Skills.DeleteAsync("skill_01abc");
+        var created = await anthropic.Skills.CreateAsync(ContractSkillWithFiles(), "Contratos", TestContext.Current.CancellationToken);
+        await anthropic.Skills.DeleteAsync("skill_01abc", TestContext.Current.CancellationToken);
 
         Assert.Equal("skill_01abc", created.Id);
         var upload = handler.Requests[0];
@@ -405,7 +407,7 @@ public class SkillTests
         var handler = new FakeHandler().Bytes([1, 2, 3], "application/octet-stream");
         var anthropic = new AnthropicProvider(new AnthropicProviderOptions { ApiKey = "k", HttpClient = new HttpClient(handler) });
 
-        var bytes = await anthropic.Files.DownloadAsync("file_123");
+        var bytes = await anthropic.Files.DownloadAsync("file_123", TestContext.Current.CancellationToken);
 
         Assert.Equal([1, 2, 3], bytes);
         Assert.Equal("/v1/files/file_123/content", handler.Requests[0].Request.RequestUri!.AbsolutePath);

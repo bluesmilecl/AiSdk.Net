@@ -8,3 +8,6 @@ TestResults/
 
 # Datos locales de los ejemplos (artifacts, workflows)
 samples/**/data/
+
+# Artefactos de herramientas (binlogs, snapshots)
+artifacts/

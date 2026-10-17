@@ -20,6 +20,7 @@ public abstract class Output
 
     public static Output<string> Text() => new TextOutput();
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1720:Identifier contains type name", Justification = "Mismo nombre que en el AI SDK (Output.object / result.object) para facilitar la migración.")]
     public static Output<T> Object<T>(string? name = null, string? description = null, JsonSerializerOptions? options = null) =>
         new ObjectOutput<T>(name, description, options ?? JsonSchema.DefaultSerializerOptions);
 

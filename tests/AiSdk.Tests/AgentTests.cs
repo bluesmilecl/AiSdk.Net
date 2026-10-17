@@ -35,7 +35,7 @@ public class AgentTests
             Tools = [Tool.Create<WeatherInput, WeatherOutput>("get_weather", "clima", i => new WeatherOutput(i.City, 21))],
         });
 
-        var result = await agent.GenerateAsync("Clima en Lima y Quito");
+        var result = await agent.GenerateAsync("Clima en Lima y Quito", TestContext.Current.CancellationToken);
 
         Assert.Equal(3, result.Steps.Count);
         Assert.Equal("Eres un meteorólogo.", model.Requests[0].Messages[0].Text);
@@ -56,7 +56,7 @@ public class AgentTests
             Tools = [Tool.Create<WeatherInput, string>("noop", "x", _ => "ok")],
         });
 
-        var result = await agent.GenerateAsync("loop");
+        var result = await agent.GenerateAsync("loop", TestContext.Current.CancellationToken);
 
         Assert.Equal(20, result.Steps.Count);
     }
@@ -69,7 +69,7 @@ public class AgentTests
             .ReturnsText("Tu pedido A1 fue enviado");
 
         var agent = new OrderAgent(model);
-        var result = await agent.GenerateAsync("¿Dónde está A1?");
+        var result = await agent.GenerateAsync("¿Dónde está A1?", TestContext.Current.CancellationToken);
 
         Assert.Equal("Tu pedido A1 fue enviado", result.Text);
         Assert.Equal("\"Pedido A1: enviado\"", result.Steps[0].ToolResults[0].Output.GetRawText());
@@ -83,12 +83,12 @@ public class AgentTests
         var store = new InMemoryConversationStore();
         var session = agent.CreateSession("conv-1", store);
 
-        await session.SendAsync("Me llamo Ana");
-        var second = await session.SendAsync("¿Cómo me llamo?");
+        await session.SendAsync("Me llamo Ana", TestContext.Current.CancellationToken);
+        var second = await session.SendAsync("¿Cómo me llamo?", TestContext.Current.CancellationToken);
 
         Assert.Equal("Te llamas Ana", second.Text);
         Assert.Equal(3, model.Requests[1].Messages.Count);
-        Assert.Equal(4, (await store.LoadAsync("conv-1")).Count);
+        Assert.Equal(4, (await store.LoadAsync("conv-1", TestContext.Current.CancellationToken)).Count);
     }
 
     [Fact]
@@ -98,10 +98,10 @@ public class AgentTests
         var agent = new ToolLoopAgent(new AgentSettings { Model = model });
         var session = agent.CreateSession();
 
-        var stream = await session.StreamAsync("hola");
-        await stream.ConsumeAsync();
+        var stream = await session.StreamAsync("hola", TestContext.Current.CancellationToken);
+        await stream.ConsumeAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal(2, (await session.GetMessagesAsync()).Count);
+        Assert.Equal(2, (await session.GetMessagesAsync(TestContext.Current.CancellationToken)).Count);
     }
 
     [Fact]
@@ -117,7 +117,7 @@ public class AgentTests
             .ReturnsText("El pedido Z9 está enviado");
         var orchestrator = new ToolLoopAgent(new AgentSettings { Model = mainModel, Tools = [orders.AsTool()] });
 
-        var result = await orchestrator.GenerateAsync("¿Z9?");
+        var result = await orchestrator.GenerateAsync("¿Z9?", TestContext.Current.CancellationToken);
 
         Assert.Equal("El pedido Z9 está enviado", result.Text);
         Assert.Equal("\"Z9 enviado\"", result.Steps[0].ToolResults[0].Output.GetRawText());
@@ -154,7 +154,7 @@ public class AgentTests
     {
         var model = new MockEmbeddingModel(dimensions: 4, maxEmbeddingsPerCall: 2);
 
-        var result = await Ai.EmbedManyAsync(model, ["a", "b", "c", "a"]);
+        var result = await Ai.EmbedManyAsync(model, ["a", "b", "c", "a"], TestContext.Current.CancellationToken);
 
         Assert.Equal(2, model.Calls);
         Assert.Equal(4, result.Embeddings.Count);
@@ -175,7 +175,7 @@ public class AgentTests
 
         Assert.Equal("big", sp.GetRequiredService<ProviderRegistry>().LanguageModel("default").ModelId);
         var agent = sp.CreateScope().ServiceProvider.GetRequiredService<OrderAgent>();
-        Assert.Equal("hola", (await agent.GenerateAsync("hi")).Text);
+        Assert.Equal("hola", (await agent.GenerateAsync("hi", TestContext.Current.CancellationToken)).Text);
         Assert.IsType<InMemoryConversationStore>(sp.GetRequiredService<IConversationStore>());
     }
 

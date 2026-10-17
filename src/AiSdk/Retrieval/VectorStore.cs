@@ -146,7 +146,7 @@ public static class VectorStoreExtensions
         var sb = new StringBuilder();
         foreach (var hit in hits)
         {
-            sb.Append("[").Append(hit.Document.Id).Append("]\n").Append(hit.Document.Text).Append("\n\n");
+            sb.Append('[').Append(hit.Document.Id).Append("]\n").Append(hit.Document.Text).Append("\n\n");
         }
 
         return sb.ToString().TrimEnd();
@@ -207,7 +207,7 @@ public static class TextChunker
             {
                 for (var i = 0; i < sentence.Length; i += maxChars)
                 {
-                    yield return sentence.Substring(i, Math.Min(maxChars, sentence.Length - i)) + " ";
+                    yield return string.Concat(sentence.AsSpan(i, Math.Min(maxChars, sentence.Length - i)), " ");
                 }
             }
         }

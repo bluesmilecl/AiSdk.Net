@@ -96,10 +96,10 @@ public sealed class StdioMcpTransport : IMcpTransport
                 {
                     OnStderr?.Invoke(line);
                 }
-            });
+            }, CancellationToken.None);
         }
 
-        _readLoop = Task.Run(ReadLoopAsync);
+        _readLoop = Task.Run(ReadLoopAsync, CancellationToken.None);
         return Task.CompletedTask;
     }
 
@@ -282,7 +282,7 @@ public sealed class HttpMcpTransport : IMcpTransport
                     {
                     }
                 }
-            });
+            }, CancellationToken.None);
             lock (_pendingStreams)
             {
                 _pendingStreams.RemoveAll(t => t.IsCompleted);

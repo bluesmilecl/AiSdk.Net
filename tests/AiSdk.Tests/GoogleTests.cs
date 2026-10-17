@@ -37,7 +37,7 @@ public class GoogleTests
             MaxOutputTokens = 200,
             Temperature = 0.3,
             ProviderOptions = GoogleOptions.Create(thinkingBudget: 1024, includeThoughts: true),
-        });
+        }, TestContext.Current.CancellationToken);
 
         var (request, body) = handler.Requests[0];
         Assert.Equal("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", request.RequestUri!.ToString());
@@ -143,7 +143,7 @@ public class GoogleTests
             .Json("""{"totalTokens":25}""")
             .Json("""{"predictions":[{"bytesBase64Encoded":"AQID","mimeType":"image/png"}]}""");
 
-        var embeddings = await Ai.EmbedManyAsync(google.Embedding(outputDimensionality: 2, taskType: "RETRIEVAL_DOCUMENT"), ["a", "b"]);
+        var embeddings = await Ai.EmbedManyAsync(google.Embedding(outputDimensionality: 2, taskType: "RETRIEVAL_DOCUMENT"), ["a", "b"], TestContext.Current.CancellationToken);
         var tokens = await Ai.CountTokensAsync(new GenerateTextOptions { Model = google.Gemini("gemini-2.5-flash"), System = "s", Prompt = "hola" });
         var image = await Ai.GenerateImageAsync(new GenerateImageOptions { Model = google.Image("imagen-4.0-generate-001"), Prompt = "gato", AspectRatio = "16:9" });
 

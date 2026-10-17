@@ -1,32 +1,22 @@
 <Project>
+  <!--
+    Configuración común de todos los proyectos. MSBuild (Microsoft.Common.props) busca hacia arriba desde cada
+    proyecto e importa el Directory.Build.props más cercano antes del cuerpo del proyecto, así que cada proyecto
+    puede sobrescribir estos valores. src/ y tests/ tienen el suyo, que importa este.
+  -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <Version>0.1.0</Version>
-    <Authors>bluesmilecl</Authors>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <RepositoryUrl>https://github.com/bluesmilecl/sdk-agent-ia-net</RepositoryUrl>
-    <PackageTags>ai;llm;agents;openai;anthropic;claude;sdk</PackageTags>
+
+    <!-- Calidad: analizadores recomendados de .NET y advertencias como errores. -->
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Las alertas de vulnerabilidades de NuGet se ven en la compilación, pero no la bloquean. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
+
+    <!-- Solo los proyectos de src/ generan paquetes NuGet. -->
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
-  <!-- Paquetes NuGet: el id es AiSdk.Net.* (el id "AiSdk" ya existe en nuget.org); los namespaces siguen siendo AiSdk.* -->
-  <PropertyGroup Condition="$(MSBuildProjectDirectory.Replace('\', '/').Contains('/src/'))">
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <NoWarn>$(NoWarn);CS1591</NoWarn>
-    <IsPackable>true</IsPackable>
-    <PackageId>AiSdk.Net$(MSBuildProjectName.Substring(5))</PackageId>
-    <PackageProjectUrl>https://github.com/bluesmilecl/sdk-agent-ia-net</PackageProjectUrl>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PublishRepositoryUrl>true</PublishRepositoryUrl>
-    <EmbedUntrackedSources>true</EmbedUntrackedSources>
-    <IncludeSymbols>true</IncludeSymbols>
-    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <Deterministic>true</Deterministic>
-    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
-  </PropertyGroup>
-  <ItemGroup Condition="$(MSBuildProjectDirectory.Replace('\', '/').Contains('/src/'))">
-    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" Visible="false" />
-  </ItemGroup>
 </Project>

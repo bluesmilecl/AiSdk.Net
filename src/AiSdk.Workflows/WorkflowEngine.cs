@@ -20,7 +20,7 @@ public sealed class WorkflowEngineOptions
 /// eventos y webhooks; y dispara automatizaciones programadas en <see cref="TickAsync"/> (que llama
 /// periódicamente el servicio en segundo plano de <c>AddAiSdkWorkflows</c>).
 /// </summary>
-public sealed class WorkflowEngine
+public sealed class WorkflowEngine : IDisposable
 {
     private readonly ConcurrentDictionary<string, IWorkflow> _workflows = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _runLocks = new();
@@ -37,6 +37,16 @@ public sealed class WorkflowEngine
     }
 
     public IWorkflowStore Store { get; }
+
+    /// <summary>Libera los semáforos internos (el contenedor de DI lo llama al apagar la aplicación).</summary>
+    public void Dispose()
+    {
+        _concurrency.Dispose();
+        foreach (var gate in _runLocks.Values)
+        {
+            gate.Dispose();
+        }
+    }
 
     public IServiceProvider? Services { get; }
 

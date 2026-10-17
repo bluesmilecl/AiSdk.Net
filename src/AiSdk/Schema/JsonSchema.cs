@@ -74,6 +74,7 @@ public static class JsonSchema
     /// <summary>
     /// Crea un esquema de objeto a partir de un conjunto de propiedades (útil para herramientas definidas a mano).
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1720:Identifier contains type name", Justification = "Nombre del tipo JSON Schema (\"type\": \"object\").")]
     public static JsonElement Object(IEnumerable<(string Name, JsonNode Schema, bool Required)> properties)
     {
         var props = new JsonObject();

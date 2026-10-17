@@ -65,7 +65,7 @@ public sealed class InMemoryWorkflowStore : IWorkflowStore
 }
 
 /// <summary>Almacén en disco (un JSON por ejecución y por automatización). Sobrevive reinicios.</summary>
-public sealed class FileSystemWorkflowStore : IWorkflowStore
+public sealed class FileSystemWorkflowStore : IWorkflowStore, IDisposable
 {
     private readonly string _runs;
     private readonly string _automations;
@@ -76,6 +76,8 @@ public sealed class FileSystemWorkflowStore : IWorkflowStore
         _runs = Directory.CreateDirectory(Path.Combine(directory, "runs")).FullName;
         _automations = Directory.CreateDirectory(Path.Combine(directory, "automations")).FullName;
     }
+
+    public void Dispose() => _lock.Dispose();
 
     private static string SafeName(string id) =>
         id.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_' or '.') && !id.Contains("..", StringComparison.Ordinal)

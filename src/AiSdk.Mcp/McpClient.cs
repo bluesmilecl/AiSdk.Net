@@ -120,7 +120,8 @@ public sealed class McpClient : IAsyncDisposable
     private async Task InitializeAsync(CancellationToken cancellationToken)
     {
         await _transport.StartAsync(cancellationToken).ConfigureAwait(false);
-        _dispatchLoop = Task.Run(DispatchLoopAsync);
+        // El bucle vive lo que dure el cliente (se detiene en DisposeAsync), no lo que dure la inicialización.
+        _dispatchLoop = Task.Run(DispatchLoopAsync, CancellationToken.None);
 
         var capabilities = new JsonObject();
         if (_roots is not null)

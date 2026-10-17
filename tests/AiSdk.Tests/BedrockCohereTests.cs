@@ -40,7 +40,7 @@ public class AwsTests
         var b = AwsEventStream.Encode(new Dictionary<string, string> { [":event-type"] = "messageStop" }, Encoding.UTF8.GetBytes("{}"));
 
         var messages = new List<AwsEventStreamMessage>();
-        await foreach (var m in AwsEventStream.ReadAsync(new MemoryStream([.. a, .. b])))
+        await foreach (var m in AwsEventStream.ReadAsync(new MemoryStream([.. a, .. b]), TestContext.Current.CancellationToken))
         {
             messages.Add(m);
         }
@@ -52,7 +52,7 @@ public class AwsTests
         a[^6] ^= 0xFF; // corrompe la carga útil
         await Assert.ThrowsAsync<AiSdkException>(async () =>
         {
-            await foreach (var _ in AwsEventStream.ReadAsync(new MemoryStream(a)))
+            await foreach (var _ in AwsEventStream.ReadAsync(new MemoryStream(a), TestContext.Current.CancellationToken))
             {
             }
         });
@@ -102,7 +102,7 @@ public class BedrockTests
             ToolChoice = ToolChoice.Required,
             MaxOutputTokens = 300,
             Temperature = 0.2,
-        });
+        }, TestContext.Current.CancellationToken);
 
         var (request, body) = handler.Requests[0];
         Assert.Equal("https://bedrock-runtime.us-east-1.amazonaws.com/model/us.anthropic.claude-sonnet-4-5-v1%3A0/converse", request.RequestUri!.AbsoluteUri);
@@ -170,7 +170,7 @@ public class BedrockTests
         ], "application/vnd.amazon.eventstream");
 
         var parts = new List<StreamPart>();
-        await foreach (var p in bedrock.Converse("anthropic.claude-3-haiku").StreamAsync(new LanguageModelRequest { Messages = [ModelMessage.User("x")] }))
+        await foreach (var p in bedrock.Converse("anthropic.claude-3-haiku").StreamAsync(new LanguageModelRequest { Messages = [ModelMessage.User("x")] }, TestContext.Current.CancellationToken))
         {
             parts.Add(p);
         }
@@ -214,7 +214,7 @@ public class BedrockTests
             .Json("""{"embedding":[0.3,0.4],"inputTextTokenCount":4}""");
 
         var obj = await Ai.GenerateObjectAsync<WeatherInput>(new GenerateObjectOptions { Model = bedrock.Converse("amazon.nova-lite-v1:0"), Prompt = "x" });
-        var embeddings = await Ai.EmbedManyAsync(bedrock.Embedding(dimensions: 256), ["a", "b"]);
+        var embeddings = await Ai.EmbedManyAsync(bedrock.Embedding(dimensions: 256), ["a", "b"], TestContext.Current.CancellationToken);
 
         Assert.Equal("Cusco", obj.Object.City);
         Assert.Contains("JSON Schema", (string?)handler.Requests[0].Body["system"]![0]!["text"]);
@@ -235,8 +235,8 @@ public class CohereTests
             .Json("""{"embeddings":{"float":[[0.1,0.2],[0.3,0.4]]},"meta":{"billed_units":{"input_tokens":6}}}""");
         var cohere = new CohereProvider(new CohereProviderOptions { ApiKey = "co-key", HttpClient = new HttpClient(handler) });
 
-        var reranked = await Ai.RerankAsync(cohere.Reranking(), "¿capital de Chile?", ["Lima es la capital de Perú", "Buenos Aires", "Santiago es la capital de Chile"], topN: 2);
-        var embedded = await Ai.EmbedManyAsync(cohere.Embedding(inputType: "search_query"), ["a", "b"]);
+        var reranked = await Ai.RerankAsync(cohere.Reranking(), "¿capital de Chile?", ["Lima es la capital de Perú", "Buenos Aires", "Santiago es la capital de Chile"], topN: 2, cancellationToken: TestContext.Current.CancellationToken);
+        var embedded = await Ai.EmbedManyAsync(cohere.Embedding(inputType: "search_query"), ["a", "b"], TestContext.Current.CancellationToken);
 
         Assert.Equal("Santiago es la capital de Chile", reranked.RerankedDocuments[0]);
         Assert.Equal(0.98, reranked.Ranking[0].Score);

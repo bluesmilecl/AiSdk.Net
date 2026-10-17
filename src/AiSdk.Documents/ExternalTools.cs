@@ -121,7 +121,7 @@ public sealed partial class TesseractOcr : IOcrEngine
     private readonly string _executable;
     private readonly string? _languages;
     private readonly int? _pageSegmentationMode;
-    private IReadOnlySet<string>? _installed;
+    private HashSet<string>? _installed;
 
     /// <param name="languages">Idiomas de Tesseract (p. ej. <c>"spa+eng"</c>). Si es null se deducen del idioma de la petición.</param>
     /// <param name="executable">Ruta o nombre del ejecutable.</param>

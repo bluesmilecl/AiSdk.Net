@@ -44,12 +44,12 @@ public class VectorDataStoreTests
     {
         var store = await CreateStoreAsync();
 
-        var hits = await store.SearchAsync("¿cómo hago una devolucion?", topK: 1);
+        var hits = await store.SearchAsync("¿cómo hago una devolucion?", topK: 1, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal("d1", hits[0].Document.Id);
         Assert.Equal("ana", hits[0].Document.Metadata!["autor"]); // metadatos no indexados se conservan
 
-        await store.DeleteAsync(["d1"]);
-        var after = await store.SearchAsync("devolucion", topK: 5);
+        await store.DeleteAsync(["d1"], TestContext.Current.CancellationToken);
+        var after = await store.SearchAsync("devolucion", topK: 5, cancellationToken: TestContext.Current.CancellationToken);
         Assert.DoesNotContain(after, h => h.Document.Id == "d1");
     }
 
@@ -58,17 +58,17 @@ public class VectorDataStoreTests
     {
         var store = await CreateStoreAsync();
 
-        var peru = await store.SearchAsync("devolucion", topK: 5, filter: VectorFilter.Eq("pais", "PE"));
+        var peru = await store.SearchAsync("devolucion", topK: 5, filter: VectorFilter.Eq("pais", "PE"), cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(["d2"], peru.Select(h => h.Document.Id));
 
-        var combined = await store.SearchAsync("x", topK: 5, filter: VectorFilter.In("pais", "CL", "PE") & !VectorFilter.Eq("pais", "CL"));
+        var combined = await store.SearchAsync("x", topK: 5, filter: VectorFilter.In("pais", "CL", "PE") & !VectorFilter.Eq("pais", "CL"), cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(["d2"], combined.Select(h => h.Document.Id));
 
-        var withoutCountry = await store.SearchAsync("x", topK: 5, filter: !VectorFilter.Exists("pais"));
+        var withoutCountry = await store.SearchAsync("x", topK: 5, filter: !VectorFilter.Exists("pais"), cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(["d3"], withoutCountry.Select(h => h.Document.Id));
 
         // Sin búsqueda híbrida nativa, cae a la semántica.
-        var hybrid = await store.HybridSearchAsync("envio", topK: 1);
+        var hybrid = await store.HybridSearchAsync("envio", topK: 1, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal("d2", hybrid[0].Document.Id);
     }
 

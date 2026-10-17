@@ -4,10 +4,10 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../AiSdk/AiSdk.csproj" />
-    <PackageReference Include="DocumentFormat.OpenXml" Version="3.5.1" />
-    <PackageReference Include="PdfPig" Version="0.1.16" />
-    <PackageReference Include="ReverseMarkdown" Version="6.2.1" />
-    <PackageReference Include="Markdig" Version="1.4.0" />
+    <PackageReference Include="DocumentFormat.OpenXml" />
+    <PackageReference Include="PdfPig" />
+    <PackageReference Include="ReverseMarkdown" />
+    <PackageReference Include="Markdig" />
     <EmbeddedResource Include="Fonts/*.ttf" LogicalName="AiSdk.Documents.Fonts.%(Filename)%(Extension)" />
     <None Include="Fonts/OFL.txt" Pack="true" PackagePath="licenses/fonts-OFL.txt" />
   </ItemGroup>

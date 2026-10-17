@@ -242,6 +242,7 @@ public sealed class InMemoryResumableStreamStore(TimeSpan? ttl = null) : IResuma
     }
 }
 
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "Nombre del protocolo UI Message Stream del AI SDK; es una clase estática de utilidades, no un Stream.")]
 public static class ResumableUIMessageStream
 {
     /// <summary>

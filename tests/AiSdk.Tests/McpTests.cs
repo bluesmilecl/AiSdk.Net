@@ -122,19 +122,19 @@ public class McpTests
     public async Task ConnectsListsAndCallsToolsOverStdio()
     {
         await using var server = new FakeMcpServer();
-        await using var client = await McpClient.ConnectAsync(server.CreateTransport());
+        await using var client = await McpClient.ConnectAsync(server.CreateTransport(), cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal("fake-server", client.ServerInfo.Name);
         Assert.Equal("Usa add para sumar.", client.Instructions);
 
-        var infos = await client.ListToolsAsync();
+        var infos = await client.ListToolsAsync(TestContext.Current.CancellationToken);
         Assert.Equal(["add", "fail"], infos.Select(t => t.Name)); // dos páginas
 
-        var result = await client.CallToolAsync("add", JsonDocument.Parse("""{"a":2,"b":3}""").RootElement);
+        var result = await client.CallToolAsync("add", JsonDocument.Parse("""{"a":2,"b":3}""").RootElement, TestContext.Current.CancellationToken);
         Assert.Equal("5", result.Text);
         Assert.False(result.IsError);
 
-        var ping = await server.PingResponse.WaitAsync(TimeSpan.FromSeconds(5));
+        var ping = await server.PingResponse.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         Assert.Equal("srv-1", (string?)ping["id"]);
         Assert.NotNull(ping["result"]);
         Assert.Contains("notifications/initialized", server.ReceivedMethods);
@@ -144,8 +144,8 @@ public class McpTests
     public async Task McpToolsWorkInsideTheAgentLoop()
     {
         await using var server = new FakeMcpServer();
-        await using var client = await McpClient.ConnectAsync(server.CreateTransport());
-        var tools = await client.GetToolsAsync(prefix: "calc_");
+        await using var client = await McpClient.ConnectAsync(server.CreateTransport(), cancellationToken: TestContext.Current.CancellationToken);
+        var tools = await client.GetToolsAsync(prefix: "calc_", cancellationToken: TestContext.Current.CancellationToken);
 
         var model = new MockLanguageModel()
             .ReturnsToolCall("calc_add", new { a = 20, b = 22 }, "c1")
@@ -180,10 +180,10 @@ public class McpTests
             .Accepted();
 
         var transport = new HttpMcpTransport(new Uri("https://mcp.example.com/mcp"), new HttpClient(handler), new Dictionary<string, string> { ["Authorization"] = "Bearer t" });
-        await using (var client = await McpClient.ConnectAsync(transport))
+        await using (var client = await McpClient.ConnectAsync(transport, cancellationToken: TestContext.Current.CancellationToken))
         {
             Assert.Equal("http-server", client.ServerInfo.Name);
-            var tools = await client.GetToolsAsync();
+            var tools = await client.GetToolsAsync(cancellationToken: TestContext.Current.CancellationToken);
             var output = await tools[0].Execute!(JsonDocument.Parse("{}").RootElement, new ToolExecutionContext { ToolCallId = "x", ToolName = "echo", Messages = [] }, CancellationToken.None);
             Assert.Equal("hola", output);
         }
@@ -223,12 +223,12 @@ public class McpTests
                     res = {}
                 print("log en stderr", file=sys.stderr, flush=True)
                 print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": res}), flush=True)
-            """);
+            """, TestContext.Current.CancellationToken);
         try
         {
             var logs = new List<string>();
-            await using var client = await McpClient.ConnectAsync(new StdioMcpTransport(python, ["-u", script]) { OnStderr = l => { lock (logs) { logs.Add(l); } } });
-            var result = await client.CallToolAsync("upper", JsonDocument.Parse("""{"text":"hola mcp"}""").RootElement);
+            await using var client = await McpClient.ConnectAsync(new StdioMcpTransport(python, ["-u", script]) { OnStderr = l => { lock (logs) { logs.Add(l); } } }, cancellationToken: TestContext.Current.CancellationToken);
+            var result = await client.CallToolAsync("upper", JsonDocument.Parse("""{"text":"hola mcp"}""").RootElement, TestContext.Current.CancellationToken);
             Assert.Equal("py", client.ServerInfo.Name);
             Assert.Equal("HOLA MCP", result.Text);
         }

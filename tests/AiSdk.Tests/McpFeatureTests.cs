@@ -121,16 +121,16 @@ public class McpFeatureTests
     public async Task ListsAndReadsResources()
     {
         await using var server = new ScriptedMcpServer(Handler);
-        await using var client = await McpClient.ConnectAsync(server.CreateTransport());
+        await using var client = await McpClient.ConnectAsync(server.CreateTransport(), cancellationToken: TestContext.Current.CancellationToken);
 
-        var resources = await client.ListResourcesAsync();
+        var resources = await client.ListResourcesAsync(TestContext.Current.CancellationToken);
         Assert.Equal(["readme", "logo"], resources.Select(r => r.Name));
-        Assert.Equal("file:///{path}", (await client.ListResourceTemplatesAsync()).Single().UriTemplate);
+        Assert.Equal("file:///{path}", (await client.ListResourceTemplatesAsync(TestContext.Current.CancellationToken)).Single().UriTemplate);
 
-        var text = await client.ReadResourceAsync("file:///readme.md");
+        var text = await client.ReadResourceAsync("file:///readme.md", TestContext.Current.CancellationToken);
         Assert.Equal("# Hola", text[0].Text);
 
-        var parts = await client.ReadResourceAsPartsAsync("file:///logo.png");
+        var parts = await client.ReadResourceAsPartsAsync("file:///logo.png", TestContext.Current.CancellationToken);
         Assert.Equal([1, 2, 3], Assert.IsType<ImagePart>(parts[0]).Data);
     }
 
@@ -138,12 +138,12 @@ public class McpFeatureTests
     public async Task GetsPromptsAsModelMessages()
     {
         await using var server = new ScriptedMcpServer(Handler);
-        await using var client = await McpClient.ConnectAsync(server.CreateTransport());
+        await using var client = await McpClient.ConnectAsync(server.CreateTransport(), cancellationToken: TestContext.Current.CancellationToken);
 
-        var prompt = Assert.Single(await client.ListPromptsAsync());
+        var prompt = Assert.Single(await client.ListPromptsAsync(TestContext.Current.CancellationToken));
         Assert.True(prompt.Arguments[0].Required);
 
-        var result = await client.GetPromptAsync("review", new Dictionary<string, string> { ["code"] = "x = 1" });
+        var result = await client.GetPromptAsync("review", new Dictionary<string, string> { ["code"] = "x = 1" }, TestContext.Current.CancellationToken);
         Assert.Equal("Revisa: x = 1", result.Messages[0].Text);
         Assert.Equal(ChatRole.Assistant, result.Messages[1].Role);
     }
@@ -158,7 +158,7 @@ public class McpFeatureTests
             Roots = [new McpRoot("file:///proyecto", "proyecto")],
             SamplingModel = samplingModel,
             ElicitationHandler = (req, _) => Task.FromResult(McpElicitationResult.Accept(new JsonObject { ["nombre"] = "Ana" })),
-        });
+        }, TestContext.Current.CancellationToken);
 
         var capabilities = server.InitializeParams!["capabilities"]!;
         Assert.NotNull(capabilities["roots"]);
@@ -181,8 +181,8 @@ public class McpFeatureTests
         Assert.Equal("accept", (string?)elicitation["result"]!["action"]);
         Assert.Equal("Ana", (string?)elicitation["result"]!["content"]!["nombre"]);
 
-        await client.SetRootsAsync([new McpRoot("file:///otro")]);
-        await Task.Delay(100);
+        await client.SetRootsAsync([new McpRoot("file:///otro")], TestContext.Current.CancellationToken);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
         Assert.Contains("notifications/roots/list_changed", server.Notifications);
     }
 
@@ -190,7 +190,7 @@ public class McpFeatureTests
     public async Task UnsupportedServerRequestsGetMethodNotFound()
     {
         await using var server = new ScriptedMcpServer(Handler);
-        await using var client = await McpClient.ConnectAsync(server.CreateTransport());
+        await using var client = await McpClient.ConnectAsync(server.CreateTransport(), cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Empty(server.InitializeParams!["capabilities"]!.AsObject());
         var response = await server.RequestAsync("sampling/createMessage", []);

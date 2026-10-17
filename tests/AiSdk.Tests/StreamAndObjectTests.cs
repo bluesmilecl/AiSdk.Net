@@ -23,7 +23,7 @@ public class StreamAndObjectTests
     {
         var model = new MockLanguageModel { StreamChunkSize = 3 }.ReturnsText("Hola desde .NET");
 
-        var stream = Ai.StreamText(model, "hola");
+        var stream = Ai.StreamText(model, "hola", TestContext.Current.CancellationToken);
 
         var chunks = new List<string>();
         await foreach (var c in stream.TextStream)
@@ -84,7 +84,7 @@ public class StreamAndObjectTests
     {
         var model = new MockLanguageModel().ReturnsError(new ApiCallException("bad", 400, null, null));
 
-        var stream = Ai.StreamText(model, "x");
+        var stream = Ai.StreamText(model, "x", TestContext.Current.CancellationToken);
 
         StreamPart? last = null;
         await foreach (var p in stream.FullStream)

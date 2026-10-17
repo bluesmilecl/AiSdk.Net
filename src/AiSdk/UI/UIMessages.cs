@@ -180,6 +180,7 @@ public static class UIMessageConverter
 /// Escribe un stream en formato <b>UI Message Stream</b> (SSE) compatible con
 /// <c>useChat</c> del AI SDK (cabecera <c>x-vercel-ai-ui-message-stream: v1</c>).
 /// </summary>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "Nombre del protocolo UI Message Stream del AI SDK; es una clase estática de utilidades, no un Stream.")]
 public static partial class UIMessageStream
 {
     public const string HeaderName = "x-vercel-ai-ui-message-stream";

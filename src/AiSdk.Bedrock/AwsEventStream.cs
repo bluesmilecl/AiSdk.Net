@@ -20,6 +20,7 @@ public sealed record AwsEventStreamMessage(IReadOnlyDictionary<string, string> H
 /// Lector del formato <c>event-stream</c> de AWS: cada mensaje tiene un preludio (longitud total,
 /// longitud de cabeceras, CRC), cabeceras tipadas, carga útil y un CRC32 final.
 /// </summary>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "Nombre del formato binario event-stream de AWS; es una clase estática de utilidades, no un Stream.")]
 public static class AwsEventStream
 {
     public static async IAsyncEnumerable<AwsEventStreamMessage> ReadAsync(Stream stream, [EnumeratorCancellation] CancellationToken cancellationToken = default)

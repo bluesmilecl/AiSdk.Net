@@ -1,0 +1,24 @@
+<Project>
+  <!-- MSBuild solo importa automáticamente el Directory.Build.props más cercano: se encadena el de la raíz. -->
+  <PropertyGroup>
+    <ParentDirectoryBuildProps>$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))</ParentDirectoryBuildProps>
+  </PropertyGroup>
+  <Import Project="$(ParentDirectoryBuildProps)" Condition="Exists('$(ParentDirectoryBuildProps)')" />
+
+  <!-- Proyectos de prueba con xUnit.net v3: son ejecutables y se ejecutan con VSTest (dotnet test). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsTestingPlatformApplication>false</IsTestingPlatformApplication>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="AiSdk" />
+  </ItemGroup>
+</Project>

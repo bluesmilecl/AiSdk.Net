@@ -262,7 +262,8 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel, ITokenCount
 
                         case "server_tool_use" or "mcp_tool_use":
                         {
-                            JsonUtil.TryParseElement(blockState.Json.ToString(), out var input);
+                            // Si el JSON de una herramienta de servidor llega incompleto se envía como objeto vacío.
+                            _ = JsonUtil.TryParseElement(blockState.Json.ToString(), out var input);
                             var raw = (JsonObject)blockState.Start.DeepClone();
                             raw["input"] = JsonUtil.ToNode(input);
                             yield return Track(new ToolCallStreamPart(ServerToolCall(raw)));
@@ -705,7 +706,7 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel, ITokenCount
             ProviderMetadata = new Dictionary<string, JsonElement> { [RawBlockKey] = JsonSerializer.SerializeToElement(block) },
         };
 
-    private static IEnumerable<ContentPart> ServerToolResultParts(JsonObject block, IReadOnlyDictionary<string, string> toolNames, HashSet<string> seenSources)
+    private static IEnumerable<ContentPart> ServerToolResultParts(JsonObject block, Dictionary<string, string> toolNames, HashSet<string> seenSources)
     {
         var toolUseId = (string?)block["tool_use_id"] ?? string.Empty;
         var type = (string?)block["type"] ?? string.Empty;

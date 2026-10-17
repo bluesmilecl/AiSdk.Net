@@ -57,7 +57,7 @@ public class StreamExtrasTests
         var generateOnly = new GenerateOnlyModel();
         var model = generateOnly.WithMiddleware(Middlewares.SimulateStreaming());
 
-        Assert.Equal("completo", await Ai.StreamText(model, "x").Text);
+        Assert.Equal("completo", await Ai.StreamText(model, "x", TestContext.Current.CancellationToken).Text);
     }
 
     [Fact]
@@ -73,7 +73,7 @@ public class StreamExtrasTests
         var stream = Ai.StreamText(new GenerateTextOptions { Model = model, Prompt = "x", Tools = [tool], StopWhen = StopCondition.StepCountIs(3) });
 
         using var output = new MemoryStream();
-        await UIMessageStream.WriteAsync(stream.FullStream, output);
+        await UIMessageStream.WriteAsync(stream.FullStream, output, cancellationToken: TestContext.Current.CancellationToken);
         var text = Encoding.UTF8.GetString(output.ToArray());
 
         Assert.Contains("""{"type":"data-progress","id":"p1","data":{"percent":50}}""", text);
@@ -90,7 +90,7 @@ public class StreamExtrasTests
             writer.WriteData("status", new { step = "buscando" });
             writer.Merge(Ai.StreamText(model, "x"));
             return Task.CompletedTask;
-        }, messageId: "m1"))
+        }, messageId: "m1", cancellationToken: TestContext.Current.CancellationToken))
         {
             chunks.Add(chunk);
         }
@@ -109,16 +109,16 @@ public class StreamExtrasTests
     {
         var store = new InMemoryResumableStreamStore();
         var model = new MockLanguageModel { StreamChunkSize = 2 }.ReturnsText("abcdef");
-        var streamId = await ResumableUIMessageStream.StartAsync(store, "chat-1", UIMessageStream.ToChunks(Ai.StreamText(model, "x").FullStream));
+        var streamId = await ResumableUIMessageStream.StartAsync(store, "chat-1", UIMessageStream.ToChunks(Ai.StreamText(model, "x", TestContext.Current.CancellationToken).FullStream));
 
         var first = new List<string>();
-        await foreach (var e in store.ReadAsync(streamId))
+        await foreach (var e in store.ReadAsync(streamId, TestContext.Current.CancellationToken))
         {
             first.Add(e);
         }
 
         var replay = new List<string>();
-        await foreach (var e in store.ReadAsync(streamId))
+        await foreach (var e in store.ReadAsync(streamId, TestContext.Current.CancellationToken))
         {
             replay.Add(e);
         }
@@ -127,8 +127,8 @@ public class StreamExtrasTests
         Assert.Equal("data: [DONE]\n\n", first[^1]);
         Assert.Equal(3, first.Count(e => e.Contains("text-delta")));
         // Al terminar, el chat ya no tiene stream activo (el endpoint de reanudación responde 204).
-        await Task.Delay(50);
-        Assert.Null(await store.GetActiveStreamAsync("chat-1"));
+        await Task.Delay(50, TestContext.Current.CancellationToken);
+        Assert.Null(await store.GetActiveStreamAsync("chat-1", TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -175,7 +175,7 @@ public class RetrievalTests
     public async Task EmbeddingRerankerOrdersByRelevance()
     {
         var reranker = new EmbeddingRerankingModel(new KeywordEmbeddingModel());
-        var result = await Ai.RerankAsync(reranker, "lluvia y clima", ["el gato duerme", "mañana habrá lluvia, mal clima", "dotnet y csharp"], topN: 2);
+        var result = await Ai.RerankAsync(reranker, "lluvia y clima", ["el gato duerme", "mañana habrá lluvia, mal clima", "dotnet y csharp"], topN: 2, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal("mañana habrá lluvia, mal clima", result.RerankedDocuments[0]);
         Assert.Equal(1, result.Ranking[0].OriginalIndex);
@@ -186,19 +186,18 @@ public class RetrievalTests
     public async Task InMemoryVectorStoreSearchesAndWorksAsTool()
     {
         var store = new InMemoryVectorStore(new KeywordEmbeddingModel());
-        await store.UpsertAsync(
-        [
+        await store.UpsertAsync([
             new VectorDocument("1", "El perro ladra"),
             new VectorDocument("2", "Pronóstico: lluvia y clima frío") { Metadata = new Dictionary<string, string> { ["tipo"] = "clima" } },
             new VectorDocument("3", "Novedades de dotnet"),
-        ]);
+        ], TestContext.Current.CancellationToken);
 
-        var hits = await store.SearchAsync("¿habrá lluvia?", topK: 1);
+        var hits = await store.SearchAsync("¿habrá lluvia?", topK: 1, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal("2", hits[0].Document.Id);
 
-        var filtered = await store.SearchAsync("lluvia", topK: 3, filter: VectorFilter.Ne("tipo", "clima"));
+        var filtered = await store.SearchAsync("lluvia", topK: 3, filter: VectorFilter.Ne("tipo", "clima"), cancellationToken: TestContext.Current.CancellationToken);
         Assert.DoesNotContain(filtered, h => h.Document.Id == "2");
-        var onlyClima = await store.SearchAsync("dotnet", topK: 3, filter: VectorFilter.Eq("tipo", "clima") | VectorFilter.In("tipo", "x", "y"));
+        var onlyClima = await store.SearchAsync("dotnet", topK: 3, filter: VectorFilter.Eq("tipo", "clima") | VectorFilter.In("tipo", "x", "y"), cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(["2"], onlyClima.Select(h => h.Document.Id));
 
         var model = new MockLanguageModel()

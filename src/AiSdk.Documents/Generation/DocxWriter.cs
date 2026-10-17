@@ -1,3 +1,4 @@
+using System.Globalization;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
@@ -140,7 +141,7 @@ public static class DocxWriter
                             }
                             else
                             {
-                                paragraph.ParagraphProperties!.Append(new Indentation { Left = ((listLevel + 1) * 360).ToString() });
+                                paragraph.ParagraphProperties!.Append(new Indentation { Left = ((listLevel + 1) * 360).ToString(CultureInfo.InvariantCulture) });
                             }
 
                             parent.Append(paragraph);
@@ -304,14 +305,14 @@ public static class DocxWriter
                 new NumberingFormat { Val = NumberFormatValues.Bullet },
                 new LevelText { Val = symbols[level % 3] },
                 new LevelJustification { Val = LevelJustificationValues.Left },
-                new PreviousParagraphProperties(new Indentation { Left = indent.ToString(), Hanging = "360" }))
+                new PreviousParagraphProperties(new Indentation { Left = indent.ToString(CultureInfo.InvariantCulture), Hanging = "360" }))
             { LevelIndex = level });
             decimals.Append(new Level(
                 new StartNumberingValue { Val = 1 },
                 new NumberingFormat { Val = level % 3 == 1 ? NumberFormatValues.LowerLetter : level % 3 == 2 ? NumberFormatValues.LowerRoman : NumberFormatValues.Decimal },
                 new LevelText { Val = $"%{level + 1}." },
                 new LevelJustification { Val = LevelJustificationValues.Left },
-                new PreviousParagraphProperties(new Indentation { Left = indent.ToString(), Hanging = "360" }))
+                new PreviousParagraphProperties(new Indentation { Left = indent.ToString(CultureInfo.InvariantCulture), Hanging = "360" }))
             { LevelIndex = level });
         }
 
@@ -322,7 +323,7 @@ public static class DocxWriter
 
     private static void AddStyles(MainDocumentPart main, DocumentStyleOptions options)
     {
-        var size = ((int)Math.Round(options.FontSize * 2)).ToString();
+        var size = ((int)Math.Round(options.FontSize * 2)).ToString(CultureInfo.InvariantCulture);
         var styles = new Styles(
             new DocDefaults(
                 new RunPropertiesDefault(new RunPropertiesBaseStyle(
@@ -399,14 +400,14 @@ public static class DocxWriter
 
     private static Style ParagraphStyle(string id, string name, int halfPoints, string color, bool bold, int before, int after)
     {
-        var run = new StyleRunProperties(new Color { Val = color }, new FontSize { Val = halfPoints.ToString() });
+        var run = new StyleRunProperties(new Color { Val = color }, new FontSize { Val = halfPoints.ToString(CultureInfo.InvariantCulture) });
         if (bold) run.Append(new Bold());
         return new Style(
             new StyleName { Val = name },
             new BasedOn { Val = "Normal" },
             new NextParagraphStyle { Val = "Normal" },
             new PrimaryStyle(),
-            new StyleParagraphProperties(new SpacingBetweenLines { Before = before.ToString(), After = after.ToString() }),
+            new StyleParagraphProperties(new SpacingBetweenLines { Before = before.ToString(CultureInfo.InvariantCulture), After = after.ToString(CultureInfo.InvariantCulture) }),
             run)
         { Type = StyleValues.Paragraph, StyleId = id };
     }

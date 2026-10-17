@@ -124,6 +124,7 @@ public sealed class StreamObjectResult<T>
     public IAsyncEnumerable<StreamPart> FullStream => _inner.FullStream;
 
     /// <summary>Objeto final validado.</summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1720:Identifier contains type name", Justification = "Mismo nombre que en el AI SDK (Output.object / result.object) para facilitar la migración.")]
     public Task<T> Object => GetObjectAsync();
 
     public Task<Usage> Usage => _inner.TotalUsage;

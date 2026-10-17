@@ -40,7 +40,7 @@ public class ArtifactTests
 
         var created = result.Steps[0].ToolResults[0].Output;
         Assert.Equal("/artifacts/pagina-de-aterrizaje", created.GetProperty("url").GetString());
-        var latest = await store.GetAsync("pagina-de-aterrizaje");
+        var latest = await store.GetAsync("pagina-de-aterrizaje", cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(2, latest!.Version);
         Assert.Equal("<h1>Hola</h1><p>Precio: $12</p>", latest.Content);
         Assert.Equal("c1", latest.ConversationId);
@@ -58,7 +58,7 @@ public class ArtifactTests
         var stream = Ai.StreamText(new GenerateTextOptions { Model = model, Prompt = "x", Tools = ArtifactTools.Create(store), StopWhen = StopCondition.StepCountIs(3) });
 
         using var output = new MemoryStream();
-        await AiSdk.UI.UIMessageStream.WriteAsync(stream.FullStream, output);
+        await AiSdk.UI.UIMessageStream.WriteAsync(stream.FullStream, output, cancellationToken: TestContext.Current.CancellationToken);
         var text = Encoding.UTF8.GetString(output.ToArray());
 
         Assert.Contains("\"type\":\"data-artifact\",\"id\":\"diagrama\"", text);
@@ -69,7 +69,7 @@ public class ArtifactTests
     public async Task OtherConversationsCannotEditArtifacts()
     {
         var store = new InMemoryArtifactStore();
-        await store.SaveAsync(new Artifact { Id = "privado", Title = "x", Type = "markdown", Content = "secreto", ConversationId = "c1" });
+        await store.SaveAsync(new Artifact { Id = "privado", Title = "x", Type = "markdown", Content = "secreto", ConversationId = "c1" }, TestContext.Current.CancellationToken);
         var model = new MockLanguageModel().ReturnsToolCall("read_artifact", new { id = "privado" }).ReturnsText("ok");
 
         var result = await RunAsync(model, ArtifactTools.Create(store), conversationId: "c2");
@@ -84,16 +84,16 @@ public class ArtifactTests
         try
         {
             var store = new FileSystemArtifactStore(dir);
-            await store.SaveAsync(new Artifact { Id = "doc", Title = "Doc", Type = ArtifactTypes.Markdown, Content = "v1" });
-            await store.SaveAsync(new Artifact { Id = "doc", Title = "Doc", Type = ArtifactTypes.Markdown, Content = "v2" });
-            await store.SaveAsync(new Artifact { Id = "bin", Title = "Bin", Type = ArtifactTypes.File, Data = [1, 2, 3], FileName = "a.bin" });
+            await store.SaveAsync(new Artifact { Id = "doc", Title = "Doc", Type = ArtifactTypes.Markdown, Content = "v1" }, TestContext.Current.CancellationToken);
+            await store.SaveAsync(new Artifact { Id = "doc", Title = "Doc", Type = ArtifactTypes.Markdown, Content = "v2" }, TestContext.Current.CancellationToken);
+            await store.SaveAsync(new Artifact { Id = "bin", Title = "Bin", Type = ArtifactTypes.File, Data = [1, 2, 3], FileName = "a.bin" }, TestContext.Current.CancellationToken);
 
             var reopened = new FileSystemArtifactStore(dir);
-            Assert.Equal("v2", (await reopened.GetAsync("doc"))!.Content);
-            Assert.Equal("v1", (await reopened.GetAsync("doc", 1))!.Content);
-            Assert.Equal([1, 2, 3], (await reopened.GetAsync("bin"))!.Data);
-            Assert.Equal(2, (await reopened.ListAsync()).Count);
-            await Assert.ThrowsAsync<ArgumentException>(() => reopened.GetAsync("../etc"));
+            Assert.Equal("v2", (await reopened.GetAsync("doc", cancellationToken: TestContext.Current.CancellationToken))!.Content);
+            Assert.Equal("v1", (await reopened.GetAsync("doc", 1, TestContext.Current.CancellationToken))!.Content);
+            Assert.Equal([1, 2, 3], (await reopened.GetAsync("bin", cancellationToken: TestContext.Current.CancellationToken))!.Data);
+            Assert.Equal(2, (await reopened.ListAsync(cancellationToken: TestContext.Current.CancellationToken)).Count);
+            await Assert.ThrowsAsync<ArgumentException>(() => reopened.GetAsync("../etc", cancellationToken: TestContext.Current.CancellationToken));
         }
         finally
         {
@@ -120,27 +120,27 @@ public class ArtifactTests
     public async Task EndpointsServeArtifactsInASandbox()
     {
         var store = new InMemoryArtifactStore();
-        await store.SaveAsync(new Artifact { Id = "pagina", Title = "Página", Type = ArtifactTypes.Html, Content = "<b>hola</b>", ConversationId = "c1" });
-        await store.SaveAsync(new Artifact { Id = "informe", Title = "Informe", Type = ArtifactTypes.File, Data = "%PDF-1.7"u8.ToArray(), MediaType = "application/pdf", FileName = "informe.pdf" });
+        await store.SaveAsync(new Artifact { Id = "pagina", Title = "Página", Type = ArtifactTypes.Html, Content = "<b>hola</b>", ConversationId = "c1" }, TestContext.Current.CancellationToken);
+        await store.SaveAsync(new Artifact { Id = "informe", Title = "Informe", Type = ArtifactTypes.File, Data = "%PDF-1.7"u8.ToArray(), MediaType = "application/pdf", FileName = "informe.pdf" }, TestContext.Current.CancellationToken);
 
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
         builder.Services.AddSingleton<IArtifactStore>(store);
         await using var app = builder.Build();
         app.MapArtifacts();
-        await app.StartAsync();
+        await app.StartAsync(TestContext.Current.CancellationToken);
         var client = app.GetTestClient();
 
-        var page = await client.GetAsync("/artifacts/pagina");
-        Assert.Equal("<b>hola</b>", await page.Content.ReadAsStringAsync());
+        var page = await client.GetAsync("/artifacts/pagina", TestContext.Current.CancellationToken);
+        Assert.Equal("<b>hola</b>", await page.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         Assert.Contains("sandbox", page.Headers.GetValues("Content-Security-Policy").Single());
 
-        var file = await client.GetAsync("/artifacts/informe");
+        var file = await client.GetAsync("/artifacts/informe", TestContext.Current.CancellationToken);
         Assert.Equal("application/pdf", file.Content.Headers.ContentType!.MediaType);
         Assert.Equal("informe.pdf", file.Content.Headers.ContentDisposition!.FileNameStar ?? file.Content.Headers.ContentDisposition.FileName);
 
-        Assert.Contains("\"id\":\"pagina\"", await client.GetStringAsync("/artifacts?conversationId=c1"));
-        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/artifacts/nada")).StatusCode);
+        Assert.Contains("\"id\":\"pagina\"", await client.GetStringAsync("/artifacts?conversationId=c1", TestContext.Current.CancellationToken));
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/artifacts/nada", TestContext.Current.CancellationToken)).StatusCode);
     }
 }
 
@@ -196,7 +196,7 @@ public class DocumentGenerationTests
             Assert.Single(document.MainDocumentPart!.HyperlinkRelationships);
         }
 
-        var back = await new MarkdownConverter().ConvertAsync(bytes, MediaTypes.Docx);
+        var back = await new MarkdownConverter().ConvertAsync(bytes, MediaTypes.Docx, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Contains("# Informe de Ventas", back.Markdown);
         Assert.Contains("## Resultados", back.Markdown);
         Assert.Contains("**ventas**", back.Markdown);
@@ -224,7 +224,7 @@ public class DocumentGenerationTests
         }
 
         // La conversión inversa reconoce los títulos por el tamaño de fuente.
-        var back = await new MarkdownConverter().ConvertAsync(bytes, MediaTypes.Pdf);
+        var back = await new MarkdownConverter().ConvertAsync(bytes, MediaTypes.Pdf, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Contains("# Informe de Ventas", back.Markdown);
         Assert.Contains("## Resultados", back.Markdown);
     }
@@ -266,7 +266,7 @@ public class DocumentGenerationTests
             Assert.Contains("SUM(C2:C3)", formulas);
         }
 
-        var back = await new MarkdownConverter().ConvertAsync(bytes, MediaTypes.Xlsx);
+        var back = await new MarkdownConverter().ConvertAsync(bytes, MediaTypes.Xlsx, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Contains("| Café | 2026-03-15 | 10 | 1500.5 |", back.Markdown);
         Assert.Contains("| Total |  | 14 | 2480.5 |", back.Markdown);
         Assert.Contains("| A | 1234.5 | 2 |  | 0.125 |", back.Markdown); // formato latino y porcentaje interpretados
@@ -300,11 +300,11 @@ public class DocumentGenerationTests
         var result = await Ai.GenerateTextAsync(new GenerateTextOptions { Model = model, Prompt = "x", Tools = tools, StopWhen = StopCondition.StepCountIs(5) });
 
         Assert.All(result.Steps.Take(3), s => Assert.False(s.ToolResults[0].IsError, s.ToolResults[0].Output.GetRawText()));
-        var files = await store.ListAsync();
+        var files = await store.ListAsync(cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(["cotización 42.pdf", "carta.docx", "inventario.xlsx"], files.Select(f => f.FileName));
         Assert.StartsWith("%PDF", Encoding.ASCII.GetString(files[0].Data!, 0, 4));
         Assert.Equal("/artifacts/cotizacion-42", result.Steps[0].ToolResults[0].Output.GetProperty("url").GetString());
-        var xlsx = await new MarkdownConverter().ConvertAsync(files[2].Data!, MediaTypes.Xlsx);
+        var xlsx = await new MarkdownConverter().ConvertAsync(files[2].Data!, MediaTypes.Xlsx, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Contains("| Total | 165.5 | 13 |", xlsx.Markdown);
     }
 }

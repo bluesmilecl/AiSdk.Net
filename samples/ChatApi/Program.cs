@@ -15,6 +15,7 @@ using AiSdk.Documents.Generation;
 using AiSdk.Extensions.DependencyInjection;
 using AiSdk.UI;
 using AiSdk.Workflows;
+using ChatApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -136,48 +137,3 @@ app.MapGet("/api/ask", async (string q, string? model, ProviderRegistry registry
 });
 
 app.Run();
-
-/// <summary>Agente definido como clase, resuelto por inyección de dependencias.</summary>
-public sealed class WeatherAgent(ILanguageModel model) : Agent
-{
-    protected override ILanguageModel Model => model;
-
-    protected override string Instructions => "Eres un asistente meteorológico. Responde en español.";
-
-    protected override IEnumerable<Tool> Tools =>
-    [
-        Tool.FromDelegate("get_weather", "Obtiene el clima de una ciudad",
-            ([Description("Ciudad")] string city, ToolExecutionContext ctx) =>
-            {
-                ctx.WriteData("weather-progress", new { city, status = "consultando" }, transient: true);
-                return new { city, temperatureC = Random.Shared.Next(5, 30) };
-            }),
-    ];
-
-    protected override CallSettings Settings => new()
-    {
-        ProviderOptions = AiSdk.Anthropic.AnthropicOptions.Create(effort: "medium", refusalFallback: true),
-    };
-}
-
-public sealed record RefundRequest(string OrderId, decimal Amount);
-
-public sealed record Approval(bool Approved);
-
-/// <summary>Agente con artifacts, generación de documentos y tareas programadas.</summary>
-public sealed class WorkspaceAgent(ILanguageModel model, IArtifactStore artifacts, IServiceProvider services) : Agent
-{
-    private static readonly ArtifactToolOptions ArtifactOptions = new() { Url = a => $"/artifacts/{a.Id}" };
-
-    protected override ILanguageModel Model => model;
-
-    protected override string Instructions =>
-        $"Eres un asistente de trabajo. Responde en español.\n{ArtifactTools.Instructions}\n{DocumentTools.Instructions}\n{AgentTasks.Instructions}";
-
-    protected override IEnumerable<Tool> Tools =>
-    [
-        .. ArtifactTools.Create(artifacts, ArtifactOptions),
-        .. DocumentTools.Create(new DocumentToolOptions { Store = artifacts, ArtifactOptions = ArtifactOptions }),
-        .. AgentTasks.CreateTools(services.GetRequiredService<WorkflowEngine>(), new AgentTaskOptions { Agent = _ => this, DefaultTimeZone = "America/Santiago" }),
-    ];
-}

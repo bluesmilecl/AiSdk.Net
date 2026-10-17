@@ -160,9 +160,11 @@ public sealed class InMemoryArtifactStore : IArtifactStore
 /// Almacén en disco: una carpeta por artifact con un JSON por versión (y el binario aparte).
 /// Útil para servidores pequeños o para inspeccionar los artifacts a mano.
 /// </summary>
-public sealed class FileSystemArtifactStore(string directory) : IArtifactStore
+public sealed class FileSystemArtifactStore(string directory) : IArtifactStore, IDisposable
 {
     private readonly SemaphoreSlim _lock = new(1, 1);
+
+    public void Dispose() => _lock.Dispose();
 
     private string Folder(string id)
     {

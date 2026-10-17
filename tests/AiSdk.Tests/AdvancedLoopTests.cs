@@ -103,7 +103,7 @@ public class CallbackTests
             OnChunk = p => { chunks.Add(p); return ValueTask.CompletedTask; },
             OnFinish = r => { finished = r; return ValueTask.CompletedTask; },
         });
-        await stream.ConsumeAsync();
+        await stream.ConsumeAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(3, chunks.OfType<TextDeltaPart>().Count());
         Assert.DoesNotContain(chunks, c => c is StartStepPart or FinishPart);
@@ -116,7 +116,7 @@ public class CallbackTests
             Prompt = "x",
             OnError = e => { error = e; return ValueTask.CompletedTask; },
         });
-        await failing.ConsumeAsync();
+        await failing.ConsumeAsync(TestContext.Current.CancellationToken);
         Assert.IsType<ApiCallException>(error);
     }
 
@@ -303,7 +303,7 @@ public class ProviderToolLoopTests
         var stream = Ai.StreamText(new GenerateTextOptions { Model = model, Prompt = "x" });
 
         using var output = new MemoryStream();
-        await UIMessageStream.WriteAsync(stream.FullStream, output);
+        await UIMessageStream.WriteAsync(stream.FullStream, output, cancellationToken: TestContext.Current.CancellationToken);
         var text = Encoding.UTF8.GetString(output.ToArray());
 
         Assert.Contains("\"type\":\"source-url\"", text);

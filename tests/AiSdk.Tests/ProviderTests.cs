@@ -35,7 +35,7 @@ public class OpenAIProviderTests
             MaxOutputTokens = 100,
             Temperature = 0.5,
             ProviderOptions = new ProviderOptions { ["openai"] = new JsonObject { ["reasoning_effort"] = "low" } },
-        });
+        }, TestContext.Current.CancellationToken);
 
         var (request, body) = handler.Requests[0];
         Assert.Equal("https://api.openai.com/v1/chat/completions", request.RequestUri!.ToString());
@@ -67,7 +67,7 @@ public class OpenAIProviderTests
                 ModelMessage.Tool(new ToolResultPart("c1", "t", JsonDocument.Parse("""{"ok":true}""").RootElement)),
             ],
             ResponseFormat = ResponseFormat.Json(JsonSchema.For<WeatherInput>(), "weather"),
-        });
+        }, TestContext.Current.CancellationToken);
 
         var body = handler.Requests[0].Body;
         var messages = body["messages"]!.AsArray();
@@ -93,7 +93,7 @@ public class OpenAIProviderTests
             "data: [DONE]");
 
         var parts = new List<StreamPart>();
-        await foreach (var p in openai.Chat("gpt-5").StreamAsync(new LanguageModelRequest { Messages = [ModelMessage.User("x")] }))
+        await foreach (var p in openai.Chat("gpt-5").StreamAsync(new LanguageModelRequest { Messages = [ModelMessage.User("x")] }, TestContext.Current.CancellationToken))
         {
             parts.Add(p);
         }
@@ -115,7 +115,7 @@ public class OpenAIProviderTests
         handler.Json("""{"error":{"message":"Invalid model"}}""", HttpStatusCode.BadRequest);
 
         var ex = await Assert.ThrowsAsync<ApiCallException>(() =>
-            openai.Chat("nope").GenerateAsync(new LanguageModelRequest { Messages = [ModelMessage.User("x")] }));
+            openai.Chat("nope").GenerateAsync(new LanguageModelRequest { Messages = [ModelMessage.User("x")] }, TestContext.Current.CancellationToken));
 
         Assert.Equal(400, ex.StatusCode);
         Assert.Contains("Invalid model", ex.Message);
@@ -128,7 +128,7 @@ public class OpenAIProviderTests
         var (openai, handler) = Create();
         handler.Json("""{"data":[{"index":1,"embedding":[0.0,1.0]},{"index":0,"embedding":[1.0,0.0]}],"usage":{"prompt_tokens":4}}""");
 
-        var result = await Ai.EmbedManyAsync(openai.Embedding("text-embedding-3-small"), ["a", "b"]);
+        var result = await Ai.EmbedManyAsync(openai.Embedding("text-embedding-3-small"), ["a", "b"], TestContext.Current.CancellationToken);
 
         Assert.Equal([1f, 0f], result.Embeddings[0]);
         Assert.Equal(4, result.Usage.Tokens);
@@ -161,7 +161,7 @@ public class AnthropicProviderTests
             Messages = [ModelMessage.System("Eres útil"), ModelMessage.User("Clima en Lima")],
             Tools = [new ToolDefinition("get_weather", "clima", JsonSchema.For<WeatherInput>())],
             ProviderOptions = AnthropicOptions.Create(effort: "high", thinkingDisplay: "summarized", refusalFallback: true),
-        });
+        }, TestContext.Current.CancellationToken);
 
         var (request, body) = handler.Requests[0];
         Assert.Equal("sk-ant-test", request.Headers.GetValues("x-api-key").Single());
@@ -204,7 +204,7 @@ public class AnthropicProviderTests
                     new ToolResultPart("toolu_2", "b", JsonSerializer.SerializeToElement("r2")) { IsError = true }),
                 ModelMessage.User("sigue"),
             ],
-        });
+        }, TestContext.Current.CancellationToken);
 
         var messages = handler.Requests[0].Body["messages"]!.AsArray();
         Assert.Equal(3, messages.Count); // user, assistant, user(tool_results + texto)
@@ -241,7 +241,7 @@ public class AnthropicProviderTests
         {
             Messages = [ModelMessage.User("x")],
             Tools = [new ToolDefinition("get_weather", null, JsonSchema.For<WeatherInput>())],
-        }))
+        }, TestContext.Current.CancellationToken))
         {
             parts.Add(p);
         }
@@ -301,7 +301,7 @@ public class UIMessageStreamTests
         });
 
         using var output = new MemoryStream();
-        await UIMessageStream.WriteAsync(stream.FullStream, output, messageId: "m1");
+        await UIMessageStream.WriteAsync(stream.FullStream, output, messageId: "m1", cancellationToken: TestContext.Current.CancellationToken);
         var text = Encoding.UTF8.GetString(output.ToArray());
 
         var events = text.Split("\n\n", StringSplitOptions.RemoveEmptyEntries).Select(l => l["data: ".Length..]).ToList();
@@ -348,7 +348,7 @@ public class AspNetCoreTests
         var context = new Microsoft.AspNetCore.Http.DefaultHttpContext();
         context.Response.Body = new MemoryStream();
 
-        await AiSdk.AspNetCore.StreamResultExtensions.ToUIMessageStreamResult(Ai.StreamText(model, "x")).ExecuteAsync(context);
+        await AiSdk.AspNetCore.StreamResultExtensions.ToUIMessageStreamResult(Ai.StreamText(model, "x", TestContext.Current.CancellationToken)).ExecuteAsync(context);
 
         Assert.Equal("text/event-stream", context.Response.ContentType);
         Assert.Equal("v1", context.Response.Headers["x-vercel-ai-ui-message-stream"]);

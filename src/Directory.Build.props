@@ -1,0 +1,35 @@
+<Project>
+  <!-- MSBuild solo importa automáticamente el Directory.Build.props más cercano: se encadena el de la raíz. -->
+  <PropertyGroup>
+    <ParentDirectoryBuildProps>$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))</ParentDirectoryBuildProps>
+  </PropertyGroup>
+  <Import Project="$(ParentDirectoryBuildProps)" Condition="Exists('$(ParentDirectoryBuildProps)')" />
+
+  <!-- Librerías publicadas en NuGet. El id es AiSdk.Net.* (el id "AiSdk" ya existe en nuget.org); los namespaces siguen siendo AiSdk.* -->
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <PackageId>AiSdk.Net$(MSBuildProjectName.Substring(5))</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>bluesmilecl</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageTags>ai;llm;agents;openai;anthropic;claude;sdk</PackageTags>
+    <PackageProjectUrl>https://github.com/bluesmilecl/sdk-agent-ia-net</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/bluesmilecl/sdk-agent-ia-net</RepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- La documentación XML es obligatoria en la API pública nueva, pero no se exige en cada miembro existente. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <!-- Paquetes reproducibles con símbolos y Source Link. -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)../README.md" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
+</Project>

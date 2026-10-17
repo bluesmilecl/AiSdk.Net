@@ -4,7 +4,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../AiSdk/AiSdk.csproj" />
-    <PackageReference Include="Npgsql" Version="10.0.3" />
-    <PackageReference Include="Pgvector" Version="0.3.2" />
+    <PackageReference Include="Npgsql" />
+    <PackageReference Include="Pgvector" />
   </ItemGroup>
 </Project>

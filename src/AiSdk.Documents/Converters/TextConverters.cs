@@ -65,6 +65,12 @@ public sealed class PlainTextConverter : IDocumentConverter
         ["application/sql"] = "sql",
     };
 
+    private static readonly JsonSerializerOptions PrettyOptions = new()
+    {
+        WriteIndented = true,
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
+
     public bool CanConvert(string mediaType) => mediaType.StartsWith("text/", StringComparison.Ordinal) && mediaType != MediaTypes.Html
                                                 || CodeLanguages.ContainsKey(mediaType);
 
@@ -89,11 +95,7 @@ public sealed class PlainTextConverter : IDocumentConverter
         try
         {
             using var document = JsonDocument.Parse(text);
-            return JsonSerializer.Serialize(document.RootElement, new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-            });
+            return JsonSerializer.Serialize(document.RootElement, PrettyOptions);
         }
         catch (JsonException)
         {

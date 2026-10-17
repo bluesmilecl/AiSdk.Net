@@ -45,7 +45,7 @@ public class OpenAIResponsesTests
             MaxOutputTokens = 500,
             ResponseFormat = ResponseFormat.Json(JsonSchema.For<WeatherInput>(), "weather"),
             ProviderOptions = OpenAIOptions.Create(reasoningEffort: "low", reasoningSummary: "auto"),
-        });
+        }, TestContext.Current.CancellationToken);
 
         var (request, body) = handler.Requests[0];
         Assert.Equal("https://api.openai.com/v1/responses", request.RequestUri!.ToString());
@@ -129,7 +129,7 @@ public class OpenAIResponsesTests
                 ModelMessage.User("y"),
             ],
             ProviderOptions = OpenAIOptions.Create(store: false),
-        });
+        }, TestContext.Current.CancellationToken);
 
         var body = handler.Requests[0].Body;
         Assert.Equal(3, body["input"]!.AsArray().Count);
@@ -161,7 +161,7 @@ public class OpenAIResponsesTests
             E("""{"type":"response.completed","response":{"status":"completed","usage":{"input_tokens":7,"output_tokens":9}}}"""));
 
         var parts = new List<StreamPart>();
-        await foreach (var p in openai.Responses("gpt-5").StreamAsync(new LanguageModelRequest { Messages = [ModelMessage.User("x")] }))
+        await foreach (var p in openai.Responses("gpt-5").StreamAsync(new LanguageModelRequest { Messages = [ModelMessage.User("x")] }, TestContext.Current.CancellationToken))
         {
             parts.Add(p);
         }
@@ -192,7 +192,7 @@ public class OpenAIResponsesTests
             Messages = [ModelMessage.User("x")],
             Tools = [OpenAITools.WebSearch().ToDefinition()],
             ProviderOptions = OpenAIOptions.Create(reasoningEffort: "high", store: false),
-        });
+        }, TestContext.Current.CancellationToken);
 
         var body = handler.Requests[0].Body;
         Assert.Equal("high", (string?)body["reasoning_effort"]);
@@ -388,7 +388,7 @@ public class AnthropicServerToolTests
         {
             Messages = [ModelMessage.User("busca")],
             Tools = [AnthropicTools.WebSearch().ToDefinition()],
-        });
+        }, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, handler.Requests.Count);
         var resent = handler.Requests[1].Body["messages"]!.AsArray();

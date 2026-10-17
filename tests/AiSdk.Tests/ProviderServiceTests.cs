@@ -49,23 +49,22 @@ public class AnthropicServiceTests
                 """);
         var batches = anthropic.Batches("claude-opus-5-5");
 
-        var job = await batches.CreateAsync(
-        [
+        var job = await batches.CreateAsync([
             new BatchRequestItem("a", new LanguageModelRequest { Messages = [ModelMessage.User("A")] }),
             new BatchRequestItem("b", new LanguageModelRequest { Messages = [ModelMessage.User("B")] }),
-        ]);
+        ], TestContext.Current.CancellationToken);
         Assert.Equal(BatchStatus.InProgress, job.Status);
         var requests = handler.Requests[0].Body["requests"]!.AsArray();
         Assert.Equal("a", (string?)requests[0]!["custom_id"]);
         Assert.Equal("claude-opus-5-5", (string?)requests[0]!["params"]!["model"]);
         Assert.Null(requests[0]!["params"]!["stream"]);
 
-        var finished = await batches.WaitForCompletionAsync("msgbatch_1", TimeSpan.Zero);
+        var finished = await batches.WaitForCompletionAsync("msgbatch_1", TimeSpan.Zero, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(BatchStatus.Completed, finished.Status);
         Assert.Equal(1, finished.Counts.Failed);
 
         var results = new Dictionary<string, BatchResultItem>();
-        await foreach (var r in batches.GetResultsAsync("msgbatch_1"))
+        await foreach (var r in batches.GetResultsAsync("msgbatch_1", TestContext.Current.CancellationToken))
         {
             results[r.CustomId] = r;
         }
@@ -81,14 +80,14 @@ public class AnthropicServiceTests
         handler.Json("""{"id":"file_abc","filename":"doc.pdf","mime_type":"application/pdf","size_bytes":3,"created_at":"2026-10-16T10:00:00Z"}""")
             .Json("""{"content":[{"type":"text","text":"ok"}],"stop_reason":"end_turn","usage":{"input_tokens":1,"output_tokens":1}}""");
 
-        var file = await anthropic.Files.UploadAsync([1, 2, 3], "doc.pdf", "application/pdf");
+        var file = await anthropic.Files.UploadAsync([1, 2, 3], "doc.pdf", "application/pdf", cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal("file_abc", file.Id);
         Assert.Contains("filename=doc.pdf", handler.Requests[0].Raw);
 
         await anthropic.Messages("claude-opus-5-5").GenerateAsync(new LanguageModelRequest
         {
             Messages = [ModelMessage.User(FilePart.FromFileId(file.Id), new TextPart("Resume"))],
-        });
+        }, TestContext.Current.CancellationToken);
 
         var source = handler.Requests[1].Body["messages"]![0]!["content"]![0]!["source"]!;
         Assert.Equal("file", (string?)source["type"]);
@@ -130,7 +129,7 @@ public class OpenAIServiceTests
                 """);
         var batches = openai.Batches("gpt-5");
 
-        var job = await batches.CreateAsync([new BatchRequestItem("a", new LanguageModelRequest { Messages = [ModelMessage.User("A")] }), new BatchRequestItem("b", new LanguageModelRequest { Messages = [ModelMessage.User("B")] })]);
+        var job = await batches.CreateAsync([new BatchRequestItem("a", new LanguageModelRequest { Messages = [ModelMessage.User("A")] }), new BatchRequestItem("b", new LanguageModelRequest { Messages = [ModelMessage.User("B")] })], TestContext.Current.CancellationToken);
 
         Assert.Equal(BatchStatus.InProgress, job.Status);
         var upload = handler.Requests[0].Raw;
@@ -142,7 +141,7 @@ public class OpenAIServiceTests
         Assert.Equal("/v1/responses", (string?)handler.Requests[1].Body["endpoint"]);
 
         var results = new List<BatchResultItem>();
-        await foreach (var r in batches.GetResultsAsync("batch_1"))
+        await foreach (var r in batches.GetResultsAsync("batch_1", TestContext.Current.CancellationToken))
         {
             results.Add(r);
         }
@@ -164,10 +163,10 @@ public class OpenAIServiceTests
             .Json("""{"data":[{"file_id":"file-1","filename":"guia.md","score":0.91,"content":[{"type":"text","text":"Instalación con dotnet add package"}]}]}""");
         var stores = openai.VectorStores;
 
-        var store = await stores.CreateAsync("docs");
-        await stores.UploadFileAsync(store.Id, Encoding.UTF8.GetBytes("# Guía"), "guia.md", "text/markdown");
-        var ready = await stores.WaitUntilReadyAsync(store.Id, TimeSpan.Zero);
-        var hits = await stores.SearchAsync(store.Id, "¿cómo instalo?");
+        var store = await stores.CreateAsync("docs", cancellationToken: TestContext.Current.CancellationToken);
+        await stores.UploadFileAsync(store.Id, Encoding.UTF8.GetBytes("# Guía"), "guia.md", "text/markdown", TestContext.Current.CancellationToken);
+        var ready = await stores.WaitUntilReadyAsync(store.Id, TimeSpan.Zero, TestContext.Current.CancellationToken);
+        var hits = await stores.SearchAsync(store.Id, "¿cómo instalo?", cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(ready.IsReady);
         Assert.Contains("assistants", handler.Requests[1].Raw);
@@ -183,9 +182,9 @@ public class OpenAIServiceTests
         handler.Json("""{"status":"completed","output":[]}""").Json("""{"choices":[{"finish_reason":"stop","message":{"content":"ok"}}]}""");
         var message = ModelMessage.User(FilePart.FromFileId("file-9"), ImagePart.FromFileId("file-img"));
 
-        await openai.Responses("gpt-5").GenerateAsync(new LanguageModelRequest { Messages = [message] });
-        await openai.Chat("gpt-5").GenerateAsync(new LanguageModelRequest { Messages = [ModelMessage.User(FilePart.FromFileId("file-9"))] });
-        await Assert.ThrowsAsync<NotSupportedException>(() => openai.Chat("gpt-5").GenerateAsync(new LanguageModelRequest { Messages = [message] }));
+        await openai.Responses("gpt-5").GenerateAsync(new LanguageModelRequest { Messages = [message] }, TestContext.Current.CancellationToken);
+        await openai.Chat("gpt-5").GenerateAsync(new LanguageModelRequest { Messages = [ModelMessage.User(FilePart.FromFileId("file-9"))] }, TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<NotSupportedException>(() => openai.Chat("gpt-5").GenerateAsync(new LanguageModelRequest { Messages = [message] }, TestContext.Current.CancellationToken));
 
         var responsesContent = handler.Requests[0].Body["input"]![0]!["content"]!.AsArray();
         Assert.Equal("file-9", (string?)responsesContent[0]!["file_id"]);
@@ -214,7 +213,7 @@ public class MistralTests
             ToolChoice = ToolChoice.Required,
             MaxOutputTokens = 64,
             Seed = 7,
-        });
+        }, TestContext.Current.CancellationToken);
 
         var (request, body) = handler.Requests[0];
         Assert.Equal("https://api.mistral.ai/v1/chat/completions", request.RequestUri!.ToString());

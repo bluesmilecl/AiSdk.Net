@@ -147,7 +147,7 @@ public sealed class BedrockConverseLanguageModel : ILanguageModel
     // Petición
     // ------------------------------------------------------------------
 
-    internal (JsonObject Body, List<string> Warnings) BuildBody(LanguageModelRequest request)
+    internal static (JsonObject Body, List<string> Warnings) BuildBody(LanguageModelRequest request)
     {
         var warnings = new List<string>();
         var body = new JsonObject { ["messages"] = ConvertMessages(request.Messages) };

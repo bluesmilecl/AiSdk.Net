@@ -10,7 +10,7 @@
     <ProjectReference Include="../AiSdk.Mistral/AiSdk.Mistral.csproj" />
     <ProjectReference Include="../AiSdk.Bedrock/AiSdk.Bedrock.csproj" />
     <ProjectReference Include="../AiSdk.Cohere/AiSdk.Cohere.csproj" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
   </ItemGroup>
 </Project>
