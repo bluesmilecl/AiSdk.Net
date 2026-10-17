@@ -41,7 +41,7 @@ jobs:
           AISDK_TEST_OPENAI_MODEL: ${{ vars.AISDK_TEST_OPENAI_MODEL }}
           AISDK_TEST_PG: Host=localhost;Port=5432;Username=postgres;Password=postgres;Database=postgres
       - run: dotnet pack AiSdk.slnx -c Release -o artifacts --no-build
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: packages
           path: artifacts/*
