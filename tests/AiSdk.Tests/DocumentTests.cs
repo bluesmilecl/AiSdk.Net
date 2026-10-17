@@ -215,7 +215,7 @@ public class DocumentConverterTests
         var ocr = new VisionModelOcr(model);
         Assert.Equal(string.Empty, (await ocr.RecognizeAsync(new OcrRequest { Data = [1], MediaType = "image/png" }, TestContext.Current.CancellationToken)).Markdown);
         Assert.Equal("| a | b |", (await ocr.RecognizeAsync(new OcrRequest { Data = [1], MediaType = "image/png" }, TestContext.Current.CancellationToken)).Markdown);
-        Assert.Equal(0, model.Requests[0].Temperature);
+        Assert.Null(model.Requests[0].Temperature); // los modelos de razonamiento rechazan temperature
     }
 
     [Fact]

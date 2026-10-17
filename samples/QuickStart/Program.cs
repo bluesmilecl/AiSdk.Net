@@ -9,7 +9,8 @@
 //   mcp:        ... -- anthropic mcp npx -y @modelcontextprotocol/server-everything
 //   image/speech/transcribe usan OpenAI (OPENAI_API_KEY); transcribe recibe la ruta de un audio.
 //
-// Variables de entorno: ANTHROPIC_API_KEY u OPENAI_API_KEY (el modo "mock" no necesita ninguna).
+// Variables de entorno: ANTHROPIC_API_KEY u OPENAI_API_KEY (el modo "mock" no necesita ninguna);
+// OPENAI_MODEL cambia el modelo de OpenAI (por defecto gpt-5).
 
 using System.ComponentModel;
 using AiSdk;
@@ -32,7 +33,7 @@ var example = args.ElementAtOrDefault(1) ?? "agent";
 
 ILanguageModel model = providerName switch
 {
-    "openai" => OpenAIProvider.Default.Responses("gpt-5"),
+    "openai" => OpenAIProvider.Default.Responses(Environment.GetEnvironmentVariable("OPENAI_MODEL") ?? "gpt-5"),
     "google" => GoogleProvider.Default.Gemini("gemini-2.5-flash"),
     "mistral" => MistralProvider.Default.Chat("mistral-large-latest"),
     "bedrock" => BedrockProvider.Default.Converse(Environment.GetEnvironmentVariable("BEDROCK_MODEL") ?? "amazon.nova-pro-v1:0"),

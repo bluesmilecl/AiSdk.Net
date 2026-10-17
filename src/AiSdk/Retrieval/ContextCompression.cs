@@ -190,7 +190,6 @@ public static class ContextCompressor
             System = instructions,
             Prompt = text,
             MaxOutputTokens = Math.Max(256, maxTokens * 2),
-            Temperature = 0,
             CancellationToken = cancellationToken,
         }).ConfigureAwait(false);
         return result.Text.Trim();
@@ -328,7 +327,6 @@ internal sealed class ContextCompressionMiddleware(ContextCompressionOptions opt
             Model = options.Summarizer!,
             System = options.SummaryInstructions,
             Prompt = input,
-            Temperature = 0,
             MaxOutputTokens = SummaryBudget,
             CancellationToken = cancellationToken,
         }).ConfigureAwait(false);

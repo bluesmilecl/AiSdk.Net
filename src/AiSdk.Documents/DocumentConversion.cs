@@ -193,7 +193,6 @@ public sealed class DocumentConversionContext(MarkdownConverterOptions options, 
         {
             Model = model,
             Messages = [ModelMessage.User(new TextPart(instructions ?? Options.ImageDescriptionPrompt), ImagePart.FromBytes(data, mediaType))],
-            Temperature = 0,
             CancellationToken = cancellationToken,
         }).ConfigureAwait(false);
         return result.Text.Trim();

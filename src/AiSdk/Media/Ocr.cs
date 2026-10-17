@@ -64,7 +64,6 @@ public sealed class VisionModelOcr(ILanguageModel model, string? instructions = 
                     new TextPart(instructions ?? DefaultInstructions),
                     ImagePart.FromBytes(request.Data, request.MediaType)),
             ],
-            Temperature = 0,
             CancellationToken = cancellationToken,
         }).ConfigureAwait(false);
         var text = result.Text.Trim();

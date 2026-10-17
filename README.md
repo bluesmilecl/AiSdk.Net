@@ -12,6 +12,9 @@ y en el [AI SDK de Laravel](https://laravel.com/docs/ai-sdk). Una sola API, inde
 - **generación de archivos**: Word, PDF y Excel con estilos profesionales, directamente o como herramientas del agente
 - **workflows durables y automatizaciones**: pasos con reintentos, esperas, aprobaciones humanas, cron, eventos y webhooks;
   los agentes pueden programar sus propias tareas
+- **Skills** (estándar abierto [Agent Skills](https://agentskills.io)): carga desde carpetas, zip, GitHub o recursos
+  embebidos, catálogo con divulgación progresiva, comandos `/skill`, scripts opt-in, creación por agentes y
+  Skills de Anthropic (Excel, Word, PowerPoint, PDF) en contenedor
 - aprobación humana de herramientas (*human-in-the-loop*)
 - middleware de modelos, registro de proveedores con alias, reintentos y trazas OpenTelemetry
 - embeddings y similitud coseno
@@ -413,6 +416,45 @@ Tools = AgentTasks.CreateTools(engine, options),   // schedule_task, list/cancel
 ```
 
 Cada usuario (`Context["userId"]`) solo ve y gestiona sus tareas, con un intervalo mínimo y un máximo de tareas configurables.
+
+### Skills (Agent Skills)
+
+Una skill es una carpeta con un `SKILL.md` (frontmatter `name` + `description` e instrucciones en Markdown) y
+archivos opcionales en `references/`, `scripts/` y `assets/`. Es el mismo formato que usan Claude Code,
+GitHub Copilot y [dotnet/skills](https://github.com/dotnet/skills). El agente solo ve el catálogo (nombre y
+descripción) y carga el resto cuando lo necesita (`load_skill`, `read_skill_file`).
+
+```csharp
+var library = new SkillLibrary();
+library.LoadDirectory("skills", new SkillLoadOptions { Trusted = true });             // tus skills
+await library.LoadFromGitHubAsync("dotnet/skills", path: "plugins/dotnet-test");      // de terceros (no confiables)
+
+library.Add(new SkillBuilder("cotizar-envios")
+    .WithDescription("Calcula el costo de envíos nacionales. USE FOR: cotizar envíos, tarifas por peso.")
+    .WithInstructions("# Cotizar envíos\n\n1. Pide peso y región.\n2. Lee [tarifas](references/tarifas.md).")
+    .AddFile("references/tarifas.md", "| Región | Base | Por kg |\n|---|---|---|\n| RM | $3.000 | $500 |")
+    .Build());
+
+var agent = new ToolLoopAgent(new AgentSettings
+{
+    Model = model,
+    Skills = library,                                                                  // catálogo + herramientas
+    SkillOptions = new SkillToolOptions { ScriptRunner = new ProcessSkillScriptRunner() },  // scripts: opt-in, solo confiables
+});
+
+var prompt = library.TryInvokeSlashCommand("/cotizar-envios 4 kg al sur");          // comandos del usuario
+```
+
+- **Validación** con las reglas del estándar (`SkillValidator.Validate`), límites de tamaño y rutas seguras;
+  `Strict = false` acepta skills de terceros con desviaciones menores.
+- **Crear skills:** `SkillLibrary.SaveAsync` / `PackAsync` (zip), `SkillGenerator.GenerateAsync(model, objetivo)`
+  y las herramientas `create_skill` / `validate_skill` (`SkillAuthoringTools.Create`) para que un agente escriba las suyas.
+- **Scripts** con entorno limpio (sin secretos), timeout y captura de archivos creados; las skills no confiables
+  no ejecutan nada salvo `AllowUntrustedScripts`.
+- **DI y ASP.NET Core:** `services.AddAiSdk(ai => ai.AddSkills("skills"))` y `app.MapSkills()` (catálogo, detalle, zip).
+- **Anthropic:** Skills en contenedor (`AnthropicSkills.Options([AnthropicSkill.Excel, AnthropicSkill.Custom(id)])`),
+  descarga de archivos generados (`GetGeneratedFileIds` + `Files.DownloadAsync`) y API `/v1/skills` (`anthropic.Skills`).
+- El repositorio incluye `skills/aisdk-net`, una skill que enseña a un agente de código a usar este SDK.
 
 ### Salida estructurada
 
@@ -824,7 +866,9 @@ Assert.Equal(2, model.Requests.Count);
 
 Pruebas de integración contra las APIs reales en `tests/AiSdk.IntegrationTests`: se ejecutan con
 `dotnet test` y cada proveedor se omite si su API key no está definida (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`,
-`GEMINI_API_KEY`, `MISTRAL_API_KEY`, `COHERE_API_KEY`, Bedrock con `AWS_REGION` + `AISDK_TEST_BEDROCK_MODEL`).
+`GEMINI_API_KEY`, `MISTRAL_API_KEY`, `COHERE_API_KEY`, Bedrock con `AWS_REGION` + `AISDK_TEST_BEDROCK_MODEL`);
+el modelo se cambia con `AISDK_TEST_<PROVEEDOR>_MODEL` (p. ej. `AISDK_TEST_OPENAI_MODEL=gpt-6-luna`). `LiveFeatureTests` valida
+skills, generación de skills, router, artifacts + Excel y compresión map-reduce con modelos reales.
 La CI las ejecuta con los secretos del repositorio.
 
 ### Telemetría
@@ -871,6 +915,19 @@ de sistema y se valida al parsear. Las opciones propias del modelo van en
 Cualquier opción específica de un proveedor puede pasarse con `ProviderOptions`, que se fusiona
 (en profundidad) con el cuerpo JSON de la petición.
 
+## Calidad e ingeniería
+
+Mejoras aplicadas con las skills de [dotnet/skills](https://github.com/dotnet/skills) (detalle en `docs/quality/`):
+
+- **Central Package Management** (`Directory.Packages.props`): una sola versión por paquete, verificada sin cambios en el grafo resuelto.
+- **`Directory.Build.props` por capas** (raíz, `src/`, `tests/`): metadatos NuGet, Source Link, símbolos `.snupkg`
+  y documentación XML en un solo lugar.
+- **Analizadores** `AnalysisLevel=latest-recommended` con `TreatWarningsAsErrors`: compilación con 0 warnings.
+- **xunit.v3** con `Assert.SkipUnless`/`SkipWhen` y `TestContext.Current.CancellationToken`.
+- **Auditoría de pruebas** (anti-patrones): carreras por retardos fijos, dependencias de reloj/SO y aserciones
+  permisivas corregidas.
+- **Publicación con trusted publishing** (OIDC) en nuget.org, sin API keys de larga duración.
+
 ## Estructura
 
 ```
@@ -890,6 +947,8 @@ src/
   AiSdk.Workflows/            workflows durables, triggers y automatizaciones
   AiSdk.PgVector/             almacén PostgreSQL + pgvector
   AiSdk.VectorData/           adaptador Microsoft.Extensions.VectorData
+skills/aisdk-net/             skill para agentes de código que usan este SDK
+docs/quality/                 informes de calidad (CPM, auditoría de pruebas, trusted publishing)
 samples/
   QuickStart/                 ejemplos de consola
   ChatApi/                    backend para useChat
@@ -900,7 +959,8 @@ tests/AiSdk.IntegrationTests/ pruebas contra las APIs reales (opcionales)
 ## Pendiente / ideas
 
 - Ejecutar las pruebas de integración con API keys reales (configurar los secretos en GitHub)
-- Primera publicación en nuget.org (crear el tag `v0.1.0` con `NUGET_API_KEY` configurado)
+- Primera publicación en nuget.org (configurar trusted publishing según `docs/quality/nuget-trusted-publishing.md` y crear el tag `v0.1.0`)
+- `TimeProvider` en `WorkflowEngine` y pendientes medios/bajos de `docs/quality/test-anti-patterns.md`
 - Azure OpenAI con autenticación Entra ID y Vertex AI nativos (hoy: endpoints compatibles o Microsoft.Extensions.AI)
 - Almacén Redis para streams reanudables
 - Detección de tablas en PDF digitales sin OCR (hoy: usar `PdfOcr = Always` con un OCR de modelo)

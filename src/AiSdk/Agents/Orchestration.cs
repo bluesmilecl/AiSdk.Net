@@ -320,7 +320,6 @@ public sealed class RouterOrchestration(ILanguageModel classifier, IReadOnlyList
             Model = classifier,
             System = $"Elige la ruta más adecuada para la solicitud del usuario.\nRutas disponibles:\n{catalog}\n{Instructions}",
             Prompt = input,
-            Temperature = 0,
             CancellationToken = context.CancellationToken,
         }).ConfigureAwait(false);
         context.Record(Name, input, decision.Object.Route, decision.Usage, watch.Elapsed);
@@ -500,7 +499,6 @@ public sealed class EvaluatorOptimizerOrchestration(IOrchestrationNode generator
                 Model = evaluator,
                 System = $"Eres un evaluador exigente. Evalúa el resultado contra estos criterios:\n{criteria}",
                 Prompt = $"Tarea:\n{input}\n\nResultado a evaluar:\n{draft}",
-                Temperature = 0,
                 CancellationToken = context.CancellationToken,
             }).ConfigureAwait(false);
             var e = evaluation.Object;
