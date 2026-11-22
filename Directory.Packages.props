@@ -16,7 +16,7 @@
     <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.0" />
     <PackageVersion Include="Microsoft.Extensions.VectorData.Abstractions" Version="10.11.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-    <PackageVersion Include="Npgsql" Version="10.0.3" />
+    <PackageVersion Include="Npgsql" Version="11.0.0" />
     <PackageVersion Include="PdfPig" Version="0.1.16" />
     <PackageVersion Include="Pgvector" Version="0.3.2" />
     <PackageVersion Include="ReverseMarkdown" Version="6.3.0" />
