@@ -3,6 +3,7 @@ name: Wiki
 # Publishes docs/wiki to the repository's GitHub wiki on every push to the default branch.
 # One-time setup: Settings → General → Features → enable "Wikis" and create any first page in the
 # wiki UI (GitHub only creates the wiki git repository after the first page exists).
+# Until the wiki exists the job ends successfully with a notice instead of failing.
 on:
   push:
     paths:
@@ -28,7 +29,12 @@ jobs:
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git clone --depth 1 "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git" wiki
+          WIKI_URL="https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git"
+          if ! git ls-remote "$WIKI_URL" >/dev/null 2>&1; then
+            echo "::notice title=Wiki not enabled::The wiki repository does not exist yet. Enable Wikis in Settings and create a first page; until then docs/wiki is not published."
+            exit 0
+          fi
+          git clone --depth 1 "$WIKI_URL" wiki
           rsync -a --delete --exclude '.git' docs/wiki/ wiki/
           cd wiki
           git config user.name "github-actions[bot]"
