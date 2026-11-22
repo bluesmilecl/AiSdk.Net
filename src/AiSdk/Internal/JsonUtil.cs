@@ -7,7 +7,7 @@ namespace AiSdk.Internal;
 /// <summary>Utilidades JSON compartidas por el núcleo y los proveedores.</summary>
 public static class JsonUtil
 {
-    public static JsonElement EmptyObject { get; } = JsonDocument.Parse("{}").RootElement.Clone();
+    public static JsonElement EmptyObject { get; } = JsonElement.Parse("{}");
 
     /// <summary>Parsea JSON; si falla devuelve <c>false</c> y el texto como string JSON.</summary>
     public static bool TryParseElement(string? text, out JsonElement element)

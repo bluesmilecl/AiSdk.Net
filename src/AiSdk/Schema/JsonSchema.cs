@@ -98,7 +98,7 @@ public static class JsonSchema
     }
 
     /// <summary>Parsea un esquema escrito a mano en JSON.</summary>
-    public static JsonElement Parse(string json) => JsonDocument.Parse(json).RootElement.Clone();
+    public static JsonElement Parse(string json) => JsonElement.Parse(json);
 
     /// <summary>
     /// Convierte un esquema al modo "estricto" que exigen OpenAI y Anthropic para
