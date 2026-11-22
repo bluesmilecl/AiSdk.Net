@@ -229,7 +229,7 @@ public class ToolRepairTests
             StopWhen = StopCondition.StepCountIs(3),
             RepairToolCall = ctx => ValueTask.FromResult<ToolCallPart?>(
                 ctx.Reason == ToolCallRepairReason.InvalidJson
-                    ? ctx.ToolCall with { Input = JsonDocument.Parse("""{"city":"Lima"}""").RootElement, InvalidInput = false }
+                    ? ctx.ToolCall with { Input = JsonElement.Parse("""{"city":"Lima"}"""), InvalidInput = false }
                     : null),
         });
 
@@ -264,8 +264,8 @@ public class ProviderToolLoopTests
     {
         Content =
         [
-            new ToolCallPart("srv_1", "web_search", JsonDocument.Parse("""{"query":"clima"}""").RootElement) { ProviderExecuted = true },
-            new ToolResultPart("srv_1", "web_search", JsonDocument.Parse("""[{"url":"https://a.cl"}]""").RootElement) { ProviderExecuted = true },
+            new ToolCallPart("srv_1", "web_search", JsonElement.Parse("""{"query":"clima"}""")) { ProviderExecuted = true },
+            new ToolResultPart("srv_1", "web_search", JsonElement.Parse("""[{"url":"https://a.cl"}]""")) { ProviderExecuted = true },
             new SourcePart("s1", "https://a.cl") { Title = "A" },
             new TextPart(text),
         ],

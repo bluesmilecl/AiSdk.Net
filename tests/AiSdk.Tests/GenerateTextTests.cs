@@ -301,8 +301,8 @@ public class GenerateTextTests
         var messages = new List<ModelMessage>
         {
             ModelMessage.User(new TextPart("hola"), ImagePart.FromBytes([1, 2, 3])),
-            ModelMessage.Assistant(new ReasoningPart("pienso"), new ToolCallPart("c1", "t", JsonDocument.Parse("""{"a":1}""").RootElement)),
-            ModelMessage.Tool(new ToolResultPart("c1", "t", JsonDocument.Parse("\"ok\"").RootElement) { IsError = true }),
+            ModelMessage.Assistant(new ReasoningPart("pienso"), new ToolCallPart("c1", "t", JsonElement.Parse("""{"a":1}"""))),
+            ModelMessage.Tool(new ToolResultPart("c1", "t", JsonElement.Parse("\"ok\"")) { IsError = true }),
         };
 
         var json = JsonSerializer.Serialize(messages, JsonSchema.DefaultSerializerOptions);

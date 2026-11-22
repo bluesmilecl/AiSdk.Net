@@ -510,7 +510,7 @@ public sealed class PptxConverter : IDocumentConverter
                         {
                             foreach (var (text, level) in paragraphs)
                             {
-                                body.Append(new string(' ', level * 2)).Append("- ").Append(text).Append('\n');
+                                body.Append(' ', level * 2).Append("- ").Append(text).Append('\n');
                             }
 
                             body.Append('\n');

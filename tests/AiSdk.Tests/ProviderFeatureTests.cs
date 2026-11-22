@@ -121,7 +121,7 @@ public class OpenAIResponsesTests
                 ModelMessage.User("x"),
                 ModelMessage.Assistant(
                     reasoning,
-                    new ToolCallPart("ws_1", "web_search", JsonDocument.Parse("{}").RootElement)
+                    new ToolCallPart("ws_1", "web_search", JsonElement.Parse("{}"))
                     {
                         ProviderExecuted = true,
                         ProviderMetadata = new Dictionary<string, JsonElement> { [OpenAIResponsesLanguageModel.ItemIdKey] = JsonSerializer.SerializeToElement("ws_1") },

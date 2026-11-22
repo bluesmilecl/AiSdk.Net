@@ -63,8 +63,8 @@ public class OpenAIProviderTests
             Messages =
             [
                 ModelMessage.User("x"),
-                ModelMessage.Assistant(new ToolCallPart("c1", "t", JsonDocument.Parse("""{"a":1}""").RootElement)),
-                ModelMessage.Tool(new ToolResultPart("c1", "t", JsonDocument.Parse("""{"ok":true}""").RootElement)),
+                ModelMessage.Assistant(new ToolCallPart("c1", "t", JsonElement.Parse("""{"a":1}"""))),
+                ModelMessage.Tool(new ToolResultPart("c1", "t", JsonElement.Parse("""{"ok":true}"""))),
             ],
             ResponseFormat = ResponseFormat.Json(JsonSchema.For<WeatherInput>(), "weather"),
         }, TestContext.Current.CancellationToken);
@@ -197,8 +197,8 @@ public class AnthropicProviderTests
                 ModelMessage.User("x"),
                 ModelMessage.Assistant(
                     new ReasoningPart("") { ProviderMetadata = signature },
-                    new ToolCallPart("toolu_1", "a", JsonDocument.Parse("{}").RootElement),
-                    new ToolCallPart("toolu_2", "b", JsonDocument.Parse("{}").RootElement)),
+                    new ToolCallPart("toolu_1", "a", JsonElement.Parse("{}")),
+                    new ToolCallPart("toolu_2", "b", JsonElement.Parse("{}"))),
                 ModelMessage.Tool(
                     new ToolResultPart("toolu_1", "a", JsonSerializer.SerializeToElement("r1")),
                     new ToolResultPart("toolu_2", "b", JsonSerializer.SerializeToElement("r2")) { IsError = true }),

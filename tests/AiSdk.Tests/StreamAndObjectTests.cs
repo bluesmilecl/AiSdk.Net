@@ -231,7 +231,7 @@ public class StreamAndObjectTests
         Assert.Equal(["a", "b"], tool.InputSchema.GetProperty("required").EnumerateArray().Select(e => e.GetString()));
 
         var output = await tool.Execute!(
-            JsonDocument.Parse("""{"a":2,"b":3}""").RootElement,
+            JsonElement.Parse("""{"a":2,"b":3}"""),
             new ToolExecutionContext { ToolCallId = "1", ToolName = "add", Messages = [] },
             CancellationToken.None);
         Assert.Equal(5, output);

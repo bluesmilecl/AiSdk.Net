@@ -130,7 +130,7 @@ public class McpTests
         var infos = await client.ListToolsAsync(TestContext.Current.CancellationToken);
         Assert.Equal(["add", "fail"], infos.Select(t => t.Name)); // dos páginas
 
-        var result = await client.CallToolAsync("add", JsonDocument.Parse("""{"a":2,"b":3}""").RootElement, TestContext.Current.CancellationToken);
+        var result = await client.CallToolAsync("add", JsonElement.Parse("""{"a":2,"b":3}"""), TestContext.Current.CancellationToken);
         Assert.Equal("5", result.Text);
         Assert.False(result.IsError);
 
@@ -184,7 +184,7 @@ public class McpTests
         {
             Assert.Equal("http-server", client.ServerInfo.Name);
             var tools = await client.GetToolsAsync(cancellationToken: TestContext.Current.CancellationToken);
-            var output = await tools[0].Execute!(JsonDocument.Parse("{}").RootElement, new ToolExecutionContext { ToolCallId = "x", ToolName = "echo", Messages = [] }, CancellationToken.None);
+            var output = await tools[0].Execute!(JsonElement.Parse("{}"), new ToolExecutionContext { ToolCallId = "x", ToolName = "echo", Messages = [] }, CancellationToken.None);
             Assert.Equal("hola", output);
         }
 
@@ -225,7 +225,7 @@ public class McpTests
         {
             var logs = new List<string>();
             await using var client = await McpClient.ConnectAsync(new StdioMcpTransport(python, ["-u", script]) { OnStderr = l => { lock (logs) { logs.Add(l); } } }, cancellationToken: TestContext.Current.CancellationToken);
-            var result = await client.CallToolAsync("upper", JsonDocument.Parse("""{"text":"hola mcp"}""").RootElement, TestContext.Current.CancellationToken);
+            var result = await client.CallToolAsync("upper", JsonElement.Parse("""{"text":"hola mcp"}"""), TestContext.Current.CancellationToken);
             Assert.Equal("py", client.ServerInfo.Name);
             Assert.Equal("HOLA MCP", result.Text);
         }
