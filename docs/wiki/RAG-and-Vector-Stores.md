@@ -65,6 +65,12 @@ await store.DeleteWhereAsync(VectorFilter.Eq("source", "old-manual.pdf"));
 var tool = store.AsTool(hybrid: true);
 ```
 
+Filters run in SQL and equalities use the GIN metadata index (`metadata @> '{"key":"value"}'`). The HNSW index returns
+at most `hnsw.ef_search` candidates (40 by default) and filters afterwards, so a selective filter (one user, one
+tenant) could leave a search with fewer results than requested, or none. With `FilteredSearch = Auto` (the default),
+when that happens the same query switches to an exact search over the rows that match the filter. `Approximate` keeps
+only the HNSW index (fastest) and `Exact` always searches exactly over the filtered rows.
+
 **Qdrant, Pinecone, Azure AI Search, Redis, Weaviate…** (`AiSdk.VectorData`): a single adapter over
 Microsoft.Extensions.VectorData works with all of its connectors. Metadata used for filtering is
 declared in `FilterableFields`:

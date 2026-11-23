@@ -103,8 +103,9 @@ public sealed class VideoConverter : IDocumentConverter
     public async Task<DocumentConversionResult> ConvertAsync(DocumentSource source, DocumentConversionContext context, CancellationToken cancellationToken = default)
     {
         var options = context.Options;
+        var runner = options.ProcessRunner ?? ExternalProcess.Runner;
         var warnings = new List<string>();
-        if (!ExternalProcess.Exists(options.FfmpegPath))
+        if (!runner.Exists(options.FfmpegPath))
         {
             return new DocumentConversionResult
             {
@@ -118,7 +119,7 @@ public sealed class VideoConverter : IDocumentConverter
         using var temp = new TempDirectory();
         var input = temp.File("input" + MediaTypes.ExtensionFor(source.MediaType));
         await File.WriteAllBytesAsync(input, source.Data, cancellationToken).ConfigureAwait(false);
-        var duration = await ProbeDurationAsync(options.FfmpegPath, input, cancellationToken).ConfigureAwait(false);
+        var duration = await ProbeDurationAsync(runner, options.FfmpegPath, input, cancellationToken).ConfigureAwait(false);
         var interval = options.VideoFrameInterval.TotalSeconds;
         if (duration is { } d && d / interval > options.MaxVideoFrames)
         {
@@ -134,7 +135,7 @@ public sealed class VideoConverter : IDocumentConverter
         else
         {
             var audioPath = temp.File("audio.mp3");
-            var audio = await ExternalProcess.RunAsync(
+            var audio = await runner.RunAsync(
                 options.FfmpegPath,
                 ["-v", "error", "-i", input, "-vn", "-ac", "1", "-ar", "16000", "-b:a", "48k", "-f", "mp3", audioPath],
                 cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -156,7 +157,7 @@ public sealed class VideoConverter : IDocumentConverter
             var framesDir = Directory.CreateDirectory(temp.File("frames")).FullName;
             // Un fotograma en t=0 y luego uno cada `interval` segundos (marcas de tiempo exactas).
             var step = interval.ToString("0.###", CultureInfo.InvariantCulture);
-            await ExternalProcess.RunCheckedAsync(
+            await runner.RunCheckedAsync(
                 options.FfmpegPath,
                 ["-v", "error", "-i", input, "-vf", $"select='isnan(prev_selected_t)+gte(t-prev_selected_t\\,{step})',scale='min(1024,iw)':-2", "-fps_mode", "vfr", "-frames:v", options.MaxVideoFrames.ToString(CultureInfo.InvariantCulture), "-q:v", "4", Path.Combine(framesDir, "f_%04d.jpg")],
                 cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -265,15 +266,15 @@ public sealed class VideoConverter : IDocumentConverter
         return pages;
     }
 
-    private static async Task<double?> ProbeDurationAsync(string ffmpeg, string input, CancellationToken cancellationToken)
+    private static async Task<double?> ProbeDurationAsync(IExternalProcessRunner runner, string ffmpeg, string input, CancellationToken cancellationToken)
     {
         var ffprobe = Path.Combine(Path.GetDirectoryName(ffmpeg) ?? string.Empty, Path.GetFileName(ffmpeg).Replace("ffmpeg", "ffprobe", StringComparison.OrdinalIgnoreCase));
-        if (!ExternalProcess.Exists(ffprobe))
+        if (!runner.Exists(ffprobe))
         {
             return null;
         }
 
-        var result = await ExternalProcess.RunAsync(ffprobe, ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", input], cancellationToken: cancellationToken).ConfigureAwait(false);
+        var result = await runner.RunAsync(ffprobe, ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", input], cancellationToken: cancellationToken).ConfigureAwait(false);
         return double.TryParse(Encoding.UTF8.GetString(result.Output).Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds) ? seconds : null;
     }
 }

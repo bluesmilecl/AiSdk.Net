@@ -21,6 +21,34 @@ public enum PgVectorDistance
     InnerProduct,
 }
 
+/// <summary>Cómo se resuelve una búsqueda semántica con <see cref="VectorFilter"/>.</summary>
+/// <remarks>
+/// El índice HNSW entrega a lo más <c>hnsw.ef_search</c> candidatos (40 por defecto) y el filtro se aplica después:
+/// un filtro selectivo (un usuario, un cliente) puede dejar la búsqueda con menos resultados de los pedidos, o sin
+/// ninguno, aunque haya filas que lo cumplan.
+/// </remarks>
+public enum PgVectorFilteredSearch
+{
+    /// <summary>
+    /// Índice HNSW y, si el filtro deja menos de <c>topK</c> resultados (o menos de <c>hnsw.ef_search</c> cuando
+    /// <c>topK</c> es mayor), búsqueda exacta sobre las filas que cumplen el filtro, que se ubican con el índice GIN de
+    /// metadatos. Es una sola consulta: la parte exacta no se ejecuta si no hace falta. Su costo crece con las filas que
+    /// cumplen la parte indexable del filtro (igualdades e <c>In</c>; no <c>Not</c> ni <c>Exists</c>): en tablas muy
+    /// grandes con filtros poco selectivos en esa parte, considere <see cref="Approximate"/> y subir
+    /// <c>hnsw.ef_search</c>.
+    /// </summary>
+    Auto,
+
+    /// <summary>Solo el índice HNSW con el filtro aplicado después (lo más rápido; puede devolver menos resultados).</summary>
+    Approximate,
+
+    /// <summary>
+    /// Siempre búsqueda exacta sobre las filas que cumplen el filtro (resultados completos; el costo crece con la
+    /// cantidad de filas que lo cumplen). Sin filtro se usa el índice HNSW.
+    /// </summary>
+    Exact,
+}
+
 /// <summary>Opciones de <see cref="PgVectorStore"/>.</summary>
 public sealed class PgVectorStoreOptions
 {
@@ -41,11 +69,16 @@ public sealed class PgVectorStoreOptions
 
     /// <summary>Constante de Reciprocal Rank Fusion para combinar rankings en la búsqueda híbrida.</summary>
     public int RrfK { get; init; } = 60;
+
+    /// <summary>Estrategia de las búsquedas semánticas con filtro (también la parte semántica de la híbrida).</summary>
+    public PgVectorFilteredSearch FilteredSearch { get; init; } = PgVectorFilteredSearch.Auto;
 }
 
 /// <summary>
 /// Almacén vectorial sobre PostgreSQL + pgvector. Guarda texto, metadatos (jsonb) y embedding,
-/// filtra en SQL y ofrece búsqueda híbrida con Reciprocal Rank Fusion.
+/// filtra en SQL y ofrece búsqueda híbrida con Reciprocal Rank Fusion. Los filtros de igualdad se
+/// traducen a contención jsonb (<c>@&gt;</c>), que usa el índice GIN de metadatos; ver
+/// <see cref="PgVectorStoreOptions.FilteredSearch"/>.
 /// </summary>
 public sealed partial class PgVectorStore : IHybridVectorStore, IAsyncDisposable
 {
@@ -191,16 +224,61 @@ public sealed partial class PgVectorStore : IHybridVectorStore, IAsyncDisposable
         await EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
         var vector = new Vector((await Ai.EmbedAsync(_embeddings, query, cancellationToken).ConfigureAwait(false)).Embedding);
         var parameters = new List<object> { vector, topK };
-        var where = filter is null ? string.Empty : "WHERE " + PgVectorFilterTranslator.Translate(filter, parameters);
-        var op = Operator;
+        var filterSql = filter is null ? null : PgVectorFilterTranslator.Translate(filter, parameters);
         var sql = $"""
-            SELECT id, content, metadata::text, {ScoreExpression("embedding", "$1")} AS score
-            FROM {_table}
-            {where}
-            ORDER BY embedding {op} $1
+            WITH {SemanticHits(filterSql, "$2")}
+            SELECT t.id, t.content, t.metadata::text, {ScoreExpression("h.distance")} AS score
+            FROM hits h JOIN {_table} t ON t.id = h.id
+            ORDER BY h.distance
             LIMIT $2
             """;
         return await ReadResultsAsync(sql, parameters, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// CTEs que terminan en <c>hits(id, distance)</c>: los <paramref name="limit"/> documentos más cercanos a
+    /// <c>$1</c> que cumplen el filtro, según <see cref="PgVectorStoreOptions.FilteredSearch"/>.
+    /// </summary>
+    private string SemanticHits(string? filterSql, string limit)
+    {
+        var op = Operator;
+        var approximate = $"""
+            SELECT id, embedding {op} $1 AS distance
+                FROM {_table}
+                {(filterSql is null ? string.Empty : "WHERE " + filterSql)}
+                ORDER BY embedding {op} $1
+                LIMIT {limit}
+            """;
+        if (filterSql is null || _options.FilteredSearch == PgVectorFilteredSearch.Approximate)
+        {
+            return $"hits AS ({approximate})";
+        }
+
+        // MATERIALIZED impide que el planificador vuelva a ordenar por el índice HNSW (que filtra después): la parte
+        // exacta busca las filas que cumplen el filtro (índice GIN de metadatos) y ordena solo esas.
+        if (_options.FilteredSearch == PgVectorFilteredSearch.Exact)
+        {
+            return $"""
+                filtered AS MATERIALIZED (SELECT id, embedding {op} $1 AS distance FROM {_table} WHERE {filterSql}),
+                hits AS (SELECT id, distance FROM filtered ORDER BY distance LIMIT {limit})
+                """;
+        }
+
+        // Auto: el HNSW basta si entregó todo lo que podía (topK, o ef_search si topK es mayor); si el filtro le quitó
+        // candidatos, la condición sin variables se evalúa una sola vez y habilita la parte exacta.
+        const string EfSearch = "COALESCE(NULLIF(current_setting('hnsw.ef_search', true), '')::int, 40)";
+        return $"""
+            approx AS MATERIALIZED ({approximate}),
+            filtered AS MATERIALIZED (
+                SELECT id, embedding {op} $1 AS distance FROM {_table}
+                WHERE {filterSql} AND (SELECT count(*) FROM approx) < LEAST({limit}, {EfSearch})
+            ),
+            hits AS (
+                SELECT id, distance FROM approx WHERE (SELECT count(*) FROM approx) >= LEAST({limit}, {EfSearch})
+                UNION ALL
+                (SELECT id, distance FROM filtered ORDER BY distance LIMIT {limit})
+            )
+            """;
     }
 
     /// <summary>
@@ -216,20 +294,18 @@ public sealed partial class PgVectorStore : IHybridVectorStore, IAsyncDisposable
         await EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
         var vector = new Vector((await Ai.EmbedAsync(_embeddings, query, cancellationToken).ConfigureAwait(false)).Embedding);
         var parameters = new List<object> { vector, query, topK * 4, topK, _options.RrfK };
-        var filterSql = filter is null ? "TRUE" : PgVectorFilterTranslator.Translate(filter, parameters);
+        // En "keyword", metadata (sin calificar) es la de d: la función de texto completo solo aporta la columna q.
+        var filterSql = filter is null ? null : PgVectorFilterTranslator.Translate(filter, parameters);
         var config = _options.TextSearchConfig;
         var sql = $"""
-            WITH semantic AS (
-                SELECT id, ROW_NUMBER() OVER (ORDER BY embedding {Operator} $1) AS rank
-                FROM {_table}
-                WHERE {filterSql}
-                ORDER BY embedding {Operator} $1
-                LIMIT $3
+            WITH {SemanticHits(filterSql, "$3")},
+            semantic AS (
+                SELECT id, ROW_NUMBER() OVER (ORDER BY distance) AS rank FROM hits
             ),
             keyword AS (
                 SELECT d.id, ROW_NUMBER() OVER (ORDER BY ts_rank_cd(d.content_search, q) DESC) AS rank
                 FROM {_table} d, websearch_to_tsquery('{config}', $2) q
-                WHERE d.content_search @@ q AND {filterSql.Replace("metadata", "d.metadata", StringComparison.Ordinal)}
+                WHERE d.content_search @@ q AND {filterSql ?? "TRUE"}
                 ORDER BY ts_rank_cd(d.content_search, q) DESC
                 LIMIT $3
             ),
@@ -284,12 +360,12 @@ public sealed partial class PgVectorStore : IHybridVectorStore, IAsyncDisposable
         _ => "<=>",
     };
 
-    /// <summary>Puntuación en la que más alto = más parecido.</summary>
-    private string ScoreExpression(string column, string parameter) => _options.Distance switch
+    /// <summary>Puntuación (más alto = más parecido) a partir de la distancia del operador de <see cref="PgVectorStoreOptions.Distance"/>.</summary>
+    private string ScoreExpression(string distance) => _options.Distance switch
     {
-        PgVectorDistance.Euclidean => $"(1.0 / (1.0 + ({column} <-> {parameter})))::float8",
-        PgVectorDistance.InnerProduct => $"(({column} <#> {parameter}) * -1)::float8",
-        _ => $"(1 - ({column} <=> {parameter}))::float8",
+        PgVectorDistance.Euclidean => $"(1.0 / (1.0 + {distance}))::float8",
+        PgVectorDistance.InnerProduct => $"({distance} * -1)::float8",
+        _ => $"(1 - {distance})::float8",
     };
 
     private async Task<IReadOnlyList<VectorSearchResult>> ReadResultsAsync(string sql, List<object> parameters, CancellationToken cancellationToken)
@@ -329,27 +405,109 @@ public sealed partial class PgVectorStore : IHybridVectorStore, IAsyncDisposable
     }
 }
 
-/// <summary>Traduce <see cref="VectorFilter"/> a SQL sobre la columna <c>metadata</c> (jsonb), con parámetros posicionales.</summary>
+/// <summary>
+/// Traduce <see cref="VectorFilter"/> a SQL sobre la columna <c>metadata</c> (jsonb), con parámetros posicionales.
+/// </summary>
+/// <remarks>
+/// Las igualdades se escriben como contención jsonb (<c>metadata @&gt; '{"clave":"valor"}'</c>), que usa el índice GIN
+/// <c>jsonb_path_ops</c> que crea <see cref="PgVectorStore"/>; las de un mismo <c>And</c> se combinan en un solo objeto.
+/// <see cref="VectorFilter.In"/> usa <c>@&gt; ANY(...)</c> (también indexable) y <see cref="VectorFilter.Exists"/> el
+/// operador <c>?</c> (indexable con un GIN <c>jsonb_ops</c>). Los metadatos se comparan como texto JSON: es lo que guarda
+/// <see cref="PgVectorStore.UpsertAsync"/>; un valor numérico o booleano escrito por otra herramienta no coincide con
+/// <see cref="VectorFilter.Eq"/>.
+/// </remarks>
 public static class PgVectorFilterTranslator
 {
     /// <summary>Devuelve la condición SQL y añade sus valores a <paramref name="parameters"/> (los índices continúan la numeración).</summary>
     public static string Translate(VectorFilter filter, List<object> parameters)
     {
-        string Param(object value)
+        ArgumentNullException.ThrowIfNull(filter);
+        ArgumentNullException.ThrowIfNull(parameters);
+        return Visit(filter, parameters);
+    }
+
+    private static string Visit(VectorFilter filter, List<object> parameters) => filter switch
+    {
+        EqFilter eq => Contains([new(eq.Key, eq.Value)], parameters),
+        InFilter { Values.Count: 0 } => "FALSE",
+        InFilter @in when @in.Values.Distinct().Count() == 1 => Contains([new(@in.Key, @in.Values[0])], parameters),
+        InFilter @in => $"metadata @> ANY({Param(@in.Values.Distinct().Select(v => Json([new(@in.Key, v)])).ToArray(), parameters)}::jsonb[])",
+        ExistsFilter ex => $"metadata ? {Param(ex.Key, parameters)}",
+        AndFilter and => And(and, parameters),
+        OrFilter or => Join(Flatten<OrFilter>(or, o => o.Filters).Select(f => Visit(f, parameters)).ToList(), " OR ", "FALSE"),
+        NotFilter not => $"NOT ({Visit(not.Inner, parameters)})",
+        _ => throw new NotSupportedException($"Filtro no soportado: {filter.GetType().Name}"),
+    };
+
+    /// <summary>Las igualdades del And (también las anidadas) van en un solo <c>@&gt;</c>: una búsqueda en el índice.</summary>
+    private static string And(AndFilter and, List<object> parameters)
+    {
+        var pairs = new List<KeyValuePair<string, string>>();
+        var rest = new List<VectorFilter>();
+        foreach (var filter in Flatten<AndFilter>(and, a => a.Filters))
         {
-            parameters.Add(value);
-            return "$" + parameters.Count;
+            var pair = filter switch
+            {
+                EqFilter eq => new KeyValuePair<string, string>(eq.Key, eq.Value),
+                InFilter @in when @in.Values.Count > 0 && @in.Values.Distinct().Count() == 1 => new(@in.Key, @in.Values[0]),
+                _ => (KeyValuePair<string, string>?)null,
+            };
+
+            // Una clave repetida (p. ej. Eq("a","1") & Eq("a","2")) no cabe en un objeto JSON: va aparte.
+            if (pair is { } p && !pairs.Exists(x => x.Key == p.Key))
+            {
+                pairs.Add(p);
+            }
+            else
+            {
+                rest.Add(filter);
+            }
         }
 
-        return filter switch
+        var conditions = new List<string>();
+        if (pairs.Count > 0)
         {
-            EqFilter eq => $"COALESCE(metadata->>{Param(eq.Key)} = {Param(eq.Value)}, false)",
-            InFilter @in => $"COALESCE(metadata->>{Param(@in.Key)} = ANY({Param(@in.Values.ToArray())}), false)",
-            ExistsFilter ex => $"jsonb_exists(metadata, {Param(ex.Key)})",
-            AndFilter and => and.Filters.Count == 0 ? "TRUE" : "(" + string.Join(" AND ", and.Filters.Select(f => Translate(f, parameters))) + ")",
-            OrFilter or => or.Filters.Count == 0 ? "FALSE" : "(" + string.Join(" OR ", or.Filters.Select(f => Translate(f, parameters))) + ")",
-            NotFilter not => $"NOT {Translate(not.Inner, parameters)}",
-            _ => throw new NotSupportedException($"Filtro no soportado: {filter.GetType().Name}"),
-        };
+            conditions.Add(Contains(pairs, parameters));
+        }
+
+        conditions.AddRange(rest.Select(f => Visit(f, parameters)));
+        return Join(conditions, " AND ", "TRUE");
+    }
+
+    private static IEnumerable<VectorFilter> Flatten<T>(T filter, Func<T, IReadOnlyList<VectorFilter>> children)
+        where T : VectorFilter =>
+        children(filter).SelectMany(f => f is T same ? Flatten(same, children) : [f]);
+
+    private static string Join(List<string> conditions, string separator, string empty) => conditions.Count switch
+    {
+        0 => empty,
+        1 => conditions[0],
+        _ => "(" + string.Join(separator, conditions) + ")",
+    };
+
+    private static string Contains(List<KeyValuePair<string, string>> pairs, List<object> parameters) =>
+        $"metadata @> {Param(Json(pairs), parameters)}::jsonb";
+
+    private static string Param(object value, List<object> parameters)
+    {
+        parameters.Add(value);
+        return "$" + parameters.Count.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    private static string Json(List<KeyValuePair<string, string>> pairs)
+    {
+        var buffer = new System.Buffers.ArrayBufferWriter<byte>();
+        using (var writer = new Utf8JsonWriter(buffer))
+        {
+            writer.WriteStartObject();
+            foreach (var (key, value) in pairs)
+            {
+                writer.WriteString(key, value);
+            }
+
+            writer.WriteEndObject();
+        }
+
+        return Encoding.UTF8.GetString(buffer.WrittenSpan);
     }
 }
