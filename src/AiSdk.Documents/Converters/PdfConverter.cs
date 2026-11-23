@@ -12,8 +12,8 @@ namespace AiSdk.Documents.Converters;
 /// <summary>
 /// PDF a Markdown. Extrae el texto en orden de lectura, detecta títulos por tamaño de fuente y quita
 /// encabezados y pies de página repetidos. Las páginas escaneadas (sin texto) pasan por OCR: el motor
-/// recibe el PDF completo si lo admite (Mistral OCR) o cada página como imagen (pdftoppm o la imagen
-/// incrustada de la página).
+/// recibe el PDF completo si lo admite (Mistral OCR) o cada página como imagen, una por una (pdftoppm o,
+/// si no se puede rasterizar, la imagen incrustada en esa página).
 /// </summary>
 public sealed partial class PdfConverter : IDocumentConverter
 {
@@ -23,17 +23,16 @@ public sealed partial class PdfConverter : IDocumentConverter
     {
         var options = context.Options;
         var warnings = new List<string>();
-        string? title;
-        var extracted = new List<(int Number, List<(string Text, double Size)> Blocks, List<byte[]> Images)>();
+        var extracted = new List<(int Number, List<(string Text, double Size)> Blocks)>();
 
-        using (var document = PdfDocument.Open(source.Data))
+        // El documento queda abierto hasta terminar el OCR: las imágenes incrustadas se leen solo de las páginas
+        // que lo necesitan y solo si no se pudieron rasterizar.
+        using var document = PdfDocument.Open(source.Data);
+        var title = document.Information.Title is { Length: > 0 } t ? t : null;
+        foreach (var page in document.GetPages())
         {
-            title = document.Information.Title is { Length: > 0 } t ? t : null;
-            foreach (var page in document.GetPages())
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                extracted.Add((page.Number, ExtractBlocks(page), ExtractImages(page, options.MinEmbeddedImageBytes)));
-            }
+            cancellationToken.ThrowIfCancellationRequested();
+            extracted.Add((page.Number, ExtractBlocks(page)));
         }
 
         var bodySize = Median(extracted.SelectMany(p => p.Blocks).Where(b => b.Text.Length > 40).Select(b => b.Size))
@@ -45,7 +44,7 @@ public sealed partial class PdfConverter : IDocumentConverter
         var needOcr = new List<int>();
         for (var i = 0; i < extracted.Count; i++)
         {
-            var (number, blocks, _) = extracted[i];
+            var (number, blocks) = extracted[i];
             var markdown = Render(blocks.Where(b => !repeated.Contains(Normalize(b.Text))).ToList(), bodySize);
             pages[i] = new DocumentPage(number, markdown);
             var hasText = markdown.Count(char.IsLetterOrDigit) >= options.PdfMinCharsPerPage;
@@ -55,15 +54,17 @@ public sealed partial class PdfConverter : IDocumentConverter
             }
         }
 
+        var canOcr = options.Ocr is not null || options.VisionModel is not null;
+        options.Progress?.Report(new DocumentConversionProgress(pages.Length, canOcr ? needOcr.Count : 0, 0));
         if (needOcr.Count > 0)
         {
-            if (options.Ocr is null && options.VisionModel is null)
+            if (!canOcr)
             {
                 warnings.Add($"{needOcr.Count} página(s) sin texto (¿escaneadas?): configure Ocr o VisionModel para reconocerlas.");
             }
             else
             {
-                await OcrPagesAsync(source, context, extracted, pages, needOcr, warnings, cancellationToken).ConfigureAwait(false);
+                await OcrPagesAsync(source, context, document, pages, needOcr, warnings, cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -73,7 +74,7 @@ public sealed partial class PdfConverter : IDocumentConverter
     private static async Task OcrPagesAsync(
         DocumentSource source,
         DocumentConversionContext context,
-        List<(int Number, List<(string Text, double Size)> Blocks, List<byte[]> Images)> extracted,
+        PdfDocument document,
         DocumentPage[] pages,
         List<int> needOcr,
         List<string> warnings,
@@ -94,30 +95,63 @@ public sealed partial class PdfConverter : IDocumentConverter
                 }
             }
 
+            options.Progress?.Report(new DocumentConversionProgress(pages.Length, needOcr.Count, needOcr.Count));
             return;
         }
 
-        IReadOnlyDictionary<int, byte[]> rendered = new Dictionary<int, byte[]>();
-        if (options.PdfRasterizer is { } rasterizer)
+        // El rasterizador lee el archivo original si se conoce; si no, una sola copia temporal para todas las páginas.
+        using var temp = options.PdfRasterizer is null || IsSameFile(source) ? null : new TempDirectory();
+        var pdfPath = options.PdfRasterizer is null ? null : temp is null ? source.FilePath! : temp.File("in.pdf");
+        if (temp is not null)
         {
-            rendered = await rasterizer.RenderAsync(source.Data, needOcr.Select(i => pages[i].Number).ToList(), cancellationToken: cancellationToken).ConfigureAwait(false);
+            await File.WriteAllBytesAsync(pdfPath!, source.Data, cancellationToken).ConfigureAwait(false);
         }
 
+        // Cada página se rasteriza y reconoce dentro del mismo turno: a lo más MaxConcurrency imágenes en memoria.
+        var documentLock = new Lock();
         using var gate = new SemaphoreSlim(Math.Max(1, options.MaxConcurrency));
         var missing = 0;
+        var notRasterized = 0;
+        var done = 0;
         await Task.WhenAll(needOcr.Select(async index =>
         {
-            var number = pages[index].Number;
-            byte[]? image = rendered.GetValueOrDefault(number) ?? extracted[index].Images.OrderByDescending(i => i.Length).FirstOrDefault();
-            if (image is null)
-            {
-                Interlocked.Increment(ref missing);
-                return;
-            }
-
             await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
+                var number = pages[index].Number;
+                byte[]? image = null;
+                if (options.PdfRasterizer is { } rasterizer)
+                {
+                    try
+                    {
+                        image = (await rasterizer.RenderFileAsync(pdfPath!, [number], cancellationToken: cancellationToken).ConfigureAwait(false))
+                            .GetValueOrDefault(number);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        // Página dañada o herramienta con problemas: se intenta con la imagen incrustada.
+                    }
+
+                    if (image is null)
+                    {
+                        Interlocked.Increment(ref notRasterized);
+                    }
+                }
+
+                if (image is null)
+                {
+                    lock (documentLock)
+                    {
+                        image = LargestImage(document.GetPage(number), options.MinEmbeddedImageBytes);
+                    }
+                }
+
+                if (image is null)
+                {
+                    Interlocked.Increment(ref missing);
+                    return;
+                }
+
                 var mediaType = MediaTypes.Detect(image);
                 string? text;
                 var sourceKind = PageTextSource.Ocr;
@@ -142,13 +176,34 @@ public sealed partial class PdfConverter : IDocumentConverter
             }
             finally
             {
+                options.Progress?.Report(new DocumentConversionProgress(pages.Length, needOcr.Count, Interlocked.Increment(ref done)));
                 gate.Release();
             }
         })).ConfigureAwait(false);
 
+        if (notRasterized > missing)
+        {
+            warnings.Add($"{notRasterized - missing} página(s) no se pudieron rasterizar: se reconoció la imagen incrustada en la página.");
+        }
+
         if (missing > 0)
         {
-            warnings.Add($"{missing} página(s) sin texto no se pudieron rasterizar: instale poppler-utils (pdftoppm) o use un OCR que acepte PDF.");
+            warnings.Add(options.PdfRasterizer is null
+                ? $"{missing} página(s) sin texto no se pudieron rasterizar: instale poppler-utils (pdftoppm) o use un OCR que acepte PDF."
+                : $"{missing} página(s) sin texto no se pudieron rasterizar ni tienen una imagen incrustada que reconocer.");
+        }
+    }
+
+    /// <summary>True si <see cref="DocumentSource.FilePath"/> existe y tiene el mismo tamaño que los datos (no cambió).</summary>
+    private static bool IsSameFile(DocumentSource source)
+    {
+        try
+        {
+            return source.FilePath is { } path && File.Exists(path) && new FileInfo(path).Length == source.Data.LongLength;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return false;
         }
     }
 
@@ -194,23 +249,18 @@ public sealed partial class PdfConverter : IDocumentConverter
         return letters.Count == 0 ? 0 : letters.Average(l => l.PointSize);
     }
 
-    private static List<byte[]> ExtractImages(Page page, int minBytes)
+    /// <summary>La imagen incrustada más grande de la página (la del escaneo), o null si no hay ninguna utilizable.</summary>
+    private static byte[]? LargestImage(Page page, int minBytes)
     {
-        var images = new List<byte[]>();
+        byte[]? largest = null;
         foreach (var image in page.GetImages())
         {
             try
             {
-                if (image.TryGetPng(out var png) && png.Length >= minBytes)
+                var data = image.TryGetPng(out var png) && png.Length >= minBytes ? png : image.RawMemory.ToArray();
+                if (data.Length >= minBytes && data.Length > (largest?.Length ?? 0) && MediaTypes.IsImage(MediaTypes.Detect(data)))
                 {
-                    images.Add(png);
-                    continue;
-                }
-
-                var raw = image.RawMemory.ToArray();
-                if (raw.Length >= minBytes && MediaTypes.IsImage(MediaTypes.Detect(raw)))
-                {
-                    images.Add(raw);
+                    largest = data;
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -219,7 +269,7 @@ public sealed partial class PdfConverter : IDocumentConverter
             }
         }
 
-        return images;
+        return largest;
     }
 
     /// <summary>Une las líneas de un bloque en un párrafo, reparando palabras cortadas con guion.</summary>

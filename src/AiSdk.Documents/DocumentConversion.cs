@@ -106,6 +106,12 @@ public enum PdfOcrMode
     Always,
 }
 
+/// <summary>
+/// Avance de una conversión: páginas del documento, cuántas pasarán por OCR (o visión) y cuántas de esas ya
+/// terminaron. Hoy lo informa la conversión de PDF.
+/// </summary>
+public sealed record DocumentConversionProgress(int Pages, int OcrPages, int OcrPagesDone);
+
 /// <summary>Opciones de <see cref="MarkdownConverter"/>.</summary>
 public sealed class MarkdownConverterOptions
 {
@@ -131,7 +137,11 @@ public sealed class MarkdownConverterOptions
     /// <summary>Con <see cref="PdfOcrMode.Auto"/>, mínimo de caracteres para considerar que una página tiene texto.</summary>
     public int PdfMinCharsPerPage { get; init; } = 30;
 
-    /// <summary>Rasterizador de páginas PDF para OCR. Por defecto <c>pdftoppm</c> si está instalado.</summary>
+    /// <summary>
+    /// Rasterizador de páginas PDF para OCR. Por defecto <c>pdftoppm</c> si está instalado. Cada página escaneada se
+    /// rasteriza y reconoce por separado (a lo más <see cref="MaxConcurrency"/> a la vez), así nunca están todas las
+    /// imágenes en memoria; si una no se puede rasterizar se usa la imagen incrustada en esa página.
+    /// </summary>
     public IPdfRasterizer? PdfRasterizer { get; init; } = PdftoppmRasterizer.TryCreate();
 
     /// <summary>Filas máximas por hoja de cálculo (el resto se resume con un aviso).</summary>
@@ -148,6 +158,12 @@ public sealed class MarkdownConverterOptions
     /// <summary>Ruta de <c>ffmpeg</c> (video).</summary>
     public string FfmpegPath { get; init; } = "ffmpeg";
 
+    /// <summary>
+    /// Ejecutor de las herramientas que lanzan los convertidores (ffmpeg); null usa <see cref="ExternalProcess.Runner"/>.
+    /// El OCR y el rasterizador reciben el suyo en su constructor.
+    /// </summary>
+    public IExternalProcessRunner? ProcessRunner { get; init; }
+
     /// <summary>Intervalo entre fotogramas analizados de un video.</summary>
     public TimeSpan VideoFrameInterval { get; init; } = TimeSpan.FromSeconds(10);
 
@@ -158,6 +174,9 @@ public sealed class MarkdownConverterOptions
 
     /// <summary>Cliente para descargar adjuntos por URL.</summary>
     public HttpClient? HttpClient { get; init; }
+
+    /// <summary>Recibe el avance de la conversión (p. ej. para una barra de progreso). Se invoca desde varios hilos.</summary>
+    public IProgress<DocumentConversionProgress>? Progress { get; init; }
 }
 
 /// <summary>Contexto que reciben los convertidores: opciones y servicios de IA compartidos.</summary>

@@ -55,6 +55,33 @@ await store.IngestAsync(converter, await DocumentSource.FromFileAsync("manual.do
 Motores OCR incluidos: `TesseractOcr` (sin enviar datos a terceros; `apt install tesseract-ocr tesseract-ocr-spa`),
 `VisionModelOcr` (cualquier modelo con visión; lee tablas y escritura a mano) y `MistralOcr` (acepta PDF completos).
 Para PDF escaneados se usa `pdftoppm` (poppler-utils) si está instalado o, si no, la imagen incrustada de cada página.
+Las páginas escaneadas se rasterizan y reconocen de a una (a lo más `MaxConcurrency` a la vez), así un escaneo largo
+nunca tiene todas sus imágenes en memoria; si una página no se puede rasterizar se usa su imagen incrustada. Si el
+documento viene de `DocumentSource.FromFileAsync`, `pdftoppm` lee el archivo original en vez de una copia temporal.
+`Progress` informa las páginas, cuántas van a OCR y cuántas terminaron:
+
+```csharp
+var converter = new MarkdownConverter(new()
+{
+    Ocr = new TesseractOcr("spa+eng"),
+    Progress = new Progress<DocumentConversionProgress>(p => Console.WriteLine($"OCR {p.OcrPagesDone}/{p.OcrPages} de {p.Pages} páginas")),
+});
+```
+
+**Herramientas externas** (`tesseract`, `pdftoppm`, `ffmpeg`): se lanzan con `ExternalProcess.Runner`. Reemplácelo al
+iniciar la aplicación para ejecutarlas con un envoltorio (sandbox, `nice`, un contenedor) y sin heredar los secretos
+de la aplicación; `TesseractOcr`, `PdftoppmRasterizer` y `MarkdownConverterOptions.ProcessRunner` también aceptan uno
+propio:
+
+```csharp
+ExternalProcess.Runner = new ExternalProcessRunner(new ExternalProcessOptions
+{
+    Wrapper = "nice",                                    // ejecuta: nice -n 10 tesseract ...
+    WrapperArguments = ["-n", "10"],
+    AllowedEnvironmentVariables = [.. ExternalProcessOptions.CommonEnvironmentVariables, "SANDBOX_*"],
+    EnvironmentVariables = new Dictionary<string, string?> { ["OMP_THREAD_LIMIT"] = "1" },   // un hilo por Tesseract
+});
+```
 
 > [!NOTE]
 > `TesseractOcr` se ejecuta completamente en tu máquina, por lo que es la opción adecuada cuando los documentos no pueden salir de tu infraestructura.

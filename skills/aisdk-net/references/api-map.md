@@ -12,6 +12,7 @@
 | Fallback | `model.WithFallback(other)` |
 | RAG | `InMemoryVectorStore`, `PgVectorStore`, `VectorDataStore`; `store.AsTool(topK, filter, hybrid)` |
 | Documents to Markdown | `new MarkdownConverter(new() { Ocr = new TesseractOcr() }).ConvertFileAsync(path)` |
+| External tools (sandbox, clean env) | `ExternalProcess.Runner = new ExternalProcessRunner(new() { Wrapper = "...", AllowedEnvironmentVariables = ExternalProcessOptions.CommonEnvironmentVariables })` |
 | Word/PDF/Excel | `DocumentGenerator.ToDocx/ToPdf(markdown)`, `new SpreadsheetBuilder().AddSheet(...)`, `DocumentTools.Create(...)` |
 | Artifacts | `ArtifactTools.Create(store)`, `app.MapArtifacts()` |
 | Multi-agent | `Orchestrations.Parallel([...], aggregator)`, `.Router(...)`, `.Supervisor(...)`, `.Handoffs(...)`, `.EvaluatorOptimizer(...)` |

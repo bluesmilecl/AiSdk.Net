@@ -55,6 +55,32 @@ await store.IngestAsync(converter, await DocumentSource.FromFileAsync("manual.do
 Included OCR engines: `TesseractOcr` (no data sent to third parties; `apt install tesseract-ocr tesseract-ocr-spa`),
 `VisionModelOcr` (any vision-capable model; reads tables and handwriting) and `MistralOcr` (accepts whole PDFs).
 For scanned PDFs, `pdftoppm` (poppler-utils) is used if installed; otherwise, the embedded image of each page.
+Scanned pages are rasterized and recognized one at a time (at most `MaxConcurrency` at once), so a long scan never
+holds every page image in memory; a page that cannot be rasterized falls back to its embedded image. When the source
+comes from `DocumentSource.FromFileAsync`, `pdftoppm` reads the original file instead of a temporary copy.
+`Progress` reports the pages, how many go to OCR and how many are done:
+
+```csharp
+var converter = new MarkdownConverter(new()
+{
+    Ocr = new TesseractOcr("spa+eng"),
+    Progress = new Progress<DocumentConversionProgress>(p => Console.WriteLine($"OCR {p.OcrPagesDone}/{p.OcrPages} of {p.Pages} pages")),
+});
+```
+
+**External tools** (`tesseract`, `pdftoppm`, `ffmpeg`) are launched through `ExternalProcess.Runner`. Replace it at
+startup to run them through a wrapper (sandbox, `nice`, a container) and without inheriting your app's secrets;
+`TesseractOcr`, `PdftoppmRasterizer` and `MarkdownConverterOptions.ProcessRunner` also accept their own runner:
+
+```csharp
+ExternalProcess.Runner = new ExternalProcessRunner(new ExternalProcessOptions
+{
+    Wrapper = "nice",                                    // runs: nice -n 10 tesseract ...
+    WrapperArguments = ["-n", "10"],
+    AllowedEnvironmentVariables = [.. ExternalProcessOptions.CommonEnvironmentVariables, "SANDBOX_*"],
+    EnvironmentVariables = new Dictionary<string, string?> { ["OMP_THREAD_LIMIT"] = "1" },   // one thread per Tesseract
+});
+```
 
 > [!NOTE]
 > `TesseractOcr` runs entirely on your machine, so it is the right choice when documents must not leave your infrastructure.

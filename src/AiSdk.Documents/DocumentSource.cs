@@ -20,13 +20,22 @@ public sealed record DocumentSource
 
     public string? FileName { get; }
 
+    /// <summary>
+    /// Ruta del archivo con el mismo contenido que <see cref="Data"/>, si existe (la fija <see cref="FromFileAsync"/>).
+    /// Las herramientas externas lo leen desde ahí en vez de escribir una copia temporal (p. ej. pdftoppm).
+    /// </summary>
+    public string? FilePath { get; init; }
+
     public static DocumentSource FromBytes(byte[] data, string? mediaType = null, string? fileName = null) => new(data, mediaType, fileName);
 
     public static DocumentSource FromText(string text, string mediaType = "text/plain", string? fileName = null) =>
         new(Encoding.UTF8.GetBytes(text), mediaType, fileName);
 
     public static async Task<DocumentSource> FromFileAsync(string path, string? mediaType = null, CancellationToken cancellationToken = default) =>
-        new(await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false), mediaType, Path.GetFileName(path));
+        new(await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false), mediaType, Path.GetFileName(path))
+        {
+            FilePath = Path.GetFullPath(path),
+        };
 
     public static async Task<DocumentSource> FromStreamAsync(Stream stream, string? mediaType = null, string? fileName = null, CancellationToken cancellationToken = default)
     {
