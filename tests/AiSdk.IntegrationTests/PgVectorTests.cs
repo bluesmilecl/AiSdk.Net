@@ -84,6 +84,135 @@ public class PgVectorTests
         Assert.All(withFilter, h => Assert.Equal("politica", h.Document.Metadata!["tipo"]));
     }
 
+    /// <summary>Embeddings pseudoaleatorios deterministas (32 dimensiones) para tener muchos vectores distintos.</summary>
+    private sealed class HashEmbeddings : IEmbeddingModel
+    {
+        public string Provider => "test";
+
+        public string ModelId => "hash";
+
+        public int? MaxEmbeddingsPerCall => null;
+
+        public static float[] Vector(string value)
+        {
+            var random = new Random(StringComparer.Ordinal.GetHashCode(value) & 0x7fffffff);
+            return Enumerable.Range(0, 32).Select(_ => (float)random.NextDouble()).ToArray();
+        }
+
+        public Task<EmbeddingModelResult> EmbedAsync(IReadOnlyList<string> values, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new EmbeddingModelResult(values.Select(Vector).ToList(), null));
+    }
+
+    private static double Cosine(float[] a, float[] b)
+    {
+        double dot = 0, na = 0, nb = 0;
+        for (var i = 0; i < a.Length; i++)
+        {
+            dot += a[i] * b[i];
+            na += a[i] * a[i];
+            nb += b[i] * b[i];
+        }
+
+        return 1 - (dot / (Math.Sqrt(na) * Math.Sqrt(nb)));
+    }
+
+    [Theory]
+    [InlineData(PgVectorFilteredSearch.Auto)]
+    [InlineData(PgVectorFilteredSearch.Exact)]
+    public async Task SelectiveFiltersReturnAllMatchesEvenWhenHnswFiltersThemOut(PgVectorFilteredSearch strategy)
+    {
+        var connection = Environment.GetEnvironmentVariable("AISDK_TEST_PG");
+        Assert.SkipWhen(string.IsNullOrEmpty(connection), "AISDK_TEST_PG no configurada");
+        var ct = TestContext.Current.CancellationToken;
+
+        // Sin seq scan ni bitmap scan el planificador ordena por el índice HNSW (como en una tabla grande): este entrega
+        // hnsw.ef_search = 40 candidatos y el filtro de un usuario (1 % de las filas) casi siempre los descarta todos.
+        var builder = new Npgsql.NpgsqlConnectionStringBuilder(connection) { Options = "-c enable_seqscan=off -c enable_bitmapscan=off" };
+        var options = new PgVectorStoreOptions { Dimensions = 32, Table = "aisdk_test_" + Guid.NewGuid().ToString("N")[..8], FilteredSearch = strategy };
+        await using var store = PgVectorStore.Create(builder.ConnectionString, new HashEmbeddings(), options);
+        var documents = Enumerable.Range(0, 600).Select(i => new VectorDocument($"d{i}", $"texto {i}")
+        {
+            Embedding = HashEmbeddings.Vector($"d{i}"),
+            Metadata = new Dictionary<string, string> { ["modelo"] = "m1", ["usuario"] = $"u{i % 100}", ["coleccion"] = i % 2 == 0 ? "par" : "impar" },
+        }).ToList();
+        await store.UpsertAsync(documents, ct);
+
+        var query = HashEmbeddings.Vector("consulta");
+        List<string> Expected(Func<VectorDocument, bool> where, int k) =>
+            documents.Where(where).OrderBy(d => Cosine(d.Embedding!, query)).Take(k).Select(d => d.Id).ToList();
+
+        // Selectivo: 6 filas del usuario 7, se piden 5.
+        var selective = VectorFilter.Eq("modelo", "m1") & VectorFilter.Eq("usuario", "u7");
+        var hits = await store.SearchAsync("consulta", topK: 5, filter: selective, cancellationToken: ct);
+        Assert.Equal(Expected(d => d.Metadata!["usuario"] == "u7", 5), hits.Select(h => h.Document.Id));
+        Assert.All(hits, h => Assert.InRange(h.Score, -1, 1));
+
+        // In y Not también se resuelven completos.
+        var some = VectorFilter.In("usuario", "u3", "u4") & !VectorFilter.Eq("coleccion", "par");
+        hits = await store.SearchAsync("consulta", topK: 10, filter: some, cancellationToken: ct);
+        Assert.Equal(Expected(d => d.Metadata!["usuario"] is "u3" or "u4" && d.Metadata["coleccion"] != "par", 10), hits.Select(h => h.Document.Id));
+
+        // Poco selectivo: el HNSW basta (Auto) o la búsqueda exacta ordena la mitad de la tabla (Exact).
+        hits = await store.SearchAsync("consulta", topK: 5, filter: VectorFilter.Eq("coleccion", "par"), cancellationToken: ct);
+        Assert.Equal(5, hits.Count);
+        Assert.All(hits, h => Assert.Equal("par", h.Document.Metadata!["coleccion"]));
+
+        // La parte semántica de la híbrida usa la misma estrategia.
+        var hybrid = await store.HybridSearchAsync("consulta", topK: 3, filter: selective, cancellationToken: ct);
+        Assert.Equal(Expected(d => d.Metadata!["usuario"] == "u7", 3), hybrid.Select(h => h.Document.Id));
+
+        await using var dataSource = Npgsql.NpgsqlDataSource.Create(connection!);
+        await using var drop = dataSource.CreateCommand($"DROP TABLE \"{options.Table}\"");
+        await drop.ExecuteNonQueryAsync(ct);
+    }
+
+    [Fact]
+    public async Task TranslatedFiltersCanUseTheMetadataIndex()
+    {
+        var connection = Environment.GetEnvironmentVariable("AISDK_TEST_PG");
+        Assert.SkipWhen(string.IsNullOrEmpty(connection), "AISDK_TEST_PG no configurada");
+        var ct = TestContext.Current.CancellationToken;
+        var table = "aisdk_test_" + Guid.NewGuid().ToString("N")[..8];
+        await using (var store = PgVectorStore.Create(connection!, new HashEmbeddings(), new PgVectorStoreOptions { Dimensions = 32, Table = table }))
+        {
+            await store.EnsureCreatedAsync(ct);
+        }
+
+        await using var dataSource = Npgsql.NpgsqlDataSource.Create(connection!);
+        foreach (var filter in new[]
+        {
+            VectorFilter.Eq("usuario", "u7") & VectorFilter.Eq("modelo", "m1"),
+            VectorFilter.In("usuario", "u7", "u8"),
+            VectorFilter.Eq("a", "1") | VectorFilter.Eq("b", "2"),
+        })
+        {
+            var parameters = new List<object>();
+            var where = PgVectorFilterTranslator.Translate(filter, parameters);
+            await using var batch = dataSource.CreateBatch();
+            batch.BatchCommands.Add(new Npgsql.NpgsqlBatchCommand("SET enable_seqscan = off"));
+            var explain = new Npgsql.NpgsqlBatchCommand($"EXPLAIN SELECT id FROM \"{table}\" WHERE {where}");
+            foreach (var p in parameters)
+            {
+                explain.Parameters.Add(new Npgsql.NpgsqlParameter { Value = p });
+            }
+
+            batch.BatchCommands.Add(explain);
+            var plan = new System.Text.StringBuilder();
+            await using (var reader = await batch.ExecuteReaderAsync(ct))
+            {
+                while (await reader.ReadAsync(ct))
+                {
+                    plan.AppendLine(reader.GetString(0));
+                }
+            }
+
+            Assert.Contains($"{table}_metadata_idx", plan.ToString(), StringComparison.Ordinal);
+        }
+
+        await using var drop = dataSource.CreateCommand($"DROP TABLE \"{table}\"");
+        await drop.ExecuteNonQueryAsync(ct);
+    }
+
     [Fact]
     public async Task WorksAsAgentTool()
     {

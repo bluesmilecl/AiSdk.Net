@@ -255,12 +255,40 @@ public class PgVectorFilterTests
             (VectorFilter.Eq("tipo", "manual") | VectorFilter.In("pais", "CL", "PE")) & !VectorFilter.Exists("borrador"),
             parameters);
 
+        // Contención jsonb (@>): la sirve el índice GIN jsonb_path_ops del almacén.
         Assert.Equal(
-            "((COALESCE(metadata->>$3 = $4, false) OR COALESCE(metadata->>$5 = ANY($6), false)) AND NOT jsonb_exists(metadata, $7))",
+            "((metadata @> $3::jsonb OR metadata @> ANY($4::jsonb[])) AND NOT (metadata ? $5))",
             sql);
-        Assert.Equal(["tipo", "manual", "pais"], parameters.Skip(2).Take(3));
-        Assert.Equal(["CL", "PE"], (string[])parameters[5]);
+        Assert.Equal("""{"tipo":"manual"}""", parameters[2]);
+        Assert.Equal(["""{"pais":"CL"}""", """{"pais":"PE"}"""], (string[])parameters[3]);
+        Assert.Equal("borrador", parameters[4]);
         Assert.DoesNotContain("manual", sql); // los valores nunca se concatenan en el SQL
+    }
+
+    [Fact]
+    public void CombinesEqualitiesOfAnAndIntoOneContainment()
+    {
+        var parameters = new List<object>();
+        var sql = AiSdk.PgVector.PgVectorFilterTranslator.Translate(
+            VectorFilter.Eq("modelo", "m1") & (VectorFilter.Eq("usuario", "u\"7") & VectorFilter.In("modo", "chat"))
+            & VectorFilter.Eq("modelo", "m2") & VectorFilter.Ne("conversacion", "c1"),
+            parameters);
+
+        Assert.Equal("(metadata @> $1::jsonb AND metadata @> $2::jsonb AND NOT (metadata @> $3::jsonb))", sql);
+        Assert.Equal("{\"modelo\":\"m1\",\"usuario\":\"u\\u00227\",\"modo\":\"chat\"}", parameters[0]); // comillas escapadas en el JSON
+        Assert.Equal("""{"modelo":"m2"}""", parameters[1]);
+        Assert.Equal("""{"conversacion":"c1"}""", parameters[2]);
+    }
+
+    [Fact]
+    public void TranslatesEmptyAndSingleValueFilters()
+    {
+        var parameters = new List<object>();
+        Assert.Equal("FALSE", AiSdk.PgVector.PgVectorFilterTranslator.Translate(VectorFilter.In("pais"), parameters));
+        Assert.Equal("TRUE", AiSdk.PgVector.PgVectorFilterTranslator.Translate(VectorFilter.And(), parameters));
+        Assert.Equal("FALSE", AiSdk.PgVector.PgVectorFilterTranslator.Translate(VectorFilter.Or(), parameters));
+        Assert.Equal("metadata @> $1::jsonb", AiSdk.PgVector.PgVectorFilterTranslator.Translate(VectorFilter.In("pais", "CL", "CL"), parameters));
+        Assert.Equal("""{"pais":"CL"}""", Assert.Single(parameters));
     }
 
     [Fact]
