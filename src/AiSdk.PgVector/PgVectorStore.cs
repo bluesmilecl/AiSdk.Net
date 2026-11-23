@@ -32,7 +32,10 @@ public enum PgVectorFilteredSearch
     /// <summary>
     /// Índice HNSW y, si el filtro deja menos de <c>topK</c> resultados (o menos de <c>hnsw.ef_search</c> cuando
     /// <c>topK</c> es mayor), búsqueda exacta sobre las filas que cumplen el filtro, que se ubican con el índice GIN de
-    /// metadatos. Es una sola consulta: la parte exacta no se ejecuta si no hace falta.
+    /// metadatos. Es una sola consulta: la parte exacta no se ejecuta si no hace falta. Su costo crece con las filas que
+    /// cumplen la parte indexable del filtro (igualdades e <c>In</c>; no <c>Not</c> ni <c>Exists</c>): en tablas muy
+    /// grandes con filtros poco selectivos en esa parte, considere <see cref="Approximate"/> y subir
+    /// <c>hnsw.ef_search</c>.
     /// </summary>
     Auto,
 

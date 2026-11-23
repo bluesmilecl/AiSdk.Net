@@ -31,12 +31,18 @@ public class PdfOcrPipelineTests
 
         public int MaxActive;
 
+        /// <summary>Sin archivo de origen, el conversor le pasa los bytes (no escribe una copia temporal para él).</summary>
         public Task<IReadOnlyDictionary<int, byte[]>> RenderAsync(byte[] pdf, IReadOnlyList<int> pages, int dpi = 200, CancellationToken cancellationToken = default) =>
-            throw new InvalidOperationException("El conversor debe usar RenderFileAsync.");
+            RenderCoreAsync("(bytes)", pages, cancellationToken);
 
-        public async Task<IReadOnlyDictionary<int, byte[]>> RenderFileAsync(string path, IReadOnlyList<int> pages, int dpi = 200, CancellationToken cancellationToken = default)
+        public Task<IReadOnlyDictionary<int, byte[]>> RenderFileAsync(string path, IReadOnlyList<int> pages, int dpi = 200, CancellationToken cancellationToken = default)
         {
             Assert.True(File.Exists(path));
+            return RenderCoreAsync(path, pages, cancellationToken);
+        }
+
+        private async Task<IReadOnlyDictionary<int, byte[]>> RenderCoreAsync(string path, IReadOnlyList<int> pages, CancellationToken cancellationToken)
+        {
             Calls.Enqueue((path, pages.ToArray()));
             var active = Interlocked.Increment(ref _active);
             InterlockedMax(ref MaxActive, active);
@@ -85,7 +91,7 @@ public class PdfOcrPipelineTests
     }
 
     [Fact]
-    public async Task ScannedPagesAreRasterizedAndRecognizedOneByOneFromASingleFile()
+    public async Task ScannedPagesAreRasterizedAndRecognizedOneByOne()
     {
         var rasterizer = new RecordingRasterizer();
         var progress = new ProgressLog();
@@ -96,13 +102,35 @@ public class PdfOcrPipelineTests
         Assert.Equal(["pagina 1", "Esta pagina tiene texto suficiente para no pasar por OCR.", "pagina 3"], result.Pages.Select(p => p.Markdown));
         Assert.Equal([PageTextSource.Ocr, PageTextSource.Text, PageTextSource.Ocr], result.Pages.Select(p => p.Source));
         Assert.Equal([1, 3], rasterizer.Calls.Select(c => Assert.Single(c.Pages)).Order());
-        Assert.Single(rasterizer.Calls.Select(c => c.Path).Distinct()); // una sola copia temporal para todas las páginas
-        Assert.False(File.Exists(rasterizer.Calls.First().Path)); // y se borra al terminar
+        Assert.All(rasterizer.Calls, c => Assert.Equal("(bytes)", c.Path));
         Assert.Equal(1, rasterizer.MaxActive);
         Assert.Empty(result.Warnings);
         Assert.Equal(
             [new DocumentConversionProgress(3, 2, 0), new DocumentConversionProgress(3, 2, 1), new DocumentConversionProgress(3, 2, 2)],
             progress.Reports.OrderBy(r => r.OcrPagesDone));
+    }
+
+    /// <summary>Rasterizador que solo implementa la sobrecarga con bytes (como los de terceros).</summary>
+    private sealed class BytesOnlyRasterizer : IPdfRasterizer
+    {
+        public int Calls;
+
+        public Task<IReadOnlyDictionary<int, byte[]>> RenderAsync(byte[] pdf, IReadOnlyList<int> pages, int dpi = 200, CancellationToken cancellationToken = default)
+        {
+            Interlocked.Increment(ref Calls);
+            return Task.FromResult<IReadOnlyDictionary<int, byte[]>>(pages.ToDictionary(p => p, RecordingRasterizer.FakePng));
+        }
+    }
+
+    [Fact]
+    public async Task RasterizersWithoutFileSupportReceiveTheBytesWithoutATemporaryCopy()
+    {
+        var rasterizer = new BytesOnlyRasterizer();
+        var result = await new MarkdownConverter(new() { Ocr = new EchoOcr(), PdfRasterizer = rasterizer })
+            .ConvertAsync(MixedPdf(), MediaTypes.Pdf, "mixto.pdf", TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, rasterizer.Calls);
+        Assert.Equal(["pagina 1", "pagina 3"], result.Pages.Where(p => p.Source == PageTextSource.Ocr).Select(p => p.Markdown));
     }
 
     [Fact]
@@ -252,6 +280,11 @@ public class ExternalProcessRunnerTests
         Assert.False(info.Environment.ContainsKey("AISDK_TEST_SECRETO"));
         Assert.False(info.Environment.ContainsKey("PATH")); // un valor null la quita
         Assert.False(runner.Exists("tesseract")); // el envoltorio no existe
+
+        // Envoltorio que ejecuta las herramientas en otro lugar: solo se comprueba el envoltorio.
+        var remote = new ExternalProcessRunner(new ExternalProcessOptions { Wrapper = "sh", CheckExecutable = false });
+        Assert.True(remote.Exists("herramienta-que-no-esta-aqui"));
+        Assert.False(new ExternalProcessRunner(new ExternalProcessOptions { Wrapper = "sh" }).Exists("herramienta-que-no-esta-aqui"));
     }
 
     [Fact]

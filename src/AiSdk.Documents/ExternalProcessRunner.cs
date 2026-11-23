@@ -56,6 +56,13 @@ public sealed class ExternalProcessOptions
 
     /// <summary>Directorio de trabajo del proceso (por defecto el actual).</summary>
     public string? WorkingDirectory { get; init; }
+
+    /// <summary>
+    /// Si es true (por defecto), <see cref="ExternalProcessRunner.Exists"/> también exige que la herramienta esté en
+    /// este equipo. Use false cuando el envoltorio la ejecuta en otro lugar (un contenedor, un servidor): entonces
+    /// solo se comprueba el envoltorio.
+    /// </summary>
+    public bool CheckExecutable { get; init; } = true;
 }
 
 /// <summary>Ejecutor de procesos locales con envoltorio y entorno configurables.</summary>
@@ -77,9 +84,13 @@ public sealed class ExternalProcessRunner(ExternalProcessOptions? options = null
 
     public ExternalProcessOptions Options { get; } = options ?? new ExternalProcessOptions();
 
-    /// <summary>Indica si la herramienta (y el envoltorio, si hay uno) existe. El resultado se guarda en caché.</summary>
+    /// <summary>
+    /// Indica si la herramienta (salvo con <see cref="ExternalProcessOptions.CheckExecutable"/> en false) y el envoltorio,
+    /// si hay uno, existen. El resultado se guarda en caché.
+    /// </summary>
     public bool Exists(string executable) =>
-        _available.GetOrAdd(executable, ExistsOnPath) && (Options.Wrapper is null || _available.GetOrAdd(Options.Wrapper, ExistsOnPath));
+        (Options.Wrapper is not null && !Options.CheckExecutable || _available.GetOrAdd(executable, ExistsOnPath))
+        && (Options.Wrapper is null || _available.GetOrAdd(Options.Wrapper, ExistsOnPath));
 
     public async Task<ExternalProcess.Result> RunAsync(string executable, IReadOnlyList<string> arguments, byte[]? input = null, CancellationToken cancellationToken = default)
     {

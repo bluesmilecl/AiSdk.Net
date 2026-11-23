@@ -99,9 +99,12 @@ public sealed partial class PdfConverter : IDocumentConverter
             return;
         }
 
-        // El rasterizador lee el archivo original si se conoce; si no, una sola copia temporal para todas las páginas.
-        using var temp = options.PdfRasterizer is null || IsSameFile(source) ? null : new TempDirectory();
-        var pdfPath = options.PdfRasterizer is null ? null : temp is null ? source.FilePath! : temp.File("in.pdf");
+        // Se rasteriza desde un archivo si se conoce el original, o si es pdftoppm (una sola copia temporal para todas
+        // las páginas). Otros rasterizadores reciben los bytes en memoria: su RenderFileAsync por defecto releería el
+        // archivo completo en cada página.
+        var fromFile = options.PdfRasterizer is not null && (IsSameFile(source) || options.PdfRasterizer is PdftoppmRasterizer);
+        using var temp = fromFile && !IsSameFile(source) ? new TempDirectory() : null;
+        var pdfPath = !fromFile ? null : temp is null ? source.FilePath! : temp.File("in.pdf");
         if (temp is not null)
         {
             await File.WriteAllBytesAsync(pdfPath!, source.Data, cancellationToken).ConfigureAwait(false);
@@ -124,8 +127,10 @@ public sealed partial class PdfConverter : IDocumentConverter
                 {
                     try
                     {
-                        image = (await rasterizer.RenderFileAsync(pdfPath!, [number], cancellationToken: cancellationToken).ConfigureAwait(false))
-                            .GetValueOrDefault(number);
+                        var rendered = pdfPath is not null
+                            ? await rasterizer.RenderFileAsync(pdfPath, [number], cancellationToken: cancellationToken).ConfigureAwait(false)
+                            : await rasterizer.RenderAsync(source.Data, [number], cancellationToken: cancellationToken).ConfigureAwait(false);
+                        image = rendered.GetValueOrDefault(number);
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException)
                     {

@@ -62,6 +62,12 @@ public class PgVectorTests
         var notPolicies = await store.SearchAsync("devolucion", topK: 5, filter: VectorFilter.Ne("tipo", "politica"), cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(["d3", "d4"], notPolicies.Select(h => h.Document.Id).Order());
 
+        // Exists usa el operador jsonb ?: debe llegar tal cual a Postgres (parámetros posicionales).
+        var withoutCountry = await store.SearchAsync("devolucion", topK: 5, filter: !VectorFilter.Exists("pais"), cancellationToken: TestContext.Current.CancellationToken);
+        Assert.Equal(["d3", "d4"], withoutCountry.Select(h => h.Document.Id).Order());
+        Assert.Equal(1, await store.DeleteWhereAsync(VectorFilter.Exists("pais") & VectorFilter.Eq("pais", "PE"), TestContext.Current.CancellationToken));
+        await store.UpsertAsync([new VectorDocument("d2", "El envio es gratis sobre $30.000.") { Metadata = new Dictionary<string, string> { ["tipo"] = "politica", ["pais"] = "PE" } }], TestContext.Current.CancellationToken);
+
         // Upsert actualiza en lugar de duplicar.
         await store.UpsertAsync([new VectorDocument("d3", "Horario nuevo: todos los días.") { Metadata = new Dictionary<string, string> { ["tipo"] = "faq" } }], TestContext.Current.CancellationToken);
         Assert.Equal(4, await store.CountAsync(TestContext.Current.CancellationToken));
