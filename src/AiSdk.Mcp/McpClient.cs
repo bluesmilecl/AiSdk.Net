@@ -608,14 +608,18 @@ public sealed class McpClient : IAsyncDisposable
                     // Sampling y elicitation pueden tardar: se atienden sin bloquear el resto de mensajes.
                     _ = Task.Run(async () =>
                     {
+                        JsonObject response;
                         try
                         {
-                            await HandleServerRequestAsync(message, idNode).ConfigureAwait(false);
+                            response = await HandleServerRequestAsync(message, idNode).ConfigureAwait(false);
                         }
                         finally
                         {
+                            // El cupo se libera antes de responder: cuando el servidor ve la respuesta, ya puede pedir otra.
                             Interlocked.Decrement(ref _activeServerRequests);
                         }
+
+                        await TrySendAsync(response).ConfigureAwait(false);
                     });
                 }
                 else if (hasMethod)
@@ -666,7 +670,7 @@ public sealed class McpClient : IAsyncDisposable
         }
     }
 
-    private async Task HandleServerRequestAsync(JsonObject message, JsonNode idNode)
+    private async Task<JsonObject> HandleServerRequestAsync(JsonObject message, JsonNode idNode)
     {
         var method = (string?)message["method"];
         var parameters = message["params"] as JsonObject ?? [];
@@ -714,7 +718,7 @@ public sealed class McpClient : IAsyncDisposable
             response["error"] = new JsonObject { ["code"] = -32603, ["message"] = "Error interno del cliente MCP." };
         }
 
-        await TrySendAsync(response).ConfigureAwait(false);
+        return response;
     }
 
     private Task SendErrorAsync(JsonNode idNode, int code, string message) =>
