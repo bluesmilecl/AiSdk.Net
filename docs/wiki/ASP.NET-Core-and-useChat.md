@@ -61,10 +61,35 @@ app.MapPost("/api/report", (UIChatRequest req, ILanguageModel model) =>
 builder.Services.AddAiSdk(ai => ai.AddAnthropic().AddResumableStreams());   // or your own IResumableStreamStore backed by Redis
 
 app.MapPost("/api/chat", (UIChatRequest req, SupportAgent agent, IResumableStreamStore store) =>
-    agent.Stream(UIMessageConverter.ToModelMessages(req.Messages)).ToResumableUIMessageStreamResult(store, req.Id!));
+    agent.Stream(UIMessageConverter.ToModelMessages(req.Messages)).ToResumableUIMessageStreamResult(store, req.Id!))
+    .RequireAuthorization();
 
-app.MapGet("/api/chat/{id}/stream", (string id, IResumableStreamStore store) => UIMessageStreamResults.Resume(store, id));
+app.MapGet("/api/chat/{id}/stream", (string id, IResumableStreamStore store) => UIMessageStreamResults.Resume(store, id))
+    .RequireAuthorization();
 ```
+
+The stream is stored under the chat id **and its owner**: the authenticated user, or the `owner` you pass (for example a
+session id issued by your server in an anonymous app). Another user who knows or guesses the chat id can neither replace
+nor resume it. Without an owner, `ToResumableUIMessageStreamResult` fails and `Resume` answers 204.
+
+## 🔒 Security
+
+The browser is not trusted: everything in a `UIChatRequest` (messages, chat id, tool results) can be forged.
+
+- `UIMessageConverter.ToModelMessages` drops `system` messages sent by the client (opt in with
+  `new UIMessageConverterOptions { AllowSystemMessages = true }`) and skips invalid parts (malformed `data:` URLs,
+  URLs other than http/https, unexpected JSON types) instead of failing with a 500.
+- The client sends back the results of tools your server ran: list those tools in
+  `new UIMessageConverterOptions { ServerExecutedTools = ["get_weather"] }` so their forgeable parts are dropped.
+  Keep instructions and sensitive data on the server (agent instructions, history stored with `AgentSession`).
+- Errors are masked: the browser receives a generic message for stream errors **and tool errors**
+  (`tool-output-error`), while the model still sees the real text. To show details, pass `onError`; tool errors arrive
+  as `ToolErrorException` (`onError: ex => env.IsDevelopment() ? ex.Message : "Something went wrong."`).
+- `MapArtifacts`, `MapWorkflows` and `MapSkills` require authorization by default: configure authentication
+  (`AddAuthentication` + `AddAuthorization`) or opt out explicitly with `AllowAnonymous = true`. See
+  [Artifacts](Artifacts-and-Office-Documents) and [Workflows](Workflows-and-Automations).
+- CORS: allow only your frontend origins (`WithOrigins(...)`), never `AllowAnyOrigin`. A header token
+  (`Authorization: Bearer`, set with `DefaultChatTransport({ headers })`) avoids CSRF; with cookies keep `SameSite`.
 
 > [!TIP]
 > See `samples/ChatApi` for a complete, runnable example.

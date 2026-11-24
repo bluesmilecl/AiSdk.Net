@@ -59,10 +59,34 @@ builder.Services.AddAiSdkWorkflows(w =>
     w.AddAutomation(new Automation { Id = "paid", Name = "Paid orders", Trigger = new EventTrigger("order.updated", new Dictionary<string, string> { ["status"] = "paid" }), Workflow = "invoice" });
 });
 
-app.MapWorkflows("/workflows").RequireAuthorization();
+app.MapWorkflows("/workflows", new WorkflowEndpointOptions
+{
+    CanStart = (http, workflow) => ValueTask.FromResult(workflow == "refund"),          // what users may start over HTTP
+    CanSendEvent = async (http, e) =>                                                    // who may approve (required for events)
+    {
+        if (e.EventName != "refund.approval" || !http.User.IsInRole("approver") || e.WaitingRuns.Count == 0) return false;
+        var engine = http.RequestServices.GetRequiredService<WorkflowEngine>();
+        foreach (var run in e.WaitingRuns)                                               // nobody approves their own request
+            if (await WorkflowEndpoints.GetRunOwnerAsync(engine, run) == EndpointSecurity.GetUserId(http)) return false;
+        return true;
+    },
+});
 // POST /workflows/refund/start · GET /workflows/runs/{id} · POST /workflows/events/refund.approval?key=O-77
 // POST /workflows/hooks/crm (X-Webhook-Secret or HMAC signature X-Signature-256) · /automations · /runs/{id}/retry
 ```
+
+Secure by default:
+
+- Every endpoint except the webhooks requires authorization (`AllowAnonymous = true` to opt out explicitly).
+- The owner comes from authentication (`ResolveUser`, by default the `NameIdentifier`/`sub` claim), never from the body:
+  runs started over HTTP are recorded as `TriggeredBy = "user:{id}"` and automations get `Owner` set by the server.
+  Each user only sees, cancels and retries their own runs and automations (`CanAccessRun`, `CanAccessAutomation`;
+  `WorkflowEndpoints.GetRunOwnerAsync` helps build your own rules).
+- `POST /events/{event}` answers 403 until you configure `CanSendEvent`: it receives the runs waiting for the event,
+  so you decide who may approve (usually not the requester).
+- POST requests require `Content-Type: application/json` (415 otherwise, also without a body), so a cross-site form
+  cannot post a valid JSON body with the user's cookies.
+- Webhook automations created over HTTP need a secret, and secrets are hidden when listing automations.
 
 Triggers: `CronTrigger` (5 or 6 fields, with time zone), `IntervalTrigger`, `OnceTrigger`, `EventTrigger`
 (with content filter) and `WebhookTrigger` (secret or HMAC-SHA256 signature, compared in constant time). A background

@@ -55,7 +55,14 @@ public class ArtifactTests
         var model = new MockLanguageModel()
             .ReturnsToolCall("create_artifact", new { title = "Diagrama", type = "mermaid", content = "graph TD; A-->B" })
             .ReturnsText("ok");
-        var stream = Ai.StreamText(new GenerateTextOptions { Model = model, Prompt = "x", Tools = ArtifactTools.Create(store), StopWhen = StopCondition.StepCountIs(3) });
+        var stream = Ai.StreamText(new GenerateTextOptions
+        {
+            Model = model,
+            Prompt = "x",
+            Tools = ArtifactTools.Create(store),
+            StopWhen = StopCondition.StepCountIs(3),
+            Context = new Dictionary<string, object?> { ["conversationId"] = "c1" },
+        });
 
         using var output = new MemoryStream();
         await AiSdk.UI.UIMessageStream.WriteAsync(stream.FullStream, output, cancellationToken: TestContext.Current.CancellationToken);
@@ -127,7 +134,8 @@ public class ArtifactTests
         builder.WebHost.UseTestServer();
         builder.Services.AddSingleton<IArtifactStore>(store);
         await using var app = builder.Build();
-        app.MapArtifacts();
+        // Acceso abierto explícito: la autorización por defecto se prueba en ArtifactSecurityTests.
+        app.MapArtifacts(options: new ArtifactEndpointOptions { AllowAnonymous = true, CanAccess = (_, _) => ValueTask.FromResult(true) });
         await app.StartAsync(TestContext.Current.CancellationToken);
         var client = app.GetTestClient();
 
@@ -297,7 +305,14 @@ public class DocumentGenerationTests
             })
             .ReturnsText("Aquí tienes los archivos.");
 
-        var result = await Ai.GenerateTextAsync(new GenerateTextOptions { Model = model, Prompt = "x", Tools = tools, StopWhen = StopCondition.StepCountIs(5) });
+        var result = await Ai.GenerateTextAsync(new GenerateTextOptions
+        {
+            Model = model,
+            Prompt = "x",
+            Tools = tools,
+            StopWhen = StopCondition.StepCountIs(5),
+            Context = new Dictionary<string, object?> { ["conversationId"] = "c1" },
+        });
 
         Assert.All(result.Steps.Take(3), s => Assert.False(s.ToolResults[0].IsError, s.ToolResults[0].Output.GetRawText()));
         var files = await store.ListAsync(cancellationToken: TestContext.Current.CancellationToken);

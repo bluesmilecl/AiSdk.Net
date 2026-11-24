@@ -69,8 +69,14 @@ public sealed record Artifact
 
     public int Version { get; init; } = 1;
 
-    /// <summary>Conversación o usuario dueño del artifact.</summary>
+    /// <summary>Conversación a la que pertenece el artifact (las herramientas no ven artifacts de otras conversaciones).</summary>
     public string? ConversationId { get; init; }
+
+    /// <summary>
+    /// Usuario dueño del artifact. Lo asignan <see cref="ArtifactTools"/> desde <see cref="ToolExecutionContext.Context"/>
+    /// (clave <see cref="ArtifactToolOptions.OwnerKey"/>), nunca el modelo ni el cliente; los endpoints lo usan para autorizar.
+    /// </summary>
+    public string? Owner { get; init; }
 
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
 
@@ -91,7 +97,10 @@ public interface IArtifactStore
 
     Task<IReadOnlyList<Artifact>> GetVersionsAsync(string id, CancellationToken cancellationToken = default);
 
-    /// <summary>Última versión de cada artifact (opcionalmente de una conversación).</summary>
+    /// <summary>
+    /// Última versión de cada artifact (opcionalmente de una conversación). Es para listados: los almacenes pueden omitir
+    /// el contenido binario (<see cref="Artifact.Data"/>); use <see cref="GetAsync"/> para leer un artifact completo.
+    /// </summary>
     Task<IReadOnlyList<Artifact>> ListAsync(string? conversationId = null, CancellationToken cancellationToken = default);
 
     Task DeleteAsync(string id, CancellationToken cancellationToken = default);
@@ -207,7 +216,7 @@ public sealed class FileSystemArtifactStore(string directory) : IArtifactStore, 
         }
 
         version ??= Directory.GetFiles(folder, "v*.json").Length;
-        return await ReadAsync(folder, version.Value, cancellationToken).ConfigureAwait(false);
+        return await ReadAsync(folder, version.Value, includeData: true, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<IReadOnlyList<Artifact>> GetVersionsAsync(string id, CancellationToken cancellationToken = default)
@@ -222,7 +231,7 @@ public sealed class FileSystemArtifactStore(string directory) : IArtifactStore, 
         var list = new List<Artifact>();
         for (var v = 1; v <= count; v++)
         {
-            if (await ReadAsync(folder, v, cancellationToken).ConfigureAwait(false) is { } artifact)
+            if (await ReadAsync(folder, v, includeData: true, cancellationToken).ConfigureAwait(false) is { } artifact)
             {
                 list.Add(artifact);
             }
@@ -238,10 +247,13 @@ public sealed class FileSystemArtifactStore(string directory) : IArtifactStore, 
             return [];
         }
 
+        // Solo metadatos: los binarios (.bin) no se leen para listar.
         var list = new List<Artifact>();
         foreach (var folder in Directory.GetDirectories(directory))
         {
-            if (await GetAsync(Path.GetFileName(folder), cancellationToken: cancellationToken).ConfigureAwait(false) is { } artifact
+            var version = Directory.GetFiles(folder, "v*.json").Length;
+            if (version > 0
+                && await ReadAsync(folder, version, includeData: false, cancellationToken).ConfigureAwait(false) is { } artifact
                 && (conversationId is null || artifact.ConversationId == conversationId))
             {
                 list.Add(artifact);
@@ -262,7 +274,7 @@ public sealed class FileSystemArtifactStore(string directory) : IArtifactStore, 
         return Task.CompletedTask;
     }
 
-    private static async Task<Artifact?> ReadAsync(string folder, int version, CancellationToken cancellationToken)
+    private static async Task<Artifact?> ReadAsync(string folder, int version, bool includeData, CancellationToken cancellationToken)
     {
         var json = Path.Combine(folder, $"v{version}.json");
         if (!File.Exists(json))
@@ -272,7 +284,7 @@ public sealed class FileSystemArtifactStore(string directory) : IArtifactStore, 
 
         var artifact = JsonSerializer.Deserialize<Artifact>(await File.ReadAllTextAsync(json, cancellationToken).ConfigureAwait(false), JsonSchema.DefaultSerializerOptions)!;
         var bin = Path.Combine(folder, $"v{version}.bin");
-        return File.Exists(bin) ? artifact with { Data = await File.ReadAllBytesAsync(bin, cancellationToken).ConfigureAwait(false) } : artifact;
+        return includeData && File.Exists(bin) ? artifact with { Data = await File.ReadAllBytesAsync(bin, cancellationToken).ConfigureAwait(false) } : artifact;
     }
 }
 
@@ -291,11 +303,75 @@ public sealed class ArtifactToolOptions
     /// <summary>Clave de <see cref="ToolExecutionContext.Context"/> con el id de conversación.</summary>
     public string ConversationIdKey { get; init; } = "conversationId";
 
+    /// <summary>
+    /// Clave de <see cref="ToolExecutionContext.Context"/> con el usuario dueño (la misma que usan las tareas programadas).
+    /// Debe venir de la autenticación del servidor, no del cliente.
+    /// </summary>
+    public string OwnerKey { get; init; } = "userId";
+
+    /// <summary>
+    /// Permite usar las herramientas sin conversación ni usuario en el contexto. Por defecto <c>false</c>: sin ámbito las
+    /// herramientas fallan, para no mezclar artifacts de distintos usuarios. Los artifacts creados así no tienen dueño y
+    /// solo los ven otros contextos sin ámbito. Solo para aplicaciones de un único usuario, scripts o pruebas.
+    /// </summary>
+    public bool AllowUnscoped { get; init; }
+
     /// <summary>Incluye el contenido completo en el data part <c>data-artifact</c> que recibe la interfaz.</summary>
     public bool SendContentToUI { get; init; } = true;
 
     /// <summary>Validación adicional antes de guardar (lanza una excepción para rechazar).</summary>
     public Action<Artifact>? Validate { get; init; }
+}
+
+/// <summary>
+/// Ámbito desde el que se accede a los artifacts: la conversación y el usuario del contexto de ejecución.
+/// </summary>
+/// <param name="ConversationId">Conversación actual (aísla los artifacts entre conversaciones).</param>
+/// <param name="Owner">Usuario autenticado (aísla los artifacts entre usuarios).</param>
+public sealed record ArtifactScope(string? ConversationId, string? Owner)
+{
+    /// <summary>True si no hay conversación ni usuario.</summary>
+    public bool IsEmpty => ConversationId is null && Owner is null;
+
+    /// <summary>Lee el ámbito de <see cref="ToolExecutionContext.Context"/> con las claves de <paramref name="options"/>.</summary>
+    public static ArtifactScope FromContext(ToolExecutionContext? context, ArtifactToolOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        return new ArtifactScope(Read(context, options.ConversationIdKey), Read(context, options.OwnerKey));
+    }
+
+    /// <summary>
+    /// Indica si este ámbito puede ver o editar <paramref name="artifact"/>:
+    /// <list type="bullet">
+    /// <item>si el artifact o el ámbito tienen usuario, ambos deben ser el mismo;</item>
+    /// <item>si ambos tienen conversación, debe ser la misma;</item>
+    /// <item>sin usuarios, el artifact de una conversación solo se ve desde esa conversación, y uno sin conversación ni
+    /// usuario solo desde un ámbito vacío.</item>
+    /// </list>
+    /// </summary>
+    public bool CanAccess(Artifact artifact)
+    {
+        ArgumentNullException.ThrowIfNull(artifact);
+        if ((Owner is not null || artifact.Owner is not null) && !string.Equals(artifact.Owner, Owner, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (artifact.ConversationId is not null && ConversationId is not null && !string.Equals(artifact.ConversationId, ConversationId, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (Owner is not null)
+        {
+            return true;
+        }
+
+        return artifact.ConversationId is not null ? string.Equals(artifact.ConversationId, ConversationId, StringComparison.Ordinal) : IsEmpty;
+    }
+
+    private static string? Read(ToolExecutionContext? context, string key) =>
+        context?.Context is not null && context.Context.TryGetValue(key, out var value) && value?.ToString() is { Length: > 0 } text ? text : null;
 }
 
 /// <summary>
@@ -305,7 +381,8 @@ public sealed class ArtifactToolOptions
 /// </summary>
 /// <remarks>
 /// Cada cambio se envía a la interfaz como data part <c>data-artifact</c> (reconciliado por id),
-/// así <c>useChat</c> puede mostrarlo en un panel lateral.
+/// así <c>useChat</c> puede mostrarlo en un panel lateral. Las herramientas exigen una conversación o un usuario en
+/// <see cref="ToolExecutionContext.Context"/> (ver <see cref="ArtifactScope"/>) salvo <see cref="ArtifactToolOptions.AllowUnscoped"/>.
 /// </remarks>
 public static class ArtifactTools
 {
@@ -327,8 +404,7 @@ public static class ArtifactTools
         options ??= new ArtifactToolOptions();
         var o = options;
 
-        string? Conversation(ToolExecutionContext ctx) =>
-            ctx.Context is not null && ctx.Context.TryGetValue(o.ConversationIdKey, out var value) ? value?.ToString() : null;
+        ArtifactScope Scope(ToolExecutionContext ctx) => RequireScope(ctx, o);
 
         async Task<object> SaveAsync(Artifact artifact, string action, ToolExecutionContext ctx, CancellationToken ct)
         {
@@ -354,15 +430,14 @@ public static class ArtifactTools
             return new { id = saved.Id, version = saved.Version, url, status = action };
         }
 
-        async Task<Artifact> LoadAsync(string id, ToolExecutionContext ctx, CancellationToken ct)
-        {
-            var artifact = await store.GetAsync(id, cancellationToken: ct).ConfigureAwait(false)
-                           ?? throw new ArgumentException($"No existe el artifact '{id}'.");
-            var conversation = Conversation(ctx);
-            return conversation is not null && artifact.ConversationId is not null && artifact.ConversationId != conversation
-                ? throw new UnauthorizedAccessException($"El artifact '{id}' pertenece a otra conversación.")
-                : artifact;
-        }
+        // Un artifact de otra conversación o de otro usuario se trata igual que uno inexistente.
+        static Artifact Visible(Artifact? artifact, ArtifactScope scope, string id) =>
+            artifact is not null && scope.CanAccess(artifact)
+                ? artifact
+                : throw new UnauthorizedAccessException($"No existe el artifact '{id}' en esta conversación.");
+
+        async Task<Artifact> LoadAsync(string id, ArtifactScope scope, CancellationToken ct) =>
+            Visible(await store.GetAsync(id, cancellationToken: ct).ConfigureAwait(false), scope, id);
 
         var allowed = string.Join(", ", o.AllowedTypes);
         return
@@ -372,6 +447,7 @@ public static class ArtifactTools
                 $"Crea un artifact nuevo. Tipos: {allowed}.",
                 async (input, ctx, ct) =>
                 {
+                    var scope = Scope(ctx);
                     if (!o.AllowedTypes.Contains(input.Type))
                     {
                         throw new ArgumentException($"Tipo no permitido: '{input.Type}'. Use uno de: {allowed}.");
@@ -384,7 +460,7 @@ public static class ArtifactTools
                     }
 
                     return await SaveAsync(
-                        new Artifact { Id = id, Title = input.Title, Type = input.Type, Language = input.Language, Content = input.Content, ConversationId = Conversation(ctx) },
+                        new Artifact { Id = id, Title = input.Title, Type = input.Type, Language = input.Language, Content = input.Content, ConversationId = scope.ConversationId, Owner = scope.Owner },
                         "created",
                         ctx,
                         ct).ConfigureAwait(false);
@@ -394,7 +470,7 @@ public static class ArtifactTools
                 "Edita un artifact reemplazando un fragmento exacto (oldStr debe aparecer una sola vez). Úsalo para cambios pequeños.",
                 async (input, ctx, ct) =>
                 {
-                    var current = await LoadAsync(input.Id, ctx, ct).ConfigureAwait(false);
+                    var current = await LoadAsync(input.Id, Scope(ctx), ct).ConfigureAwait(false);
                     var first = current.Content.IndexOf(input.OldStr, StringComparison.Ordinal);
                     if (input.OldStr.Length == 0 || first < 0)
                     {
@@ -414,7 +490,7 @@ public static class ArtifactTools
                 "Reemplaza todo el contenido de un artifact existente (nueva versión).",
                 async (input, ctx, ct) =>
                 {
-                    var current = await LoadAsync(input.Id, ctx, ct).ConfigureAwait(false);
+                    var current = await LoadAsync(input.Id, Scope(ctx), ct).ConfigureAwait(false);
                     return await SaveAsync(current with { Content = input.Content, Title = input.Title ?? current.Title }, "rewritten", ctx, ct).ConfigureAwait(false);
                 }),
             Tool.Create<ReadInput, object>(
@@ -422,10 +498,14 @@ public static class ArtifactTools
                 "Lee el contenido actual (o una versión) de un artifact.",
                 async (input, ctx, ct) =>
                 {
-                    var current = await LoadAsync(input.Id, ctx, ct).ConfigureAwait(false);
+                    var scope = Scope(ctx);
+                    var current = await LoadAsync(input.Id, scope, ct).ConfigureAwait(false);
                     if (input.Version is { } v)
                     {
-                        current = await store.GetAsync(input.Id, v, ct).ConfigureAwait(false) ?? throw new ArgumentException($"No existe la versión {v}.");
+                        current = Visible(
+                            await store.GetAsync(input.Id, v, ct).ConfigureAwait(false) ?? throw new ArgumentException($"No existe la versión {v}."),
+                            scope,
+                            input.Id);
                     }
 
                     return new { id = current.Id, title = current.Title, type = current.Type, version = current.Version, content = current.Data is null ? current.Content : $"[archivo binario {current.FileName}, {current.Data.Length} bytes]" };
@@ -433,13 +513,22 @@ public static class ArtifactTools
             Tool.Create<ListInput, object>(
                 "list_artifacts",
                 "Lista los artifacts de la conversación.",
-                async (_, ctx, ct) => (await store.ListAsync(Conversation(ctx), ct).ConfigureAwait(false))
-                    .Select(a => new { id = a.Id, title = a.Title, type = a.Type, version = a.Version, url = o.Url?.Invoke(a) })
-                    .ToList()),
+                async (_, ctx, ct) =>
+                {
+                    var scope = Scope(ctx);
+                    return (await store.ListAsync(scope.ConversationId, ct).ConfigureAwait(false))
+                        .Where(scope.CanAccess)
+                        .Select(a => new { id = a.Id, title = a.Title, type = a.Type, version = a.Version, url = o.Url?.Invoke(a) })
+                        .ToList();
+                }),
         ];
     }
 
-    /// <summary>Guarda un archivo binario generado (Word, Excel, PDF...) como artifact y lo anuncia a la interfaz.</summary>
+    /// <summary>
+    /// Guarda un archivo binario generado (Word, Excel, PDF...) como artifact y lo anuncia a la interfaz.
+    /// Con <paramref name="context"/> (llamada desde una herramienta) el archivo pertenece a su conversación y usuario, y
+    /// sin ámbito falla igual que las herramientas; sin contexto (código de la aplicación) queda sin dueño.
+    /// </summary>
     public static async Task<Artifact> SaveFileAsync(
         IArtifactStore store,
         byte[] data,
@@ -450,10 +539,13 @@ public static class ArtifactTools
         ArtifactToolOptions? options = null,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(store);
+        ArgumentNullException.ThrowIfNull(data);
         options ??= new ArtifactToolOptions();
-        var conversation = context?.Context is not null && context.Context.TryGetValue(options.ConversationIdKey, out var value) ? value?.ToString() : null;
+        var scope = context is null ? new ArtifactScope(null, null) : RequireScope(context, options);
         var id = Slug(Path.GetFileNameWithoutExtension(fileName));
-        if (await store.GetAsync(id, cancellationToken: cancellationToken).ConfigureAwait(false) is { } existing && existing.ConversationId != conversation)
+        if (await store.GetAsync(id, cancellationToken: cancellationToken).ConfigureAwait(false) is { } existing
+            && (existing.ConversationId != scope.ConversationId || existing.Owner != scope.Owner))
         {
             id = $"{id}-{Guid.NewGuid().ToString("N")[..6]}";
         }
@@ -466,7 +558,8 @@ public static class ArtifactTools
             Data = data,
             MediaType = mediaType,
             FileName = fileName,
-            ConversationId = conversation,
+            ConversationId = scope.ConversationId,
+            Owner = scope.Owner,
         }, cancellationToken).ConfigureAwait(false);
         context?.WriteData("artifact", new
         {
@@ -481,6 +574,15 @@ public static class ArtifactTools
             url = options.Url?.Invoke(saved),
         }, id: saved.Id);
         return saved;
+    }
+
+    private static ArtifactScope RequireScope(ToolExecutionContext context, ArtifactToolOptions options)
+    {
+        var scope = ArtifactScope.FromContext(context, options);
+        return scope.IsEmpty && !options.AllowUnscoped
+            ? throw new UnauthorizedAccessException(
+                $"Los artifacts necesitan el id de conversación ('{options.ConversationIdKey}') o de usuario ('{options.OwnerKey}') en el contexto de ejecución.")
+            : scope;
     }
 
     /// <summary>Id legible y seguro para URLs a partir de un título.</summary>

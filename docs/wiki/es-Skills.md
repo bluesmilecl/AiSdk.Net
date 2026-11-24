@@ -56,7 +56,8 @@ var prompt = library.TryInvokeSlashCommand("/cotizar-envios 4 kg al sur");      
   y las herramientas `create_skill` / `validate_skill` (`SkillAuthoringTools.Create`) para que un agente escriba las suyas.
 - **Scripts** con entorno limpio (sin secretos), timeout y captura de archivos creados; las skills no confiables
   no ejecutan nada salvo `AllowUntrustedScripts`.
-- **DI y ASP.NET Core:** `services.AddAiSdk(ai => ai.AddSkills("skills"))` y `app.MapSkills()` (catálogo, detalle, zip).
+- **DI y ASP.NET Core:** `services.AddAiSdk(ai => ai.AddSkills("skills"))` y `app.MapSkills()` (catálogo, detalle, zip);
+  los endpoints exigen autorización por defecto (`new SkillEndpointOptions { AllowAnonymous = true }` para desactivarla).
 - **Anthropic:** Skills en contenedor (`AnthropicSkills.Options([AnthropicSkill.Excel, AnthropicSkill.Custom(id)])`),
   descarga de archivos generados (`GetGeneratedFileIds` + `Files.DownloadAsync`) y API `/v1/skills` (`anthropic.Skills`).
 - El repositorio incluye `skills/aisdk-net`, una skill que enseña a un agente de código a usar este SDK.
