@@ -249,7 +249,7 @@ public class ArtifactSecurityTests
     }
 }
 
-public class WorkflowSecurityTests
+public class WorkflowEndpointSecurityTests
 {
     private sealed record Order(string Id, decimal Amount);
 
@@ -384,6 +384,23 @@ public class WorkflowSecurityTests
     }
 
     [Fact]
+    public async Task OversizedBodiesAreRejectedBeforeBeingBuffered()
+    {
+        await using var app = await StartAsync();
+        var anonymous = TestAuth.Client(app);
+        var big = new string('a', WorkflowEndpoints.MaxRequestBodyBytes + 1);
+
+        // Webhook anónimo: 413 sin llegar al motor (ni siquiera a buscar la automatización).
+        var hook = await anonymous.PostAsync("/workflows/hooks/no-existe", new StringContent(big, System.Text.Encoding.UTF8, "application/json"), Ct);
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, hook.StatusCode);
+
+        // Endpoints autenticados con JSON: también 413.
+        var ana = TestAuth.Client(app, "ana");
+        var start = await ana.PostAsync("/workflows/approval/start", TestAuth.Json("\"" + big + "\""), Ct);
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, start.StatusCode);
+    }
+
+    [Fact]
     public async Task AutomationOwnerIsResolvedOnTheServer()
     {
         await using var app = await StartAsync(new WorkflowEndpointOptions { CanStart = (_, workflow) => ValueTask.FromResult(workflow == "approval") });
@@ -414,9 +431,9 @@ public class WorkflowSecurityTests
         Assert.Equal(HttpStatusCode.BadRequest, (await ana.PostAsync("/workflows/automations", TestAuth.Json("""{"id":"abierto","name":"h","trigger":{"kind":"webhook"},"workflow":"approval"}"""), Ct)).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await ana.PostAsync("/workflows/automations", TestAuth.Json("""{"id":"x","name":"x","trigger":{"kind":"interval","every":"01:00:00"},"workflow":"internal"}"""), Ct)).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await ana.PostAsync("/workflows/internal/start", TestAuth.Json("{}"), Ct)).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await ana.PostAsync("/workflows/automations", TestAuth.Json("""{"id":"hook","name":"h","trigger":{"kind":"webhook","secret":"s3cr3t-largo"},"workflow":"approval"}"""), Ct)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await ana.PostAsync("/workflows/automations", TestAuth.Json("""{"id":"hook","name":"h","trigger":{"kind":"webhook","secret":"s3cr3t-largo-de-prueba"},"workflow":"approval"}"""), Ct)).StatusCode);
         var listed = await ana.GetStringAsync("/workflows/automations", Ct);
-        Assert.DoesNotContain("s3cr3t-largo", listed);
+        Assert.DoesNotContain("s3cr3t-largo-de-prueba", listed);
         await engine.WhenIdleAsync();
     }
 }

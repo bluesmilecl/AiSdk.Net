@@ -58,6 +58,12 @@ public static class WorkflowEndpoints
     /// <summary>Prefijo de <see cref="WorkflowRun.TriggeredBy"/> en las ejecuciones iniciadas por un usuario por HTTP.</summary>
     public const string UserTriggerPrefix = "user:";
 
+    /// <summary>
+    /// Tamaño máximo (bytes) del cuerpo de las peticiones a estos endpoints, webhooks incluidos: 1 MiB. Un cuerpo mayor
+    /// responde 413 sin leerse completo (los webhooks son anónimos: no se debe poder llenar la memoria con uno).
+    /// </summary>
+    public const int MaxRequestBodyBytes = 1 << 20;
+
     // Prefijos que usa el motor para las ejecuciones disparadas por una automatización (seguidos de su id).
     private static readonly string[] AutomationTriggerPrefixes = ["schedule:", "webhook:", "manual:"];
 
@@ -80,7 +86,7 @@ public static class WorkflowEndpoints
     public static RouteGroupBuilder MapWorkflows(this IEndpointRouteBuilder endpoints, string prefix = "/workflows", WorkflowEndpointOptions? options = null)
     {
         options ??= new WorkflowEndpointOptions();
-        var group = endpoints.MapGroup(prefix);
+        var group = endpoints.MapGroup(prefix).AddEndpointFilter(BadRequestFilter);
         var api = group.MapGroup(string.Empty);
         EndpointSecurity.ApplyAuthorization(api, options);
         EndpointSecurity.RequireJsonRequests(api);
@@ -274,7 +280,7 @@ public static class WorkflowEndpoints
     /// <summary>Publica solo los webhooks entrantes (<c>POST {prefix}/hooks/{id}</c>), sin autenticación de usuario.</summary>
     public static RouteGroupBuilder MapWorkflowWebhooks(this IEndpointRouteBuilder endpoints, string prefix = "/workflows")
     {
-        var group = endpoints.MapGroup(prefix);
+        var group = endpoints.MapGroup(prefix).AddEndpointFilter(BadRequestFilter);
         MapHook(group);
         return group;
     }
@@ -349,8 +355,12 @@ public static class WorkflowEndpoints
     private static void MapHook(RouteGroupBuilder group) =>
         group.MapPost("/hooks/{id}", async (HttpContext http, string id) =>
         {
-            using var buffer = new MemoryStream();
-            await http.Request.Body.CopyToAsync(buffer, http.RequestAborted).ConfigureAwait(false);
+            using var buffer = await ReadBodyAsync(http).ConfigureAwait(false);
+            if (buffer is null)
+            {
+                return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
+            }
+
             try
             {
                 // Lee las cabeceras documentadas en WebhookSignature (firma, marca de tiempo, id de entrega y secreto).
@@ -370,10 +380,48 @@ public static class WorkflowEndpoints
             }
         });
 
+    /// <summary>Convierte los errores de la petición (JSON inválido, cuerpo demasiado grande) en su código HTTP.</summary>
+    private static async ValueTask<object?> BadRequestFilter(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
+    {
+        try
+        {
+            return await next(context).ConfigureAwait(false);
+        }
+        catch (BadHttpRequestException ex)
+        {
+            return Results.Problem(statusCode: ex.StatusCode, detail: ex.Message);
+        }
+    }
+
+    /// <summary>Lee el cuerpo hasta <see cref="MaxRequestBodyBytes"/>; null si lo supera (sin seguir leyendo).</summary>
+    private static async Task<MemoryStream?> ReadBodyAsync(HttpContext http)
+    {
+        if (http.Request.ContentLength > MaxRequestBodyBytes)
+        {
+            return null;
+        }
+
+        var buffer = new MemoryStream();
+        var chunk = new byte[16 * 1024];
+        int read;
+        while ((read = await http.Request.Body.ReadAsync(chunk, http.RequestAborted).ConfigureAwait(false)) > 0)
+        {
+            if (buffer.Length + read > MaxRequestBodyBytes)
+            {
+                await buffer.DisposeAsync().ConfigureAwait(false);
+                return null;
+            }
+
+            buffer.Write(chunk, 0, read);
+        }
+
+        return buffer;
+    }
+
     private static async Task<JsonElement> ReadJsonAsync(HttpContext http)
     {
-        using var buffer = new MemoryStream();
-        await http.Request.Body.CopyToAsync(buffer, http.RequestAborted).ConfigureAwait(false);
+        using var buffer = await ReadBodyAsync(http).ConfigureAwait(false)
+                           ?? throw new BadHttpRequestException("El cuerpo supera el tamaño máximo permitido.", StatusCodes.Status413PayloadTooLarge);
         if (buffer.Length == 0)
         {
             return JsonSerializer.SerializeToElement(new { });
