@@ -196,6 +196,14 @@ public sealed class PdftoppmRasterizer(string executable = "pdftoppm", IExternal
     /// <summary>Páginas consecutivas que rasteriza un mismo proceso.</summary>
     public int MaxPagesPerProcess { get; init; } = 8;
 
+    /// <summary>
+    /// Ancho y alto máximos de cada imagen, en píxeles (por defecto 10.000; <c>-W</c>/<c>-H</c> de pdftoppm): lo que
+    /// exceda se recorta, así una página enorme no ocupa gigabytes. Para reducir la resolución de las páginas grandes,
+    /// pida un <c>dpi</c> menor (<see cref="MarkdownConverter"/> lo calcula por página con
+    /// <see cref="MarkdownConverterOptions.MaxRasterPixels"/>).
+    /// </summary>
+    public int MaxPixels { get; init; } = 10_000;
+
     private IExternalProcessRunner Runner => runner ?? ExternalProcess.Runner;
 
     public async Task<IReadOnlyDictionary<int, byte[]>> RenderAsync(byte[] pdf, IReadOnlyList<int> pages, int dpi = 200, CancellationToken cancellationToken = default)
@@ -280,6 +288,7 @@ public sealed class PdftoppmRasterizer(string executable = "pdftoppm", IExternal
         await Runner.RunCheckedAsync(
             executable,
             ["-r", dpi.ToString(CultureInfo.InvariantCulture), "-png", "-gray",
+             "-W", Math.Max(1, MaxPixels).ToString(CultureInfo.InvariantCulture), "-H", Math.Max(1, MaxPixels).ToString(CultureInfo.InvariantCulture),
              "-f", first.ToString(CultureInfo.InvariantCulture), "-l", last.ToString(CultureInfo.InvariantCulture),
              input, output.File(prefix)],
             cancellationToken: cancellationToken).ConfigureAwait(false);

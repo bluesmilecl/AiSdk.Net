@@ -592,3 +592,111 @@ public class OfficeSecurityTests
         Assert.Contains(result.Warnings, w => w.Contains("4989", StringComparison.Ordinal));
     }
 }
+
+public class PdfLimitTests
+{
+    /// <summary>PDF de páginas en blanco (sin texto: todas "necesitan" OCR).</summary>
+    private static byte[] BlankPdf(int pages, double width = 595, double height = 842)
+    {
+        var builder = new UglyToad.PdfPig.Writer.PdfDocumentBuilder();
+        for (var i = 0; i < pages; i++)
+        {
+            builder.AddPage(width, height);
+        }
+
+        return builder.Build();
+    }
+
+    /// <summary>Rasterizador falso que registra páginas y resolución, y devuelve un PNG mínimo.</summary>
+    private sealed class CountingRasterizer : IPdfRasterizer
+    {
+        public System.Collections.Concurrent.ConcurrentQueue<(int Page, int Dpi)> Calls { get; } = new();
+
+        public Task<IReadOnlyDictionary<int, byte[]>> RenderAsync(byte[] pdf, IReadOnlyList<int> pages, int dpi = 200, CancellationToken cancellationToken = default)
+        {
+            foreach (var page in pages)
+            {
+                Calls.Enqueue((page, dpi));
+            }
+
+            return Task.FromResult<IReadOnlyDictionary<int, byte[]>>(pages.ToDictionary(p => p, _ => File.ReadAllBytes(DocumentConverterTests.Fixture("receipt.png"))));
+        }
+    }
+
+    private sealed class ProgressLog : IProgress<DocumentConversionProgress>
+    {
+        public System.Collections.Concurrent.ConcurrentQueue<DocumentConversionProgress> Reports { get; } = new();
+
+        public void Report(DocumentConversionProgress value) => Reports.Enqueue(value);
+    }
+
+    [Fact]
+    public async Task ThousandsOfBlankPagesDoNotTriggerThousandsOfOcrCalls()
+    {
+        // Pocos KB y 3000 páginas en blanco: antes, 3000 procesos de OCR o llamadas pagadas de visión.
+        var pdf = BlankPdf(3000);
+        var ocr = new DocumentConverterTests.FakeOcr("reconocido");
+        var rasterizer = new CountingRasterizer();
+        var progress = new ProgressLog();
+        var watch = Stopwatch.StartNew();
+
+        var result = await new MarkdownConverter(new MarkdownConverterOptions { Ocr = ocr, PdfRasterizer = rasterizer, Progress = progress })
+            .ConvertAsync(pdf, MediaTypes.Pdf, "blancas.pdf", TestContext.Current.CancellationToken);
+
+        Assert.True(pdf.Length < 1_000_000);
+        Assert.Equal(1000, result.Pages.Count); // MaxPdfPages
+        Assert.Equal(100, ocr.Calls); // MaxOcrPages
+        Assert.Equal(100, rasterizer.Calls.Count);
+        Assert.Equal(100, result.Pages.Count(p => p.Source == PageTextSource.Ocr));
+        Assert.Contains(result.Warnings, w => w.Contains("MaxPdfPages", StringComparison.Ordinal));
+        Assert.Contains(result.Warnings, w => w.Contains("900 página(s) o imagen(es)", StringComparison.Ordinal) && w.Contains("MaxOcrPages = 100", StringComparison.Ordinal));
+        Assert.Equal(100, progress.Reports.Max(r => r.OcrPages));
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(20), $"Tardó {watch.Elapsed}.");
+    }
+
+    [Fact]
+    public async Task WholeDocumentOcrIsOnlyUsedWhenAllPagesFitTheBudget()
+    {
+        var ocr = new DocumentConverterTests.FakeOcr("texto", MediaTypes.Pdf, "image/png");
+        var options = new MarkdownConverterOptions { Ocr = ocr, PdfRasterizer = new CountingRasterizer(), MaxOcrPages = 5 };
+
+        var small = await new MarkdownConverter(options).ConvertAsync(BlankPdf(5), MediaTypes.Pdf, cancellationToken: TestContext.Current.CancellationToken);
+        Assert.Equal([MediaTypes.Pdf], ocr.MediaTypesSeen); // una sola llamada con el PDF completo
+        Assert.Equal("texto", small.Pages[0].Markdown);
+
+        // 50 páginas: el motor cobraría las 50; se reconocen página por página solo las 5 permitidas.
+        ocr.MediaTypesSeen.Clear();
+        var large = await new MarkdownConverter(options).ConvertAsync(BlankPdf(50), MediaTypes.Pdf, cancellationToken: TestContext.Current.CancellationToken);
+        Assert.DoesNotContain(MediaTypes.Pdf, ocr.MediaTypesSeen);
+        Assert.Equal(5, ocr.MediaTypesSeen.Count);
+        Assert.Equal(5, large.Pages.Count(p => p.Source == PageTextSource.Ocr));
+    }
+
+    [Fact]
+    public async Task HugePagesAreRasterizedAtALowerResolution()
+    {
+        var rasterizer = new CountingRasterizer();
+        var converter = new MarkdownConverter(new MarkdownConverterOptions { Ocr = new DocumentConverterTests.FakeOcr("x"), PdfRasterizer = rasterizer });
+
+        // 200 pulgadas por lado: a 200 ppp serían 40.000 × 40.000 píxeles (1.600 millones).
+        await converter.ConvertAsync(BlankPdf(1, 14_400, 14_400), MediaTypes.Pdf, cancellationToken: TestContext.Current.CancellationToken);
+        await converter.ConvertAsync(BlankPdf(1), MediaTypes.Pdf, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal([25, 200], rasterizer.Calls.Select(c => c.Dpi));
+    }
+
+    [Fact]
+    public async Task PdftoppmOutputIsCappedInPixels()
+    {
+        var pdftoppm = PdftoppmRasterizer.TryCreate();
+        Assert.SkipWhen(pdftoppm is null, "pdftoppm no instalado");
+        var rasterizer = new PdftoppmRasterizer { MaxPixels = 300 };
+
+        var images = await rasterizer.RenderAsync(BlankPdf(1, 2000, 1000), [1], dpi: 72, cancellationToken: TestContext.Current.CancellationToken);
+
+        var png = images[1];
+        var width = System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(16, 4));
+        var height = System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(20, 4));
+        Assert.Equal((300, 300), (width, height));
+    }
+}
