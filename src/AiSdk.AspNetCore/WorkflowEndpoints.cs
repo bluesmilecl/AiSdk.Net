@@ -82,11 +82,10 @@ public static class WorkflowEndpoints
             await http.Request.Body.CopyToAsync(buffer, http.RequestAborted).ConfigureAwait(false);
             try
             {
+                // Lee las cabeceras documentadas en WebhookSignature (firma, marca de tiempo, id de entrega y secreto).
                 var run = await http.RequestServices.GetRequiredService<WorkflowEngine>().TriggerWebhookAsync(
                     id,
-                    buffer.ToArray(),
-                    http.Request.Headers["X-Webhook-Secret"].FirstOrDefault(),
-                    http.Request.Headers["X-Signature-256"].FirstOrDefault() ?? http.Request.Headers["X-Hub-Signature-256"].FirstOrDefault(),
+                    WebhookRequest.FromHeaders(buffer.ToArray(), name => http.Request.Headers[name].FirstOrDefault()),
                     http.RequestAborted).ConfigureAwait(false);
                 return Results.Accepted(value: new { runId = run.Id });
             }

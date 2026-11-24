@@ -200,9 +200,10 @@ public class WorkflowTests
     public async Task WebhooksVerifySecretsAndSignatures()
     {
         var engine = new WorkflowEngine().Register(Workflow.Create<JsonElement, string>("hook", (_, input) => Task.FromResult(input.GetProperty("event").GetString()!)));
-        await engine.AddAutomationAsync(new Automation { Id = "github", Name = "GitHub", Trigger = new WebhookTrigger("s3cr3t"), Workflow = "hook" }, TestContext.Current.CancellationToken);
+        // Firma solo del cuerpo (estilo GitHub): desde 0.2 hay que pedirla de forma explícita.
+        await engine.AddAutomationAsync(new Automation { Id = "github", Name = "GitHub", Trigger = new WebhookTrigger("s3cr3t-de-prueba-123") { Verification = WebhookVerification.BodySignature }, Workflow = "hook" }, TestContext.Current.CancellationToken);
         var body = """{"event":"push"}"""u8.ToArray();
-        var signature = "sha256=" + Convert.ToHexStringLower(HMACSHA256.HashData("s3cr3t"u8, body));
+        var signature = "sha256=" + Convert.ToHexStringLower(HMACSHA256.HashData("s3cr3t-de-prueba-123"u8, body));
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => engine.TriggerWebhookAsync("github", body, signatureHeader: "sha256=00", cancellationToken: TestContext.Current.CancellationToken));
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => engine.TriggerWebhookAsync("github", body, cancellationToken: TestContext.Current.CancellationToken));
@@ -296,7 +297,7 @@ public class WorkflowTests
         builder.Services.AddAiSdkWorkflows(w =>
         {
             w.AddWorkflow(ApprovalEngine().Workflows.Single());
-            w.AddAutomation(new Automation { Id = "crm", Name = "CRM", Trigger = new WebhookTrigger("clave"), Workflow = "approval" });
+            w.AddAutomation(new Automation { Id = "crm", Name = "CRM", Trigger = new WebhookTrigger("clave-compartida-123") { Verification = WebhookVerification.SharedSecret }, Workflow = "approval" });
             w.TickInterval = TimeSpan.FromMilliseconds(50);
         });
         await using var app = builder.Build();
@@ -326,7 +327,7 @@ public class WorkflowTests
         bad.Headers.Add("X-Webhook-Secret", "otra");
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.SendAsync(bad, TestContext.Current.CancellationToken)).StatusCode);
         var good = new HttpRequestMessage(HttpMethod.Post, "/workflows/hooks/crm") { Content = new StringContent("""{"id":"W-2","amount":5}""", Encoding.UTF8, "application/json") };
-        good.Headers.Add("X-Webhook-Secret", "clave");
+        good.Headers.Add("X-Webhook-Secret", "clave-compartida-123");
         var hook = await client.SendAsync(good, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Accepted, hook.StatusCode);
         await engine.WhenIdleAsync();

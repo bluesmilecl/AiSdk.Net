@@ -98,8 +98,8 @@ public sealed class WorkflowHostedService(WorkflowEngine engine, WorkflowBuilder
     {
         foreach (var automation in builder.Automations)
         {
-            var existing = await engine.Store.GetAutomationAsync(automation.Id, stoppingToken).ConfigureAwait(false);
-            await engine.AddAutomationAsync(automation with { LastRunAt = existing?.LastRunAt, LastRunId = existing?.LastRunId }, stoppingToken).ConfigureAwait(false);
+            // AddAutomationAsync conserva LastRunAt/LastRunId de la guardada y reintenta si otra réplica la guarda a la vez.
+            await engine.AddAutomationAsync(automation, stoppingToken).ConfigureAwait(false);
         }
 
         await engine.RecoverAsync(stoppingToken).ConfigureAwait(false);

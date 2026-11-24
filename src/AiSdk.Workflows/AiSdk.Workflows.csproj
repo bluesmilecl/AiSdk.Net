@@ -6,5 +6,6 @@
     <ProjectReference Include="../AiSdk/AiSdk.csproj" />
     <PackageReference Include="Cronos" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+    <InternalsVisibleTo Include="AiSdk.Tests" />
   </ItemGroup>
 </Project>

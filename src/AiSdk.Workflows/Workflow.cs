@@ -69,6 +69,21 @@ public sealed class WorkflowRun
 
     public List<string> Logs { get; init; } = [];
 
+    /// <summary>
+    /// Versión para concurrencia optimista: 0 si aún no se guardó. <see cref="IWorkflowStore.SaveRunAsync"/> solo
+    /// guarda si coincide con la versión almacenada y la incrementa; si no, lanza <see cref="WorkflowConcurrencyException"/>.
+    /// </summary>
+    public long Version { get; set; }
+
+    /// <summary>Instancia del motor (<see cref="WorkflowEngineOptions.InstanceId"/>) que tiene reclamada la ejecución.</summary>
+    public string? LeaseOwner { get; set; }
+
+    /// <summary>
+    /// Hasta cuándo vale el reclamo de <see cref="LeaseOwner"/>. Mientras no venza, otras instancias no la ejecutan;
+    /// si la instancia muere, otra la retoma al vencer.
+    /// </summary>
+    public DateTimeOffset? LeaseExpiresAt { get; set; }
+
     public bool IsFinished => Status is WorkflowStatus.Completed or WorkflowStatus.Failed or WorkflowStatus.Cancelled;
 
     /// <summary>Deserializa la salida.</summary>
@@ -134,6 +149,12 @@ public sealed record StepOptions
 
     public static StepOptions NoRetry { get; } = new() { MaxAttempts = 1 };
 }
+
+/// <summary>
+/// La ejecución o automatización cambió en el almacén desde que se leyó (otra réplica o proceso la modificó,
+/// p. ej. al cancelarla). Quien la recibe debe volver a leerla en vez de sobrescribirla.
+/// </summary>
+public sealed class WorkflowConcurrencyException(string message) : InvalidOperationException(message);
 
 /// <summary>Error que no debe reintentarse (datos inválidos, permisos...).</summary>
 public sealed class NonRetryableException(string message, Exception? inner = null) : Exception(message, inner);
