@@ -1,5 +1,4 @@
 using AiSdk.Documents.Converters;
-using AiSdk.Http;
 
 namespace AiSdk.Documents;
 
@@ -48,25 +47,46 @@ public sealed class MarkdownConverter
 
     public bool CanConvert(string mediaType) => _converters.Any(c => c.CanConvert(MediaTypes.Normalize(mediaType)));
 
+    /// <exception cref="DocumentTooLargeException">El documento supera <see cref="MarkdownConverterOptions.MaxInputBytes"/>.</exception>
     public async Task<DocumentConversionResult> ConvertAsync(DocumentSource source, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(source);
+        if (source.Data.LongLength > Options.MaxInputBytes)
+        {
+            throw new DocumentTooLargeException(source.Data.LongLength, Options.MaxInputBytes, source.FileName);
+        }
+
         var converter = _converters.FirstOrDefault(c => c.CanConvert(source.MediaType))
                         ?? throw new NotSupportedException($"No hay un convertidor para '{source.MediaType}' ({source.FileName}).");
         return await converter.ConvertAsync(source, new DocumentConversionContext(Options, this), cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<DocumentConversionResult> ConvertFileAsync(string path, CancellationToken cancellationToken = default) =>
-        await ConvertAsync(await DocumentSource.FromFileAsync(path, cancellationToken: cancellationToken).ConfigureAwait(false), cancellationToken).ConfigureAwait(false);
+    /// <exception cref="DocumentTooLargeException">El archivo supera <see cref="MarkdownConverterOptions.MaxInputBytes"/> (se comprueba antes de leerlo).</exception>
+    public async Task<DocumentConversionResult> ConvertFileAsync(string path, CancellationToken cancellationToken = default)
+    {
+        var length = new FileInfo(path).Length;
+        if (length > Options.MaxInputBytes)
+        {
+            throw new DocumentTooLargeException(length, Options.MaxInputBytes, Path.GetFileName(path));
+        }
+
+        return await ConvertAsync(await DocumentSource.FromFileAsync(path, cancellationToken: cancellationToken).ConfigureAwait(false), cancellationToken).ConfigureAwait(false);
+    }
 
     public Task<DocumentConversionResult> ConvertAsync(byte[] data, string? mediaType = null, string? fileName = null, CancellationToken cancellationToken = default) =>
         ConvertAsync(new DocumentSource(data, mediaType, fileName), cancellationToken);
 
     /// <summary>
     /// Convierte una parte de mensaje (<see cref="ImagePart"/> o <see cref="FilePart"/>) con datos en
-    /// línea o, si <paramref name="downloadUrls"/> es true, descargando su URL.
+    /// línea o, si <paramref name="downloadUrls"/> es true, descargando su URL con las protecciones de
+    /// <see cref="MarkdownConverterOptions.UrlDownload"/> (solo http/https públicas, tamaño y tiempo acotados; ver
+    /// <see cref="UrlDownloader"/>). Las URLs <c>data:</c> se decodifican con el mismo límite de tamaño.
     /// </summary>
+    /// <exception cref="UrlDownloadException">La URL no está permitida o la descarga falló.</exception>
+    /// <exception cref="DocumentTooLargeException">El adjunto supera el tamaño máximo.</exception>
     public async Task<DocumentConversionResult> ConvertAsync(ContentPart part, bool downloadUrls = false, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(part);
         var (data, url, mediaType, fileName) = part switch
         {
             ImagePart image => (image.Data, image.Url, image.MediaType, (string?)null),
@@ -81,16 +101,12 @@ public sealed class MarkdownConverter
                 throw new NotSupportedException("El adjunto es una URL; habilite la descarga de URLs para convertirlo.");
             }
 
-            if (url.Scheme == "data")
+            var maxBytes = Math.Min(Options.UrlDownload.MaxBytes, Options.MaxInputBytes);
+            var download = await UrlDownloader.DownloadAsync(url, Options.UrlDownload, maxBytes, cancellationToken).ConfigureAwait(false);
+            data = download.Data;
+            if (url.Scheme != "data")
             {
-                var raw = url.OriginalString;
-                var comma = raw.IndexOf(',', StringComparison.Ordinal);
-                data = Convert.FromBase64String(raw[(comma + 1)..]);
-            }
-            else
-            {
-                data = await (Options.HttpClient ?? ProviderHttp.DefaultClient).GetByteArrayAsync(url, cancellationToken).ConfigureAwait(false);
-                fileName ??= Path.GetFileName(url.LocalPath);
+                fileName ??= Path.GetFileName(download.Url.LocalPath) is { Length: > 0 } name ? name : null;
             }
         }
 

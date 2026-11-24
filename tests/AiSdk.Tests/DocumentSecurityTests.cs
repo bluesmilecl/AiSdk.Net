@@ -1,0 +1,440 @@
+using System.Diagnostics;
+using System.Text;
+using AiSdk.Documents;
+using AiSdk.Documents.Converters;
+
+namespace AiSdk.Tests;
+
+/// <summary>Regresiones de seguridad de AiSdk.Documents: cada prueba construye la entrada hostil y comprueba que el trabajo queda acotado.</summary>
+public class HtmlSecurityTests
+{
+    private static Task<DocumentConversionResult> ConvertHtmlAsync(string html, MarkdownConverterOptions? options = null) =>
+        new MarkdownConverter(options).ConvertAsync(Encoding.UTF8.GetBytes(html), MediaTypes.Html, "pagina.html", TestContext.Current.CancellationToken);
+
+    [Fact]
+    public async Task DeeplyNestedHtmlDoesNotOverflowTheStack()
+    {
+        // ~330 KB: antes, ReverseMarkdown recorría el árbol de forma recursiva y el proceso moría (StackOverflowException).
+        var html = string.Concat(Enumerable.Repeat("<div>", 30_000)) + "texto del fondo" + string.Concat(Enumerable.Repeat("</div>", 30_000));
+        var watch = Stopwatch.StartNew();
+
+        var result = await ConvertHtmlAsync(html);
+
+        Assert.Contains("texto del fondo", result.Markdown);
+        Assert.Contains(result.Warnings, w => w.Contains("niveles de anidamiento", StringComparison.Ordinal));
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(10), $"Tardó {watch.Elapsed}.");
+    }
+
+    [Fact]
+    public void ConversionDoesNotDependOnTheCallersStackSize()
+    {
+        // Un hilo con pila pequeña (como los de algunos hosts) convierte HTML anidado bajo el máximo sin desbordarse.
+        var html = string.Concat(Enumerable.Repeat("<blockquote><ul><li>", 100)) + "hondo";
+        string? markdown = null;
+        var thread = new Thread(() => markdown = HtmlConverter.ToMarkdown(html), 256 * 1024);
+        thread.Start();
+        thread.Join();
+
+        Assert.Contains("hondo", markdown);
+    }
+
+    [Fact]
+    public async Task NestingBeyondTheLimitIsFlattenedToText()
+    {
+        var html = "<h1>Inicio</h1>" + string.Concat(Enumerable.Repeat("<div>", 50)) + "<p>uno</p><p><b>dos</b></p>" + string.Concat(Enumerable.Repeat("</div>", 50)) + "<p>Fin</p>";
+
+        var result = await ConvertHtmlAsync(html, new MarkdownConverterOptions { MaxNestingDepth = 20 });
+
+        Assert.Contains("# Inicio", result.Markdown);
+        Assert.Contains("uno", result.Markdown);
+        Assert.Contains("dos", result.Markdown);
+        Assert.DoesNotContain("**dos**", result.Markdown); // por debajo del máximo queda solo el texto
+        Assert.Contains("Fin", result.Markdown);
+        Assert.Contains(result.Warnings, w => w.Contains("más de 20 niveles", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task MisnestedTagsThatDeepenTheTreeFallBackToText()
+    {
+        // La reparación de etiquetas mal anidadas (adoption agency) hace crecer el árbol sin que el texto lo parezca.
+        var html = "<p>visible</p>" + string.Concat(Enumerable.Repeat("<span><div></span>", 20_000)) + "final";
+        var watch = Stopwatch.StartNew();
+
+        var result = await ConvertHtmlAsync(html);
+
+        Assert.Contains("visible", result.Markdown);
+        Assert.Contains("final", result.Markdown);
+        Assert.Contains(result.Warnings, w => w.Contains("se extrajo solo el texto", StringComparison.Ordinal));
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(10), $"Tardó {watch.Elapsed}.");
+    }
+
+    [Fact]
+    public async Task RepeatedUnclosedScriptsAreRemovedQuickly()
+    {
+        // 256 KB de <script> sin cerrar: la expresión regular anterior tardaba ~40 s.
+        var html = "<html><head><title>T &amp; C</title></head><body><p>antes</p>" + string.Concat(Enumerable.Repeat("<script>x", 28_000)) + "</body></html>";
+        var styles = "<p>texto</p>" + string.Concat(Enumerable.Repeat("<style>a{}<style>", 15_000));
+        var watch = Stopwatch.StartNew();
+
+        var result = await ConvertHtmlAsync(html);
+        var styled = await ConvertHtmlAsync(styles);
+
+        Assert.Equal("T & C", result.Title);
+        Assert.Equal("antes", result.Markdown);
+        Assert.Equal("texto", styled.Markdown);
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(10), $"Tardó {watch.Elapsed}.");
+    }
+
+    [Fact]
+    public async Task NoiseIsRemovedThroughTheDomAndStructureIsKept()
+    {
+        var html = """
+            <html><head><title>Hola</title><style>p{}</style></head>
+            <body><nav><a href="/x">menú</a></nav><script>alert(1)</script><svg><text>dibujo</text></svg>
+            <h2>Título</h2><table><tr><th>a</th><th>b</th></tr><tr><td>1</td><td>2 &lt;3&gt;</td></tr></table>
+            <p data-x='"q"'>Texto con <a href="https://x.cl/?a=1&amp;b=2">enlace</a></p><footer>pie</footer></body></html>
+            """;
+
+        var result = await ConvertHtmlAsync(html);
+
+        Assert.Equal("Hola", result.Title);
+        Assert.Contains("## Título", result.Markdown);
+        Assert.Contains("| a | b |", result.Markdown);
+        Assert.Contains("[enlace](https://x.cl/?a=1&b=2)", result.Markdown);
+        Assert.DoesNotContain("menú", result.Markdown);
+        Assert.DoesNotContain("alert", result.Markdown);
+        Assert.DoesNotContain("dibujo", result.Markdown);
+        Assert.DoesNotContain("pie", result.Markdown);
+        Assert.Empty(result.Warnings);
+    }
+
+    [Fact]
+    public async Task HtmlBeyondTheSizeLimitIsTruncatedWithAWarning()
+    {
+        var html = "<p>primero</p>" + new string('x', 5000) + "<p>ultimo</p>";
+
+        var result = await ConvertHtmlAsync(html, new MarkdownConverterOptions { MaxHtmlBytes = 1000 });
+
+        Assert.Contains("primero", result.Markdown);
+        Assert.DoesNotContain("ultimo", result.Markdown);
+        Assert.Contains(result.Warnings, w => w.Contains("MaxHtmlBytes", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task TextOnlyFallbackIsLinearAndDecodesEntities()
+    {
+        // Más de 4 × MaxNestingDepth niveles: no se construye el árbol, se extrae el texto en una pasada.
+        var html = "<p>a &amp; b</p><script>no</script>< c <!-- x -->" + string.Concat(Enumerable.Repeat("<div>", 2000)) + "d" + new string('<', 200_000);
+        var watch = Stopwatch.StartNew();
+
+        var result = await ConvertHtmlAsync(html);
+
+        Assert.StartsWith("a & b\n< c", result.Markdown, StringComparison.Ordinal);
+        Assert.Contains("d", result.Markdown);
+        Assert.DoesNotContain("no", result.Markdown);
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(10), $"Tardó {watch.Elapsed}.");
+    }
+}
+
+public class LimitTests
+{
+    [Fact]
+    public async Task DocumentsLargerThanMaxInputBytesAreRejectedBeforeConverting()
+    {
+        var converter = new MarkdownConverter(new MarkdownConverterOptions { MaxInputBytes = 100 });
+        var data = Encoding.UTF8.GetBytes(new string('a', 101));
+
+        var error = await Assert.ThrowsAsync<DocumentTooLargeException>(() => converter.ConvertAsync(data, "text/plain", "grande.txt", TestContext.Current.CancellationToken));
+        Assert.Equal(101, error.Size);
+        Assert.Equal(100, error.Limit);
+
+        var path = Path.Combine(Path.GetTempPath(), "aisdk-grande-" + Guid.NewGuid().ToString("N") + ".txt");
+        await File.WriteAllBytesAsync(path, data, TestContext.Current.CancellationToken);
+        try
+        {
+            await Assert.ThrowsAsync<DocumentTooLargeException>(() => converter.ConvertFileAsync(path, TestContext.Current.CancellationToken));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+
+        await Assert.ThrowsAsync<DocumentTooLargeException>(() =>
+            DocumentSource.FromStreamAsync(new MemoryStream(data), maxBytes: 100, cancellationToken: TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task OneVeryWideCsvLineDoesNotMultiplyTheOutput()
+    {
+        // Una línea con un millón de separadores y 1000 filas de un valor: antes, 1000 × 1 millón de celdas.
+        var csv = new StringBuilder("h").Append(',', 1_000_000).Append('\n');
+        for (var i = 0; i < 1000; i++)
+        {
+            csv.Append("v\n");
+        }
+
+        var result = await new MarkdownConverter().ConvertAsync(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", "ancho.csv", TestContext.Current.CancellationToken);
+
+        Assert.True(result.Markdown.Length < 10_000_000, $"Markdown de {result.Markdown.Length} caracteres.");
+        Assert.Contains(result.Warnings, w => w.Contains("columnas", StringComparison.Ordinal));
+        Assert.Contains(result.Warnings, w => w.Contains("celdas", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void MarkdownTableHonoursTheCellBudget()
+    {
+        IReadOnlyList<IReadOnlyList<string>> rows = [["a", "b", "c"], .. Enumerable.Range(0, 100).Select(i => (IReadOnlyList<string>)[$"{i}"])];
+
+        var table = MarkdownTable.Build(rows, 30, out var truncated);
+
+        Assert.True(truncated);
+        Assert.Equal(10 + 1, table.Split('\n').Length); // 10 filas (encabezado incluido) y la línea de separación
+    }
+}
+
+/// <summary>Servidor HTTP/1.1 mínimo en 127.0.0.1 que registra las rutas pedidas.</summary>
+internal sealed class LocalHttpServer : IAsyncDisposable
+{
+    private readonly System.Net.Sockets.TcpListener _listener = new(System.Net.IPAddress.Loopback, 0);
+    private readonly CancellationTokenSource _stop = new();
+    private readonly Func<string, Task<byte[]>> _respond;
+    private readonly Task _loop;
+
+    public LocalHttpServer(Func<string, Task<byte[]>> respond)
+    {
+        _respond = respond;
+        _listener.Start();
+        Port = ((System.Net.IPEndPoint)_listener.LocalEndpoint).Port;
+        _loop = Task.Run(AcceptAsync);
+    }
+
+    public int Port { get; }
+
+    public System.Collections.Concurrent.ConcurrentQueue<string> Paths { get; } = new();
+
+    public Uri Url(string path, string host = "127.0.0.1") => new($"http://{host}:{Port}{path}");
+
+    public static byte[] Response(int status, string body, params string[] headers) =>
+        Encoding.ASCII.GetBytes($"HTTP/1.1 {status} X\r\nContent-Length: {Encoding.UTF8.GetByteCount(body)}\r\nConnection: close\r\n{string.Concat(headers.Select(h => h + "\r\n"))}\r\n")
+            .Concat(Encoding.UTF8.GetBytes(body)).ToArray();
+
+    public async ValueTask DisposeAsync()
+    {
+        await _stop.CancelAsync();
+        _listener.Stop();
+        await _loop;
+        _stop.Dispose();
+    }
+
+    private async Task AcceptAsync()
+    {
+        while (!_stop.IsCancellationRequested)
+        {
+            System.Net.Sockets.TcpClient client;
+            try
+            {
+                client = await _listener.AcceptTcpClientAsync(_stop.Token);
+            }
+            catch (Exception ex) when (ex is OperationCanceledException or System.Net.Sockets.SocketException or ObjectDisposedException)
+            {
+                return;
+            }
+
+            _ = Task.Run(() => HandleAsync(client));
+        }
+    }
+
+    private async Task HandleAsync(System.Net.Sockets.TcpClient client)
+    {
+        using (client)
+        {
+            try
+            {
+                var stream = client.GetStream();
+                var buffer = new byte[8192];
+                var total = 0;
+                string head;
+                do
+                {
+                    var read = await stream.ReadAsync(buffer.AsMemory(total), _stop.Token);
+                    if (read == 0)
+                    {
+                        return;
+                    }
+
+                    total += read;
+                    head = Encoding.ASCII.GetString(buffer, 0, total);
+                }
+                while (!head.Contains("\r\n\r\n", StringComparison.Ordinal) && total < buffer.Length);
+
+                var path = head.Split(' ')[1];
+                Paths.Enqueue(path);
+                await stream.WriteAsync(await _respond(path), _stop.Token);
+            }
+            catch (Exception ex) when (ex is IOException or OperationCanceledException or ObjectDisposedException)
+            {
+            }
+        }
+    }
+}
+
+public class UrlDownloadSecurityTests
+{
+    private static readonly UrlDownloadOptions LoopbackOnly = new() { AddressValidator = ip => ip.Equals(System.Net.IPAddress.Loopback) };
+
+    private static LocalHttpServer Server() => new(async path =>
+    {
+        await Task.Yield();
+        return path switch
+        {
+            "/doc.txt" => LocalHttpServer.Response(200, "contenido interno", "Content-Type: text/plain"),
+            "/start" => LocalHttpServer.Response(302, string.Empty, "Location: /redirect-to-127.0.0.2"),
+            "/loop" => LocalHttpServer.Response(302, string.Empty, "Location: /loop"),
+            "/ok" => LocalHttpServer.Response(301, string.Empty, "Location: /final"),
+            "/final" => LocalHttpServer.Response(200, "hola"),
+            "/big" => LocalHttpServer.Response(200, new string('x', 2000)),
+            "/chunked" => Encoding.ASCII.GetBytes("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n" + string.Concat(Enumerable.Repeat("258\r\n" + new string('y', 600) + "\r\n", 3)) + "0\r\n\r\n"),
+            "/slow" => await SlowAsync(),
+            _ => LocalHttpServer.Response(404, "no"),
+        };
+    });
+
+    private static async Task<byte[]> SlowAsync()
+    {
+        await Task.Delay(TimeSpan.FromSeconds(10));
+        return LocalHttpServer.Response(200, "tarde");
+    }
+
+    [Fact]
+    public async Task LoopbackPrivateAndMetadataAddressesAreBlockedByDefault()
+    {
+        await using var server = Server();
+        Uri[] targets =
+        [
+            server.Url("/doc.txt"),
+            server.Url("/doc.txt", "localhost"),
+            server.Url("/doc.txt", "[::ffff:127.0.0.1]"),
+            server.Url("/doc.txt", "[::1]"),
+            server.Url("/doc.txt", "2130706433"), // 127.0.0.1 en decimal
+            new("http://169.254.169.254/latest/meta-data/iam/"),
+            new("http://10.1.2.3/"),
+            new("http://100.64.0.1/"),
+            new("http://[fd00::1]/"),
+            new("http://0.0.0.0/"),
+        ];
+
+        foreach (var target in targets)
+        {
+            var error = await Assert.ThrowsAsync<UrlDownloadException>(() => UrlDownloader.DownloadAsync(target, cancellationToken: TestContext.Current.CancellationToken));
+            Assert.Contains("no pública", error.Message, StringComparison.Ordinal);
+        }
+
+        Assert.Empty(server.Paths); // ninguna petición llegó al servicio "interno"
+    }
+
+    [Theory]
+    [InlineData("file:///etc/passwd")]
+    [InlineData("ftp://example.com/archivo.pdf")]
+    [InlineData("gopher://example.com/")]
+    public async Task OnlyHttpAndHttpsAreDownloaded(string url)
+    {
+        var error = await Assert.ThrowsAsync<UrlDownloadException>(() => UrlDownloader.DownloadAsync(new Uri(url), cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Contains("http o https", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RedirectsAreRevalidatedOnEveryHop()
+    {
+        // Solo 127.0.0.1 está permitido (hace de "Internet"); la redirección lleva a otra dirección de loopback.
+        await using var redirecting = new LocalHttpServer(path => Task.FromResult(LocalHttpServer.Response(302, string.Empty, "Location: http://127.0.0.2/latest/meta-data/")));
+        var error = await Assert.ThrowsAsync<UrlDownloadException>(() => UrlDownloader.DownloadAsync(redirecting.Url("/start"), LoopbackOnly, TestContext.Current.CancellationToken));
+        Assert.Contains("127.0.0.2", error.Message, StringComparison.Ordinal);
+        Assert.Equal(["/start"], redirecting.Paths);
+
+        // El validador de URL también se aplica en cada salto.
+        await using var server = Server();
+        var noRedirectTarget = new UrlDownloadOptions { AddressValidator = LoopbackOnly.AddressValidator, UrlValidator = u => u.AbsolutePath != "/redirect-to-127.0.0.2" };
+        await Assert.ThrowsAsync<UrlDownloadException>(() => UrlDownloader.DownloadAsync(server.Url("/start"), noRedirectTarget, TestContext.Current.CancellationToken));
+        Assert.Equal(["/start"], server.Paths);
+
+        // Redirección relativa válida.
+        var ok = await UrlDownloader.DownloadAsync(server.Url("/ok"), LoopbackOnly, TestContext.Current.CancellationToken);
+        Assert.Equal("hola", Encoding.UTF8.GetString(ok.Data));
+        Assert.Equal("/final", ok.Url.AbsolutePath);
+
+        var loop = await Assert.ThrowsAsync<UrlDownloadException>(() => UrlDownloader.DownloadAsync(server.Url("/loop"), LoopbackOnly, TestContext.Current.CancellationToken));
+        Assert.Contains("redirecciones", loop.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task DownloadSizeIsCheckedWhileStreamingAndSlowServersTimeOut()
+    {
+        await using var server = Server();
+        var small = new UrlDownloadOptions { AddressValidator = LoopbackOnly.AddressValidator, MaxBytes = 1000, Timeout = TimeSpan.FromMilliseconds(500) };
+
+        await Assert.ThrowsAsync<DocumentTooLargeException>(() => UrlDownloader.DownloadAsync(server.Url("/big"), small, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<DocumentTooLargeException>(() => UrlDownloader.DownloadAsync(server.Url("/chunked"), small, TestContext.Current.CancellationToken));
+
+        var watch = Stopwatch.StartNew();
+        var timeout = await Assert.ThrowsAsync<UrlDownloadException>(() => UrlDownloader.DownloadAsync(server.Url("/slow"), small, TestContext.Current.CancellationToken));
+        Assert.Contains("tiempo máximo", timeout.Message, StringComparison.Ordinal);
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(5));
+
+        var text = await UrlDownloader.DownloadAsync(server.Url("/doc.txt"), small, TestContext.Current.CancellationToken);
+        Assert.Equal("text/plain", text.MediaType);
+    }
+
+    [Fact]
+    public async Task ConverterAndMiddlewareUseTheSafeDownloader()
+    {
+        await using var server = Server();
+        var part = new FilePart { Url = server.Url("/doc.txt"), MediaType = "text/plain" };
+
+        // Por defecto, la URL de loopback se rechaza (también desde el middleware de adjuntos).
+        await Assert.ThrowsAsync<UrlDownloadException>(() => new MarkdownConverter().ConvertAsync(part, downloadUrls: true, TestContext.Current.CancellationToken));
+        var model = new MockLanguageModel().ReturnsText("ok").WithMiddleware(DocumentMiddlewares.ConvertAttachments(new MarkdownConverter(), new AttachmentConversionOptions { DownloadUrls = true }));
+        await Assert.ThrowsAsync<UrlDownloadException>(() => Ai.GenerateTextAsync(new GenerateTextOptions { Model = model, Messages = [ModelMessage.User(part)] }));
+        Assert.Empty(server.Paths);
+
+        // Con una opción explícita (servicio interno de confianza) sí se descarga.
+        var trusted = new MarkdownConverter(new MarkdownConverterOptions { UrlDownload = new UrlDownloadOptions { AllowPrivateNetworks = true } });
+        var result = await trusted.ConvertAsync(part, downloadUrls: true, TestContext.Current.CancellationToken);
+        Assert.Equal("contenido interno", result.Markdown);
+        Assert.Equal("doc.txt", result.FileName);
+
+        // Las URL data: respetan el mismo máximo.
+        var limited = new MarkdownConverter(new MarkdownConverterOptions { UrlDownload = new UrlDownloadOptions { MaxBytes = 20 } });
+        var data = new FilePart { Url = new Uri("data:text/plain;base64," + Convert.ToBase64String(new byte[30])), MediaType = "text/plain" };
+        await Assert.ThrowsAsync<DocumentTooLargeException>(() => limited.ConvertAsync(data, downloadUrls: true, TestContext.Current.CancellationToken));
+        var tiny = await limited.ConvertAsync(new FilePart { Url = new Uri("data:text/plain,hola%20mundo"), MediaType = "text/plain" }, downloadUrls: true, TestContext.Current.CancellationToken);
+        Assert.Equal("hola mundo", tiny.Markdown);
+    }
+
+    [Theory]
+    [InlineData("8.8.8.8", true)]
+    [InlineData("2606:4700:4700::1111", true)]
+    [InlineData("127.0.0.1", false)]
+    [InlineData("10.0.0.1", false)]
+    [InlineData("172.16.5.4", false)]
+    [InlineData("172.32.0.1", true)]
+    [InlineData("192.168.1.1", false)]
+    [InlineData("169.254.169.254", false)]
+    [InlineData("100.64.0.1", false)]
+    [InlineData("0.0.0.0", false)]
+    [InlineData("224.0.0.1", false)]
+    [InlineData("255.255.255.255", false)]
+    [InlineData("::", false)]
+    [InlineData("::1", false)]
+    [InlineData("::ffff:127.0.0.1", false)]
+    [InlineData("::ffff:8.8.8.8", true)]
+    [InlineData("fe80::1", false)]
+    [InlineData("fd12:3456::1", false)]
+    [InlineData("ff02::1", false)]
+    [InlineData("64:ff9b::a9fe:a9fe", false)] // NAT64 de 169.254.169.254
+    [InlineData("64:ff9b::808:808", true)]
+    [InlineData("2002:7f00:1::1", false)] // 6to4
+    [InlineData("2001:db8::1", false)]
+    [InlineData("2001:0::1", false)] // Teredo
+    public void PublicAddressesAreRecognized(string address, bool expected) =>
+        Assert.Equal(expected, UrlDownloader.IsPublicAddress(System.Net.IPAddress.Parse(address)));
+}
