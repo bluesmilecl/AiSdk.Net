@@ -26,6 +26,9 @@ public sealed class ToolExecutionContext
 
     internal Action<StreamPart>? Emit { get; init; }
 
+    /// <summary>Manejador de aprobación de la llamada en curso (los sub-agentes lo heredan si no tienen uno propio).</summary>
+    internal Func<ToolApprovalRequest, ValueTask<bool>>? OnToolApproval { get; init; }
+
     /// <summary>
     /// Envía datos propios a la interfaz mientras la herramienta se ejecuta (progreso, resultados
     /// intermedios...). Llegan a <c>useChat</c> como partes <c>data-{type}</c>. Solo tiene efecto en streaming.
@@ -64,8 +67,9 @@ public sealed class Tool
     public Func<JsonElement, string?>? ValidateInput { get; init; }
 
     /// <summary>
-    /// Si devuelve true, la ejecución requiere aprobación mediante
-    /// <see cref="CallSettings.OnToolApproval"/> (human-in-the-loop).
+    /// Si devuelve true, la ejecución requiere aprobación mediante <see cref="CallSettings.OnToolApproval"/>
+    /// (human-in-the-loop). Sin manejador, la llamada no se ejecuta y el modelo recibe un error, salvo con
+    /// <see cref="CallSettings.DeferToolApprovals"/>.
     /// </summary>
     public Func<ToolCallPart, ValueTask<bool>>? NeedsApproval { get; init; }
 

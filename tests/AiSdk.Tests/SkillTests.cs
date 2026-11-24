@@ -239,7 +239,13 @@ public class SkillTests
             .ReturnsToolCall("run_skill_script", new { skill = "revisar-contratos", script = "scripts/contar.py", arguments = ScriptArguments })
             .ReturnsText("listo");
 
-        var result = await new ToolLoopAgent(new AgentSettings { Model = model, Skills = trusted, SkillOptions = new SkillToolOptions { ScriptRunner = runner } })
+        var result = await new ToolLoopAgent(new AgentSettings
+            {
+                Model = model,
+                Skills = trusted,
+                SkillOptions = new SkillToolOptions { ScriptRunner = runner },
+                OnToolApproval = _ => ValueTask.FromResult(true), // run_skill_script requiere aprobación por defecto
+            })
             .GenerateAsync("x", TestContext.Current.CancellationToken);
 
         var output = result.Steps[0].ToolResults[0].Output;
@@ -254,6 +260,7 @@ public class SkillTests
             Model = new MockLanguageModel().ReturnsToolCall("run_skill_script", new { skill = "revisar-contratos", script = "scripts/contar.py" }).ReturnsText("x"),
             Skills = untrusted,
             SkillOptions = new SkillToolOptions { ScriptRunner = runner },
+            OnToolApproval = _ => ValueTask.FromResult(true),
         }).GenerateAsync("x", TestContext.Current.CancellationToken);
         Assert.True(denied.Steps[0].ToolResults[0].IsError);
     }

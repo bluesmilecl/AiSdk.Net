@@ -127,6 +127,27 @@ await openai.VectorStores.WaitUntilReadyAsync(vs.Id);
 Tools = [OpenAITools.FileSearch([vs.Id])];
 ```
 
+## 🔐 Claves, redirecciones y streams
+
+- **Los servidores compatibles con OpenAI nunca reciben `OPENAI_API_KEY`.** La variable solo se lee implícitamente
+  cuando `BaseUrl` es el endpoint oficial de OpenAI (`https://api.openai.com`). Para Ollama, Groq, OpenRouter, vLLM...
+  pasa la clave o el nombre de *su* variable: `OpenAIProvider.Compatible("groq", "https://api.groq.com/openai/v1", apiKeyEnvironmentVariable: "GROQ_API_KEY")`
+  o `new OpenAIProviderOptions { BaseUrl = ..., ApiKeyEnvironmentVariable = "GROQ_API_KEY" }`. Con otra `BaseUrl` y sin
+  clave, la llamada falla antes de enviar nada (o va sin `Authorization` si `RequireApiKey = false`).
+- **Las redirecciones no filtran claves.** El cliente compartido `ProviderHttp.DefaultClient` y los clientes que registra
+  `AddAiSdk` usan `SafeRedirectHandler`: solo se siguen redirecciones en GET/HEAD, nunca de HTTPS a HTTP, y cabeceras como
+  `x-api-key` o `x-goog-api-key` no se reenvían a otro origen (.NET solo quita `Authorization`). Si pasas tu propio
+  `HttpClient`, créalo con `ProviderHttp.CreateDefaultHandler()` o desactiva `AllowAutoRedirect`.
+- **Streams acotados.** Las líneas y eventos SSE tienen un máximo de 16 M caracteres y un stream de un modelo que no envía
+  nada durante 10 minutos falla con `TimeoutException` (que se reintenta si aún no se emitió nada); ajústalo con
+  `ProviderHttp.ModelStreamOptions`. Los keep-alive de texto (`data: ping`) y un último evento cortado por la conexión se
+  ignoran; un evento completo con JSON inválido falla con un error claro. Bedrock rechaza mensajes `event-stream` de más
+  de 16 MB.
+- **Se respeta Retry-After.** Un `Retry-After` en el pasado reintenta de inmediato; hasta `MaxRetryAfter` (60 s por
+  defecto) el SDK espera exactamente lo que pidió el servidor; si pide más, no reintenta antes de tiempo y lanza
+  `ApiCallException` con `RetryAfter` para que lo reprogrames.
+- **Los alias del registro** que forman un ciclo (`a → b → a`) fallan con un error claro en vez de desbordar la pila.
+
 ## Notas sobre proveedores
 
 **Anthropic (Claude)**

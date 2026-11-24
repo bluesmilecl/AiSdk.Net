@@ -23,7 +23,18 @@ public sealed record AwsEventStreamMessage(IReadOnlyDictionary<string, string> H
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "Nombre del formato binario event-stream de AWS; es una clase estática de utilidades, no un Stream.")]
 public static class AwsEventStream
 {
-    public static async IAsyncEnumerable<AwsEventStreamMessage> ReadAsync(Stream stream, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    /// <summary>Tamaño máximo por defecto de un mensaje (AWS limita los mensajes de event-stream a 16 MB).</summary>
+    public const int DefaultMaxMessageBytes = 16 * 1024 * 1024 + 1024;
+
+    /// <summary>Lee los mensajes del stream con el tamaño máximo por defecto (<see cref="DefaultMaxMessageBytes"/>).</summary>
+    public static IAsyncEnumerable<AwsEventStreamMessage> ReadAsync(Stream stream, CancellationToken cancellationToken = default) =>
+        ReadAsync(stream, DefaultMaxMessageBytes, cancellationToken);
+
+    /// <summary>
+    /// Lee los mensajes del stream. Un mensaje cuyo preludio declare más de <paramref name="maxMessageBytes"/> se
+    /// rechaza antes de reservar memoria (el servidor no puede forzar reservas de hasta 2 GB).
+    /// </summary>
+    public static async IAsyncEnumerable<AwsEventStreamMessage> ReadAsync(Stream stream, int maxMessageBytes, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var prelude = new byte[12];
         while (true)
@@ -44,6 +55,11 @@ public static class AwsEventStream
             if (totalLength < 16 || headersLength < 0 || headersLength > totalLength - 16)
             {
                 throw new AiSdkException("event-stream: longitudes inválidas.");
+            }
+
+            if (totalLength > maxMessageBytes)
+            {
+                throw new AiSdkException($"event-stream: el mensaje declara {totalLength} bytes, más que el máximo de {maxMessageBytes}.");
             }
 
             var message = new byte[totalLength];

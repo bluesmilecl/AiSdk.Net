@@ -38,18 +38,18 @@ public sealed class AnthropicBatchClient : IBatchClient
     public async Task<BatchJob> GetAsync(string batchId, CancellationToken cancellationToken = default) =>
         Parse(await ProviderHttp.SendJsonAsync(
             _provider.Http,
-            ProviderHttp.CreateRequest(HttpMethod.Get, _provider.Url($"messages/batches/{batchId}"), _provider.Headers(null, [])),
+            ProviderHttp.CreateRequest(HttpMethod.Get, _provider.Url($"messages/batches/{Uri.EscapeDataString(batchId)}"), _provider.Headers(null, [])),
             cancellationToken).ConfigureAwait(false));
 
     public async Task<BatchJob> CancelAsync(string batchId, CancellationToken cancellationToken = default) =>
         Parse(await ProviderHttp.SendJsonAsync(
             _provider.Http,
-            ProviderHttp.CreateRequest(HttpMethod.Post, _provider.Url($"messages/batches/{batchId}/cancel"), _provider.Headers(null, [])),
+            ProviderHttp.CreateRequest(HttpMethod.Post, _provider.Url($"messages/batches/{Uri.EscapeDataString(batchId)}/cancel"), _provider.Headers(null, [])),
             cancellationToken).ConfigureAwait(false));
 
     public async IAsyncEnumerable<BatchResultItem> GetResultsAsync(string batchId, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        using var request = ProviderHttp.CreateRequest(HttpMethod.Get, _provider.Url($"messages/batches/{batchId}/results"), _provider.Headers(null, []));
+        using var request = ProviderHttp.CreateRequest(HttpMethod.Get, _provider.Url($"messages/batches/{Uri.EscapeDataString(batchId)}/results"), _provider.Headers(null, []));
         using var response = await ProviderHttp.SendAsync(_provider.Http, request, stream: true, cancellationToken).ConfigureAwait(false);
         await foreach (var line in ProviderHttp.ReadJsonLinesAsync(response, cancellationToken).ConfigureAwait(false))
         {
@@ -116,7 +116,7 @@ public sealed class AnthropicFileClient : IFileClient
     public async Task DeleteAsync(string fileId, CancellationToken cancellationToken = default) =>
         await ProviderHttp.SendJsonAsync(
             _provider.Http,
-            ProviderHttp.CreateRequest(HttpMethod.Delete, _provider.Url($"files/{fileId}"), _provider.Headers(null, [Beta])),
+            ProviderHttp.CreateRequest(HttpMethod.Delete, _provider.Url($"files/{Uri.EscapeDataString(fileId)}"), _provider.Headers(null, [Beta])),
             cancellationToken).ConfigureAwait(false);
 
     /// <summary>Metadatos de un archivo (nombre, tipo y tamaño).</summary>

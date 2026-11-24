@@ -34,6 +34,10 @@ public sealed class ProviderRegistry
     private readonly Dictionary<string, IProvider> _providers = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Func<ILanguageModel>> _aliases = new(StringComparer.OrdinalIgnoreCase);
 
+    // Alias que se están resolviendo en este hilo (las fábricas son síncronas): detecta ciclos como a → b → a.
+    [ThreadStatic]
+    private static List<string>? _resolving;
+
     public char Separator { get; init; } = ':';
 
     public ProviderRegistry Register(IProvider provider) => Register(provider.Name, provider);
@@ -72,7 +76,21 @@ public sealed class ProviderRegistry
     {
         if (_aliases.TryGetValue(id, out var factory))
         {
-            return factory();
+            var resolving = _resolving ??= [];
+            if (resolving.Contains(id, StringComparer.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException($"Ciclo de alias de modelos: {string.Join(" → ", resolving)} → {id}.");
+            }
+
+            resolving.Add(id);
+            try
+            {
+                return factory();
+            }
+            finally
+            {
+                resolving.RemoveAt(resolving.Count - 1);
+            }
         }
 
         var (provider, modelId) = Split(id);

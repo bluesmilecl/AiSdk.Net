@@ -4,7 +4,10 @@ namespace AiSdk.Internal;
 
 internal static class Retry
 {
-    public static async Task<T> ExecuteAsync<T>(Func<CancellationToken, Task<T>> action, int maxRetries, CancellationToken cancellationToken)
+    /// <summary>Espera máxima que se acepta de un <c>Retry-After</c> si el llamador no indica otra.</summary>
+    public static readonly TimeSpan DefaultMaxRetryAfter = TimeSpan.FromSeconds(60);
+
+    public static async Task<T> ExecuteAsync<T>(Func<CancellationToken, Task<T>> action, int maxRetries, CancellationToken cancellationToken, TimeSpan? maxRetryAfter = null)
     {
         var errors = new List<Exception>();
         for (var attempt = 0; ; attempt++)
@@ -26,7 +29,19 @@ internal static class Retry
                     throw new RetryException($"Falló tras {attempt + 1} intentos: {ex.Message}", errors);
                 }
 
-                await Task.Delay(Delay(attempt, ex), cancellationToken).ConfigureAwait(false);
+                if (!TryGetDelay(attempt, ex, maxRetryAfter ?? DefaultMaxRetryAfter, out var delay))
+                {
+                    // El servidor pidió esperar más de lo aceptado: no se reintenta antes de tiempo (eso solo
+                    // alarga el bloqueo); se informa el error con su RetryAfter para que el llamador decida.
+                    if (attempt == 0)
+                    {
+                        throw;
+                    }
+
+                    throw new RetryException($"Falló tras {attempt + 1} intentos; el servidor pidió esperar {delay.TotalSeconds:0} s antes de reintentar: {ex.Message}", errors);
+                }
+
+                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
         }
     }
@@ -36,18 +51,25 @@ internal static class Retry
         ApiCallException api => api.IsRetryable,
         HttpRequestException => true,
         TaskCanceledException { InnerException: TimeoutException } => true,
+        TimeoutException => true,
         _ => false,
     };
 
-    public static TimeSpan Delay(int attempt, Exception ex)
+    /// <summary>
+    /// Espera antes del reintento: el <c>Retry-After</c> del servidor (nunca negativo) o un retroceso exponencial con
+    /// variación aleatoria. Devuelve false si el servidor pide esperar más de <paramref name="maxRetryAfter"/>.
+    /// </summary>
+    public static bool TryGetDelay(int attempt, Exception ex, TimeSpan maxRetryAfter, out TimeSpan delay)
     {
-        if (ex is ApiCallException { RetryAfter: { } retryAfter } && retryAfter < TimeSpan.FromMinutes(1))
+        if (ex is ApiCallException { RetryAfter: { } retryAfter })
         {
-            return retryAfter;
+            delay = retryAfter < TimeSpan.Zero ? TimeSpan.Zero : retryAfter;
+            return delay <= maxRetryAfter;
         }
 
         var baseMs = 2000 * Math.Pow(2, attempt);
-        return TimeSpan.FromMilliseconds(baseMs * (0.8 + (Random.Shared.NextDouble() * 0.4)));
+        delay = TimeSpan.FromMilliseconds(baseMs * (0.8 + (Random.Shared.NextDouble() * 0.4)));
+        return true;
     }
 }
 

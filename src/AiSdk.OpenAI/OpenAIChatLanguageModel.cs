@@ -42,14 +42,15 @@ public sealed class OpenAIChatLanguageModel : ILanguageModel
         var usage = Usage.Empty;
         var sentMetadata = false;
 
-        await foreach (var sse in ProviderHttp.ReadSseAsync(response, cancellationToken).ConfigureAwait(false))
+        await foreach (var sse in ProviderHttp.ReadSseAsync(response, ProviderHttp.ModelStreamOptions, cancellationToken).ConfigureAwait(false))
         {
             if (sse.Data == "[DONE]")
             {
                 break;
             }
 
-            var chunk = JsonNode.Parse(sse.Data) as JsonObject;
+            // Los servidores "compatibles" a veces envían keep-alive de texto o cortan el último evento: se ignoran.
+            var chunk = ProviderHttp.ParseSseJson(sse, _provider.Name);
             if (chunk is null)
             {
                 continue;

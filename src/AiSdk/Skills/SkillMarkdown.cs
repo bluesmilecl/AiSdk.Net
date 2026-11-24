@@ -59,15 +59,20 @@ public static class SkillMarkdown
             }
             else if (rest.Length == 0)
             {
-                // Mapa o lista anidada (o valor vacío).
-                var block = CollectIndented(lines, ref i);
+                // Mapa o lista anidada (o valor vacío). Las líneas en blanco y los comentarios del bloque se ignoran.
+                var block = CollectIndented(lines, ref i).Where(b => !IsBlankOrComment(b)).ToList();
                 if (block.Count == 0)
                 {
                     result[key] = null;
                 }
                 else if (block[0].TrimStart().StartsWith("- ", StringComparison.Ordinal) || block[0].Trim() == "-")
                 {
-                    result[key] = block.Select(b => Scalar(b.TrimStart()[1..].Trim())).ToList();
+                    if (block.Any(b => !b.TrimStart().StartsWith('-')))
+                    {
+                        throw new FormatException($"Lista inválida en el frontmatter ('{key}'): todas las líneas deben empezar con '-'.");
+                    }
+
+                    result[key] = block.Select(b => Scalar(StripComment(b.TrimStart()[1..]).Trim())).ToList();
                 }
                 else
                 {

@@ -229,6 +229,8 @@ public static class Ai
         StopSequences = o.StopSequences,
         Seed = o.Seed,
         MaxRetries = o.MaxRetries,
+        MaxRetryAfter = o.MaxRetryAfter,
+        MaxParallelToolCalls = o.MaxParallelToolCalls,
         Headers = o.Headers,
         ProviderOptions = o.ProviderOptions,
         OnError = o.OnError,

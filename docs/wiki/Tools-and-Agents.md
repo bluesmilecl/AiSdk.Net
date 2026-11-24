@@ -52,7 +52,8 @@ var result = await Ai.GenerateTextAsync(new GenerateTextOptions
 
 Tool errors (exceptions, invalid JSON, unknown tool) are returned to the model as results with
 `IsError = true`, so it can correct itself. Tools without `Execute` (`Tool.Define<T>`) are resolved on the
-client: the loop stops and they are left in `result.PendingToolCalls`.
+client: the loop stops and they are left in `result.PendingToolCalls`. When the model asks for several tools in the
+same step they run in parallel, at most `MaxParallelToolCalls` at a time (8 by default; 1 runs them in order).
 
 ## 🤖 Agents
 
@@ -98,6 +99,11 @@ var r = await chat.SendAsync("What's my name?");
 `ModelMessage` is JSON-serializable (with a `type` discriminator), so implementing
 `IConversationStore` on top of EF Core, Redis or Cosmos DB is straightforward.
 
+A session never keeps tool calls without a result (which would make every later request fail at the provider): if the
+conversation goes on while a call is pending (a client tool or a deferred approval), it is closed with an error result
+that is saved too, and histories saved by 0.1.0 with dangling calls are repaired in memory. To answer client tools, send a
+`ModelMessage.Tool(...)` with their results; `GetPendingToolCallsAsync` lists what is pending.
+
 **Sub-agents / multi-agent:**
 
 ```csharp
@@ -107,6 +113,9 @@ var orchestrator = new ToolLoopAgent(new AgentSettings
     Tools = [researchAgent.AsTool(), writerAgent.AsTool("writer", "Writes the final report")],
 });
 ```
+
+A sub-agent without its own approval handler asks the parent's one (`OnToolApproval`), and if it stops with unresolved
+calls the tool fails with an explicit error instead of returning empty text.
 
 > [!TIP]
 > For ready-made patterns (parallel, router, supervisor, handoffs…) see [Multi-agent orchestration](Multi-Agent-Orchestration).
@@ -122,6 +131,32 @@ await Ai.GenerateTextAsync(new GenerateTextOptions
     OnToolApproval = async req => await AskOperatorAsync(req.ToolCall),   // false → the model is informed
 });
 ```
+
+Without `OnToolApproval`, a tool that requires approval **is not executed**: the model receives an explicit error
+("requires approval and no approval handler is configured") and the history stays valid. To approve **later** (for example
+in another HTTP request, like `tool-approval-request` in the AI SDK), defer the approvals and resume:
+
+```csharp
+var first = await Ai.GenerateTextAsync(new() { Model = model, Messages = history, Tools = [deleteUser], DeferToolApprovals = true });
+foreach (var pending in first.PendingApprovals) { /* show pending.ToolCall to the user */ }
+history.AddRange(first.ResponseMessages);                                  // keep the history on the server
+
+var resumed = await Ai.GenerateTextAsync(new()
+{
+    Model = model, Messages = history, Tools = [deleteUser],
+    ToolApprovals = [new ToolApprovalResponse(callId, Approved: true)],    // or Approved: false, Reason: "..."
+});
+
+// With a session (AgentSettings.DeferToolApprovals = true):
+await chat.SendApprovalsAsync([new ToolApprovalResponse(callId, Approved: true)]);
+```
+
+Approved calls run before the model is called again and their results are part of the first step's `ResponseMessages`;
+denied calls, and pending calls without a decision, are reported to the model as errors.
+
+> [!WARNING]
+> Approvals apply to the tool calls in the messages you pass. Keep the history on the server (as `AgentSession` does)
+> instead of trusting a history sent by the client, or a client could get a call it invented approved.
 
 **Per-step control** (`PrepareStep`): switch models, force tools or trim the context.
 
@@ -143,7 +178,8 @@ RepairToolCall = ToolCallRepair.FirstOf(
 ```
 
 It is invoked when the tool does not exist, the JSON is broken or the input does not match the schema
-(`ToolCallRepairReason`). If the repair returns null, the error is reported to the model as before.
+(`ToolCallRepairReason`). If the repair returns null, the error is reported to the model as before. The repair receives
+the generation's cancellation in `ToolCallRepairContext.CancellationToken` (`WithModel` honours it).
 
 ## 📣 Callbacks
 

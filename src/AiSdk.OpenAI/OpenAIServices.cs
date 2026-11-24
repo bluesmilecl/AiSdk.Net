@@ -27,12 +27,12 @@ public sealed class OpenAIFileClient : IFileClient
     }
 
     public async Task DeleteAsync(string fileId, CancellationToken cancellationToken = default) =>
-        await ProviderHttp.SendJsonAsync(_provider.Http, ProviderHttp.CreateRequest(HttpMethod.Delete, _provider.Url($"files/{fileId}"), _provider.Headers(null)), cancellationToken).ConfigureAwait(false);
+        await ProviderHttp.SendJsonAsync(_provider.Http, ProviderHttp.CreateRequest(HttpMethod.Delete, _provider.Url($"files/{Uri.EscapeDataString(fileId)}"), _provider.Headers(null)), cancellationToken).ConfigureAwait(false);
 
     /// <summary>Descarga el contenido de un archivo.</summary>
     public async Task<byte[]> DownloadAsync(string fileId, CancellationToken cancellationToken = default)
     {
-        using var request = ProviderHttp.CreateRequest(HttpMethod.Get, _provider.Url($"files/{fileId}/content"), _provider.Headers(null));
+        using var request = ProviderHttp.CreateRequest(HttpMethod.Get, _provider.Url($"files/{Uri.EscapeDataString(fileId)}/content"), _provider.Headers(null));
         using var response = await ProviderHttp.SendAsync(_provider.Http, request, stream: false, cancellationToken).ConfigureAwait(false);
         return await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -76,7 +76,7 @@ public sealed class OpenAIVectorStoreClient
     }
 
     public async Task<OpenAIVectorStore> GetAsync(string vectorStoreId, CancellationToken cancellationToken = default) =>
-        Parse(await ProviderHttp.SendJsonAsync(_provider.Http, ProviderHttp.CreateRequest(HttpMethod.Get, _provider.Url($"vector_stores/{vectorStoreId}"), _provider.Headers(null)), cancellationToken).ConfigureAwait(false));
+        Parse(await ProviderHttp.SendJsonAsync(_provider.Http, ProviderHttp.CreateRequest(HttpMethod.Get, _provider.Url($"vector_stores/{Uri.EscapeDataString(vectorStoreId)}"), _provider.Headers(null)), cancellationToken).ConfigureAwait(false));
 
     public async Task<IReadOnlyList<OpenAIVectorStore>> ListAsync(CancellationToken cancellationToken = default)
     {
@@ -86,7 +86,7 @@ public sealed class OpenAIVectorStoreClient
 
     /// <summary>Añade un archivo (subido con <c>purpose: "assistants"</c> o <c>"user_data"</c>) al vector store.</summary>
     public Task AddFileAsync(string vectorStoreId, string fileId, CancellationToken cancellationToken = default) =>
-        PostAsync($"vector_stores/{vectorStoreId}/files", new JsonObject { ["file_id"] = fileId }, cancellationToken);
+        PostAsync($"vector_stores/{Uri.EscapeDataString(vectorStoreId)}/files", new JsonObject { ["file_id"] = fileId }, cancellationToken);
 
     /// <summary>Sube un archivo y lo añade al vector store en un paso.</summary>
     public async Task<UploadedFile> UploadFileAsync(string vectorStoreId, byte[] data, string filename, string mediaType, CancellationToken cancellationToken = default)
@@ -114,7 +114,7 @@ public sealed class OpenAIVectorStoreClient
     /// <summary>Búsqueda semántica directa en el vector store.</summary>
     public async Task<IReadOnlyList<OpenAIVectorStoreHit>> SearchAsync(string vectorStoreId, string query, int maxResults = 10, CancellationToken cancellationToken = default)
     {
-        var json = await PostAsync($"vector_stores/{vectorStoreId}/search", new JsonObject { ["query"] = query, ["max_num_results"] = maxResults }, cancellationToken).ConfigureAwait(false);
+        var json = await PostAsync($"vector_stores/{Uri.EscapeDataString(vectorStoreId)}/search", new JsonObject { ["query"] = query, ["max_num_results"] = maxResults }, cancellationToken).ConfigureAwait(false);
         return (json["data"] as JsonArray ?? [])
             .OfType<JsonObject>()
             .Select(d => new OpenAIVectorStoreHit(
@@ -126,7 +126,7 @@ public sealed class OpenAIVectorStoreClient
     }
 
     public async Task DeleteAsync(string vectorStoreId, CancellationToken cancellationToken = default) =>
-        await ProviderHttp.SendJsonAsync(_provider.Http, ProviderHttp.CreateRequest(HttpMethod.Delete, _provider.Url($"vector_stores/{vectorStoreId}"), _provider.Headers(null)), cancellationToken).ConfigureAwait(false);
+        await ProviderHttp.SendJsonAsync(_provider.Http, ProviderHttp.CreateRequest(HttpMethod.Delete, _provider.Url($"vector_stores/{Uri.EscapeDataString(vectorStoreId)}"), _provider.Headers(null)), cancellationToken).ConfigureAwait(false);
 
     private Task<JsonObject> PostAsync(string path, JsonObject body, CancellationToken cancellationToken) =>
         ProviderHttp.SendJsonAsync(_provider.Http, ProviderHttp.CreateJsonRequest(_provider.Url(path), body, _provider.Headers(null), stream: false), cancellationToken);
@@ -193,14 +193,14 @@ public sealed class OpenAIBatchClient : IBatchClient
         Parse(await GetRawAsync(batchId, cancellationToken).ConfigureAwait(false));
 
     public async Task<BatchJob> CancelAsync(string batchId, CancellationToken cancellationToken = default) =>
-        Parse(await ProviderHttp.SendJsonAsync(_provider.Http, ProviderHttp.CreateRequest(HttpMethod.Post, _provider.Url($"batches/{batchId}/cancel"), _provider.Headers(null)), cancellationToken).ConfigureAwait(false));
+        Parse(await ProviderHttp.SendJsonAsync(_provider.Http, ProviderHttp.CreateRequest(HttpMethod.Post, _provider.Url($"batches/{Uri.EscapeDataString(batchId)}/cancel"), _provider.Headers(null)), cancellationToken).ConfigureAwait(false));
 
     public async IAsyncEnumerable<BatchResultItem> GetResultsAsync(string batchId, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var job = await GetRawAsync(batchId, cancellationToken).ConfigureAwait(false);
         foreach (var fileId in new[] { (string?)job["output_file_id"], (string?)job["error_file_id"] }.OfType<string>())
         {
-            using var request = ProviderHttp.CreateRequest(HttpMethod.Get, _provider.Url($"files/{fileId}/content"), _provider.Headers(null));
+            using var request = ProviderHttp.CreateRequest(HttpMethod.Get, _provider.Url($"files/{Uri.EscapeDataString(fileId)}/content"), _provider.Headers(null));
             using var response = await ProviderHttp.SendAsync(_provider.Http, request, stream: true, cancellationToken).ConfigureAwait(false);
             await foreach (var line in ProviderHttp.ReadJsonLinesAsync(response, cancellationToken).ConfigureAwait(false))
             {
@@ -222,7 +222,7 @@ public sealed class OpenAIBatchClient : IBatchClient
     }
 
     private Task<JsonObject> GetRawAsync(string batchId, CancellationToken cancellationToken) =>
-        ProviderHttp.SendJsonAsync(_provider.Http, ProviderHttp.CreateRequest(HttpMethod.Get, _provider.Url($"batches/{batchId}"), _provider.Headers(null)), cancellationToken);
+        ProviderHttp.SendJsonAsync(_provider.Http, ProviderHttp.CreateRequest(HttpMethod.Get, _provider.Url($"batches/{Uri.EscapeDataString(batchId)}"), _provider.Headers(null)), cancellationToken);
 
     internal static BatchJob Parse(JsonObject json)
     {

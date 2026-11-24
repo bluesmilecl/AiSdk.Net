@@ -81,11 +81,11 @@ public sealed class OpenAIResponsesLanguageModel : ILanguageModel, ITokenCountin
         var finish = FinishReason.Unknown;
         var usage = Usage.Empty;
 
-        await foreach (var sse in ProviderHttp.ReadSseAsync(response, cancellationToken).ConfigureAwait(false))
+        await foreach (var sse in ProviderHttp.ReadSseAsync(response, ProviderHttp.ModelStreamOptions, cancellationToken).ConfigureAwait(false))
         {
-            if (sse.Data == "[DONE]" || JsonNode.Parse(sse.Data) is not JsonObject evt)
+            if (ProviderHttp.ParseSseJson(sse, "OpenAI") is not { } evt)
             {
-                continue;
+                continue; // [DONE], keep-alive o último evento cortado
             }
 
             switch ((string?)evt["type"])
