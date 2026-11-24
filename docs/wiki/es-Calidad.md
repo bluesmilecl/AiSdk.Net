@@ -24,6 +24,7 @@ flowchart LR
 | 🕵️ Auditoría de pruebas | Anti-patrones (carreras por tiempos, dependencias de reloj y SO, aserciones permisivas): todos los hallazgos altos corregidos | [test-anti-patterns.es.md](https://github.com/bluesmilecl/AiSdk.Net/blob/HEAD/docs/quality/test-anti-patterns.es.md) |
 | 🌍 Validación en vivo | `LiveFeatureTests` prueba skills, router, artifacts + Excel y resúmenes map-reduce con modelos reales | |
 | 🔐 Publicación | **Trusted publishing** de NuGet con OIDC, sin API keys de larga duración | [nuget-trusted-publishing.es.md](https://github.com/bluesmilecl/AiSdk.Net/blob/HEAD/docs/quality/nuget-trusted-publishing.es.md) |
+| 🛡️ Cadena de suministro | Acciones fijadas por hash, `GITHUB_TOKEN` de solo lectura por defecto, claves de los proveedores solo en la rama principal, atestación de procedencia SLSA de cada `.nupkg` (`gh attestation verify`), NuGetAudit (las vulnerabilidades altas y críticas rompen la compilación), CodeQL y OpenSSF Scorecard | [`.github/workflows`](https://github.com/bluesmilecl/AiSdk.Net/tree/HEAD/.github/workflows) |
 
 ## Ejecutar las verificaciones en local
 
