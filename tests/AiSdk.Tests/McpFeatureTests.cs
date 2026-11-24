@@ -157,6 +157,7 @@ public class McpFeatureTests
         {
             Roots = [new McpRoot("file:///proyecto", "proyecto")],
             SamplingModel = samplingModel,
+            ApproveSampling = (request, _) => Task.FromResult<McpSamplingRequest?>(request), // el usuario aprueba
             ElicitationHandler = (req, _) => Task.FromResult(McpElicitationResult.Accept(new JsonObject { ["nombre"] = "Ana" })),
         }, TestContext.Current.CancellationToken);
 
