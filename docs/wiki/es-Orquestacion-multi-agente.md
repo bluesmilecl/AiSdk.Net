@@ -50,6 +50,7 @@ var revisado = Orchestrations.EvaluatorOptimizer(redactor, evaluador, "Tono form
 var result = await router.RunAsync("¿Conviene abrir en Lima?", new OrchestrationOptions
 {
     OnEvent = e => { Console.WriteLine(e); return ValueTask.CompletedTask; },   // inicio/fin de agentes, rutas, traspasos...
+    OnToolApproval = req => PreguntarAlOperadorAsync(req.ToolCall),            // para agentes sin manejador propio
 });
 Console.WriteLine($"{result.Text} — {result.TotalUsage.TotalTokens} tokens, {result.Runs.Count} llamadas");
 
@@ -62,6 +63,11 @@ var turno = await chat.RunAsync(historial, startAgent: "triage");
 ```
 
 ---
+
+Las herramientas que requieren aprobación dentro de una orquestación consultan `OrchestrationOptions.OnToolApproval` (o
+el manejador del agente que delega, cuando la orquestación es una herramienta); sin ningún manejador se deniegan con un
+error explícito. Una orquestación no se puede reanudar, así que un agente que se detiene esperando una aprobación diferida
+falla en vez de devolver un texto vacío.
 
 > [!TIP]
 > Las orquestaciones también son nodos, así que puedes ejecutarlas como pasos durables de un workflow: ver [Workflows y automatizaciones](es-Workflows-y-automatizaciones).

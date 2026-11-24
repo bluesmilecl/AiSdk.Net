@@ -127,6 +127,26 @@ await openai.VectorStores.WaitUntilReadyAsync(vs.Id);
 Tools = [OpenAITools.FileSearch([vs.Id])];
 ```
 
+## 🔐 Keys, redirects and streams
+
+- **OpenAI-compatible servers never receive `OPENAI_API_KEY`.** The variable is only read implicitly when `BaseUrl` is
+  OpenAI's own endpoint (`https://api.openai.com`). For Ollama, Groq, OpenRouter, vLLM... pass the key or the name of
+  *their* variable: `OpenAIProvider.Compatible("groq", "https://api.groq.com/openai/v1", apiKeyEnvironmentVariable: "GROQ_API_KEY")`
+  or `new OpenAIProviderOptions { BaseUrl = ..., ApiKeyEnvironmentVariable = "GROQ_API_KEY" }`. With another `BaseUrl` and
+  no key, the call fails before sending anything (or goes without `Authorization` if `RequireApiKey = false`).
+- **Redirects do not leak keys.** The shared `ProviderHttp.DefaultClient` and the clients registered by `AddAiSdk` use
+  `SafeRedirectHandler`: redirects are only followed for GET/HEAD, never from HTTPS to HTTP, and headers such as
+  `x-api-key` or `x-goog-api-key` are not forwarded to another origin (.NET only strips `Authorization`). If you pass your
+  own `HttpClient`, build it with `ProviderHttp.CreateDefaultHandler()` or disable `AllowAutoRedirect`.
+- **Bounded streams.** SSE lines and events are capped at 16 M characters and a model stream that sends nothing for
+  10 minutes fails with `TimeoutException` (retried if nothing was emitted yet); tune it with
+  `ProviderHttp.ModelStreamOptions`. Text keep-alives (`data: ping`) and a last event cut by the connection are ignored; a
+  complete event with invalid JSON fails with a clear error. Bedrock rejects `event-stream` messages over 16 MB.
+- **Retry-After is honoured.** A `Retry-After` in the past retries immediately; up to `MaxRetryAfter` (60 s by default) the
+  SDK waits exactly what the server asked; beyond that it does not retry early and throws `ApiCallException` with
+  `RetryAfter` so you can reschedule.
+- **Registry aliases** that form a cycle (`a → b → a`) fail with a clear error instead of a stack overflow.
+
 ## Provider notes
 
 **Anthropic (Claude)**
