@@ -26,14 +26,18 @@ public static class StreamResultExtensions
     /// Devuelve el stream como respuesta <b>reanudable</b>: la generación se guarda en
     /// <paramref name="store"/> y continúa aunque el cliente se desconecte; el cliente puede
     /// reconectarse con <see cref="UIMessageStreamResults.Resume"/> (<c>useChat({ resume: true })</c>).
+    /// El stream se guarda bajo el chat <b>y su dueño</b> (<paramref name="owner"/> o, si es null, el usuario
+    /// autenticado): otro usuario con el mismo id de chat no puede reemplazarlo ni reanudarlo.
+    /// Sin dueño la respuesta falla: en aplicaciones anónimas pase un id de sesión que emita el servidor.
     /// </summary>
     public static IResult ToResumableUIMessageStreamResult(
         this StreamTextResult result,
         IResumableStreamStore store,
         string chatId,
         string? messageId = null,
-        Func<Exception, string>? onError = null) =>
-        UIMessageStreamResults.Resumable(store, chatId, UIMessageStream.ToChunks(result.FullStream, messageId, onError));
+        Func<Exception, string>? onError = null,
+        string? owner = null) =>
+        UIMessageStreamResults.Resumable(store, chatId, UIMessageStream.ToChunks(result.FullStream, messageId, onError), owner);
 
     internal static void SetSseHeaders(HttpResponse response)
     {
@@ -79,15 +83,23 @@ public static class UIMessageStreamResults
     public static IResult Create(Func<UIMessageStreamWriter, Task> execute, string? messageId = null, Func<Exception, string>? onError = null) =>
         new ChunksResult(ct => UIMessageStream.Create(execute, messageId, onError, ct));
 
-    /// <summary>Envía chunks del protocolo y los guarda en el almacén para poder reanudarlos.</summary>
-    public static IResult Resumable(IResumableStreamStore store, string chatId, IAsyncEnumerable<JsonObject> chunks) =>
-        new ResumableResult(store, chatId, chunks);
+    /// <summary>
+    /// Envía chunks del protocolo y los guarda en el almacén para poder reanudarlos, bajo el chat y su dueño
+    /// (<paramref name="owner"/> o, si es null, el usuario autenticado; sin dueño falla).
+    /// </summary>
+    public static IResult Resumable(IResumableStreamStore store, string chatId, IAsyncEnumerable<JsonObject> chunks, string? owner = null) =>
+        new ResumableResult(store, chatId, chunks, owner);
 
     /// <summary>
     /// Endpoint de reanudación (<c>GET /api/chat/{id}/stream</c>): devuelve el stream activo del chat
-    /// desde el principio, o 204 si no hay ninguno en curso.
+    /// desde el principio, o 204 si no hay ninguno en curso. Solo encuentra los streams del mismo dueño
+    /// (<paramref name="owner"/> o el usuario autenticado); una petición sin dueño siempre recibe 204.
     /// </summary>
-    public static IResult Resume(IResumableStreamStore store, string chatId) => new ResumeResult(store, chatId);
+    public static IResult Resume(IResumableStreamStore store, string chatId, string? owner = null) => new ResumeResult(store, chatId, owner);
+
+    /// <summary>Clave del chat en el almacén: el id de chat del cliente dentro del ámbito de su dueño.</summary>
+    private static string? ScopedKey(HttpContext http, string chatId, string? owner) =>
+        (owner ?? EndpointSecurity.GetUserId(http)) is { Length: > 0 } scope ? ResumableUIMessageStream.ScopedChatId(scope, chatId) : null;
 
     private static async Task CopyAsync(IAsyncEnumerable<string> events, HttpContext http)
     {
@@ -108,11 +120,13 @@ public static class UIMessageStreamResults
         }
     }
 
-    private sealed class ResumableResult(IResumableStreamStore store, string chatId, IAsyncEnumerable<JsonObject> chunks) : IResult
+    private sealed class ResumableResult(IResumableStreamStore store, string chatId, IAsyncEnumerable<JsonObject> chunks, string? owner) : IResult
     {
         public async Task ExecuteAsync(HttpContext httpContext)
         {
-            var streamId = await ResumableUIMessageStream.StartAsync(store, chatId, chunks).ConfigureAwait(false);
+            var key = ScopedKey(httpContext, chatId, owner)
+                      ?? throw new InvalidOperationException("Los streams reanudables necesitan un dueño: autentique al usuario o indique 'owner' (p. ej. un id de sesión emitido por el servidor).");
+            var streamId = await ResumableUIMessageStream.StartAsync(store, key, chunks).ConfigureAwait(false);
             try
             {
                 await CopyAsync(store.ReadAsync(streamId), httpContext).ConfigureAwait(false);
@@ -124,11 +138,12 @@ public static class UIMessageStreamResults
         }
     }
 
-    private sealed class ResumeResult(IResumableStreamStore store, string chatId) : IResult
+    private sealed class ResumeResult(IResumableStreamStore store, string chatId, string? owner) : IResult
     {
         public async Task ExecuteAsync(HttpContext httpContext)
         {
-            var streamId = await store.GetActiveStreamAsync(chatId, httpContext.RequestAborted).ConfigureAwait(false);
+            var key = ScopedKey(httpContext, chatId, owner);
+            var streamId = key is null ? null : await store.GetActiveStreamAsync(key, httpContext.RequestAborted).ConfigureAwait(false);
             if (streamId is null)
             {
                 httpContext.Response.StatusCode = StatusCodes.Status204NoContent;
