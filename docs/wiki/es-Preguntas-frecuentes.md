@@ -76,7 +76,8 @@ documentación en `docs/wiki`. Las preguntas son bienvenidas en
 <details>
 <summary><b>¿Quién creó AiSdk.Net y cuál es la licencia?</b></summary>
 
-Lo creó **Esteban Cortes** ([@ecr17dev](https://github.com/ecr17dev)) y se publica bajo la
+Lo crearon **Bluesmile** ([@bluesmilecl](https://github.com/bluesmilecl)) y **Esteban Cortes**
+([@ecr17dev](https://github.com/ecr17dev)), y se publica bajo la
 [licencia MIT](https://github.com/bluesmilecl/AiSdk.Net/blob/HEAD/LICENSE).
 </details>
 

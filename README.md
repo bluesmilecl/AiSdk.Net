@@ -196,10 +196,14 @@ Please follow the [Code of Conduct](CODE_OF_CONDUCT.md) and report vulnerabiliti
   <img src="https://contrib.rocks/image?repo=bluesmilecl/AiSdk.Net" alt="Contributors">
 </a>
 
-## 👤 Author
+## 👥 Creators
 
 <table>
 <tr>
+<td align="center">
+<a href="https://github.com/bluesmilecl"><img src="https://github.com/bluesmilecl.png?size=120" width="100" alt="Bluesmile"><br><b>Bluesmile</b></a><br>
+<sub>Creator · <a href="https://github.com/bluesmilecl">@bluesmilecl</a></sub>
+</td>
 <td align="center">
 <a href="https://github.com/ecr17dev"><img src="https://github.com/ecr17dev.png?size=120" width="100" alt="Esteban Cortes"><br><b>Esteban Cortes</b></a><br>
 <sub>Creator and maintainer · <a href="https://github.com/ecr17dev">@ecr17dev</a></sub>
@@ -213,4 +217,4 @@ If AiSdk.Net helps you, **give it a ⭐**: it helps other .NET developers find i
 
 ## 📄 License
 
-[MIT](LICENSE) © Esteban Cortes ([@ecr17dev](https://github.com/ecr17dev))
+[MIT](LICENSE) © Bluesmile ([@bluesmilecl](https://github.com/bluesmilecl)) and Esteban Cortes ([@ecr17dev](https://github.com/ecr17dev))

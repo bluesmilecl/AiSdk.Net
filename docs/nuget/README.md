@@ -2,7 +2,8 @@
 
 **The AI and agents SDK for .NET 10.** One provider-agnostic API for text, streaming, typed objects, tools,
 agents, multi-agent orchestration, RAG, Skills, durable workflows, MCP and more. Inspired by the Vercel AI SDK
-and the Laravel AI SDK. Open source (MIT), created by Esteban Cortes ([@ecr17dev](https://github.com/ecr17dev)).
+and the Laravel AI SDK. Open source (MIT), created by Bluesmile ([@bluesmilecl](https://github.com/bluesmilecl)) and Esteban Cortes
+([@ecr17dev](https://github.com/ecr17dev)).
 
 ## Install
 

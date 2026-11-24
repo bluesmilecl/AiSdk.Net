@@ -1,8 +1,9 @@
 # Authors
 
-## Creator and maintainer
+## Creators
 
-- **Esteban Cortes** — [@ecr17dev](https://github.com/ecr17dev)
+- **Bluesmile** — [@bluesmilecl](https://github.com/bluesmilecl)
+- **Esteban Cortes** — [@ecr17dev](https://github.com/ecr17dev) (maintainer)
 
 ## Contributors
 

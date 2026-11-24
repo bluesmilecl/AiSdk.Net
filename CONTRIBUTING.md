@@ -3,7 +3,7 @@
 **English** · [Español](CONTRIBUTING.es.md)
 
 First of all, thank you! 💜 AiSdk.Net is an open-source project created by
-[Esteban Cortes (@ecr17dev)](https://github.com/ecr17dev), and every contribution helps: bug reports, docs,
+[Bluesmile](https://github.com/bluesmilecl) and [Esteban Cortes (@ecr17dev)](https://github.com/ecr17dev), and every contribution helps: bug reports, docs,
 examples, tests, new providers or features. You can write issues and pull requests in **English or Spanish**.
 
 ## 🧭 How contributions flow

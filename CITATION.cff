@@ -3,6 +3,9 @@ message: "If you use AiSdk.Net in your work, please cite it as below."
 title: "AiSdk.Net: the AI and agents SDK for .NET"
 type: software
 authors:
+  - name: Bluesmile
+    alias: bluesmilecl
+    website: "https://github.com/bluesmilecl"
   - family-names: Cortes
     given-names: Esteban
     alias: ecr17dev

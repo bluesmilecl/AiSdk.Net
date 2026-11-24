@@ -10,8 +10,8 @@
     <IsPackable>true</IsPackable>
     <PackageId>AiSdk.Net$(MSBuildProjectName.Substring(5))</PackageId>
     <Version>0.1.0</Version>
-    <Authors>Esteban Cortes</Authors>
-    <Copyright>Copyright © Esteban Cortes (@ecr17dev)</Copyright>
+    <Authors>Bluesmile, Esteban Cortes</Authors>
+    <Copyright>Copyright © Bluesmile (@bluesmilecl) and Esteban Cortes (@ecr17dev)</Copyright>
     <Description>AiSdk.Net: the open-source AI and agents SDK for .NET 10. Text, streaming, typed objects, tools, agents, multi-agent orchestration, RAG, Skills, durable workflows and MCP with OpenAI, Claude, Gemini, Mistral, Bedrock and Cohere.</Description>
     <PackageIcon>icon.png</PackageIcon>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

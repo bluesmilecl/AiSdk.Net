@@ -9,7 +9,7 @@
 # Bienvenido a la wiki de AiSdk.Net 👋
 
 **AiSdk.Net** es el SDK open source de IA y agentes para **.NET 10**, creado por
-**Esteban Cortes** ([@ecr17dev](https://github.com/ecr17dev)). Una sola API independiente del proveedor para
+**Bluesmile** ([@bluesmilecl](https://github.com/bluesmilecl)) y **Esteban Cortes** ([@ecr17dev](https://github.com/ecr17dev)). Una sola API independiente del proveedor para
 texto, streaming, objetos tipados, herramientas, agentes, orquestación multi-agente, RAG, Skills, workflows
 durables y MCP.
 
