@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 using AiSdk.Documents;
 using AiSdk.Documents.Converters;
@@ -437,4 +438,157 @@ public class UrlDownloadSecurityTests
     [InlineData("2001:0::1", false)] // Teredo
     public void PublicAddressesAreRecognized(string address, bool expected) =>
         Assert.Equal(expected, UrlDownloader.IsPublicAddress(System.Net.IPAddress.Parse(address)));
+}
+
+public class OfficeSecurityTests
+{
+    private const string WordNs = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+    private const string SheetNs = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+
+    private static void Write(DocumentFormat.OpenXml.Packaging.OpenXmlPart part, string xml)
+    {
+        using var stream = part.GetStream(FileMode.Create);
+        stream.Write(Encoding.UTF8.GetBytes("<?xml version=\"1.0\" encoding=\"UTF-8\"?>" + xml));
+    }
+
+    /// <summary>DOCX mínimo con el cuerpo indicado (XML crudo).</summary>
+    internal static byte[] Docx(string body)
+    {
+        using var output = new MemoryStream();
+        using (var document = DocumentFormat.OpenXml.Packaging.WordprocessingDocument.Create(output, DocumentFormat.OpenXml.WordprocessingDocumentType.Document))
+        {
+            Write(document.AddMainDocumentPart(), $"<w:document xmlns:w=\"{WordNs}\"><w:body>{body}</w:body></w:document>");
+        }
+
+        return output.ToArray();
+    }
+
+    /// <summary>XLSX mínimo con una hoja (filas en XML crudo) y, opcionalmente, cadenas compartidas.</summary>
+    internal static byte[] Xlsx(string sheetData, string? sharedStrings = null)
+    {
+        using var output = new MemoryStream();
+        using (var document = DocumentFormat.OpenXml.Packaging.SpreadsheetDocument.Create(output, DocumentFormat.OpenXml.SpreadsheetDocumentType.Workbook))
+        {
+            var workbook = document.AddWorkbookPart();
+            var sheet = workbook.AddNewPart<DocumentFormat.OpenXml.Packaging.WorksheetPart>();
+            Write(sheet, $"<worksheet xmlns=\"{SheetNs}\"><sheetData>{sheetData}</sheetData></worksheet>");
+            Write(workbook, $"<workbook xmlns=\"{SheetNs}\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"><sheets><sheet name=\"Datos\" sheetId=\"1\" r:id=\"{workbook.GetIdOfPart(sheet)}\"/></sheets></workbook>");
+            if (sharedStrings is not null)
+            {
+                Write(workbook.AddNewPart<DocumentFormat.OpenXml.Packaging.SharedStringTablePart>(), $"<sst xmlns=\"{SheetNs}\">{sharedStrings}</sst>");
+            }
+        }
+
+        return output.ToArray();
+    }
+
+    private static Task<DocumentConversionResult> ConvertAsync(byte[] data, string mediaType, MarkdownConverterOptions? options = null) =>
+        new MarkdownConverter(options).ConvertAsync(data, mediaType, cancellationToken: TestContext.Current.CancellationToken);
+
+    [Fact]
+    public async Task HugeGridSpanIsCappedToWordsColumnLimit()
+    {
+        // ~1 KB: antes, gridSpan = int.MaxValue agregaba 2.000 millones de celdas vacías.
+        var docx = Docx($"<w:tbl><w:tr><w:tc><w:tcPr><w:gridSpan w:val=\"{int.MaxValue}\"/></w:tcPr><w:p><w:r><w:t>ancha</w:t></w:r></w:p></w:tc></w:tr>"
+                        + "<w:tr><w:tc><w:p><w:r><w:t>a</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>b</w:t></w:r></w:p></w:tc></w:tr></w:tbl>");
+
+        var result = await ConvertAsync(docx, MediaTypes.Docx);
+
+        var header = result.Markdown.Split('\n')[0];
+        Assert.StartsWith("| ancha |", header, StringComparison.Ordinal);
+        Assert.Equal(DocxConverter.MaxTableColumns + 1, header.Count(c => c == '|'));
+        Assert.Contains("| a | b |", result.Markdown);
+    }
+
+    [Fact]
+    public async Task ListLevelsAreClampedInWordAndPowerPoint()
+    {
+        var docx = Docx("<w:p><w:pPr><w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"1\"/></w:numPr></w:pPr><w:r><w:t>uno</w:t></w:r></w:p>"
+                        + "<w:p><w:pPr><w:numPr><w:ilvl w:val=\"2000000000\"/><w:numId w:val=\"1\"/></w:numPr></w:pPr><w:r><w:t>profundo</w:t></w:r></w:p>");
+        var word = await ConvertAsync(docx, MediaTypes.Docx);
+        Assert.Equal("- uno\n" + new string(' ', 16) + "- profundo", word.Markdown);
+
+        // PowerPoint: se modifica la presentación de ejemplo con un nivel de viñeta enorme.
+        using var pptx = new MemoryStream();
+        await using (var fixture = File.OpenRead(DocumentConverterTests.Fixture("sample.pptx")))
+        {
+            await fixture.CopyToAsync(pptx, TestContext.Current.CancellationToken);
+        }
+
+        using (var presentation = DocumentFormat.OpenXml.Packaging.PresentationDocument.Open(pptx, true))
+        {
+            var slide = presentation.PresentationPart!.SlideParts.SelectMany(s => s.Slide!.Descendants<DocumentFormat.OpenXml.Drawing.Paragraph>()).First(p => p.InnerText.Contains("Proveedores", StringComparison.Ordinal));
+            slide.ParagraphProperties ??= new DocumentFormat.OpenXml.Drawing.ParagraphProperties();
+            slide.ParagraphProperties.Level = 2_000_000_000;
+        }
+
+        var slides = await ConvertAsync(pptx.ToArray(), MediaTypes.Pptx);
+        Assert.Contains(new string(' ', 16) + "- Proveedores", slides.Markdown);
+        Assert.DoesNotContain(new string(' ', 17) + "- Proveedores", slides.Markdown);
+    }
+
+    [Fact]
+    public async Task DeeplyNestedOfficeXmlIsRejectedInsteadOfOverflowingTheStack()
+    {
+        // ~30 KB: el SDK de Open XML carga las partes de forma recursiva; 5000 controles anidados mataban el proceso.
+        var docx = Docx(string.Concat(Enumerable.Repeat("<w:sdt><w:sdtContent>", 5000)) + "<w:p><w:r><w:t>x</w:t></w:r></w:p>" + string.Concat(Enumerable.Repeat("</w:sdtContent></w:sdt>", 5000)));
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => ConvertAsync(docx, MediaTypes.Docx));
+        Assert.Contains("MaxNestingDepth", error.Message, StringComparison.Ordinal);
+
+        var xlsx = Xlsx("<row r=\"1\"><c r=\"A1\" t=\"s\"><v>0</v></c></row>", "<si>" + string.Concat(Enumerable.Repeat("<r>", 5000)) + "</si>");
+        await Assert.ThrowsAsync<InvalidDataException>(() => ConvertAsync(xlsx, MediaTypes.Xlsx));
+
+        // Anidamiento normal (controles de contenido dentro de controles) sigue funcionando.
+        var nested = Docx(string.Concat(Enumerable.Repeat("<w:sdt><w:sdtContent>", 10)) + "<w:p><w:r><w:t>dentro</w:t></w:r></w:p>" + string.Concat(Enumerable.Repeat("</w:sdtContent></w:sdt>", 10)));
+        Assert.Equal("dentro", (await ConvertAsync(nested, MediaTypes.Docx)).Markdown);
+    }
+
+    [Fact]
+    public async Task OfficePartsLargerThanTheCharacterLimitAreRejected()
+    {
+        var docx = Docx(string.Concat(Enumerable.Repeat("<w:p><w:r><w:t>relleno relleno relleno</w:t></w:r></w:p>", 200)));
+
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => ConvertAsync(docx, MediaTypes.Docx, new MarkdownConverterOptions { MaxOfficePartChars = 2000 }));
+
+        Assert.Contains("MaxOfficePartChars", error.Message, StringComparison.Ordinal);
+        Assert.Contains("relleno", (await ConvertAsync(docx, MediaTypes.Docx)).Markdown);
+    }
+
+    [Fact]
+    public async Task CellsBeyondExcelsLastColumnAreIgnored()
+    {
+        // ZZZZZ1 desbordaba a 111 millones de columnas y ZZZZZZ1 agotaba la memoria.
+        var xlsx = Xlsx(
+            "<row r=\"1\"><c r=\"A1\" t=\"inlineStr\"><is><t>inicio</t></is></c><c r=\"ZZZZZZ1\" t=\"inlineStr\"><is><t>fuera</t></is></c><c r=\"ZZZZZ1\"><v>1</v></c><c r=\"XFE1\"><v>2</v></c></row>"
+            + "<row r=\"2\"><c r=\"XFD2\" t=\"inlineStr\"><is><t>ultima</t></is></c><c r=\"B2\"><v>3</v></c></row>");
+
+        var result = await ConvertAsync(xlsx, MediaTypes.Xlsx);
+
+        Assert.DoesNotContain("fuera", result.Markdown);
+        Assert.Contains("| inicio |  |  |", result.Markdown);
+        Assert.Contains("|  | 3 | ultima |", result.Markdown); // las columnas vacías intermedias no se escriben
+        Assert.True(result.Markdown.Length < 200, result.Markdown);
+    }
+
+    [Fact]
+    public async Task RowLimitIsAppliedWhileReadingTheSheet()
+    {
+        var rows = new StringBuilder();
+        for (var i = 1; i <= 5000; i++)
+        {
+            // Sin atributo r en las celdas: se usan las posiciones.
+            rows.Append(CultureInfo.InvariantCulture, $"<row r=\"{i}\"><c><v>{i}</v></c><c t=\"s\"><v>{i % 2}</v></c></row>");
+        }
+
+        var xlsx = Xlsx(rows.ToString(), "<si><t>par</t></si><si><r><t>im</t></r><r><t>par</t></r><rPh><t>FONETICA</t></rPh></si>");
+
+        var result = await ConvertAsync(xlsx, MediaTypes.Xlsx, new MarkdownConverterOptions { MaxRowsPerSheet = 10 });
+
+        Assert.Equal(12, result.Markdown.Split('\n').Count(l => l.StartsWith('|'))); // encabezado, separador y 10 filas de datos
+        Assert.Contains("| 2 | par |", result.Markdown);
+        Assert.Contains("| 3 | impar |", result.Markdown);
+        Assert.DoesNotContain("FONETICA", result.Markdown);
+        Assert.Contains("4989 filas más omitidas (total 4999 filas de datos)", result.Markdown);
+        Assert.Contains(result.Warnings, w => w.Contains("4989", StringComparison.Ordinal));
+    }
 }
