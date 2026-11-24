@@ -51,9 +51,9 @@ public sealed class GoogleGenerativeLanguageModel : ILanguageModel, ITokenCounti
         var reasoningIndex = 0;
         var inReasoning = false;
 
-        await foreach (var sse in ProviderHttp.ReadSseAsync(response, cancellationToken).ConfigureAwait(false))
+        await foreach (var sse in ProviderHttp.ReadSseAsync(response, ProviderHttp.ModelStreamOptions, cancellationToken).ConfigureAwait(false))
         {
-            if (JsonNode.Parse(sse.Data) is not JsonObject chunk)
+            if (ProviderHttp.ParseSseJson(sse, "Google") is not { } chunk)
             {
                 continue;
             }
