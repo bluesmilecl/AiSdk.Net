@@ -49,6 +49,32 @@ public sealed record McpSamplingRequest(
 
 public sealed record McpSamplingResult(string Text, string Model, string StopReason = "endTurn");
 
+/// <summary>
+/// Lánzala desde <see cref="McpClientOptions.SamplingHandler"/> o <see cref="McpClientOptions.ElicitationHandler"/>
+/// para rechazar una petición del servidor: el cliente responde con el código <c>-1</c> ("rechazada por el usuario").
+/// </summary>
+public sealed class McpRequestRejectedException(string message = "El usuario rechazó la petición.") : McpException(message, -1);
+
+/// <summary>Qué hacer cuando la definición de una herramienta MCP cambia respecto de la fijada (posible "rug pull").</summary>
+public enum McpToolChangePolicy
+{
+    /// <summary>
+    /// La herramienta queda bloqueada en este cliente: <see cref="McpClient.GetToolsAsync"/> la omite y
+    /// <see cref="McpClient.CallToolAsync"/> rechaza las llamadas. Es el valor por defecto.
+    /// </summary>
+    Reject,
+
+    /// <summary>Se acepta la nueva definición y se fija en su lugar (solo se notifica con <see cref="McpClient.ToolDefinitionChanged"/>).</summary>
+    Accept,
+}
+
+/// <summary>Cambio detectado en la definición de una herramienta MCP ya fijada.</summary>
+/// <param name="Name">Nombre de la herramienta en el servidor.</param>
+/// <param name="PinnedHash">Hash fijado la primera vez que se listó (o el de <see cref="McpClientOptions.PinnedToolHashes"/>).</param>
+/// <param name="NewHash">Hash de la definición recién listada.</param>
+/// <param name="Tool">Definición nueva.</param>
+public sealed record McpToolDefinitionChange(string Name, string PinnedHash, string NewHash, McpToolInfo Tool);
+
 /// <summary>Petición de <c>elicitation/create</c>: el servidor pide datos al usuario.</summary>
 public sealed record McpElicitationRequest(string Message, JsonElement RequestedSchema);
 

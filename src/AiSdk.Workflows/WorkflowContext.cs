@@ -12,6 +12,9 @@ public sealed class WorkflowContext
     private readonly Dictionary<string, int> _occurrences = [];
     private readonly Lock _gate = new();
 
+    // Los guardados se encadenan: cada uno parte de la versión que dejó el anterior (pasos en paralelo, renovación del reclamo).
+    private Task _lastSave = Task.CompletedTask;
+
     internal WorkflowContext(WorkflowRun run, WorkflowEngine engine, IServiceProvider? services, CancellationToken cancellationToken)
     {
         _run = run;
@@ -28,6 +31,7 @@ public sealed class WorkflowContext
 
     public IServiceProvider? Services { get; }
 
+    /// <summary>Se cancela al apagar el proceso, al cancelar la ejecución (<see cref="WorkflowEngine.CancelAsync"/>) o si otra instancia la reclamó.</summary>
     public CancellationToken CancellationToken { get; }
 
     /// <summary>
@@ -43,13 +47,15 @@ public sealed class WorkflowContext
             return record.Output is { } output ? output.Deserialize<T>(JsonSchema.DefaultSerializerOptions)! : default!;
         }
 
+        // Una ejecución cancelada no empieza pasos nuevos.
+        CancellationToken.ThrowIfCancellationRequested();
         options ??= StepOptions.Default;
         var delay = options.InitialDelay;
         for (var attempt = 1; ; attempt++)
         {
+            T value;
             try
             {
-                T value;
                 if (options.Timeout is { } timeout)
                 {
                     using var cts = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken);
@@ -60,20 +66,24 @@ public sealed class WorkflowContext
                 {
                     value = await run(CancellationToken).ConfigureAwait(false);
                 }
-
-                var element = JsonSerializer.SerializeToElement(value, JsonSchema.DefaultSerializerOptions);
-                await SaveStepAsync(new StepRecord(key, element, attempt, DateTimeOffset.UtcNow)).ConfigureAwait(false);
-                return value;
             }
-            catch (Exception ex) when (ex is not WorkflowSuspendedException && !CancellationToken.IsCancellationRequested
+            catch (Exception ex) when (ex is not WorkflowSuspendedException and not WorkflowConcurrencyException
+                                       && !CancellationToken.IsCancellationRequested
                                        && attempt < options.MaxAttempts
                                        && ex is not NonRetryableException
                                        && (options.ShouldRetry?.Invoke(ex) ?? true))
             {
                 Log($"Paso '{key}' falló (intento {attempt}/{options.MaxAttempts}): {ex.Message}");
-                await Task.Delay(delay, CancellationToken).ConfigureAwait(false);
+                await Task.Delay(delay, _engine.TimeProvider, CancellationToken).ConfigureAwait(false);
                 delay = TimeSpan.FromMilliseconds(delay.TotalMilliseconds * options.BackoffFactor);
+                continue;
             }
+
+            // El guardado va fuera del try: un conflicto de versión (ejecución cancelada o reclamada por otra
+            // instancia) no debe provocar que el paso se repita.
+            var element = JsonSerializer.SerializeToElement(value, JsonSchema.DefaultSerializerOptions);
+            await PersistAsync(r => r.Steps[key] = new StepRecord(key, element, attempt, _engine.Now)).ConfigureAwait(false);
+            return value;
         }
     }
 
@@ -85,11 +95,14 @@ public sealed class WorkflowContext
             return true;
         }, options);
 
-    /// <summary>Ejecuta un agente como paso durable y devuelve su texto final.</summary>
-    public Task<string> RunAgentAsync(IAgent agent, string prompt, string? stepName = null, StepOptions? options = null) =>
+    /// <summary>
+    /// Ejecuta un agente como paso durable y devuelve su texto final. <paramref name="context"/> llega a las herramientas
+    /// del agente como <see cref="ToolExecutionContext.Context"/> (p. ej. el id del usuario dueño de la tarea).
+    /// </summary>
+    public Task<string> RunAgentAsync(IAgent agent, string prompt, string? stepName = null, StepOptions? options = null, IReadOnlyDictionary<string, object?>? context = null) =>
         StepAsync(stepName ?? $"agent:{agent.Name}", async ct =>
         {
-            var result = await agent.GenerateAsync(new AgentCallOptions { Prompt = prompt, Services = Services, CancellationToken = ct }).ConfigureAwait(false);
+            var result = await agent.GenerateAsync(new AgentCallOptions { Prompt = prompt, Services = Services, Context = context, CancellationToken = ct }).ConfigureAwait(false);
             return result.Text;
         }, options);
 
@@ -105,7 +118,7 @@ public sealed class WorkflowContext
     /// Duerme de forma durable: la ejecución se suspende y el motor la reanuda al vencer el plazo
     /// (aunque el proceso se haya reiniciado entre medio).
     /// </summary>
-    public Task SleepAsync(string name, TimeSpan duration) => SleepUntilInternalAsync(name, () => DateTimeOffset.UtcNow + duration);
+    public Task SleepAsync(string name, TimeSpan duration) => SleepUntilInternalAsync(name, () => _engine.Now + duration);
 
     /// <summary>Duerme hasta una fecha.</summary>
     public Task SleepUntilAsync(string name, DateTimeOffset until) => SleepUntilInternalAsync(name, () => until);
@@ -116,7 +129,7 @@ public sealed class WorkflowContext
         if (TryGetStep(key, out var record))
         {
             var wakeAt = record.Output!.Value.GetDateTimeOffset();
-            if (DateTimeOffset.UtcNow >= wakeAt)
+            if (_engine.Now >= wakeAt)
             {
                 return;
             }
@@ -125,8 +138,8 @@ public sealed class WorkflowContext
         }
 
         var target = until();
-        await SaveStepAsync(new StepRecord(key, JsonSerializer.SerializeToElement(target), 1, DateTimeOffset.UtcNow)).ConfigureAwait(false);
-        if (DateTimeOffset.UtcNow < target)
+        await PersistAsync(r => r.Steps[key] = new StepRecord(key, JsonSerializer.SerializeToElement(target), 1, _engine.Now)).ConfigureAwait(false);
+        if (_engine.Now < target)
         {
             throw new WorkflowSuspendedException(WorkflowStatus.Sleeping, target);
         }
@@ -151,9 +164,9 @@ public sealed class WorkflowContext
         {
             if (_run.Waiting is { } waiting && waiting.StepKey == stepKey)
             {
-                if (waiting.TimeoutAt is { } at && DateTimeOffset.UtcNow >= at)
+                if (waiting.TimeoutAt is { } at && _engine.Now >= at)
                 {
-                    _run.Steps[stepKey] = new StepRecord(stepKey, null, 1, DateTimeOffset.UtcNow) { TimedOut = true };
+                    _run.Steps[stepKey] = new StepRecord(stepKey, null, 1, _engine.Now) { TimedOut = true };
                     _run.Waiting = null;
                     return Task.FromResult<T?>(default);
                 }
@@ -161,7 +174,7 @@ public sealed class WorkflowContext
                 throw new WorkflowSuspendedException(WorkflowStatus.WaitingForEvent, waiting.TimeoutAt);
             }
 
-            var timeoutAt = timeout is { } t ? DateTimeOffset.UtcNow + t : (DateTimeOffset?)null;
+            var timeoutAt = timeout is { } t ? _engine.Now + t : (DateTimeOffset?)null;
             _run.Waiting = new EventWait(eventName, key, stepKey, timeoutAt);
             throw new WorkflowSuspendedException(WorkflowStatus.WaitingForEvent, timeoutAt);
         }
@@ -172,7 +185,7 @@ public sealed class WorkflowContext
     {
         lock (_gate)
         {
-            _run.Logs.Add($"{DateTimeOffset.UtcNow:O} {message}");
+            _run.Logs.Add($"{_engine.Now:O} {message}");
         }
     }
 
@@ -194,16 +207,47 @@ public sealed class WorkflowContext
         }
     }
 
-    private Task SaveStepAsync(StepRecord record)
+    /// <summary>
+    /// Aplica <paramref name="mutate"/> y guarda una copia con concurrencia optimista. Los guardados se hacen de a uno, así
+    /// cada copia lleva la versión del anterior. Lanza <see cref="WorkflowConcurrencyException"/> si otra instancia (o una
+    /// cancelación) cambió la ejecución.
+    /// </summary>
+    internal Task<WorkflowRun> PersistAsync(Action<WorkflowRun>? mutate)
     {
+        lock (_gate)
+        {
+            var previous = _lastSave;
+            var save = SaveAfterAsync(previous, mutate);
+            _lastSave = save;
+            return save;
+        }
+    }
+
+    private async Task<WorkflowRun> SaveAfterAsync(Task previous, Action<WorkflowRun>? mutate)
+    {
+        try
+        {
+            await previous.ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            // El error del guardado anterior ya lo recibió quien lo pidió.
+        }
+
         WorkflowRun snapshot;
         lock (_gate)
         {
-            _run.Steps[record.Name] = record;
-            _run.UpdatedAt = DateTimeOffset.UtcNow;
+            mutate?.Invoke(_run);
+            _run.UpdatedAt = _engine.Now;
             snapshot = _run.Clone();
         }
 
-        return _engine.Store.SaveRunAsync(snapshot, CancellationToken.None);
+        await _engine.Store.SaveRunAsync(snapshot, CancellationToken.None).ConfigureAwait(false);
+        lock (_gate)
+        {
+            _run.Version = snapshot.Version;
+        }
+
+        return snapshot;
     }
 }

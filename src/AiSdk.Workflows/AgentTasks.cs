@@ -25,7 +25,10 @@ public sealed class AgentTaskOptions
     /// <summary>Tareas activas máximas por dueño.</summary>
     public int MaxTasksPerOwner { get; init; } = 20;
 
-    /// <summary>Clave de <see cref="ToolExecutionContext.Context"/> con el usuario dueño.</summary>
+    /// <summary>
+    /// Clave de <see cref="ToolExecutionContext.Context"/> con el usuario dueño. Es obligatoria: sin dueño las herramientas
+    /// se niegan a operar (no hay tareas "de todos"). La misma clave llega al agente cuando la tarea se ejecuta.
+    /// </summary>
     public string OwnerKey { get; init; } = "userId";
 
     /// <summary>Zona horaria por defecto para expresiones cron.</summary>
@@ -56,7 +59,9 @@ public static class AgentTasks
         engine.Register(Workflow.Create<AgentTaskInput, string>(WorkflowName, async (ctx, input) =>
         {
             var agent = options.Agent(ctx.Services);
-            var text = await ctx.RunAgentAsync(agent, input.Prompt, "run-agent").ConfigureAwait(false);
+            // El agente se ejecuta en nombre del dueño: sus herramientas lo reciben en el contexto, como en la conversación.
+            var context = input.Owner is null ? null : new Dictionary<string, object?> { [options.OwnerKey] = input.Owner };
+            var text = await ctx.RunAgentAsync(agent, input.Prompt, "run-agent", context: context).ConfigureAwait(false);
             if (options.OnCompleted is { } onCompleted)
             {
                 await ctx.StepAsync("notify", ct => onCompleted(new AgentTaskResult(input.Task, input.Prompt, text, input.Owner, ctx.RunId), ctx.Services, ct)).ConfigureAwait(false);
@@ -68,13 +73,19 @@ public static class AgentTasks
     /// <summary>Herramientas para que el agente gestione tareas programadas.</summary>
     public static IReadOnlyList<Tool> CreateTools(WorkflowEngine engine, AgentTaskOptions options)
     {
-        string? Owner(ToolExecutionContext ctx) =>
-            ctx.Context is not null && ctx.Context.TryGetValue(options.OwnerKey, out var value) ? value?.ToString() : null;
+        // Sin dueño no se opera: si faltara la clave, todos los usuarios compartirían el dueño null y verían las tareas ajenas.
+        string Owner(ToolExecutionContext ctx) =>
+            ctx.Context is not null && ctx.Context.TryGetValue(options.OwnerKey, out var value) && value?.ToString() is { } owner && !string.IsNullOrWhiteSpace(owner)
+                ? owner
+                : throw new UnauthorizedAccessException($"No hay un usuario dueño en el contexto ('{options.OwnerKey}'): las tareas programadas necesitan saber de quién son.");
 
-        async Task<IReadOnlyList<Automation>> MineAsync(ToolExecutionContext ctx, CancellationToken ct) =>
-            (await engine.ListAutomationsAsync(ct).ConfigureAwait(false))
-            .Where(a => a.Workflow == WorkflowName && a.Owner == Owner(ctx))
-            .ToList();
+        async Task<IReadOnlyList<Automation>> MineAsync(ToolExecutionContext ctx, CancellationToken ct)
+        {
+            var owner = Owner(ctx);
+            return (await engine.ListAutomationsAsync(ct).ConfigureAwait(false))
+                .Where(a => a.Workflow == WorkflowName && a.Owner == owner)
+                .ToList();
+        }
 
         object Describe(Automation a) => new
         {
@@ -159,7 +170,11 @@ public static class AgentTasks
         ];
     }
 
-    /// <summary>Comprueba que el disparador no se ejecute más seguido que <paramref name="minimum"/>.</summary>
+    /// <summary>
+    /// Comprueba que el disparador no se ejecute más seguido que <paramref name="minimum"/>. Para cron se revisa el menor
+    /// intervalo entre ocurrencias consecutivas durante 8 días desde la primera (cubre los patrones por hora, día y día de
+    /// la semana), no solo entre las dos primeras.
+    /// </summary>
     public static void ValidateFrequency(AutomationTrigger trigger, TimeSpan minimum)
     {
         switch (trigger)
@@ -167,12 +182,30 @@ public static class AgentTasks
             case IntervalTrigger interval when interval.Every < minimum:
                 throw new ArgumentException($"El intervalo mínimo es {minimum.TotalMinutes} minutos.");
             case CronTrigger cron:
-                var now = DateTimeOffset.UtcNow;
-                var first = cron.NextOccurrence(now, null);
-                var second = first is { } f ? cron.NextOccurrence(f, f) : null;
-                if (first is { } a && second is { } b && b - a < minimum)
+                trigger.Validate();
+                if (cron.NextOccurrence(DateTimeOffset.UtcNow, null) is not { } first)
                 {
-                    throw new ArgumentException($"La expresión cron se ejecuta más seguido que el mínimo permitido ({minimum.TotalMinutes} minutos).");
+                    break;
+                }
+
+                var horizon = first + TimeSpan.FromDays(8);
+                var tooFrequent = new ArgumentException($"La expresión cron se ejecuta más seguido que el mínimo permitido ({minimum.TotalMinutes} minutos).");
+                // Con ocurrencias separadas al menos por el mínimo, en 8 días caben como mucho 8 días / mínimo.
+                var maxOccurrences = minimum > TimeSpan.Zero ? (long)(TimeSpan.FromDays(8) / minimum) + 2 : long.MaxValue;
+                var previous = first;
+                for (long count = 1; ; count++)
+                {
+                    if (cron.NextOccurrence(previous, previous) is not { } next || next > horizon)
+                    {
+                        break;
+                    }
+
+                    if (next - previous < minimum || count > maxOccurrences)
+                    {
+                        throw tooFrequent;
+                    }
+
+                    previous = next;
                 }
 
                 break;
