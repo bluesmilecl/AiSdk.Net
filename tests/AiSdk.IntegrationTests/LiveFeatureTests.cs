@@ -86,6 +86,7 @@ public class LiveFeatureTests
             Prompt = "Crea un artifact HTML con una calculadora de propinas y además una planilla Excel llamada 'ventas' con columnas Producto y Monto y dos filas de ejemplo.",
             Tools = tools,
             StopWhen = StopCondition.StepCountIs(6),
+            Context = new Dictionary<string, object?> { ["conversationId"] = "live", ["userId"] = "tester" },
             CancellationToken = TestContext.Current.CancellationToken,
         });
 

@@ -300,7 +300,14 @@ public class WorkflowTests
             w.TickInterval = TimeSpan.FromMilliseconds(50);
         });
         await using var app = builder.Build();
-        app.MapWorkflows();
+        // Acceso abierto explícito: la seguridad por defecto se prueba en WorkflowSecurityTests.
+        app.MapWorkflows(options: new WorkflowEndpointOptions
+        {
+            AllowAnonymous = true,
+            CanAccessRun = (_, _) => ValueTask.FromResult(true),
+            CanAccessAutomation = (_, _) => ValueTask.FromResult(true),
+            CanSendEvent = (_, _) => ValueTask.FromResult(true),
+        });
         await app.StartAsync(TestContext.Current.CancellationToken);
         var client = app.GetTestClient();
         var engine = app.Services.GetRequiredService<WorkflowEngine>();
