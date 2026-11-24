@@ -40,7 +40,7 @@ public static class ToolCallRepair
                     ResponseFormat = ResponseFormat.Json(tool.InputSchema, "tool_input"),
                 }, ct),
                 maxRetries,
-                CancellationToken.None).ConfigureAwait(false);
+                context.CancellationToken).ConfigureAwait(false);
 
             var text = string.Concat(result.Content.OfType<TextPart>().Select(t => t.Text)).Trim();
             if (text.StartsWith("```", StringComparison.Ordinal))

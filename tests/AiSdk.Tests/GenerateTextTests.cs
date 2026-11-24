@@ -192,10 +192,12 @@ public class GenerateTextTests
     }
 
     [Fact]
-    public async Task ApprovalWithoutHandlerLeavesCallPending()
+    public async Task ApprovalWithoutHandlerFailsClosed()
     {
-        var tool = Tool.Create<WeatherInput, string>("delete_user", "Borra", _ => "ok").RequireApproval();
-        var model = new MockLanguageModel().ReturnsToolCall("delete_user", new { city = "x" });
+        // Antes la llamada quedaba sin resultado (y el historial hacía fallar al proveedor): ahora falla cerrado.
+        var executed = false;
+        var tool = Tool.Create<WeatherInput, string>("delete_user", "Borra", _ => { executed = true; return "ok"; }).RequireApproval();
+        var model = new MockLanguageModel().ReturnsToolCall("delete_user", new { city = "x" }).ReturnsText("No pude borrarlo.");
 
         var result = await Ai.GenerateTextAsync(new GenerateTextOptions
         {
@@ -205,7 +207,12 @@ public class GenerateTextTests
             StopWhen = StopCondition.StepCountIs(5),
         });
 
-        Assert.Single(result.PendingToolCalls);
+        Assert.False(executed);
+        Assert.Empty(result.PendingToolCalls);
+        var error = Assert.Single(result.Steps[0].ToolResults);
+        Assert.True(error.IsError);
+        Assert.Contains("requiere aprobación", error.Output.GetString());
+        Assert.Equal("No pude borrarlo.", result.Text);
     }
 
     [Fact]
