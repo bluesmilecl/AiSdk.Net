@@ -90,10 +90,16 @@ public sealed class AudioConverter : IDocumentConverter
 
 /// <summary>
 /// Video a Markdown con <c>ffmpeg</c>: transcribe el audio y describe fotogramas a intervalos
-/// regulares, generando una línea de tiempo que un modelo sin soporte de video puede leer.
+/// regulares, generando una línea de tiempo que un modelo sin soporte de video puede leer. ffmpeg y ffprobe solo
+/// pueden leer el archivo local (<c>-protocol_whitelist file</c>) con formatos de audio y video
+/// (<c>-format_whitelist</c>: no listas de reproducción HLS ni <c>concat</c>, que podrían leer URLs u otros archivos) y
+/// solo los primeros <see cref="MarkdownConverterOptions.MaxMediaDuration"/>.
 /// </summary>
 public sealed class VideoConverter : IDocumentConverter
 {
+    /// <summary>Demuxers que ffmpeg puede usar con un video adjunto.</summary>
+    public const string AllowedFormats = "mov,mp4,m4a,3gp,3g2,mj2,matroska,webm,avi,asf,flv,mpegts,mpeg,ogg,mp3,wav,aac,flac,m4v,h264,hevc";
+
     public const string FramePrompt =
         "Este es un fotograma de un video. Describe en una o dos frases la escena, personas, acciones y cualquier texto visible " +
         "(diapositivas, subtítulos, pantallas). En el idioma del texto visible o en español.";
@@ -120,10 +126,18 @@ public sealed class VideoConverter : IDocumentConverter
         var input = temp.File("input" + MediaTypes.ExtensionFor(source.MediaType));
         await File.WriteAllBytesAsync(input, source.Data, cancellationToken).ConfigureAwait(false);
         var duration = await ProbeDurationAsync(runner, options.FfmpegPath, input, cancellationToken).ConfigureAwait(false);
-        var interval = options.VideoFrameInterval.TotalSeconds;
-        if (duration is { } d && d / interval > options.MaxVideoFrames)
+        var maxSeconds = Math.Max(1, options.MaxMediaDuration.TotalSeconds);
+        if (duration > maxSeconds)
         {
-            interval = Math.Ceiling(d / options.MaxVideoFrames);
+            warnings.Add($"El video dura {MediaHelpers.Timestamp(duration.Value)}: solo se analizaron los primeros {MediaHelpers.Timestamp(maxSeconds)} (MaxMediaDuration).");
+        }
+
+        // Opciones de entrada: solo el archivo local, formatos de video y, como máximo, MaxMediaDuration.
+        string[] safeInput = [.. SafeInputArguments, "-t", maxSeconds.ToString("0.###", CultureInfo.InvariantCulture), "-i", input];
+        var interval = options.VideoFrameInterval.TotalSeconds;
+        if (duration is { } d && Math.Min(d, maxSeconds) / interval > options.MaxVideoFrames)
+        {
+            interval = Math.Ceiling(Math.Min(d, maxSeconds) / options.MaxVideoFrames);
         }
 
         // Audio → transcripción.
@@ -137,7 +151,7 @@ public sealed class VideoConverter : IDocumentConverter
             var audioPath = temp.File("audio.mp3");
             var audio = await runner.RunAsync(
                 options.FfmpegPath,
-                ["-v", "error", "-i", input, "-vn", "-ac", "1", "-ar", "16000", "-b:a", "48k", "-f", "mp3", audioPath],
+                ["-nostdin", "-v", "error", .. safeInput, "-vn", "-ac", "1", "-ar", "16000", "-b:a", "48k", "-f", "mp3", audioPath],
                 cancellationToken: cancellationToken).ConfigureAwait(false);
             if (audio.ExitCode == 0 && File.Exists(audioPath) && new FileInfo(audioPath).Length > 0)
             {
@@ -159,7 +173,7 @@ public sealed class VideoConverter : IDocumentConverter
             var step = interval.ToString("0.###", CultureInfo.InvariantCulture);
             await runner.RunCheckedAsync(
                 options.FfmpegPath,
-                ["-v", "error", "-i", input, "-vf", $"select='isnan(prev_selected_t)+gte(t-prev_selected_t\\,{step})',scale='min(1024,iw)':-2", "-fps_mode", "vfr", "-frames:v", options.MaxVideoFrames.ToString(CultureInfo.InvariantCulture), "-q:v", "4", Path.Combine(framesDir, "f_%04d.jpg")],
+                ["-nostdin", "-v", "error", .. safeInput, "-vf", $"select='isnan(prev_selected_t)+gte(t-prev_selected_t\\,{step})',scale='min(1024,iw)':-2", "-fps_mode", "vfr", "-frames:v", options.MaxVideoFrames.ToString(CultureInfo.InvariantCulture), "-q:v", "4", Path.Combine(framesDir, "f_%04d.jpg")],
                 cancellationToken: cancellationToken).ConfigureAwait(false);
             var files = Directory.GetFiles(framesDir, "f_*.jpg").Order(StringComparer.Ordinal).ToList();
             var results = new string?[files.Count];
@@ -266,6 +280,9 @@ public sealed class VideoConverter : IDocumentConverter
         return pages;
     }
 
+    /// <summary>Opciones de entrada de ffmpeg y ffprobe: solo el protocolo <c>file</c> y los formatos de <see cref="AllowedFormats"/>.</summary>
+    private static readonly string[] SafeInputArguments = ["-protocol_whitelist", "file", "-format_whitelist", AllowedFormats];
+
     private static async Task<double?> ProbeDurationAsync(IExternalProcessRunner runner, string ffmpeg, string input, CancellationToken cancellationToken)
     {
         var ffprobe = Path.Combine(Path.GetDirectoryName(ffmpeg) ?? string.Empty, Path.GetFileName(ffmpeg).Replace("ffmpeg", "ffprobe", StringComparison.OrdinalIgnoreCase));
@@ -274,7 +291,7 @@ public sealed class VideoConverter : IDocumentConverter
             return null;
         }
 
-        var result = await runner.RunAsync(ffprobe, ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", input], cancellationToken: cancellationToken).ConfigureAwait(false);
+        var result = await runner.RunAsync(ffprobe, ["-v", "error", .. SafeInputArguments, "-show_entries", "format=duration", "-of", "csv=p=0", input], cancellationToken: cancellationToken).ConfigureAwait(false);
         return double.TryParse(Encoding.UTF8.GetString(result.Output).Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds) ? seconds : null;
     }
 }

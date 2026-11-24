@@ -700,3 +700,152 @@ public class PdfLimitTests
         Assert.Equal((300, 300), (width, height));
     }
 }
+
+public class ExternalProcessSecurityTests
+{
+    [Fact]
+    public async Task ToolsDoNotInheritSecretsUnlessExplicitlyAllowed()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "usa sh");
+        Environment.SetEnvironmentVariable("AISDK_TEST_API_KEY", "sk-secreto");
+
+        var filtered = await new ExternalProcessRunner().RunCheckedAsync("sh", ["-c", "echo ${AISDK_TEST_API_KEY:-vacio}"], cancellationToken: TestContext.Current.CancellationToken);
+        var inherited = await new ExternalProcessRunner(new ExternalProcessOptions { AllowedEnvironmentVariables = null })
+            .RunCheckedAsync("sh", ["-c", "echo ${AISDK_TEST_API_KEY:-vacio}"], cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal("vacio", Encoding.UTF8.GetString(filtered).Trim());
+        Assert.Equal("sk-secreto", Encoding.UTF8.GetString(inherited).Trim());
+        Assert.Same(ExternalProcessOptions.CommonEnvironmentVariables, new ExternalProcessOptions().AllowedEnvironmentVariables);
+    }
+
+    [Fact]
+    public async Task TimeoutKillsTheWholeProcessTree()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "usa sh");
+        var marker = Path.Combine(Path.GetTempPath(), "aisdk-hijo-" + Guid.NewGuid().ToString("N"));
+        var runner = new ExternalProcessRunner(new ExternalProcessOptions { Timeout = TimeSpan.FromMilliseconds(300) });
+        var watch = Stopwatch.StartNew();
+
+        var error = await Assert.ThrowsAsync<TimeoutException>(() => runner.RunAsync("sh", ["-c", $"(sleep 1; touch '{marker}') & sleep 30"], cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Contains("tiempo máximo", error.Message, StringComparison.Ordinal);
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(5), $"Tardó {watch.Elapsed}.");
+        await Task.Delay(1500, TestContext.Current.CancellationToken);
+        Assert.False(File.Exists(marker)); // el hijo también se detuvo
+    }
+
+    [Fact]
+    public async Task OutputIsCappedAndErrorIsTruncated()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "usa sh");
+        var runner = new ExternalProcessRunner(new ExternalProcessOptions { MaxOutputBytes = 100_000 });
+
+        var overflow = await Assert.ThrowsAsync<InvalidOperationException>(() => runner.RunAsync("sh", ["-c", "yes"], cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Contains("máximo de 100000 bytes", overflow.Message, StringComparison.Ordinal);
+
+        var noisy = await runner.RunAsync("sh", ["-c", "head -c 2000000 /dev/zero | tr '\\0' e >&2; echo ok"], cancellationToken: TestContext.Current.CancellationToken);
+        Assert.Equal("ok", Encoding.UTF8.GetString(noisy.Output).Trim());
+        Assert.InRange(noisy.Error.Length, ExternalProcessRunner.MaxErrorBytes, ExternalProcessRunner.MaxErrorBytes + 1);
+    }
+
+    /// <summary>Ejecutor que registra los argumentos y delega en el real (o comprueba el directorio temporal).</summary>
+    private sealed class RecordingRunner(IExternalProcessRunner inner) : IExternalProcessRunner
+    {
+        public System.Collections.Concurrent.ConcurrentQueue<(string Executable, IReadOnlyList<string> Arguments)> Calls { get; } = new();
+
+        public bool Exists(string executable) => inner.Exists(executable);
+
+        public Task<ExternalProcess.Result> RunAsync(string executable, IReadOnlyList<string> arguments, byte[]? input = null, CancellationToken cancellationToken = default)
+        {
+            Calls.Enqueue((executable, arguments));
+            return inner.RunAsync(executable, arguments, input, cancellationToken);
+        }
+    }
+
+    [Fact]
+    public async Task FfmpegCannotFollowPlaylistsToTheNetwork()
+    {
+        Assert.SkipUnless(ExternalProcess.Exists("ffmpeg"), "ffmpeg no instalado");
+        await using var server = new LocalHttpServer(_ => Task.FromResult(LocalHttpServer.Response(404, string.Empty)));
+
+        // Un "video" que en realidad es un manifiesto DASH: sin listas blancas, ffmpeg pedía el segmento por HTTP.
+        var manifest = $"""
+            <?xml version="1.0"?>
+            <MPD xmlns="urn:mpeg:dash:schema:mpd:2011" type="static" mediaPresentationDuration="PT10S" minBufferTime="PT1S" profiles="urn:mpeg:dash:profile:isoff-on-demand:2011">
+              <Period><AdaptationSet mimeType="video/mp4"><Representation id="1" bandwidth="1000"><BaseURL>{server.Url("/secreto.mp4")}</BaseURL></Representation></AdaptationSet></Period>
+            </MPD>
+            """;
+        var runner = new RecordingRunner(ExternalProcess.Runner);
+        var converter = new MarkdownConverter(new MarkdownConverterOptions { Transcription = new SilentTranscription(), ProcessRunner = runner });
+
+        var result = await converter.ConvertAsync(Encoding.UTF8.GetBytes(manifest), "video/mp4", "video.mp4", TestContext.Current.CancellationToken);
+
+        Assert.Contains(result.Warnings, w => w.Contains("audio", StringComparison.Ordinal));
+        Assert.Empty(server.Paths);
+        Assert.All(runner.Calls, c =>
+        {
+            Assert.Contains("-protocol_whitelist", c.Arguments);
+            Assert.Contains("-format_whitelist", c.Arguments);
+        });
+        Assert.Contains(runner.Calls, c => c.Arguments.Contains("-nostdin"));
+    }
+
+    [Fact]
+    public async Task OnlyTheFirstMaxMediaDurationIsAnalyzed()
+    {
+        Assert.SkipUnless(ExternalProcess.Exists("ffmpeg") && ExternalProcess.Exists("ffprobe"), "ffmpeg o ffprobe no instalados");
+        var runner = new RecordingRunner(ExternalProcess.Runner);
+        var converter = new MarkdownConverter(new MarkdownConverterOptions
+        {
+            Ocr = new DocumentConverterTests.FakeOcr("escena"),
+            ProcessRunner = runner,
+            MaxMediaDuration = TimeSpan.FromSeconds(3),
+            VideoFrameInterval = TimeSpan.FromSeconds(1),
+        });
+
+        var result = await converter.ConvertFileAsync(DocumentConverterTests.Fixture("clip.mp4"), TestContext.Current.CancellationToken);
+
+        Assert.Contains(result.Warnings, w => w.Contains("MaxMediaDuration", StringComparison.Ordinal));
+        var ffmpeg = runner.Calls.Single(c => c.Arguments.Contains("-vf"));
+        var limit = ffmpeg.Arguments.ToList().IndexOf("-t");
+        Assert.Equal("3", ffmpeg.Arguments[limit + 1]);
+        Assert.True(limit < ffmpeg.Arguments.ToList().IndexOf("-i"));
+    }
+
+    [Fact]
+    public async Task TemporaryDirectoriesArePrivate()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "permisos Unix");
+        UnixFileMode? mode = null;
+        var runner = new InspectingRunner(arguments =>
+        {
+            var input = arguments.First(a => a.EndsWith("in.pdf", StringComparison.Ordinal));
+            mode = OperatingSystem.IsWindows() ? null : File.GetUnixFileMode(Path.GetDirectoryName(input)!);
+        });
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => new PdftoppmRasterizer("pdftoppm", runner).RenderAsync([1, 2, 3], [1], cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute, mode);
+    }
+
+    private sealed class InspectingRunner(Action<IReadOnlyList<string>> inspect) : IExternalProcessRunner
+    {
+        public bool Exists(string executable) => true;
+
+        public Task<ExternalProcess.Result> RunAsync(string executable, IReadOnlyList<string> arguments, byte[]? input = null, CancellationToken cancellationToken = default)
+        {
+            inspect(arguments);
+            return Task.FromResult(new ExternalProcess.Result(1, [], "falso"));
+        }
+    }
+
+    private sealed class SilentTranscription : ITranscriptionModel
+    {
+        public string Provider => "fake";
+
+        public string ModelId => "fake";
+
+        public Task<TranscriptionModelResult> TranscribeAsync(TranscriptionModelRequest request, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new TranscriptionModelResult(string.Empty));
+    }
+}
