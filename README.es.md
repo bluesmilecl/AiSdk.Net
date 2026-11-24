@@ -4,16 +4,16 @@
 
 <br>
 
-[![CI](https://github.com/bluesmilecl/sdk-agent-ia-net/actions/workflows/ci.yml/badge.svg)](https://github.com/bluesmilecl/sdk-agent-ia-net/actions/workflows/ci.yml)
+[![CI](https://github.com/bluesmilecl/AiSdk.Net/actions/workflows/ci.yml/badge.svg)](https://github.com/bluesmilecl/AiSdk.Net/actions/workflows/ci.yml)
 [![NuGet](https://img.shields.io/nuget/v/AiSdk.Net?logo=nuget&label=NuGet&color=004880)](https://www.nuget.org/packages/AiSdk.Net)
 [![.NET 10](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 [![Licencia: MIT](https://img.shields.io/badge/Licencia-MIT-22c55e.svg)](LICENSE)
 [![PRs bienvenidos](https://img.shields.io/badge/PRs-bienvenidos-a78bfa.svg)](CONTRIBUTING.es.md)
-[![Docs](https://img.shields.io/badge/docs-wiki-0ea5e9?logo=github)](https://github.com/bluesmilecl/sdk-agent-ia-net/wiki/es-Inicio)
+[![Docs](https://img.shields.io/badge/docs-wiki-0ea5e9?logo=github)](https://github.com/bluesmilecl/AiSdk.Net/wiki/es-Inicio)
 
 [English](README.md) · **Español**
 
-[Inicio rápido](#-inicio-rápido) · [Funciones](#-funciones) · [Documentación](https://github.com/bluesmilecl/sdk-agent-ia-net/wiki/es-Inicio) · [Ejemplos](samples/QuickStart/Program.cs) · [Contribuir](CONTRIBUTING.es.md)
+[Inicio rápido](#-inicio-rápido) · [Funciones](#-funciones) · [Documentación](https://github.com/bluesmilecl/AiSdk.Net/wiki/es-Inicio) · [Ejemplos](samples/QuickStart/Program.cs) · [Contribuir](CONTRIBUTING.es.md)
 
 </div>
 
@@ -148,14 +148,14 @@ humana para herramientas sensibles y enviar todo en streaming a la interfaz.
 
 ## 📚 Documentación
 
-La guía completa está en la **[wiki](https://github.com/bluesmilecl/sdk-agent-ia-net/wiki/es-Inicio)** (también en [`docs/wiki`](docs/wiki)), en inglés y español.
+La guía completa está en la **[wiki](https://github.com/bluesmilecl/AiSdk.Net/wiki/es-Inicio)** (también en [`docs/wiki`](docs/wiki)), en inglés y español.
 
 | 🚀 Empezar | 🧠 Agentes | 📚 Datos | 🌐 Integrar |
 |---|---|---|---|
-| [Primeros pasos](https://github.com/bluesmilecl/sdk-agent-ia-net/wiki/es-Primeros-pasos) | [Herramientas y agentes](https://github.com/bluesmilecl/sdk-agent-ia-net/wiki/es-Herramientas-y-agentes) | [RAG y almacenes vectoriales](https://github.com/bluesmilecl/sdk-agent-ia-net/wiki/es-RAG-y-almacenes-vectoriales) | [Proveedores](https://github.com/bluesmilecl/sdk-agent-ia-net/wiki/es-Proveedores) |
-| [Texto, streaming y objetos](https://github.com/bluesmilecl/sdk-agent-ia-net/wiki/es-Texto-streaming-y-objetos) | [Orquestación multi-agente](https://github.com/bluesmilecl/sdk-agent-ia-net/wiki/es-Orquestacion-multi-agente) | [Documentos, OCR y contexto](https://github.com/bluesmilecl/sdk-agent-ia-net/wiki/es-Documentos-OCR-y-contexto) | [ASP.NET Core y useChat](https://github.com/bluesmilecl/sdk-agent-ia-net/wiki/es-ASP.NET-Core-y-useChat) |
-| [Arquitectura](https://github.com/bluesmilecl/sdk-agent-ia-net/wiki/es-Arquitectura) | [Skills](https://github.com/bluesmilecl/sdk-agent-ia-net/wiki/es-Skills) | [Artifacts y documentos Office](https://github.com/bluesmilecl/sdk-agent-ia-net/wiki/es-Artifacts-y-documentos-Office) | [MCP](https://github.com/bluesmilecl/sdk-agent-ia-net/wiki/es-MCP) |
-| [Preguntas frecuentes](https://github.com/bluesmilecl/sdk-agent-ia-net/wiki/es-Preguntas-frecuentes) | [Workflows y automatizaciones](https://github.com/bluesmilecl/sdk-agent-ia-net/wiki/es-Workflows-y-automatizaciones) | [Pruebas y telemetría](https://github.com/bluesmilecl/sdk-agent-ia-net/wiki/es-Pruebas-y-telemetria) | [Equivalencias (Vercel / Laravel)](https://github.com/bluesmilecl/sdk-agent-ia-net/wiki/es-Equivalencias) |
+| [Primeros pasos](https://github.com/bluesmilecl/AiSdk.Net/wiki/es-Primeros-pasos) | [Herramientas y agentes](https://github.com/bluesmilecl/AiSdk.Net/wiki/es-Herramientas-y-agentes) | [RAG y almacenes vectoriales](https://github.com/bluesmilecl/AiSdk.Net/wiki/es-RAG-y-almacenes-vectoriales) | [Proveedores](https://github.com/bluesmilecl/AiSdk.Net/wiki/es-Proveedores) |
+| [Texto, streaming y objetos](https://github.com/bluesmilecl/AiSdk.Net/wiki/es-Texto-streaming-y-objetos) | [Orquestación multi-agente](https://github.com/bluesmilecl/AiSdk.Net/wiki/es-Orquestacion-multi-agente) | [Documentos, OCR y contexto](https://github.com/bluesmilecl/AiSdk.Net/wiki/es-Documentos-OCR-y-contexto) | [ASP.NET Core y useChat](https://github.com/bluesmilecl/AiSdk.Net/wiki/es-ASP.NET-Core-y-useChat) |
+| [Arquitectura](https://github.com/bluesmilecl/AiSdk.Net/wiki/es-Arquitectura) | [Skills](https://github.com/bluesmilecl/AiSdk.Net/wiki/es-Skills) | [Artifacts y documentos Office](https://github.com/bluesmilecl/AiSdk.Net/wiki/es-Artifacts-y-documentos-Office) | [MCP](https://github.com/bluesmilecl/AiSdk.Net/wiki/es-MCP) |
+| [Preguntas frecuentes](https://github.com/bluesmilecl/AiSdk.Net/wiki/es-Preguntas-frecuentes) | [Workflows y automatizaciones](https://github.com/bluesmilecl/AiSdk.Net/wiki/es-Workflows-y-automatizaciones) | [Pruebas y telemetría](https://github.com/bluesmilecl/AiSdk.Net/wiki/es-Pruebas-y-telemetria) | [Equivalencias (Vercel / Laravel)](https://github.com/bluesmilecl/AiSdk.Net/wiki/es-Equivalencias) |
 
 ## 🧪 Calidad
 
@@ -164,7 +164,7 @@ La guía completa está en la **[wiki](https://github.com/bluesmilecl/sdk-agent-
 - ✅ Central Package Management, `Directory.Build.props` por capas, Source Link y paquetes de símbolos
 - ✅ Publicación en NuGet con **trusted publishing** (OIDC), sin API keys de larga duración
 
-Detalle en [docs/quality](docs/quality) y en la página [Calidad](https://github.com/bluesmilecl/sdk-agent-ia-net/wiki/es-Calidad) de la wiki.
+Detalle en [docs/quality](docs/quality) y en la página [Calidad](https://github.com/bluesmilecl/AiSdk.Net/wiki/es-Calidad) de la wiki.
 
 ## 🗺️ Hoja de ruta
 
@@ -179,17 +179,17 @@ timeline
               : Vertex AI y Azure OpenAI con Entra ID
 ```
 
-Revisa la [hoja de ruta completa](https://github.com/bluesmilecl/sdk-agent-ia-net/wiki/es-Hoja-de-ruta) y los [issues abiertos](https://github.com/bluesmilecl/sdk-agent-ia-net/issues).
+Revisa la [hoja de ruta completa](https://github.com/bluesmilecl/AiSdk.Net/wiki/es-Hoja-de-ruta) y los [issues abiertos](https://github.com/bluesmilecl/AiSdk.Net/issues).
 
 ## 🤝 Contribuir
 
 Toda contribución es bienvenida: reportes de errores, documentación, ejemplos, nuevos proveedores. Empieza por
 [CONTRIBUTING.es.md](CONTRIBUTING.es.md) y busca issues con la etiqueta
-[`good first issue`](https://github.com/bluesmilecl/sdk-agent-ia-net/labels/good%20first%20issue).
+[`good first issue`](https://github.com/bluesmilecl/AiSdk.Net/labels/good%20first%20issue).
 Respeta el [Código de conducta](CODE_OF_CONDUCT.es.md) y reporta vulnerabilidades según [SECURITY.md](SECURITY.md).
 
-<a href="https://github.com/bluesmilecl/sdk-agent-ia-net/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=bluesmilecl/sdk-agent-ia-net" alt="Contribuidores">
+<a href="https://github.com/bluesmilecl/AiSdk.Net/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=bluesmilecl/AiSdk.Net" alt="Contribuidores">
 </a>
 
 ## 👤 Autor
@@ -205,7 +205,7 @@ Respeta el [Código de conducta](CODE_OF_CONDUCT.es.md) y reporta vulnerabilidad
 
 Si AiSdk.Net te sirve, **dale una ⭐**: ayuda a que otros desarrolladores .NET lo encuentren.
 
-[![Historial de estrellas](https://api.star-history.com/svg?repos=bluesmilecl/sdk-agent-ia-net&type=Date)](https://star-history.com/#bluesmilecl/sdk-agent-ia-net&Date)
+[![Historial de estrellas](https://api.star-history.com/svg?repos=bluesmilecl/AiSdk.Net&type=Date)](https://star-history.com/#bluesmilecl/AiSdk.Net&Date)
 
 ## 📄 Licencia
 

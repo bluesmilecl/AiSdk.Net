@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/bluesmilecl/sdk-agent-ia-net/HEAD/docs/assets/hero.svg" alt="AiSdk.Net" width="100%">
+<img src="https://raw.githubusercontent.com/bluesmilecl/AiSdk.Net/HEAD/docs/assets/hero.svg" alt="AiSdk.Net" width="100%">
 
 **English** · [Español](es-Inicio)
 
@@ -65,5 +65,5 @@ flowchart LR
 ## 🤝 Contribute
 
 Found a typo or want to improve a page? The wiki is generated from
-[`docs/wiki`](https://github.com/bluesmilecl/sdk-agent-ia-net/tree/HEAD/docs/wiki) in the main repository:
-open a pull request there (see [CONTRIBUTING.md](https://github.com/bluesmilecl/sdk-agent-ia-net/blob/HEAD/CONTRIBUTING.md)).
+[`docs/wiki`](https://github.com/bluesmilecl/AiSdk.Net/tree/HEAD/docs/wiki) in the main repository:
+open a pull request there (see [CONTRIBUTING.md](https://github.com/bluesmilecl/AiSdk.Net/blob/HEAD/CONTRIBUTING.md)).

@@ -16,8 +16,8 @@
     <PackageIcon>icon.png</PackageIcon>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>ai;llm;agents;openai;anthropic;claude;gemini;mistral;rag;mcp;skills;workflows;sdk</PackageTags>
-    <PackageProjectUrl>https://github.com/bluesmilecl/sdk-agent-ia-net</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/bluesmilecl/sdk-agent-ia-net</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/bluesmilecl/AiSdk.Net</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/bluesmilecl/AiSdk.Net</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
 
     <GenerateDocumentationFile>true</GenerateDocumentationFile>

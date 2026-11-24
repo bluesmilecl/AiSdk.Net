@@ -28,8 +28,8 @@ Requisitos: [SDK de .NET 10](https://dotnet.microsoft.com/download). Opcional: `
 y `ffmpeg` para las pruebas de documentos, y PostgreSQL con pgvector para las de pgvector.
 
 ```bash
-git clone https://github.com/<tu-usuario>/sdk-agent-ia-net.git
-cd sdk-agent-ia-net
+git clone https://github.com/<tu-usuario>/AiSdk.Net.git
+cd AiSdk.Net
 dotnet build AiSdk.slnx           # debe terminar con 0 warnings (los warnings son errores)
 dotnet test tests/AiSdk.Tests     # pruebas unitarias, sin red
 dotnet run --project samples/QuickStart -- mock agent
@@ -76,9 +76,9 @@ dotnet test tests/AiSdk.IntegrationTests
 
 ## 🏷️ Buenos lugares para empezar
 
-- Issues con [`good first issue`](https://github.com/bluesmilecl/sdk-agent-ia-net/labels/good%20first%20issue)
-  o [`help wanted`](https://github.com/bluesmilecl/sdk-agent-ia-net/labels/help%20wanted)
-- La [hoja de ruta](https://github.com/bluesmilecl/sdk-agent-ia-net/wiki/es-Hoja-de-ruta)
+- Issues con [`good first issue`](https://github.com/bluesmilecl/AiSdk.Net/labels/good%20first%20issue)
+  o [`help wanted`](https://github.com/bluesmilecl/AiSdk.Net/labels/help%20wanted)
+- La [hoja de ruta](https://github.com/bluesmilecl/AiSdk.Net/wiki/es-Hoja-de-ruta)
 - Traducir o mejorar una página de la wiki
 - Agregar un ejemplo en `samples/QuickStart`
 

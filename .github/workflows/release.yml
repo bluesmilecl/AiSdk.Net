@@ -5,7 +5,7 @@ name: Release
 #
 # One-time setup (see docs/quality/nuget-trusted-publishing.md):
 #   1. nuget.org → Account → Trusted publishing → Add policy:
-#      owner "bluesmilecl", repository "sdk-agent-ia-net", workflow file "release.yml", environment "release".
+#      owner "bluesmilecl", repository "AiSdk.Net", workflow file "release.yml", environment "release".
 #   2. GitHub → Settings → Environments → "release" with the NUGET_USER secret (nuget.org profile name, not the email).
 on:
   push:

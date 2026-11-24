@@ -7,7 +7,7 @@ body:
       value: |
         Thanks for taking the time to report a bug! You can write in **English or Spanish**.
         ¡Gracias por reportar! Puedes escribir en **inglés o español**.
-        ⚠️ Never paste API keys. For security issues use [SECURITY.md](https://github.com/bluesmilecl/sdk-agent-ia-net/blob/HEAD/SECURITY.md).
+        ⚠️ Never paste API keys. For security issues use [SECURITY.md](https://github.com/bluesmilecl/AiSdk.Net/blob/HEAD/SECURITY.md).
   - type: textarea
     id: what
     attributes:

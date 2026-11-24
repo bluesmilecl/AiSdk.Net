@@ -2,7 +2,7 @@
 
 > 🇪🇸 [Leer en español](es-Arquitectura)
 
-<img src="https://raw.githubusercontent.com/bluesmilecl/sdk-agent-ia-net/HEAD/docs/assets/architecture.svg" alt="AiSdk.Net architecture" width="100%">
+<img src="https://raw.githubusercontent.com/bluesmilecl/AiSdk.Net/HEAD/docs/assets/architecture.svg" alt="AiSdk.Net architecture" width="100%">
 
 AiSdk.Net is a set of small packages around one core. Your app talks to the **core API** (`Ai.*`, agents,
 orchestrations); the core talks to models only through the `ILanguageModel` abstraction, so providers,

@@ -67,17 +67,17 @@ contra path traversal. Ver [Skills](es-Skills).
 <details>
 <summary><b>¿Cómo puedo contribuir?</b></summary>
 
-Lee [CONTRIBUTING.es.md](https://github.com/bluesmilecl/sdk-agent-ia-net/blob/HEAD/CONTRIBUTING.es.md), elige un
-[`good first issue`](https://github.com/bluesmilecl/sdk-agent-ia-net/labels/good%20first%20issue) o mejora esta
+Lee [CONTRIBUTING.es.md](https://github.com/bluesmilecl/AiSdk.Net/blob/HEAD/CONTRIBUTING.es.md), elige un
+[`good first issue`](https://github.com/bluesmilecl/AiSdk.Net/labels/good%20first%20issue) o mejora esta
 documentación en `docs/wiki`. Las preguntas son bienvenidas en
-[Discussions](https://github.com/bluesmilecl/sdk-agent-ia-net/discussions).
+[Discussions](https://github.com/bluesmilecl/AiSdk.Net/discussions).
 </details>
 
 <details>
 <summary><b>¿Quién creó AiSdk.Net y cuál es la licencia?</b></summary>
 
 Lo creó **Esteban Cortes** ([@ecr17dev](https://github.com/ecr17dev)) y se publica bajo la
-[licencia MIT](https://github.com/bluesmilecl/sdk-agent-ia-net/blob/HEAD/LICENSE).
+[licencia MIT](https://github.com/bluesmilecl/AiSdk.Net/blob/HEAD/LICENSE).
 </details>
 
 ---

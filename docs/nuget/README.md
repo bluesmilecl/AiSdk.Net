@@ -49,6 +49,6 @@ await foreach (var token in agent.Stream("Should I take an umbrella in Santiago?
 
 ## Learn more
 
-- Repository and visual README: https://github.com/bluesmilecl/sdk-agent-ia-net
-- Documentation (English and Spanish): https://github.com/bluesmilecl/sdk-agent-ia-net/wiki
-- Issues: https://github.com/bluesmilecl/sdk-agent-ia-net/issues
+- Repository and visual README: https://github.com/bluesmilecl/AiSdk.Net
+- Documentation (English and Spanish): https://github.com/bluesmilecl/AiSdk.Net/wiki
+- Issues: https://github.com/bluesmilecl/AiSdk.Net/issues

@@ -14,11 +14,17 @@ en nuget.org por una API key temporal (≈1 hora) y `dotnet nuget push` la usa.
    | Campo | Valor |
    |---|---|
    | Repository owner | `bluesmilecl` |
-   | Repository | `sdk-agent-ia-net` |
+   | Repository | `AiSdk.Net` |
    | Workflow file | `release.yml` (solo el nombre, sin `.github/workflows/`) |
    | Environment | `release` |
 
-   El dueño de la política debe ser el mismo usuario u organización dueño de los paquetes `AiSdk.Net.*`.
+   El dueño de la política debe ser el mismo usuario u organización dueño de los paquetes `AiSdk.Net.*` (en el primer
+   publish, los paquetes nuevos quedan a nombre de ese dueño).
+
+   > [!IMPORTANT]
+   > Si el repositorio es **privado**, la política queda activa solo **7 días** hasta el primer publish exitoso (con él
+   > nuget.org fija los IDs del repositorio y del dueño y la política pasa a ser permanente). Si vencen, se reinicia la
+   > ventana desde la misma política.
 2. **GitHub** → *Settings* → *Environments* → crear `release` (opcional: reglas de aprobación o restricción a tags `v*`).
 3. En ese environment, crear el secreto `NUGET_USER` con el **nombre de perfil** de nuget.org (no el correo).
 

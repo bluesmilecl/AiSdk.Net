@@ -16,7 +16,7 @@ AiSdk.Net is at version 0.x. Security fixes are released for the **latest publis
 **Please do not open a public issue for security problems.**
 
 Report it privately through GitHub:
-[**Report a vulnerability**](https://github.com/bluesmilecl/sdk-agent-ia-net/security/advisories/new)
+[**Report a vulnerability**](https://github.com/bluesmilecl/AiSdk.Net/security/advisories/new)
 (Security tab → *Report a vulnerability*). Include:
 
 - the affected package(s) and version
@@ -43,7 +43,7 @@ defaults make it worse than necessary.
 ## 🇪🇸 Español
 
 **No abras un issue público para problemas de seguridad.** Repórtalos en privado con
-[**Report a vulnerability**](https://github.com/bluesmilecl/sdk-agent-ia-net/security/advisories/new)
+[**Report a vulnerability**](https://github.com/bluesmilecl/AiSdk.Net/security/advisories/new)
 (pestaña Security → *Report a vulnerability*), indicando el paquete y la versión afectados, el impacto y los pasos
 para reproducirlo. Responderemos en un plazo de **5 días hábiles** y te daremos crédito en el aviso, salvo que
 prefieras el anonimato. Solo la **última versión publicada** recibe correcciones de seguridad.

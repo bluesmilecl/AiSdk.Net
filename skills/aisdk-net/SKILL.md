@@ -11,7 +11,7 @@ description: >-
 license: MIT
 compatibility: Requires .NET 10 and the AiSdk.Net.* packages from NuGet or via project reference.
 metadata:
-  repository: bluesmilecl/sdk-agent-ia-net
+  repository: bluesmilecl/AiSdk.Net
 ---
 
 # AiSdk.Net

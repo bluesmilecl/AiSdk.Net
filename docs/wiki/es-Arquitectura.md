@@ -2,7 +2,7 @@
 
 > 🇬🇧 [Read in English](Architecture)
 
-<img src="https://raw.githubusercontent.com/bluesmilecl/sdk-agent-ia-net/HEAD/docs/assets/architecture.es.svg" alt="Arquitectura de AiSdk.Net" width="100%">
+<img src="https://raw.githubusercontent.com/bluesmilecl/AiSdk.Net/HEAD/docs/assets/architecture.es.svg" alt="Arquitectura de AiSdk.Net" width="100%">
 
 AiSdk.Net es un conjunto de paquetes pequeños alrededor de un núcleo. Tu aplicación usa la **API del núcleo**
 (`Ai.*`, agentes, orquestaciones); el núcleo habla con los modelos solo a través de la abstracción

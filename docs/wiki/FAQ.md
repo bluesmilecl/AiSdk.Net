@@ -66,16 +66,16 @@ run their scripts unless you mark them trusted or opt in explicitly. Paths are v
 <details>
 <summary><b>How can I contribute?</b></summary>
 
-Read [CONTRIBUTING.md](https://github.com/bluesmilecl/sdk-agent-ia-net/blob/HEAD/CONTRIBUTING.md), pick a
-[`good first issue`](https://github.com/bluesmilecl/sdk-agent-ia-net/labels/good%20first%20issue) or improve these
-docs in `docs/wiki`. Questions are welcome in [Discussions](https://github.com/bluesmilecl/sdk-agent-ia-net/discussions).
+Read [CONTRIBUTING.md](https://github.com/bluesmilecl/AiSdk.Net/blob/HEAD/CONTRIBUTING.md), pick a
+[`good first issue`](https://github.com/bluesmilecl/AiSdk.Net/labels/good%20first%20issue) or improve these
+docs in `docs/wiki`. Questions are welcome in [Discussions](https://github.com/bluesmilecl/AiSdk.Net/discussions).
 </details>
 
 <details>
 <summary><b>Who created AiSdk.Net and what is the license?</b></summary>
 
 It was created by **Esteban Cortes** ([@ecr17dev](https://github.com/ecr17dev)) and is released under the
-[MIT license](https://github.com/bluesmilecl/sdk-agent-ia-net/blob/HEAD/LICENSE).
+[MIT license](https://github.com/bluesmilecl/AiSdk.Net/blob/HEAD/LICENSE).
 </details>
 
 ---
