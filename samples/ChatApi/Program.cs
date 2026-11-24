@@ -2,9 +2,12 @@
 //
 //   dotnet run --project samples/ChatApi
 //
-// En el frontend (Next.js/Vite):
+// En el frontend (Next.js/Vite), con un token de demostración de appsettings.Development.json:
 //   const { messages, sendMessage } = useChat({
-//     transport: new DefaultChatTransport({ api: "http://localhost:5000/api/chat" }),
+//     transport: new DefaultChatTransport({
+//       api: "http://localhost:5008/api/chat",
+//       headers: { Authorization: "Bearer dev-ana-4f1c2a9e7b3d4c58" },
+//     }),
 //   });
 
 using System.ComponentModel;
@@ -16,6 +19,7 @@ using AiSdk.Extensions.DependencyInjection;
 using AiSdk.UI;
 using AiSdk.Workflows;
 using ChatApi;
+using Microsoft.AspNetCore.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -46,7 +50,8 @@ builder.Services.AddAiSdkWorkflows(w =>
         var risk = await ctx.StepAsync("risk-check", _ => Task.FromResult(refund.Amount > 100 ? "alto" : "bajo"));
         if (risk == "alto")
         {
-            // Aprobación humana: POST /workflows/events/refund.approval?key={orderId} con {"approved": true}
+            // Aprobación humana: POST /workflows/events/refund.approval?key={orderId} con {"approved": true},
+            // solo de un usuario con el rol refund-approver distinto de quien pidió el reembolso (ver MapWorkflows).
             var decision = await ctx.WaitForEventAsync<Approval>("refund.approval", refund.OrderId, TimeSpan.FromDays(2));
             if (decision is not { Approved: true }) return "rechazado";
         }
@@ -74,26 +79,49 @@ builder.Services.AddAiSdkWorkflows(w =>
 });
 builder.Services.AddSingleton<WorkspaceAgent>();
 
-builder.Services.AddCors(o => o.AddDefaultPolicy(p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
+// Autenticación: en desarrollo, tokens de demostración (DemoAuthentication, appsettings.Development.json).
+// Reemplácela por la suya en producción. Los endpoints de AiSdk exigen un usuario autenticado por defecto.
+builder.Services.AddAuthentication(DemoAuthentication.SchemeName)
+    .AddScheme<AuthenticationSchemeOptions, DemoAuthentication>(DemoAuthentication.SchemeName, null);
+builder.Services.AddAuthorization();
+
+// CORS: solo los orígenes del frontend configurados en Cors:AllowedOrigins (nunca AllowAnyOrigin).
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
+    .WithOrigins(allowedOrigins)
+    .WithHeaders("Authorization", "Content-Type")
+    .WithMethods("GET", "POST", "DELETE")));
 
 var app = builder.Build();
 app.UseCors();
+app.UseAuthentication();
+app.UseAuthorization();
+
+// El detalle de los errores (incluidos los de herramientas) solo se muestra en desarrollo.
+string OnError(Exception ex) => app.Environment.IsDevelopment() ? ex.Message : "Se produjo un error.";
+
+// Todo /api exige un usuario autenticado (consume tokens del modelo).
+var api = app.MapGroup("/api").RequireAuthorization();
 
 // Chat con streaming reanudable en el protocolo UI Message Stream.
 // La generación sigue aunque el cliente se desconecte; al volver, useChat la retoma.
-app.MapPost("/api/chat", (UIChatRequest request, WeatherAgent agent, IResumableStreamStore store, HttpContext http) =>
+// El id de chat lo elige el cliente: el stream se guarda bajo ese id *y el usuario autenticado*, así que nadie
+// puede reemplazar ni reanudar el chat de otro usuario. get_weather se ejecuta en el servidor: sus resultados
+// reenviados por el navegador se descartan (podrían estar falsificados).
+api.MapPost("/chat", (UIChatRequest request, WeatherAgent agent, IResumableStreamStore store, HttpContext http) =>
 {
     var stream = agent.Stream(new AgentCallOptions
     {
-        Messages = UIMessageConverter.ToModelMessages(request.Messages),
+        Messages = UIMessageConverter.ToModelMessages(request.Messages, new UIMessageConverterOptions { ServerExecutedTools = ["get_weather"] }),
         Services = http.RequestServices,
     });
-    return stream.ToResumableUIMessageStreamResult(store, request.Id ?? Guid.NewGuid().ToString("N"), onError: ex => ex.Message);
+    return stream.ToResumableUIMessageStreamResult(store, request.Id ?? Guid.NewGuid().ToString("N"), onError: OnError);
 });
 
 // Agente de trabajo: crea artifacts (HTML, React, diagramas), documentos Word/PDF/Excel descargables y tareas programadas.
-// El id de conversación y el usuario llegan a las herramientas por Context.
-app.MapPost("/api/workspace", (UIChatRequest request, WorkspaceAgent agent, HttpContext http) =>
+// El usuario sale de la autenticación (nunca del cuerpo) y es el límite de confianza: los artifacts y tareas son suyos.
+// El id de conversación (elegido por el cliente) solo agrupa los artifacts dentro de su propio espacio.
+api.MapPost("/workspace", (UIChatRequest request, WorkspaceAgent agent, HttpContext http) =>
     agent.Stream(new AgentCallOptions
     {
         Messages = UIMessageConverter.ToModelMessages(request.Messages),
@@ -101,18 +129,46 @@ app.MapPost("/api/workspace", (UIChatRequest request, WorkspaceAgent agent, Http
         Context = new Dictionary<string, object?>
         {
             ["conversationId"] = request.Id,
-            ["userId"] = http.User.Identity?.Name ?? "anonimo",
+            ["userId"] = EndpointSecurity.GetUserId(http),
         },
-    }).ToUIMessageStreamResult());
+    }).ToUIMessageStreamResult(onError: OnError));
 
-app.MapArtifacts("/artifacts");     // ver y descargar artifacts (iframe con CSP sandbox)
-app.MapWorkflows("/workflows");     // iniciar workflows, eventos/aprobaciones, automatizaciones y webhooks
+// Artifacts: exigen autenticación y cada usuario solo ve los suyos (iframe con CSP sandbox; en producción,
+// sírvalos desde otro dominio, p. ej. artifacts.example.com).
+app.MapArtifacts("/artifacts");
 
-// Reanudación: useChat({ resume: true }) llama a GET /api/chat/{id}/stream al cargar la página.
-app.MapGet("/api/chat/{id}/stream", (string id, IResumableStreamStore store) => UIMessageStreamResults.Resume(store, id));
+// Workflows: por HTTP solo se inician reembolsos (agent-task es interno: lo programan los agentes) y cada usuario
+// ve sus ejecuciones. La aprobación no se puede falsificar: exige el rol refund-approver y nadie aprueba su propio
+// reembolso. Los POST exigen Content-Type: application/json.
+app.MapWorkflows("/workflows", new WorkflowEndpointOptions
+{
+    CanStart = (_, workflow) => ValueTask.FromResult(workflow == "refund"),
+    CanSendEvent = async (http, e) =>
+    {
+        if (e.EventName != "refund.approval" || !http.User.IsInRole("refund-approver") || e.WaitingRuns.Count == 0)
+        {
+            return false;
+        }
+
+        var engine = http.RequestServices.GetRequiredService<WorkflowEngine>();
+        var approver = EndpointSecurity.GetUserId(http);
+        foreach (var run in e.WaitingRuns)
+        {
+            if (await WorkflowEndpoints.GetRunOwnerAsync(engine, run, http.RequestAborted) == approver)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    },
+});
+
+// Reanudación: useChat({ resume: true }) llama a GET /api/chat/{id}/stream al cargar la página (con las mismas cabeceras).
+api.MapGet("/chat/{id}/stream", (string id, IResumableStreamStore store) => UIMessageStreamResults.Resume(store, id));
 
 // Stream propio con datos (partes data-* en useChat) además del texto.
-app.MapPost("/api/report", (UIChatRequest request, ILanguageModel model) =>
+api.MapPost("/report", (UIChatRequest request, ILanguageModel model) =>
     UIMessageStreamResults.Create(writer =>
     {
         writer.WriteData("status", new { step = "generando" }, id: "status");
@@ -123,14 +179,14 @@ app.MapPost("/api/report", (UIChatRequest request, ILanguageModel model) =>
             StreamTransform = StreamTransforms.Smooth(),
         }));
         return Task.CompletedTask;
-    }));
+    }, onError: OnError));
 
 // Texto plano en streaming.
-app.MapGet("/api/haiku", (string topic, ILanguageModel model, HttpContext http) =>
+api.MapGet("/haiku", (string topic, ILanguageModel model, HttpContext http) =>
     Ai.StreamText(model, $"Escribe un haiku sobre {topic}", http.RequestAborted).ToTextStreamResult());
 
 // Modelo elegido dinámicamente: /api/ask?model=ollama:llama3.2&q=hola
-app.MapGet("/api/ask", async (string q, string? model, ProviderRegistry registry) =>
+api.MapGet("/ask", async (string q, string? model, ProviderRegistry registry) =>
 {
     var result = await Ai.GenerateTextAsync(registry.LanguageModel(model ?? "chat"), q);
     return Results.Ok(new { result.Text, result.TotalUsage });
