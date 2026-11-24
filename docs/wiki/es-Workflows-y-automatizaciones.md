@@ -59,10 +59,34 @@ builder.Services.AddAiSdkWorkflows(w =>
     w.AddAutomation(new Automation { Id = "paid", Name = "Pagados", Trigger = new EventTrigger("order.updated", new Dictionary<string, string> { ["status"] = "paid" }), Workflow = "invoice" });
 });
 
-app.MapWorkflows("/workflows").RequireAuthorization();
+app.MapWorkflows("/workflows", new WorkflowEndpointOptions
+{
+    CanStart = (http, workflow) => ValueTask.FromResult(workflow == "refund"),          // qué pueden iniciar los usuarios por HTTP
+    CanSendEvent = async (http, e) =>                                                    // quién aprueba (obligatorio para eventos)
+    {
+        if (e.EventName != "refund.approval" || !http.User.IsInRole("aprobador") || e.WaitingRuns.Count == 0) return false;
+        var engine = http.RequestServices.GetRequiredService<WorkflowEngine>();
+        foreach (var run in e.WaitingRuns)                                               // nadie aprueba su propia solicitud
+            if (await WorkflowEndpoints.GetRunOwnerAsync(engine, run) == EndpointSecurity.GetUserId(http)) return false;
+        return true;
+    },
+});
 // POST /workflows/refund/start · GET /workflows/runs/{id} · POST /workflows/events/refund.approval?key=O-77
 // POST /workflows/hooks/crm (X-Webhook-Secret o firma HMAC X-Signature-256) · /automations · /runs/{id}/retry
 ```
+
+Seguro por defecto:
+
+- Todos los endpoints, salvo los webhooks, exigen autorización (`AllowAnonymous = true` para desactivarla explícitamente).
+- El dueño sale de la autenticación (`ResolveUser`, por defecto el claim `NameIdentifier`/`sub`), nunca del cuerpo: las
+  ejecuciones iniciadas por HTTP quedan con `TriggeredBy = "user:{id}"` y el servidor asigna el `Owner` de las
+  automatizaciones. Cada usuario solo ve, cancela y reintenta sus ejecuciones y automatizaciones (`CanAccessRun`,
+  `CanAccessAutomation`; `WorkflowEndpoints.GetRunOwnerAsync` ayuda a escribir reglas propias).
+- `POST /events/{evento}` responde 403 hasta que configures `CanSendEvent`: recibe las ejecuciones que esperan el evento,
+  así decides quién puede aprobar (normalmente no quien hizo la solicitud).
+- Los POST exigen `Content-Type: application/json` (415 si no, también sin cuerpo): un formulario de otro sitio no puede
+  enviar un JSON válido con las cookies del usuario.
+- Las automatizaciones webhook creadas por HTTP necesitan secreto, y los secretos se ocultan al listarlas.
 
 Disparadores: `CronTrigger` (5 o 6 campos, con zona horaria), `IntervalTrigger`, `OnceTrigger`, `EventTrigger`
 (con filtro por contenido) y `WebhookTrigger` (secreto o firma HMAC-SHA256 en tiempo constante). Un servicio en segundo

@@ -35,13 +35,39 @@ var agent = new ToolLoopAgent(new()
     Tools = ArtifactTools.Create(store, new() { Url = a => $"/artifacts/{a.Id}" }),
 });
 
-app.MapArtifacts("/artifacts");   // GET /artifacts/{id}: page rendered on an isolated origin (CSP sandbox)
+// Per request: the user comes from your authentication, never from the request body.
+var result = agent.Stream(new AgentCallOptions
+{
+    Messages = UIMessageConverter.ToModelMessages(req.Messages),
+    Context = new Dictionary<string, object?> { ["conversationId"] = req.Id, ["userId"] = EndpointSecurity.GetUserId(http) },
+});
+
+app.MapArtifacts("/artifacts");   // requires authorization; each user only sees their own artifacts (CSP sandbox)
 ```
 
 Tools: `create_artifact`, `update_artifact` (exact replacement), `rewrite_artifact`, `read_artifact`, `list_artifacts`.
 Each change reaches `useChat` as a `data-artifact` part (with id, type, version and content) so it can be shown in a panel;
 `ArtifactRenderer.ToHtml(artifact)` turns Markdown, Mermaid, React, SVG or CSV into a self-contained page.
-With `Context["conversationId"]` each conversation only sees and edits its own artifacts.
+
+The tools need `Context["userId"]` (the owner, from your authentication) and/or `Context["conversationId"]`, and **fail
+without both** (`new ArtifactToolOptions { AllowUnscoped = true }` for single-user apps or scripts). Each conversation only
+sees and edits its own artifacts, and a user never sees another user's, even when the (client-chosen) conversation id is
+the same. Artifacts record their `Owner`; `ArtifactScope.CanAccess` applies the same rule in your own code.
+
+### Serving artifacts safely
+
+- `MapArtifacts` requires authorization (`new ArtifactEndpointOptions { AllowAnonymous = true }` to opt out) and serves
+  each artifact only to its owner (`Artifact.Owner` equals the authenticated user). Customize it with
+  `CanAccess = (http, artifact) => ...` (teams, admins, shared conversations); artifacts you cannot see answer 404.
+- `GET /artifacts?conversationId=` lists metadata of that conversation that you may see; without it, your own artifacts.
+  It never lists the whole store, and `FileSystemArtifactStore.ListAsync` no longer reads binaries (`Data` is null in listings).
+- Everything the model writes is served with `Content-Security-Policy: sandbox ...` and `X-Content-Type-Options: nosniff`;
+  raw HTML, SVG or XML (`/raw`) and files are downloads (`Content-Disposition: attachment`).
+- Artifacts saved before 0.2 have no `Owner` and are not served by default: backfill it or decide with `CanAccess`.
+
+> [!IMPORTANT]
+> For defense in depth, serve artifacts from a dedicated origin (for example `artifacts.example.com`, without the app's
+> cookies) and show them in an `<iframe>`.
 
 > [!TIP]
 > The frontend side (`useChat` and the `data-artifact` part) is covered in [ASP.NET Core and useChat](ASP.NET-Core-and-useChat).
