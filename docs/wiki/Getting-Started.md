@@ -19,14 +19,14 @@ flowchart LR
 ## 📦 Installation
 
 ```bash
-dotnet add package AiSdk.Net               # core
-dotnet add package AiSdk.Net.Anthropic     # or AiSdk.Net.OpenAI, .Google, .Mistral, .Bedrock, .Cohere
-dotnet add package AiSdk.Net.Mcp           # MCP client
-dotnet add package AiSdk.Net.AspNetCore    # backend for useChat
-dotnet add package AiSdk.Net.Documents     # read (PDF/Office/images/audio/video → Markdown + OCR) and generate Word/PDF/Excel
-dotnet add package AiSdk.Net.Workflows     # durable workflows, triggers and automations
-dotnet add package AiSdk.Net.PgVector      # PostgreSQL + pgvector store
-dotnet add package AiSdk.Net.VectorData    # Qdrant, Pinecone, Azure AI Search… via Microsoft.Extensions.VectorData
+dotnet add package AiSdk.Net --prerelease               # core
+dotnet add package AiSdk.Net.Anthropic --prerelease     # or AiSdk.Net.OpenAI, .Google, .Mistral, .Bedrock, .Cohere
+dotnet add package AiSdk.Net.Mcp --prerelease           # MCP client
+dotnet add package AiSdk.Net.AspNetCore --prerelease    # backend for useChat
+dotnet add package AiSdk.Net.Documents --prerelease     # read (PDF/Office/images/audio/video → Markdown + OCR) and generate Word/PDF/Excel
+dotnet add package AiSdk.Net.Workflows --prerelease     # durable workflows, triggers and automations
+dotnet add package AiSdk.Net.PgVector --prerelease      # PostgreSQL + pgvector store
+dotnet add package AiSdk.Net.VectorData --prerelease    # Qdrant, Pinecone, Azure AI Search… via Microsoft.Extensions.VectorData
 ```
 
 > [!NOTE]

@@ -35,7 +35,7 @@ testing without an API key and the rules of durable workflows.
    `AiSdk.Net.*`, but the `using` directives are `AiSdk.*`:
 
    ```bash
-   dotnet add package AiSdk.Net.Anthropic   # using AiSdk; using AiSdk.Anthropic;
+   dotnet add package AiSdk.Net.Anthropic --prerelease   # using AiSdk; using AiSdk.Anthropic;
    ```
 
 2. Choose the API for the task (details in [references/api-map.md](references/api-map.md)):

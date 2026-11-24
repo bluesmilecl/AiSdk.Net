@@ -53,8 +53,12 @@ pruebas en vivo contra APIs reales.
 
 ## 🚀 Inicio rápido
 
+> [!NOTE]
+> AiSdk.Net está en **versión preliminar** (`0.1.0-preview.1` en [NuGet](https://www.nuget.org/packages/AiSdk.Net)):
+> instálalo con `--prerelease`. La API todavía puede cambiar antes de la primera versión estable.
+
 ```bash
-dotnet add package AiSdk.Net.OpenAI   # o .Anthropic, .Google, .Mistral, .Bedrock, .Cohere
+dotnet add package AiSdk.Net.OpenAI --prerelease   # o .Anthropic, .Google, .Mistral, .Bedrock, .Cohere
 ```
 
 ```csharp
@@ -139,9 +143,9 @@ humana para herramientas sensibles y enviar todo en streaming a la interfaz.
 | `AiSdk.Net.Extensions.AI` | Adaptador de Microsoft.Extensions.AI |
 | `AiSdk.Net.Extensions.DependencyInjection` | `services.AddAiSdk(...)`, `IHttpClientFactory`, agentes en el contenedor |
 | `AiSdk.Net.AspNetCore` | `ToUIMessageStreamResult()`, `MapArtifacts()`, `MapWorkflows()`, `MapSkills()` |
-| `AiSdk.Net.Documents` | Documentos → Markdown con OCR; generación de Word, PDF y Excel |
+| `AiSdk.Net.Documents` | Documentos → Markdown con OCR página por página; generación de Word, PDF y Excel; herramientas externas con un ejecutor configurable (sandbox, entorno limpio) |
 | `AiSdk.Net.Workflows` | Workflows durables, triggers y automatizaciones |
-| `AiSdk.Net.PgVector` | Almacén PostgreSQL + pgvector con búsqueda híbrida |
+| `AiSdk.Net.PgVector` | Almacén PostgreSQL + pgvector con búsqueda híbrida y filtros de metadatos que usan el índice |
 | `AiSdk.Net.VectorData` | Cualquier conector de Microsoft.Extensions.VectorData |
 
 </details>
@@ -160,7 +164,7 @@ La guía completa está en la **[wiki](https://github.com/bluesmilecl/AiSdk.Net/
 ## 🧪 Calidad
 
 - ✅ **0 warnings** con `AnalysisLevel=latest-recommended` y warnings como errores
-- ✅ **Más de 200 pruebas unitarias** (xunit.v3) y **pruebas en vivo** contra APIs reales, que se omiten sin API key
+- ✅ **Más de 200 pruebas unitarias** (xunit.v3), pruebas de integración con PostgreSQL + pgvector y **pruebas en vivo** contra APIs reales, que se omiten sin API key ni base de datos
 - ✅ Central Package Management, `Directory.Build.props` por capas, Source Link y paquetes de símbolos
 - ✅ Publicación en NuGet con **trusted publishing** (OIDC), sin API keys de larga duración
 
@@ -174,7 +178,8 @@ timeline
     Listo : Texto, streaming, objetos, herramientas, agentes
           : 7 proveedores, MCP, RAG, documentos y OCR
           : Orquestación, artifacts, workflows, Skills
-    Siguiente : Primera versión en NuGet (v0.1.0)
+          : Primera versión preliminar en NuGet (0.1.0-preview.1)
+    Siguiente : Primera versión estable (v0.1.0)
               : Pruebas en vivo con Claude, Gemini y Mistral
               : Vertex AI y Azure OpenAI con Entra ID
 ```

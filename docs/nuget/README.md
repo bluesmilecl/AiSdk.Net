@@ -6,8 +6,10 @@ and the Laravel AI SDK. Open source (MIT), created by Esteban Cortes ([@ecr17dev
 
 ## Install
 
+AiSdk.Net is in preview: install it with `--prerelease` (the API may change before the first stable version).
+
 ```bash
-dotnet add package AiSdk.Net.OpenAI   # or AiSdk.Net.Anthropic, .Google, .Mistral, .Bedrock, .Cohere
+dotnet add package AiSdk.Net.OpenAI --prerelease   # or AiSdk.Net.Anthropic, .Google, .Mistral, .Bedrock, .Cohere
 ```
 
 ## Quick start
@@ -43,7 +45,7 @@ await foreach (var token in agent.Stream("Should I take an umbrella in Santiago?
 | `AiSdk.Net.Extensions.AI` | Microsoft.Extensions.AI adapter |
 | `AiSdk.Net.Extensions.DependencyInjection` | `services.AddAiSdk(...)` |
 | `AiSdk.Net.AspNetCore` | Backend for AI SDK UI `useChat`, artifacts, workflows and skills endpoints |
-| `AiSdk.Net.Documents` | Documents to Markdown with OCR; Word, PDF and Excel generation |
+| `AiSdk.Net.Documents` | Documents to Markdown with page-by-page OCR; Word, PDF and Excel generation |
 | `AiSdk.Net.Workflows` | Durable workflows, triggers and automations |
 | `AiSdk.Net.PgVector` · `AiSdk.Net.VectorData` | Vector stores (pgvector, Qdrant, Pinecone, Azure AI Search…) |
 

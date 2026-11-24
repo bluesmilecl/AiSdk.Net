@@ -52,8 +52,12 @@ live tests against real APIs.
 
 ## 🚀 Quick start
 
+> [!NOTE]
+> AiSdk.Net is in **preview** (`0.1.0-preview.1` on [NuGet](https://www.nuget.org/packages/AiSdk.Net)): install it
+> with `--prerelease`. The API may still change before the first stable version.
+
 ```bash
-dotnet add package AiSdk.Net.OpenAI   # or .Anthropic, .Google, .Mistral, .Bedrock, .Cohere
+dotnet add package AiSdk.Net.OpenAI --prerelease   # or .Anthropic, .Google, .Mistral, .Bedrock, .Cohere
 ```
 
 ```csharp
@@ -138,9 +142,9 @@ approval for sensitive tools and stream everything to the UI.
 | `AiSdk.Net.Extensions.AI` | Microsoft.Extensions.AI adapter |
 | `AiSdk.Net.Extensions.DependencyInjection` | `services.AddAiSdk(...)`, `IHttpClientFactory`, agents in the container |
 | `AiSdk.Net.AspNetCore` | `ToUIMessageStreamResult()`, `MapArtifacts()`, `MapWorkflows()`, `MapSkills()` |
-| `AiSdk.Net.Documents` | Documents → Markdown with OCR; Word, PDF and Excel generation |
+| `AiSdk.Net.Documents` | Documents → Markdown with page-by-page OCR; Word, PDF and Excel generation; external tools through a configurable runner (sandbox, clean environment) |
 | `AiSdk.Net.Workflows` | Durable workflows, triggers and automations |
-| `AiSdk.Net.PgVector` | PostgreSQL + pgvector store with hybrid search |
+| `AiSdk.Net.PgVector` | PostgreSQL + pgvector store with hybrid search and metadata filters served by the index |
 | `AiSdk.Net.VectorData` | Any Microsoft.Extensions.VectorData connector |
 
 </details>
@@ -159,7 +163,7 @@ The full guide lives in the **[wiki](https://github.com/bluesmilecl/AiSdk.Net/wi
 ## 🧪 Quality
 
 - ✅ **0 warnings** with `AnalysisLevel=latest-recommended` and warnings as errors
-- ✅ **200+ unit tests** (xunit.v3) and **live tests** against real APIs, skipped when no key is set
+- ✅ **200+ unit tests** (xunit.v3), integration tests against PostgreSQL + pgvector and **live tests** against real APIs, skipped when no key or database is set
 - ✅ Central Package Management, layered `Directory.Build.props`, Source Link and symbol packages
 - ✅ NuGet **trusted publishing** (OIDC), no long-lived API keys
 
@@ -173,7 +177,8 @@ timeline
     Done : Text, streaming, objects, tools, agents
          : 7 providers, MCP, RAG, documents and OCR
          : Orchestration, artifacts, workflows, Skills
-    Next : First NuGet release (v0.1.0)
+         : First NuGet preview (0.1.0-preview.1)
+    Next : First stable release (v0.1.0)
          : Live test suite for Claude, Gemini and Mistral
          : Vertex AI and Azure OpenAI with Entra ID
 ```
