@@ -513,12 +513,12 @@ internal sealed class PdfLayout : IDisposable
         _page.SetTextAndFillColor(color.R, color.G, color.B);
         _page.AddText(text, size, new PdfPoint(x, baseline), _fonts[font]);
         _page.ResetColor();
-        if (link is not null && Uri.TryCreate(link, UriKind.Absolute, out _))
+        if (MarkdownModel.IsSafeLink(link, out var uri))
         {
             var width = Width(text.TrimEnd(), font, size);
             // Sin borde visible: el enlace se indica con color y subrayado.
             _page.AddLink(new LinkAnnotation(
-                new UglyToad.PdfPig.Actions.UriAction(link),
+                new UglyToad.PdfPig.Actions.UriAction(uri.AbsoluteUri),
                 new PdfRectangle(x, baseline - size * 0.2, x + width, baseline + size * 0.9),
                 new UglyToad.PdfPig.Annotations.AnnotationBorder(0, 0, 0, null),
                 null,

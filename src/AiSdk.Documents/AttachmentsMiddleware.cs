@@ -16,7 +16,7 @@ public enum NativeAttachments
 }
 
 /// <summary>Opciones de <see cref="DocumentMiddlewares.ConvertAttachments(MarkdownConverter, AttachmentConversionOptions?)"/>.</summary>
-public sealed class AttachmentConversionOptions
+public sealed partial class AttachmentConversionOptions
 {
     /// <summary>Lo que el modelo procesa por sí mismo. Por defecto nada: todo se convierte a texto.</summary>
     public NativeAttachments Native { get; init; } = NativeAttachments.None;
@@ -33,21 +33,52 @@ public sealed class AttachmentConversionOptions
     /// <summary>Compresión abstractiva: resume el adjunto con este modelo.</summary>
     public ILanguageModel? Summarizer { get; init; }
 
-    /// <summary>Descarga adjuntos referenciados por URL (desactivado por defecto para evitar SSRF).</summary>
+    /// <summary>
+    /// Descarga adjuntos referenciados por URL (desactivado por defecto). Usa el descargador del convertidor
+    /// (<see cref="MarkdownConverterOptions.UrlDownload"/>): solo http/https públicas, sin redes internas ni metadatos de
+    /// la nube, con tamaño, tiempo y redirecciones acotados.
+    /// </summary>
     public bool DownloadUrls { get; init; }
 
-    /// <summary>Formato del texto insertado en lugar del adjunto.</summary>
+    /// <summary>
+    /// Formato del texto insertado en lugar del adjunto. El nombre y el contenido los controla quien envía el archivo:
+    /// un formato propio debe escaparlos (ver <see cref="DefaultFormat"/>).
+    /// </summary>
     public Func<DocumentConversionResult, string> Format { get; init; } = DefaultFormat;
 
     /// <summary>Entradas máximas de la caché de conversiones (se reutilizan entre turnos).</summary>
     public int CacheSize { get; init; } = 256;
 
+    /// <summary>
+    /// <c>&lt;document name="..." type="..."&gt;contenido&lt;/document&gt;</c>. El nombre y el tipo se escapan como
+    /// atributos y las etiquetas <c>&lt;document</c> / <c>&lt;/document</c> del contenido se neutralizan
+    /// (<c>&amp;lt;/document</c>), así un archivo no puede cerrar el envoltorio e inyectar texto fuera de él.
+    /// </summary>
     public static string DefaultFormat(DocumentConversionResult result)
     {
-        var name = result.FileName ?? result.Title ?? "adjunto";
-        var warnings = result.Warnings.Count == 0 ? string.Empty : $"\n<!-- avisos: {string.Join(" | ", result.Warnings)} -->";
-        return $"<document name=\"{name}\" type=\"{result.MediaType}\">\n{result.Markdown}{warnings}\n</document>";
+        ArgumentNullException.ThrowIfNull(result);
+        var name = EscapeAttribute(result.FileName ?? result.Title ?? "adjunto");
+        var warnings = result.Warnings.Count == 0
+            ? string.Empty
+            : $"\n<!-- avisos: {NeutralizeTags(string.Join(" | ", result.Warnings)).Replace("--", "- -", StringComparison.Ordinal)} -->";
+        return $"<document name=\"{name}\" type=\"{EscapeAttribute(result.MediaType)}\">\n{NeutralizeTags(result.Markdown)}{warnings}\n</document>";
     }
+
+    private static string EscapeAttribute(string value) =>
+        value.Replace("&", "&amp;", StringComparison.Ordinal)
+            .Replace("\"", "&quot;", StringComparison.Ordinal)
+            .Replace("<", "&lt;", StringComparison.Ordinal)
+            .Replace(">", "&gt;", StringComparison.Ordinal)
+            .Replace('\r', ' ')
+            .Replace('\n', ' ')
+            .Replace('\t', ' ');
+
+    /// <summary>Convierte <c>&lt;document</c> y <c>&lt;/document</c> (con o sin espacios, en cualquier caja) en <c>&amp;lt;...</c>.</summary>
+    private static string NeutralizeTags(string text) => DocumentTag().Replace(text, "&lt;");
+
+    // Grupos atómicos: sin retroceso cuadrático con muchos espacios.
+    [System.Text.RegularExpressions.GeneratedRegex(@"<(?=(?>\s*)/?(?>\s*)document\b)", System.Text.RegularExpressions.RegexOptions.IgnoreCase)]
+    private static partial System.Text.RegularExpressions.Regex DocumentTag();
 }
 
 /// <summary>Middlewares de documentos.</summary>
