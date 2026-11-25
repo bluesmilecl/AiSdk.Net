@@ -29,7 +29,7 @@ public static class AwsSigV4
     /// </summary>
     public static void Sign(HttpRequestMessage request, ReadOnlySpan<byte> body, string region, string service, AwsCredentials credentials, DateTimeOffset now)
     {
-        var uri = request.RequestUri ?? throw new ArgumentException("La petición no tiene URI.");
+        var uri = request.RequestUri ?? throw new ArgumentException(Resources.Strings.SigV4_RequestWithoutUri);
         var amzDate = now.UtcDateTime.ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture);
         var dateStamp = now.UtcDateTime.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
         var host = uri.IsDefaultPort ? uri.Host : $"{uri.Host}:{uri.Port}";

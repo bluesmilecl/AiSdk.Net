@@ -57,7 +57,8 @@ public sealed record McpSamplingResult(string Text, string Model, string StopRea
 /// Throw it from <see cref="McpClientOptions.SamplingHandler"/> or <see cref="McpClientOptions.ElicitationHandler"/>
 /// to reject a server request: the client responds with code <c>-1</c> ("rejected by the user").
 /// </summary>
-public sealed class McpRequestRejectedException(string message = "El usuario rechazó la petición.") : McpException(message, -1);
+/// <param name="message">Exception message; <c>null</c> uses the localized default ("The user rejected the request.").</param>
+public sealed class McpRequestRejectedException(string? message = null) : McpException(message ?? Resources.Strings.Mcp_RequestRejected, -1);
 
 /// <summary>What to do when an MCP tool's definition changes from the pinned one (possible "rug pull").</summary>
 public enum McpToolChangePolicy

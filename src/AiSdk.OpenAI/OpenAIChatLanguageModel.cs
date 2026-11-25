@@ -58,7 +58,7 @@ public sealed class OpenAIChatLanguageModel : ILanguageModel
 
             if (chunk["error"] is JsonObject error)
             {
-                yield return new ErrorPart(new AiSdkException((string?)error["message"] ?? "Error en el stream de OpenAI."));
+                yield return new ErrorPart(new AiSdkException((string?)error["message"] ?? Resources.Strings.StreamError));
                 yield break;
             }
 
@@ -255,8 +255,7 @@ public sealed class OpenAIChatLanguageModel : ILanguageModel
                         JsonNode? converted = part switch
                         {
                             TextPart t => new JsonObject { ["type"] = "text", ["text"] = t.Text },
-                            ImagePart { FileId: not null } => throw new NotSupportedException(
-                                "Chat Completions no admite imágenes por file_id; usa openai.Responses(...) o envía la imagen como bytes/URL."),
+                            ImagePart { FileId: not null } => throw new NotSupportedException(Resources.Strings.Chat_ImageFileIdNotSupported),
                             ImagePart i => new JsonObject
                             {
                                 ["type"] = "image_url",
@@ -333,7 +332,7 @@ public sealed class OpenAIChatLanguageModel : ILanguageModel
 
     internal static LanguageModelResult ParseResponse(JsonObject json)
     {
-        var choice = json["choices"]?[0] as JsonObject ?? throw new AiSdkException("La respuesta de OpenAI no contiene 'choices'.");
+        var choice = json["choices"]?[0] as JsonObject ?? throw new AiSdkException(Resources.Strings.Chat_NoChoices);
         var message = choice["message"] as JsonObject;
         var content = new List<ContentPart>();
 

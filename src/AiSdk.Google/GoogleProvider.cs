@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json.Nodes;
 using AiSdk.Http;
 
@@ -66,7 +67,7 @@ public sealed class GoogleProvider : IProvider
         var segments = model.Split('/');
         if (segments.Any(segment => segment is "" or "." or ".."))
         {
-            throw new ArgumentException($"Id de modelo inválido: '{modelId}'.", nameof(modelId));
+            throw new ArgumentException(string.Format(CultureInfo.CurrentCulture, Resources.Strings.InvalidModelId, modelId), nameof(modelId));
         }
 
         var path = string.Join('/', segments.Select(Uri.EscapeDataString));

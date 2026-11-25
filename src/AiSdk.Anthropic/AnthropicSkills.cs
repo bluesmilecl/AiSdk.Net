@@ -67,7 +67,7 @@ public static class AnthropicSkills
         var list = skills.ToList();
         if (list.Count > 8)
         {
-            throw new ArgumentException("La API admite hasta 8 skills por petición.", nameof(skills));
+            throw new ArgumentException(Resources.Strings.Skills_TooMany, nameof(skills));
         }
 
         var anthropic = baseOptions?.For("anthropic")?.DeepClone() as JsonObject ?? [];

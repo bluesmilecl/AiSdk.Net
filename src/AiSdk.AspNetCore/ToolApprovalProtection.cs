@@ -50,12 +50,11 @@ public static class ToolApprovalProtection
         var scope = owner ?? EndpointSecurity.GetUserId(http);
         if (string.IsNullOrEmpty(scope))
         {
-            throw new InvalidOperationException(
-                "Las aprobaciones de herramientas necesitan un dueño: autentique al usuario o indique 'owner' (p. ej. un id de sesión emitido por el servidor).");
+            throw new InvalidOperationException(Resources.Strings.Approval_RequiresOwner);
         }
 
         var provider = http.RequestServices.GetService<IDataProtectionProvider>()
-                       ?? throw new InvalidOperationException("Las aprobaciones de herramientas usan ASP.NET Core Data Protection: registre services.AddDataProtection().");
+                       ?? throw new InvalidOperationException(Resources.Strings.Approval_DataProtectionRequired);
         var protector = provider.CreateProtector(Purpose, scope, chatId).ToTimeLimitedDataProtector();
         return new DataProtectionToolApprovalProtector(protector, life);
     }

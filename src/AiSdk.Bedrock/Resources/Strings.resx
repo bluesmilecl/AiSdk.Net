@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="Converse_DocumentsAsBytesOnly" xml:space="preserve"><value>Bedrock Converse only supports documents as bytes.</value></data>
+  <data name="Converse_ImagesAsBytesOnly" xml:space="preserve"><value>Bedrock Converse only supports images as bytes.</value></data>
+  <data name="Converse_JsonInstruction" xml:space="preserve"><value>Respond only with valid JSON, with no additional text.</value></data>
+  <data name="Converse_JsonSchemaInstruction" xml:space="preserve"><value>Respond only with a valid JSON object (no additional text or code blocks) that conforms to this JSON Schema:
+{0}</value></data>
+  <data name="Converse_ProviderToolsSkipped" xml:space="preserve"><value>Bedrock Converse does not support server tools from other providers; they were skipped.</value></data>
+  <data name="Converse_SamplingOptionsNotSupported" xml:space="preserve"><value>Converse does not support TopK, Seed or penalties generically; use ProviderOptions["bedrock"].additionalModelRequestFields.</value></data>
+  <data name="Converse_ToolChoiceNoneNotSupported" xml:space="preserve"><value>Bedrock Converse does not support ToolChoice.None; auto was used.</value></data>
+  <data name="CredentialsMissing" xml:space="preserve"><value>Bedrock credentials are missing: use ApiKey/AWS_BEARER_TOKEN_BEDROCK or AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY.</value></data>
+  <data name="EventStream_InvalidLengths" xml:space="preserve"><value>event-stream: invalid lengths.</value></data>
+  <data name="EventStream_InvalidMessageCrc" xml:space="preserve"><value>event-stream: invalid message CRC.</value></data>
+  <data name="EventStream_InvalidPreludeCrc" xml:space="preserve"><value>event-stream: invalid prelude CRC.</value></data>
+  <data name="EventStream_MessageTooLarge" xml:space="preserve"><value>event-stream: the message declares {0} bytes, more than the maximum of {1}.</value></data>
+  <data name="EventStream_Truncated" xml:space="preserve"><value>event-stream: the stream ended in the middle of a message.</value></data>
+  <data name="EventStream_UnknownHeaderType" xml:space="preserve"><value>event-stream: unknown header type {0}.</value></data>
+  <data name="RegionMissing" xml:space="preserve"><value>The Bedrock region is missing. Set it in the options or with AWS_REGION.</value></data>
+  <data name="SigV4_RequestWithoutUri" xml:space="preserve"><value>The request has no URI.</value></data>
+</root>

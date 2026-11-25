@@ -164,7 +164,7 @@ public class McpSecurityTests
             var result = await client.CallToolAsync("x", JsonElement.Parse("{}"), TestContext.Current.CancellationToken);
 
             Assert.Equal("ok", result.Text);
-            Assert.Contains(stderr, l => l.Contains("supera el límite de 1048576 bytes", StringComparison.Ordinal));
+            Assert.Contains(stderr, l => l.Contains("exceeds the limit of 1048576 bytes", StringComparison.Ordinal));
             Assert.All(stderr, l => Assert.True(l.Length <= 64 * 1024, $"Línea de {l.Length} caracteres."));
         }
         finally
@@ -273,7 +273,7 @@ public class McpSecurityTests
             TestContext.Current.CancellationToken);
 
         var error = await Assert.ThrowsAsync<McpException>(() => client.CallToolAsync("x", JsonElement.Parse("{}"), TestContext.Current.CancellationToken));
-        Assert.Contains("no respondió", error.Message);
+        Assert.Contains("did not respond", error.Message);
     }
 
     [Fact]
@@ -290,7 +290,7 @@ public class McpSecurityTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         var error = await Assert.ThrowsAsync<McpException>(() => client.ListToolsAsync(TestContext.Current.CancellationToken));
-        Assert.Contains("límite", error.Message);
+        Assert.Contains("limit", error.Message);
     }
 
     [Fact]
@@ -311,7 +311,7 @@ public class McpSecurityTests
 
         var started = DateTime.UtcNow;
         var error = await Assert.ThrowsAsync<McpException>(() => client.ListToolsAsync(TestContext.Current.CancellationToken));
-        Assert.Contains("JSON inválido", error.Message);
+        Assert.Contains("invalid JSON", error.Message);
         Assert.True(DateTime.UtcNow - started < TimeSpan.FromSeconds(10)); // falla de inmediato, no al vencer el plazo
 
         await client.DisposeAsync(); // no lanza
@@ -331,8 +331,8 @@ public class McpSecurityTests
         });
         await using var client = await McpClient.ConnectAsync(server.CreateTransport(), new McpClientOptions { MaxListPages = 5 }, TestContext.Current.CancellationToken);
 
-        Assert.Contains("repitió el cursor", (await Assert.ThrowsAsync<McpException>(() => client.ListToolsAsync(TestContext.Current.CancellationToken))).Message);
-        Assert.Contains("máximo de 5 páginas", (await Assert.ThrowsAsync<McpException>(() => client.ListPromptsAsync(TestContext.Current.CancellationToken))).Message);
+        Assert.Contains("repeated the pagination cursor", (await Assert.ThrowsAsync<McpException>(() => client.ListToolsAsync(TestContext.Current.CancellationToken))).Message);
+        Assert.Contains("maximum of 5 pages", (await Assert.ThrowsAsync<McpException>(() => client.ListPromptsAsync(TestContext.Current.CancellationToken))).Message);
     }
 
     // ------------------------------------------------------------------

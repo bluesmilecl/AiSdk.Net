@@ -142,7 +142,7 @@ public static class UIMessageStreamResults
         public async Task ExecuteAsync(HttpContext httpContext)
         {
             var key = ScopedKey(httpContext, chatId, owner)
-                      ?? throw new InvalidOperationException("Los streams reanudables necesitan un dueño: autentique al usuario o indique 'owner' (p. ej. un id de sesión emitido por el servidor).");
+                      ?? throw new InvalidOperationException(Resources.Strings.Stream_ResumableRequiresOwner);
             var streamId = await ResumableUIMessageStream.StartAsync(store, key, chunks).ConfigureAwait(false);
             try
             {

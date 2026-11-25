@@ -78,7 +78,7 @@ public sealed class BedrockProvider : IProvider
         _options.Region
         ?? Environment.GetEnvironmentVariable("AWS_REGION")
         ?? Environment.GetEnvironmentVariable("AWS_DEFAULT_REGION")
-        ?? throw new AiSdkException("Falta la región de Bedrock. Indícala en las opciones o con AWS_REGION.");
+        ?? throw new AiSdkException(Resources.Strings.RegionMissing);
 
     internal Uri ModelUrl(string modelId, string action) =>
         new($"{(_options.BaseUrl ?? $"https://bedrock-runtime.{Region}.amazonaws.com").TrimEnd('/')}/model/{Uri.EscapeDataString(modelId)}/{action}");
@@ -101,7 +101,7 @@ public sealed class BedrockProvider : IProvider
         var credentials = _options.CredentialsProvider is not null
             ? await _options.CredentialsProvider(cancellationToken).ConfigureAwait(false)
             : _options.Credentials ?? AwsCredentials.FromEnvironment()
-              ?? throw new AiSdkException("Faltan credenciales de Bedrock: usa ApiKey/AWS_BEARER_TOKEN_BEDROCK o AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY.");
+              ?? throw new AiSdkException(Resources.Strings.CredentialsMissing);
         AwsSigV4.Sign(request, bytes, Region, "bedrock", credentials, _options.Clock());
         return request;
     }

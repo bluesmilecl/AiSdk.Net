@@ -332,7 +332,7 @@ public sealed class HttpHardeningTests
             {
             }
         });
-        Assert.Contains("máximo", error.Message);
+        Assert.Contains("maximum", error.Message);
 
         // Los mensajes normales se siguen leyendo.
         var message = AwsEventStream.Encode(new Dictionary<string, string> { [":event-type"] = "messageStop" }, "{}"u8.ToArray());

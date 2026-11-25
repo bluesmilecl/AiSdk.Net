@@ -81,7 +81,7 @@ public static class AnthropicTools
     {
         if (allowed is not null && blocked is not null)
         {
-            throw new ArgumentException("Usa allowedDomains o blockedDomains, no ambos.");
+            throw new ArgumentException(Resources.Strings.Tools_AllowedOrBlockedDomains);
         }
 
         if (maxUses is { } uses)

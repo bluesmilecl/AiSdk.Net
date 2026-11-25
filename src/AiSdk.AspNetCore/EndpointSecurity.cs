@@ -86,7 +86,7 @@ public static class EndpointSecurity
                 && !request.HasJsonContentType())
             {
                 return Results.Problem(
-                    detail: "Content-Type debe ser application/json (también en peticiones sin cuerpo).",
+                    detail: Resources.Strings.Endpoint_JsonContentTypeRequired,
                     statusCode: StatusCodes.Status415UnsupportedMediaType);
             }
 

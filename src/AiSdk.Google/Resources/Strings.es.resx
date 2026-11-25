@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="Imagen_SizeNotSupported" xml:space="preserve"><value>Imagen no admite Size; usa AspectRatio (p. ej. "16:9").</value></data>
+  <data name="InvalidModelId" xml:space="preserve"><value>Id de modelo inválido: '{0}'.</value></data>
+  <data name="StreamError" xml:space="preserve"><value>Error en el stream de Gemini.</value></data>
+  <data name="ToolFromOtherProviderSkipped" xml:space="preserve"><value>La herramienta '{0}' es de '{1}' y se omitió en Gemini.</value></data>
+</root>

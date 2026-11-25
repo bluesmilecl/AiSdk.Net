@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -60,7 +61,7 @@ public sealed class GoogleGenerativeLanguageModel : ILanguageModel, ITokenCounti
 
             if (chunk["error"] is JsonObject error)
             {
-                yield return new ErrorPart(new AiSdkException((string?)error["message"] ?? "Error en el stream de Gemini."));
+                yield return new ErrorPart(new AiSdkException((string?)error["message"] ?? Resources.Strings.StreamError));
                 yield break;
             }
 
@@ -262,7 +263,7 @@ public sealed class GoogleGenerativeLanguageModel : ILanguageModel, ITokenCounti
                     }
                     else
                     {
-                        warnings.Add($"La herramienta '{t.Name}' es de '{t.ProviderName}' y se omitió en Gemini.");
+                        warnings.Add(string.Format(CultureInfo.CurrentCulture, Resources.Strings.ToolFromOtherProviderSkipped, t.Name, t.ProviderName));
                     }
 
                     continue;

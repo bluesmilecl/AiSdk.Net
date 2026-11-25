@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
@@ -43,7 +44,7 @@ public sealed class OpenAIResponsesLanguageModel : ILanguageModel, ITokenCountin
         var json = await ProviderHttp.ReadJsonAsync(response, cancellationToken).ConfigureAwait(false);
         if ((string?)json["status"] == "failed")
         {
-            throw new AiSdkException((string?)json["error"]?["message"] ?? "La respuesta de OpenAI falló.");
+            throw new AiSdkException((string?)json["error"]?["message"] ?? Resources.Strings.Responses_Failed);
         }
 
         return ParseResponse(json) with { Warnings = warnings };
@@ -179,11 +180,11 @@ public sealed class OpenAIResponsesLanguageModel : ILanguageModel, ITokenCountin
                     break;
 
                 case "response.failed":
-                    yield return new ErrorPart(new AiSdkException((string?)evt["response"]?["error"]?["message"] ?? "La respuesta de OpenAI falló."));
+                    yield return new ErrorPart(new AiSdkException((string?)evt["response"]?["error"]?["message"] ?? Resources.Strings.Responses_Failed));
                     yield break;
 
                 case "error":
-                    yield return new ErrorPart(new AiSdkException((string?)evt["message"] ?? (string?)evt["error"]?["message"] ?? "Error en el stream de OpenAI."));
+                    yield return new ErrorPart(new AiSdkException((string?)evt["message"] ?? (string?)evt["error"]?["message"] ?? Resources.Strings.StreamError));
                     yield break;
             }
         }
@@ -225,12 +226,12 @@ public sealed class OpenAIResponsesLanguageModel : ILanguageModel, ITokenCountin
 
         if (request.StopSequences is { Count: > 0 })
         {
-            warnings.Add("La API Responses no admite StopSequences; se ignoraron.");
+            warnings.Add(Resources.Strings.Responses_StopSequencesIgnored);
         }
 
         if (request.Seed is not null || request.TopK is not null || request.PresencePenalty is not null || request.FrequencyPenalty is not null)
         {
-            warnings.Add("La API Responses no admite Seed, TopK ni penalizaciones; se ignoraron.");
+            warnings.Add(Resources.Strings.Responses_SamplingOptionsIgnored);
         }
 
         if (request.Tools is { Count: > 0 } tools)
@@ -246,7 +247,7 @@ public sealed class OpenAIResponsesLanguageModel : ILanguageModel, ITokenCountin
                     }
                     else
                     {
-                        warnings.Add($"La herramienta '{t.Name}' es de '{t.ProviderName}' y se omitió en OpenAI.");
+                        warnings.Add(string.Format(CultureInfo.CurrentCulture, Resources.Strings.ToolFromOtherProviderSkipped, t.Name, t.ProviderName));
                     }
 
                     continue;

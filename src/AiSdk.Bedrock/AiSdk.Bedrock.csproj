@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <Description>Amazon Bedrock provider for AiSdk.Net (Converse API): Claude, Llama, Mistral, Nova and other Bedrock models with AWS SigV4 or a Bedrock API key; Titan and Cohere embeddings.</Description>
+    <!-- Los formatos de los mensajes salen de recursos localizados (cambian con CurrentUICulture): un CompositeFormat cacheado fijaría el idioma. -->
+    <NoWarn>$(NoWarn);CA1863</NoWarn>
   </PropertyGroup>
   <ItemGroup><ProjectReference Include="../AiSdk/AiSdk.csproj" /></ItemGroup>
 </Project>
