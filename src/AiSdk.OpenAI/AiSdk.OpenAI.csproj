@@ -1,8 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <Description>OpenAI provider for AiSdk.Net (Responses and Chat Completions), also for compatible servers: Ollama, Groq, DeepSeek, OpenRouter and more.</Description>
-    <!-- Los formatos de los mensajes salen de recursos localizados (cambian con CurrentUICulture): un CompositeFormat cacheado fijaría el idioma. -->
-    <NoWarn>$(NoWarn);CA1863</NoWarn>
   </PropertyGroup>
   <ItemGroup><ProjectReference Include="../AiSdk/AiSdk.csproj" /></ItemGroup>
 </Project>

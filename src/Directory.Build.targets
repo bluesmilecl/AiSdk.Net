@@ -4,6 +4,12 @@
     (español) obtiene la clase interna {RootNamespace}.Resources.Strings, generada en la compilación. El idioma sale de
     CultureInfo.CurrentUICulture; el español viaja como ensamblado satélite (es/) dentro del paquete.
   -->
+  <!-- Los formatos de los mensajes salen de recursos localizados (cambian con CurrentUICulture): un CompositeFormat
+       cacheado (CA1863) fijaría el idioma. -->
+  <PropertyGroup Condition="Exists('$(MSBuildProjectDirectory)/Resources/Strings.resx')">
+    <NoWarn>$(NoWarn);CA1863</NoWarn>
+  </PropertyGroup>
+
   <ItemGroup Condition="Exists('$(MSBuildProjectDirectory)/Resources/Strings.resx')">
     <EmbeddedResource Update="Resources/Strings.resx">
       <Generator>MSBuild:Compile</Generator>

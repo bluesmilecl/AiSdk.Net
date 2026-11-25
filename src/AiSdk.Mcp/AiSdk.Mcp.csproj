@@ -3,8 +3,6 @@
     <Description>Model Context Protocol (MCP) client for AiSdk.Net: use tools, resources and prompts from any MCP server (stdio or HTTP) in your agents.</Description>
     <!-- El propio cliente implementa roots y sampling, marcados como experimentales para quien los use (McpDiagnostics). -->
     <NoWarn>$(NoWarn);AISDKMCP001</NoWarn>
-    <!-- Los formatos de los mensajes salen de recursos localizados (cambian con CurrentUICulture): un CompositeFormat cacheado fijaría el idioma. -->
-    <NoWarn>$(NoWarn);CA1863</NoWarn>
   </PropertyGroup>
   <ItemGroup><ProjectReference Include="../AiSdk/AiSdk.csproj" /></ItemGroup>
 </Project>
