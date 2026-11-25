@@ -6,6 +6,9 @@ name: Wiki
 # Until the wiki exists the job ends successfully with a notice instead of failing.
 on:
   push:
+    # Solo la rama principal: un push a otra rama abría una ejecución en el mismo grupo de concurrencia y cancelaba
+    # la publicación en curso de main.
+    branches: [main]
     paths:
       - 'docs/wiki/**'
       - '.github/workflows/wiki.yml'
