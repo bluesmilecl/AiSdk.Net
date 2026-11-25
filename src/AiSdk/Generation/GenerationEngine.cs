@@ -18,6 +18,9 @@ internal static class GenerationEngine
 
     private readonly record struct ProcessedCall(ToolCallPart Call, ToolResultPart? Result, ToolApprovalRequest? PendingApproval = null);
 
+    /// <summary>Resultados de reanudar aprobaciones diferidas: el mensaje de herramienta y las partes a emitir en streaming.</summary>
+    internal sealed record ApprovalResolution(ModelMessage Message, IReadOnlyList<StreamPart> Parts);
+
     public static List<ModelMessage> InitialMessages(GenerateTextOptions o)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(o.MaxParallelToolCalls, 1, nameof(o.MaxParallelToolCalls));
@@ -140,11 +143,15 @@ internal static class GenerationEngine
         // (herramientas definidas por el proveedor pero ejecutadas localmente) se tratan como locales.
         Tool? Find(ToolCallPart c) => plan.Tools.FirstOrDefault(t => t.Name == c.ToolName && (!t.IsProviderTool || t.Execute is not null));
 
+        // Una llamada ya aprobada nunca se repara: la reparación cambiaría la operación que el usuario autorizó.
+        ValueTask<ToolCallPart?> Repair(ToolCallRepairReason reason, string error) =>
+            preApproved ? ValueTask.FromResult<ToolCallPart?>(null) : TryRepairAsync(call, reason, error, plan, settings, cancellationToken);
+
         var tool = Find(call);
         if (tool is null)
         {
             var error = $"Herramienta desconocida '{call.ToolName}'. Disponibles: {string.Join(", ", plan.Tools.Select(t => t.Name))}.";
-            var repaired = await TryRepairAsync(call, ToolCallRepairReason.UnknownTool, error, plan, settings, cancellationToken).ConfigureAwait(false);
+            var repaired = await Repair(ToolCallRepairReason.UnknownTool, error).ConfigureAwait(false);
             if (repaired is null || Find(repaired) is null)
             {
                 return new(call, Error(call, error));
@@ -162,7 +169,7 @@ internal static class GenerationEngine
         if (call.InvalidInput)
         {
             const string error = "La entrada de la herramienta no es JSON válido.";
-            var repaired = await TryRepairAsync(call, ToolCallRepairReason.InvalidJson, error, plan, settings, cancellationToken).ConfigureAwait(false);
+            var repaired = await Repair(ToolCallRepairReason.InvalidJson, error).ConfigureAwait(false);
             if (repaired is null || repaired.InvalidInput)
             {
                 return new(call, Error(call, error));
@@ -173,7 +180,7 @@ internal static class GenerationEngine
 
         if (tool.ValidateInput?.Invoke(call.Input) is { } validationError)
         {
-            var repaired = await TryRepairAsync(call, ToolCallRepairReason.InvalidInput, validationError, plan, settings, cancellationToken).ConfigureAwait(false);
+            var repaired = await Repair(ToolCallRepairReason.InvalidInput, validationError).ConfigureAwait(false);
             if (repaired is null || tool.ValidateInput(repaired.Input) is not null)
             {
                 return new(call, Error(call, $"Entrada inválida: {validationError}"));
@@ -230,13 +237,20 @@ internal static class GenerationEngine
         }
     }
 
-    private const string DeniedMessage = "El usuario denegó la ejecución de la herramienta.";
+    /// <summary>Resultado que recibe el modelo cuando el usuario deniega una llamada.</summary>
+    internal const string DeniedMessage = "El usuario denegó la ejecución de la herramienta.";
+
+    private const string NoDecisionMessage = "La llamada requería aprobación y no hubo una decisión válida al reanudar; no se ejecutó.";
+
+    /// <summary>Resultado de error de una llamada denegada, con el motivo opcional del usuario.</summary>
+    internal static ToolResultPart Denied(ToolCallPart call, string? reason) =>
+        Error(call, reason is { Length: > 0 } ? $"{DeniedMessage} Motivo: {reason}" : DeniedMessage);
 
     /// <summary>
     /// Reanudación de aprobaciones diferidas: resuelve con <see cref="GenerateTextOptions.ToolApprovals"/> las llamadas
     /// sin resultado del último mensaje del asistente y devuelve el mensaje de herramienta con sus resultados.
     /// </summary>
-    public static async Task<ModelMessage?> ResolveApprovalsAsync(GenerateTextOptions o, List<ModelMessage> conversation, Action<StreamPart>? emit, CancellationToken cancellationToken)
+    public static async Task<ApprovalResolution?> ResolveApprovalsAsync(GenerateTextOptions o, List<ModelMessage> conversation, Action<StreamPart>? emit, CancellationToken cancellationToken)
     {
         if (o.ToolApprovals is not { } approvals)
         {
@@ -263,7 +277,10 @@ internal static class GenerationEngine
         var tools = ActiveTools(o, o.ActiveTools);
         var pending = conversation[index].Content.OfType<ToolCallPart>()
             .Where(c => !c.ProviderExecuted && !answered.Contains(c.ToolCallId))
-            .Where(c => tools.Any(t => t.Name == c.ToolName && t.Execute is not null)) // las de cliente las resuelve el llamador
+            // Las de cliente (sin Execute) las resuelve el llamador. Las de herramientas que ya no existen se cierran con
+            // un error en vez de quedar sin resultado (lo que haría fallar la petición al proveedor).
+            .Where(c => !tools.Any(t => t.Name == c.ToolName && t.Execute is null))
+            .DistinctBy(c => c.ToolCallId, StringComparer.Ordinal) // una llamada repetida no se ejecuta dos veces
             .ToList();
         if (pending.Count == 0)
         {
@@ -278,12 +295,22 @@ internal static class GenerationEngine
             call => decisions.TryGetValue(call.ToolCallId, out var decision)
                 ? decision.Approved
                     ? ProcessCallAsync(call, plan, o, stepNumber: 0, emit, preApproved: true, cancellationToken)
-                    : Task.FromResult(new ProcessedCall(call, Error(call, decision.Reason is { Length: > 0 } reason ? $"{DeniedMessage} Motivo: {reason}" : DeniedMessage)))
-                : Task.FromResult(new ProcessedCall(call, Error(call, "La llamada requería aprobación y no hubo una decisión al reanudar; no se ejecutó."))),
+                    : Task.FromResult(new ProcessedCall(call, Denied(call, decision.Reason)))
+                : Task.FromResult(new ProcessedCall(call, Error(call, NoDecisionMessage))),
             cancellationToken).ConfigureAwait(false);
 
         var results = processed.Select(p => p.Result).OfType<ToolResultPart>().ToArray();
-        return results.Length == 0 ? null : ModelMessage.Tool(results);
+        if (results.Length == 0)
+        {
+            return null;
+        }
+
+        var parts = results
+            .Select(r => decisions.TryGetValue(r.ToolCallId, out var d) && !d.Approved
+                ? (StreamPart)new ToolOutputDeniedStreamPart(r)
+                : new ToolResultStreamPart(r))
+            .ToList();
+        return new ApprovalResolution(ModelMessage.Tool(results), parts);
     }
 
     private static async ValueTask<ToolCallPart?> TryRepairAsync(
@@ -387,7 +414,7 @@ internal static class GenerationEngine
         try
         {
             var conversation = InitialMessages(o);
-            var resolved = await ResolveApprovalsAsync(o, conversation, null, ct).ConfigureAwait(false);
+            var resolved = (await ResolveApprovalsAsync(o, conversation, null, ct).ConfigureAwait(false))?.Message;
             if (resolved is not null)
             {
                 conversation.Add(resolved);
@@ -475,13 +502,14 @@ internal static class GenerationEngine
         {
             var conversation = InitialMessages(o);
             await Emit(new StartPart()).ConfigureAwait(false);
-            var resolved = await ResolveApprovalsAsync(o, conversation, part => buffer.Add(part), ct).ConfigureAwait(false);
-            if (resolved is not null)
+            var resolution = await ResolveApprovalsAsync(o, conversation, part => buffer.Add(part), ct).ConfigureAwait(false);
+            var resolved = resolution?.Message;
+            if (resolution is not null)
             {
-                conversation.Add(resolved);
-                foreach (var r in resolved.Content.OfType<ToolResultPart>())
+                conversation.Add(resolution.Message);
+                foreach (var part in resolution.Parts)
                 {
-                    await Emit(new ToolResultStreamPart(r)).ConfigureAwait(false);
+                    await Emit(part).ConfigureAwait(false);
                 }
             }
 
@@ -498,6 +526,11 @@ internal static class GenerationEngine
                 foreach (var r in toolPhase.Results)
                 {
                     await Emit(new ToolResultStreamPart(r)).ConfigureAwait(false);
+                }
+
+                foreach (var approval in toolPhase.PendingApprovals)
+                {
+                    await Emit(new ToolApprovalRequestStreamPart(approval)).ConfigureAwait(false);
                 }
 
                 var step = BuildStep(steps.Count, plan, result, toolPhase, steps.Count == 0 ? resolved : null);
@@ -553,7 +586,8 @@ internal static class GenerationEngine
     }
 
     private static bool IsChunk(StreamPart part) => part is TextDeltaPart or ReasoningDeltaPart or ToolInputStartPart
-        or ToolInputDeltaPart or ToolCallStreamPart or ToolResultStreamPart or SourceStreamPart or ContentStreamPart or DataStreamPart;
+        or ToolInputDeltaPart or ToolCallStreamPart or ToolResultStreamPart or ToolApprovalRequestStreamPart or ToolOutputDeniedStreamPart
+        or SourceStreamPart or ContentStreamPart or DataStreamPart;
 
     private static async ValueTask SafeInvoke(Func<ValueTask> callback)
     {

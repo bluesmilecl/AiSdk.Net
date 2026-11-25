@@ -103,10 +103,13 @@ public sealed class LoopHardeningTests
         }
 
         Assert.Equal(0, executed);
-        var results = parts.OfType<ToolResultStreamPart>().Select(p => p.ToolResult).ToList();
-        Assert.All(results, r => Assert.True(r.IsError));
-        Assert.Contains("no está autorizado", results.Single(r => r.ToolCallId == "c1").Output.GetString());
-        Assert.Contains("no hubo una decisión", results.Single(r => r.ToolCallId == "c2").Output.GetString());
+        // La denegada llega como ToolOutputDeniedStreamPart (tool-output-denied en useChat); la que no tuvo decisión, como error.
+        var denied = Assert.Single(parts.OfType<ToolOutputDeniedStreamPart>()).ToolResult;
+        var unanswered = Assert.Single(parts.OfType<ToolResultStreamPart>()).ToolResult;
+        Assert.True(denied.IsError && unanswered.IsError);
+        Assert.Equal(("c1", "c2"), (denied.ToolCallId, unanswered.ToolCallId));
+        Assert.Contains("no está autorizado", denied.Output.GetString());
+        Assert.Contains("no hubo una decisión", unanswered.Output.GetString());
         Assert.Equal("Entendido.", await resumed.Text);
     }
 

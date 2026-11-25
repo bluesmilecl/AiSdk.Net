@@ -65,6 +65,20 @@ public sealed record ReasoningStartPart(string Id) : StreamPart;
 /// </summary>
 public sealed record ToolResultStreamPart(ToolResultPart ToolResult) : StreamPart;
 
+/// <summary>
+/// La llamada quedó pendiente de aprobación humana (<see cref="CallSettings.DeferToolApprovals"/>): el bucle se detiene
+/// tras este paso. En el stream UI se convierte en el chunk <c>tool-approval-request</c> (ver
+/// <see cref="UI.ToolApprovalProtector"/>).
+/// </summary>
+public sealed record ToolApprovalRequestStreamPart(ToolApprovalRequest Request) : StreamPart;
+
+/// <summary>
+/// El usuario denegó una llamada que estaba pendiente de aprobación (<see cref="GenerateTextOptions.ToolApprovals"/>).
+/// <paramref name="ToolResult"/> es el resultado de error que recibe el modelo. En el stream UI se convierte en el chunk
+/// <c>tool-output-denied</c>.
+/// </summary>
+public sealed record ToolOutputDeniedStreamPart(ToolResultPart ToolResult) : StreamPart;
+
 public sealed record FinishStepPart(StepResult Step) : StreamPart;
 
 public sealed record FinishPart(FinishReason FinishReason, Usage TotalUsage) : StreamPart;
