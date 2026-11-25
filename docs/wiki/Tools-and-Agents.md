@@ -158,6 +158,22 @@ denied calls, and pending calls without a decision, are reported to the model as
 > Approvals apply to the tool calls in the messages you pass. Keep the history on the server (as `AgentSession` does)
 > instead of trusting a history sent by the client, or a client could get a call it invented approved.
 
+**With `useChat`** the browser holds the history, so the approval travels as the AI SDK protocol: the stream sends
+`tool-approval-request` with a signed `approvalId`, the user answers with `addToolApprovalResponse`, and
+`UIMessageConverter.ToModelInput` only accepts answers whose `approvalId` the server issued for that exact call (same
+user, chat, call id, tool and input). Approved calls are never repaired (`RepairToolCall`): they run with the approved
+input or fail.
+
+```csharp
+var approvals = ToolApprovalProtection.ForChat(http, chatId);
+var input = UIMessageConverter.ToModelInput(req.Messages, new() { ToolApprovals = approvals, ServerExecutedTools = ["delete_user"] });
+return agent.Stream(new AgentCallOptions { Messages = input.Messages, ToolApprovals = input.ToolApprovals, DeferToolApprovals = true })
+    .ToUIMessageStreamResult(toolApprovals: approvals);
+// Browser: addToolApprovalResponse({ id: part.approval.id, approved: true })
+```
+
+The full example (endpoint and React component) is in [ASP.NET Core and useChat](ASP.NET-Core-and-useChat).
+
 **Per-step control** (`PrepareStep`): switch models, force tools or trim the context.
 
 ```csharp

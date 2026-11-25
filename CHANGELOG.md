@@ -6,6 +6,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+### Added
+- **Tool approval with `useChat`**, using the AI SDK's own protocol (`ai@6` and `ai@7`): a call left pending by
+  `DeferToolApprovals` is streamed as `tool-approval-request` (`approvalId`, `toolCallId`), so `useChat` shows the part
+  in state `approval-requested`; the browser answers with `addToolApprovalResponse` and sends the conversation back
+  (`sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses`). `UIMessageConverter.ToModelInput`
+  returns the messages plus the verified `ToolApprovals`: approved calls run with the input the model produced, denied
+  ones stream `tool-output-denied` and the model gets the denial with the user's reason. `output-denied` parts in the
+  history reach the model as denials.
+- `ToolApprovalProtector`: the `approvalId` is an opaque token that binds the approval to the tool call id, tool name
+  and a SHA-256 of the canonical JSON input, to a scope (user and chat) and to an expiry (1 hour by default). Forged ids,
+  another user's or chat's approvals, expired ones, and changed inputs or call ids are rejected (the tool does not run
+  and the model gets an error). `ToolApprovalProtection.ForChat(http, chatId)` in ASP.NET Core (Data Protection, no
+  secret to configure); `ToolApprovalProtector.CreateHmac(key, scope)` elsewhere.
+- `toolApprovals` parameter on `ToUIMessageStreamResult`, `ToResumableUIMessageStreamResult`,
+  `WriteUIMessageStreamAsync`, `UIMessageStream.ToChunks`/`WriteAsync` and `UIMessageStreamWriter.Merge`;
+  `AgentCallOptions.DeferToolApprovals`; stream parts `ToolApprovalRequestStreamPart` and `ToolOutputDeniedStreamPart`.
+- `samples/ChatApi`: `send_weather_alert` requires the user's approval in the chat.
+
+### Changed
+- Denied calls are emitted as `ToolOutputDeniedStreamPart` instead of an error `ToolResultStreamPart` (the model still
+  receives the same error result). Migration: read `ToolOutputDeniedStreamPart.ToolResult` where you handled denials.
+- A call that is pending without a decision when resuming now reads "no hubo una decisión válida"; pending calls of
+  tools that no longer exist are closed with an error instead of being left without a result; a repeated call id is
+  executed once.
+- `UIMessageStream.WriteAsync` takes `toolApprovals` before `cancellationToken`. Migration: pass the token by name
+  (`cancellationToken: ct`).
+
+### Security
+- Approved calls are never repaired by `RepairToolCall`: repairing would execute something other than what the user
+  approved, so an approved call with invalid input fails instead.
+- Without a `ToolApprovalProtector`, a call waiting for approval is streamed as `tool-output-error` and approval answers
+  are ignored (fails closed); `ToModelMessages` drops `approval-responded` parts.
+
 ## [0.2.0-preview.1] - 2026-11-25
 
 Security and stability release. It follows a full review of the SDK against the OWASP Top 10 for LLM Applications
