@@ -112,7 +112,7 @@ tests/AiSdk.IntegrationTests/ live tests against real APIs (optional)
 | **Small packages** | The core has no provider dependencies; install only what you use |
 | **Familiar names** | Mirrors the Vercel AI SDK (`generateText` → `GenerateTextAsync`) and Laravel AI concepts, see [Feature map](Feature-Map) |
 | **Testable by default** | `MockLanguageModel` and fake HTTP handlers; no network in unit tests |
-| **Observable** | `Activity` spans for every call and tool, ready for OpenTelemetry |
+| **Observable** | Spans and metrics for every call, tool and agent, following the OpenTelemetry GenAI conventions |
 | **Safe defaults** | Untrusted skills cannot run scripts, path traversal is rejected, webhook secrets are verified |
 
 ---

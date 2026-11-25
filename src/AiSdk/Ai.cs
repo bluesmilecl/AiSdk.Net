@@ -33,7 +33,7 @@ public static class Ai
     public static async Task<GenerateObjectResult<T>> GenerateObjectAsync<T>(GenerateObjectOptions options)
     {
         var output = Output.Object<T>(options.SchemaName, options.SchemaDescription);
-        var result = await GenerateTextAsync(ToTextOptions(options, output)).ConfigureAwait(false);
+        var result = await GenerateTextAsync(ToTextOptions(options, output, "generate_object")).ConfigureAwait(false);
         return new GenerateObjectResult<T>(result.GetOutput<T>(), result.FinishReason, result.TotalUsage, result.Response, result.Text);
     }
 
@@ -41,13 +41,13 @@ public static class Ai
     public static StreamObjectResult<T> StreamObject<T>(GenerateObjectOptions options)
     {
         var output = Output.Object<T>(options.SchemaName, options.SchemaDescription);
-        return new StreamObjectResult<T>(StreamText(ToTextOptions(options, output)));
+        return new StreamObjectResult<T>(StreamText(ToTextOptions(options, output, "stream_object")));
     }
 
     /// <summary>Genera un embedding para un valor.</summary>
     public static async Task<EmbedResult> EmbedAsync(IEmbeddingModel model, string value, CancellationToken cancellationToken = default)
     {
-        var result = await model.EmbedAsync([value], cancellationToken).ConfigureAwait(false);
+        var result = await EmbedCallAsync(model, [value], cancellationToken).ConfigureAwait(false);
         return new EmbedResult(value, result.Embeddings[0], result.Usage);
     }
 
@@ -59,7 +59,7 @@ public static class Ai
         var tokens = 0;
         foreach (var chunk in values.Chunk(Math.Max(1, batchSize)))
         {
-            var result = await model.EmbedAsync(chunk, cancellationToken).ConfigureAwait(false);
+            var result = await EmbedCallAsync(model, chunk, cancellationToken).ConfigureAwait(false);
             embeddings.AddRange(result.Embeddings);
             tokens += result.Usage?.Tokens ?? 0;
         }
@@ -213,7 +213,23 @@ public static class Ai
         return na == 0 || nb == 0 ? 0 : dot / (Math.Sqrt(na) * Math.Sqrt(nb));
     }
 
-    private static GenerateTextOptions ToTextOptions(GenerateObjectOptions o, Output output) => new()
+    private static async Task<EmbeddingModelResult> EmbedCallAsync(IEmbeddingModel model, IReadOnlyList<string> values, CancellationToken cancellationToken)
+    {
+        using var operation = Internal.GenAiTelemetry.StartEmbeddings(model);
+        try
+        {
+            var result = await model.EmbedAsync(values, cancellationToken).ConfigureAwait(false);
+            operation?.Complete(result);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            operation?.Fail(ex);
+            throw;
+        }
+    }
+
+    private static GenerateTextOptions ToTextOptions(GenerateObjectOptions o, Output output, string entrypoint) => new()
     {
         Model = o.Model,
         System = o.System,
@@ -236,5 +252,6 @@ public static class Ai
         OnError = o.OnError,
         OnAbort = o.OnAbort,
         CancellationToken = o.CancellationToken,
+        TelemetryEntrypoint = entrypoint,
     };
 }

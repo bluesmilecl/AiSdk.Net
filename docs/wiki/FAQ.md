@@ -51,8 +51,9 @@ change before 1.0. Pin versions and check the [Roadmap](Roadmap) and release not
 <details>
 <summary><b>Does the SDK send telemetry anywhere?</b></summary>
 
-No. It only emits `Activity` spans on the `"AiSdk"` source; they go nowhere unless your app configures
-OpenTelemetry to export them (see [Testing and telemetry](Testing-and-Telemetry)).
+No. It only emits spans and metrics on the `"AiSdk"` `ActivitySource` and `Meter` (OpenTelemetry GenAI conventions,
+without prompts or responses); they go nowhere unless your app configures OpenTelemetry to export them (see
+[Testing and telemetry](Testing-and-Telemetry)).
 </details>
 
 <details>

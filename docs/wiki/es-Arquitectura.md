@@ -112,7 +112,7 @@ tests/AiSdk.IntegrationTests/ pruebas en vivo contra las APIs reales (opcionales
 | **Paquetes pequeños** | El núcleo no depende de ningún proveedor; instalas solo lo que usas |
 | **Nombres conocidos** | Sigue el AI SDK de Vercel (`generateText` → `GenerateTextAsync`) y los conceptos de Laravel AI, ver [Equivalencias](es-Equivalencias) |
 | **Fácil de probar** | `MockLanguageModel` y handlers HTTP falsos; las pruebas unitarias no usan red |
-| **Observable** | Spans `Activity` en cada llamada y herramienta, listos para OpenTelemetry |
+| **Observable** | Spans y métricas en cada llamada, herramienta y agente, con las convenciones GenAI de OpenTelemetry |
 | **Seguro por defecto** | Las skills no confiables no ejecutan scripts, se rechaza path traversal, se verifican los secretos de webhooks |
 
 ---

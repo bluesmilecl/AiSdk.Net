@@ -52,8 +52,9 @@ versión en `CHANGELOG.md`.
 <details>
 <summary><b>¿El SDK envía telemetría a algún lado?</b></summary>
 
-No. Solo emite spans `Activity` en la fuente `"AiSdk"`; no salen de tu aplicación salvo que configures
-OpenTelemetry para exportarlos (ver [Pruebas y telemetría](es-Pruebas-y-telemetria)).
+No. Solo emite spans y métricas en el `ActivitySource` y el `Meter` `"AiSdk"` (convenciones GenAI de OpenTelemetry,
+sin prompts ni respuestas); no salen de tu aplicación salvo que configures OpenTelemetry para exportarlos (ver
+[Pruebas y telemetría](es-Pruebas-y-telemetria)).
 </details>
 
 <details>

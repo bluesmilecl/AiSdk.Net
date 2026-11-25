@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Text.Json;
 using AiSdk.Internal;
 
@@ -92,7 +91,7 @@ internal static class GenerationEngine
     public static async Task<ToolPhase> ExecuteToolsAsync(
         IReadOnlyList<ToolCallPart> calls,
         StepPlan plan,
-        CallSettings settings,
+        GenerateTextOptions settings,
         int stepNumber,
         CancellationToken cancellationToken,
         Action<StreamPart>? emit = null)
@@ -129,7 +128,7 @@ internal static class GenerationEngine
     private static async Task<ProcessedCall> ProcessCallAsync(
         ToolCallPart call,
         StepPlan plan,
-        CallSettings settings,
+        GenerateTextOptions settings,
         int stepNumber,
         Action<StreamPart>? emit,
         bool preApproved,
@@ -212,9 +211,7 @@ internal static class GenerationEngine
             }
         }
 
-        using var activity = AiTelemetry.ActivitySource.StartActivity("ai.toolCall");
-        activity?.SetTag("ai.toolCall.name", call.ToolName);
-        activity?.SetTag("ai.toolCall.id", call.ToolCallId);
+        using var activity = GenAiTelemetry.StartTool(call, tool, settings.TelemetryAgent?.Name, settings.ConversationId);
         try
         {
             var output = await tool.Execute(call.Input, new ToolExecutionContext
@@ -233,8 +230,13 @@ internal static class GenerationEngine
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
-            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            GenAiTelemetry.SetError(activity, ex);
             return new(call, Error(call, ex.Message));
+        }
+        catch (OperationCanceledException ex)
+        {
+            GenAiTelemetry.SetError(activity, ex);
+            throw;
         }
     }
 
@@ -421,9 +423,7 @@ internal static class GenerationEngine
     public static async Task<GenerateTextResult> GenerateAsync(GenerateTextOptions o)
     {
         var ct = o.CancellationToken;
-        using var root = AiTelemetry.ActivitySource.StartActivity("ai.generateText");
-        root?.SetTag("ai.model.provider", o.Model.Provider);
-        root?.SetTag("ai.model.id", o.Model.ModelId);
+        using var root = GenAiTelemetry.StartInvocation(o, stream: false);
 
         var steps = new List<StepResult>();
         try
@@ -438,15 +438,7 @@ internal static class GenerationEngine
             while (true)
             {
                 var plan = await PrepareAsync(o, conversation, steps).ConfigureAwait(false);
-                LanguageModelResult result;
-                using (var stepActivity = AiTelemetry.ActivitySource.StartActivity("ai.generateText.step"))
-                {
-                    result = await Retry.ExecuteAsync(c => plan.Model.GenerateAsync(plan.Request, c), o.MaxRetries, ct, o.MaxRetryAfter).ConfigureAwait(false);
-                    stepActivity?.SetTag("ai.response.finishReason", result.FinishReason.ToString());
-                    stepActivity?.SetTag("ai.usage.inputTokens", result.Usage.InputTokens);
-                    stepActivity?.SetTag("ai.usage.outputTokens", result.Usage.OutputTokens);
-                }
-
+                var result = await GenerateStepAsync(plan, o, ct).ConfigureAwait(false);
                 var toolPhase = await ExecuteToolsAsync(ToolCallsOf(result), plan, o, steps.Count, ct).ConfigureAwait(false);
                 var step = BuildStep(steps.Count, plan, result, toolPhase, steps.Count == 0 ? resolved : null);
                 steps.Add(step);
@@ -464,6 +456,7 @@ internal static class GenerationEngine
             }
 
             var final = new GenerateTextResult(steps, OutputFor(o, steps));
+            GenAiTelemetry.SetInvocationResult(root, final);
             if (o.OnFinish is not null)
             {
                 await o.OnFinish(final).ConfigureAwait(false);
@@ -471,8 +464,9 @@ internal static class GenerationEngine
 
             return final;
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        catch (OperationCanceledException ex) when (ct.IsCancellationRequested)
         {
+            GenAiTelemetry.SetError(root, ex);
             if (o.OnAbort is not null)
             {
                 await o.OnAbort(steps).ConfigureAwait(false);
@@ -482,12 +476,29 @@ internal static class GenerationEngine
         }
         catch (Exception ex)
         {
-            root?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            GenAiTelemetry.SetError(root, ex);
             if (o.OnError is not null)
             {
                 await o.OnError(ex).ConfigureAwait(false);
             }
 
+            throw;
+        }
+    }
+
+    /// <summary>One model call of the loop, with retries, inside its <c>chat</c> span.</summary>
+    private static async Task<LanguageModelResult> GenerateStepAsync(StepPlan plan, GenerateTextOptions o, CancellationToken ct)
+    {
+        using var call = GenAiTelemetry.StartChat(plan.Model, plan.Request, stream: false, o.ConversationId);
+        try
+        {
+            var result = await Retry.ExecuteAsync(c => plan.Model.GenerateAsync(plan.Request, c), o.MaxRetries, ct, o.MaxRetryAfter).ConfigureAwait(false);
+            call?.Complete(result);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            call?.Fail(ex);
             throw;
         }
     }
@@ -499,9 +510,7 @@ internal static class GenerationEngine
     public static async Task RunStreamAsync(GenerateTextOptions o, ReplayBuffer<StreamPart> buffer, TaskCompletionSource<GenerateTextResult> completion)
     {
         var ct = o.CancellationToken;
-        using var root = AiTelemetry.ActivitySource.StartActivity("ai.streamText");
-        root?.SetTag("ai.model.provider", o.Model.Provider);
-        root?.SetTag("ai.model.id", o.Model.ModelId);
+        var root = GenAiTelemetry.StartInvocation(o, stream: true);
 
         async ValueTask Emit(StreamPart part)
         {
@@ -571,10 +580,15 @@ internal static class GenerationEngine
                 await o.OnFinish(final).ConfigureAwait(false);
             }
 
+            // El span termina antes de entregar el resultado: quien lo espera ya lo ve completo.
+            GenAiTelemetry.SetInvocationResult(root, final);
+            root?.Dispose();
             completion.TrySetResult(final);
         }
         catch (OperationCanceledException ex) when (ct.IsCancellationRequested)
         {
+            GenAiTelemetry.SetError(root, ex);
+            root?.Dispose();
             buffer.Add(new AbortPart());
             if (o.OnAbort is not null)
             {
@@ -585,7 +599,8 @@ internal static class GenerationEngine
         }
         catch (Exception ex)
         {
-            root?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            GenAiTelemetry.SetError(root, ex);
+            root?.Dispose();
             buffer.Add(new ErrorPart(ex));
             if (o.OnError is not null)
             {
@@ -596,6 +611,7 @@ internal static class GenerationEngine
         }
         finally
         {
+            root?.Dispose();
             buffer.Complete();
         }
     }
@@ -616,10 +632,32 @@ internal static class GenerationEngine
         }
     }
 
+    /// <summary>One streamed model call of the loop, with retries, inside its <c>chat</c> span.</summary>
     private static async Task<LanguageModelResult> StreamStepAsync(
         StepPlan plan,
         GenerateTextOptions o,
         Func<StreamPart, ValueTask> emit,
+        CancellationToken ct)
+    {
+        using var call = GenAiTelemetry.StartChat(plan.Model, plan.Request, stream: true, o.ConversationId);
+        try
+        {
+            var result = await StreamAttemptsAsync(plan, o, emit, call, ct).ConfigureAwait(false);
+            call?.Complete(result);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            call?.Fail(ex);
+            throw;
+        }
+    }
+
+    private static async Task<LanguageModelResult> StreamAttemptsAsync(
+        StepPlan plan,
+        GenerateTextOptions o,
+        Func<StreamPart, ValueTask> emit,
+        GenAiTelemetry.ClientOperation? call,
         CancellationToken ct)
     {
         var maxRetries = o.MaxRetries;
@@ -656,6 +694,7 @@ internal static class GenerationEngine
 
                 await foreach (var part in source.WithCancellation(ct).ConfigureAwait(false))
                 {
+                    call?.FirstChunk();
                     if (part is ErrorPart error)
                     {
                         throw error.Error;

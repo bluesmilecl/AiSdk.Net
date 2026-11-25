@@ -174,6 +174,18 @@ public sealed class GenerateTextOptions : CallSettings
     public Func<IAsyncEnumerable<StreamPart>, IAsyncEnumerable<StreamPart>>? StreamTransform { get; init; }
 
     public CancellationToken CancellationToken { get; init; }
+
+    /// <summary>Agent running this loop; the loop span is then reported as <c>invoke_agent</c>. Set by <see cref="Agent"/>.</summary>
+    internal Internal.TelemetryAgent? TelemetryAgent { get; init; }
+
+    /// <summary>
+    /// Public entry point reported as <c>invoke_{entrypoint}</c> when no agent runs the loop (e.g. <c>generate_object</c>).
+    /// Defaults to <c>generate_text</c> or <c>stream_text</c>.
+    /// </summary>
+    internal string? TelemetryEntrypoint { get; init; }
+
+    /// <summary>Conversation id reported as <c>gen_ai.conversation.id</c> (set by <see cref="AgentSession"/>).</summary>
+    internal string? ConversationId { get; init; }
 }
 
 public sealed record PrepareStepContext(
