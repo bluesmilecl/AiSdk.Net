@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+### Security
+- MCP over stdio: lines longer than `StdioMcpTransport.MaxMessageBytes` (16 MiB) are discarded without buffering them,
+  stderr lines are cut at 64 KiB (`MaxStderrLineBytes`) and the incoming message queue is bounded.
+- Documents: an image whose header declares more than `MaxRasterPixels` × `MaxRasterPixels` pixels is never sent to OCR
+  (PNG, JPEG, GIF, BMP and WebP headers are read without decoding), with a warning.
+- Google: model ids are escaped segment by segment and `.`/`..` segments are rejected.
+
+### Changed
+- MCP: roots and sampling (`Roots`, `SetRootsAsync`, `SamplingModel`, `SamplingHandler`, `ApproveSampling`,
+  `ReviewSamplingResult`, `MaxSamplingTokens` and their types) are marked `[Experimental("AISDKMCP001")]`: the MCP
+  specification 2026-07-28 deprecates them. Suppress the diagnostic to keep using them.
+- Audio: with ffmpeg installed, audio longer than `MaxMediaDuration` is trimmed before transcription, with a warning.
+
 ## [0.2.0-preview.1] - 2026-11-25
 
 Security and stability release. It follows a full review of the SDK against the OWASP Top 10 for LLM Applications

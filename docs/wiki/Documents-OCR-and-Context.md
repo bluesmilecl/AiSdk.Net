@@ -109,6 +109,8 @@ limit is exceeded the converter returns a partial result and explains it in `res
 | `MaxInputBytes` | 512 MB | `DocumentTooLargeException` (for files, checked before reading them) |
 | `MaxPdfPages` | 2000 | only the first pages are processed |
 | `MaxOcrPages` | 1000 | scanned pages and embedded images beyond it are not sent to OCR or vision (lower it with a paid vision model); fully blank pages never go to OCR |
+| `MaxRasterPixels` (images) | 5000 × 5000 | an image whose header declares more pixels is not sent to OCR (a few KB can decode to gigabytes) |
+| `MaxMediaDuration` (audio) | 1 h | with ffmpeg installed, longer audio is trimmed before transcription, with a warning |
 | `MaxOcrDuration` | none | when it runs out, the remaining pages are left unread and a warning says how many were read: a partial result instead of a cancelled conversion |
 | `MaxRasterPixels` | 5000 px | huge pages are rasterized below 200 dpi; larger embedded images are skipped |
 | `MaxNestingDepth` | 128 | HTML: deeper content becomes plain text; Office: `InvalidDataException` (the OpenXML SDK loads parts recursively) |

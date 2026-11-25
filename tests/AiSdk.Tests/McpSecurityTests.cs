@@ -132,6 +132,47 @@ public class McpSecurityTests
         }
     }
 
+    [Fact]
+    public async Task OversizedStdioLinesAreDiscardedWithoutBufferingThem()
+    {
+        var python = McpTests.FindExecutable("python3");
+        Assert.SkipWhen(python is null, "python3 no instalado");
+
+        // Antes de cada respuesta, el servidor escribe una línea de 3 MB sin salto (y 200 KB en stderr): con un límite de
+        // 1 MB se descartan sin acumularlas y la conversación sigue normal.
+        var script = Path.Combine(Path.GetTempPath(), $"mcp-big-{Guid.NewGuid():N}.py");
+        await File.WriteAllTextAsync(script, """
+            import json, sys
+            for line in sys.stdin:
+                msg = json.loads(line)
+                if "id" not in msg:
+                    continue
+                sys.stdout.write("x" * (3 * 1024 * 1024) + "\n")
+                sys.stderr.write("e" * (200 * 1024) + "\n")
+                sys.stderr.flush()
+                if msg["method"] == "initialize":
+                    res = {"protocolVersion": "2025-06-18", "capabilities": {}, "serverInfo": {"name": "grande"}}
+                else:
+                    res = {"content": [{"type": "text", "text": "ok"}]}
+                print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": res}), flush=True)
+            """, TestContext.Current.CancellationToken);
+        try
+        {
+            var stderr = new System.Collections.Concurrent.ConcurrentQueue<string>();
+            var transport = new StdioMcpTransport(python!, ["-u", script]) { MaxMessageBytes = 1024 * 1024, OnStderr = stderr.Enqueue };
+            await using var client = await McpClient.ConnectAsync(transport, cancellationToken: TestContext.Current.CancellationToken);
+            var result = await client.CallToolAsync("x", JsonElement.Parse("{}"), TestContext.Current.CancellationToken);
+
+            Assert.Equal("ok", result.Text);
+            Assert.Contains(stderr, l => l.Contains("supera el límite de 1048576 bytes", StringComparison.Ordinal));
+            Assert.All(stderr, l => Assert.True(l.Length <= 64 * 1024, $"Línea de {l.Length} caracteres."));
+        }
+        finally
+        {
+            File.Delete(script);
+        }
+    }
+
     // ------------------------------------------------------------------
     // Hallazgo 2: sampling con consentimiento y límites
     // ------------------------------------------------------------------

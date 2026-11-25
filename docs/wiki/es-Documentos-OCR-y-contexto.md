@@ -109,6 +109,8 @@ superar un límite se devuelve un resultado parcial y se explica en `result.Warn
 | `MaxInputBytes` | 512 MB | `DocumentTooLargeException` (con archivos, antes de leerlos) |
 | `MaxPdfPages` | 2000 | solo se procesan las primeras páginas |
 | `MaxOcrPages` | 1000 | las páginas escaneadas e imágenes incrustadas restantes no van a OCR ni a visión (bájalo con un modelo de visión de pago); las páginas totalmente en blanco nunca van a OCR |
+| `MaxRasterPixels` (imágenes) | 5000 × 5000 | una imagen cuya cabecera declara más píxeles no va a OCR (unos KB pueden ocupar gigabytes al decodificarse) |
+| `MaxMediaDuration` (audio) | 1 h | con ffmpeg instalado, el audio más largo se recorta antes de transcribirlo, con un aviso |
 | `MaxOcrDuration` | sin límite | al cumplirse, las páginas que faltan quedan sin leer y un aviso dice cuántas se leyeron: resultado parcial en vez de una conversión cancelada |
 | `MaxRasterPixels` | 5000 px | las páginas enormes se rasterizan a menos de 200 ppp; las imágenes incrustadas más grandes se omiten |
 | `MaxNestingDepth` | 128 | HTML: lo más profundo se convierte a texto plano; Office: `InvalidDataException` (el SDK de Open XML carga las partes de forma recursiva) |

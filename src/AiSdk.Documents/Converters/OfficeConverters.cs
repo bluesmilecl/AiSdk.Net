@@ -112,6 +112,11 @@ internal static class OfficeXml
         {
             warnings.Add(images);
         }
+
+        if (context.OversizedImageWarning() is { } oversized)
+        {
+            warnings.Add(oversized);
+        }
     }
 }
 

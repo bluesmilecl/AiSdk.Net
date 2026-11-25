@@ -300,6 +300,19 @@ public sealed class HttpHardeningTests
         Assert.All(handler.Requests, r => Assert.Empty(r.Request.RequestUri!.Query));
     }
 
+    [Fact]
+    public async Task GoogleModelIdsAreEscapedAndCannotTraverseTheApi()
+    {
+        var handler = new FakeHandler().Json("""{"candidates":[{"content":{"role":"model","parts":[{"text":"hola"}]},"finishReason":"STOP"}]}""");
+        var google = new AiSdk.Google.GoogleProvider(new AiSdk.Google.GoogleProviderOptions { ApiKey = "k", HttpClient = new HttpClient(handler) });
+
+        await Ai.GenerateTextAsync(new GenerateTextOptions { Model = google.Gemini("gemini x?key=1#"), Prompt = "hola" });
+        Assert.Equal("/v1beta/models/gemini%20x%3Fkey%3D1%23:generateContent", handler.Requests[0].Request.RequestUri!.AbsolutePath);
+        Assert.Empty(handler.Requests[0].Request.RequestUri!.Query);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => Ai.GenerateTextAsync(new GenerateTextOptions { Model = google.Gemini("../../files"), Prompt = "hola" }));
+    }
+
     // -----------------------------------------------------------------
     // #15 Bedrock: tamaño declarado por el servidor
     // -----------------------------------------------------------------

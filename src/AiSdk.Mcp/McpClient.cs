@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
@@ -24,6 +25,7 @@ public sealed class McpClientOptions
     public TimeSpan RequestTimeout { get; init; } = TimeSpan.FromSeconds(60);
 
     /// <summary>Raíces que el servidor puede consultar con <c>roots/list</c> (declara la capacidad <c>roots</c>).</summary>
+    [Experimental(McpDiagnostics.DeprecatedInSpec, UrlFormat = McpDiagnostics.UrlFormat)]
     public IReadOnlyList<McpRoot>? Roots { get; init; }
 
     /// <summary>
@@ -31,6 +33,7 @@ public sealed class McpClientOptions
     /// (declara la capacidad <c>sampling</c>). Exige <see cref="ApproveSampling"/>: el servidor nunca puede
     /// usar el modelo sin el consentimiento del usuario. Alternativa: <see cref="SamplingHandler"/>.
     /// </summary>
+    [Experimental(McpDiagnostics.DeprecatedInSpec, UrlFormat = McpDiagnostics.UrlFormat)]
     public ILanguageModel? SamplingModel { get; init; }
 
     /// <summary>
@@ -38,24 +41,28 @@ public sealed class McpClientOptions
     /// como exige la especificación de MCP): muestre al usuario el prompt de sistema y los mensajes del servidor y
     /// devuelva la petición que se ejecutará (puede editarla) o <c>null</c> para rechazarla.
     /// </summary>
+    [Experimental(McpDiagnostics.DeprecatedInSpec, UrlFormat = McpDiagnostics.UrlFormat)]
     public Func<McpSamplingRequest, CancellationToken, Task<McpSamplingRequest?>>? ApproveSampling { get; init; }
 
     /// <summary>
     /// Revisión opcional de la respuesta generada antes de enviarla al servidor: devuelva la respuesta
     /// (puede editarla) o <c>null</c> para no enviarla (el servidor recibe un rechazo).
     /// </summary>
+    [Experimental(McpDiagnostics.DeprecatedInSpec, UrlFormat = McpDiagnostics.UrlFormat)]
     public Func<McpSamplingRequest, McpSamplingResult, CancellationToken, Task<McpSamplingResult?>>? ReviewSamplingResult { get; init; }
 
     /// <summary>
     /// Atiende <c>sampling/createMessage</c> con lógica propia. Quien lo implemente es responsable del consentimiento
     /// del usuario; para rechazar, lance <see cref="McpRequestRejectedException"/>.
     /// </summary>
+    [Experimental(McpDiagnostics.DeprecatedInSpec, UrlFormat = McpDiagnostics.UrlFormat)]
     public Func<McpSamplingRequest, CancellationToken, Task<McpSamplingResult>>? SamplingHandler { get; init; }
 
     /// <summary>
     /// Máximo de tokens que puede pedir el servidor en cada sampling: un <c>maxTokens</c> mayor (o ausente) se recorta
     /// a este valor antes de pedir aprobación. Por defecto, 4096.
     /// </summary>
+    [Experimental(McpDiagnostics.DeprecatedInSpec, UrlFormat = McpDiagnostics.UrlFormat)]
     public int MaxSamplingTokens { get; init; } = 4096;
 
     /// <summary>
@@ -501,6 +508,7 @@ public sealed class McpClient : IAsyncDisposable
     }
 
     /// <summary>Cambia las raíces expuestas y avisa al servidor (<c>notifications/roots/list_changed</c>).</summary>
+    [Experimental(McpDiagnostics.DeprecatedInSpec, UrlFormat = McpDiagnostics.UrlFormat)]
     public Task SetRootsAsync(IReadOnlyList<McpRoot> roots, CancellationToken cancellationToken = default)
     {
         _roots = roots;

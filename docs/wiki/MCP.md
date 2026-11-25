@@ -87,7 +87,16 @@ await using var mcp = await McpClient.ConnectAsync(transport, new McpClientOptio
 **Robust HTTP.** `RequestTimeout` covers the whole request, including reading the response body; responses and SSE
 events larger than `HttpMcpTransport.MaxMessageBytes` (16 MiB) are rejected; a broken or malformed SSE stream fails the
 pending request immediately; `DisposeAsync` never throws and always closes the session (`DELETE`). Paginated listings
-stop on a repeated cursor and after `MaxListPages` (100) pages.
+stop on a repeated cursor and after `MaxListPages` (100) pages. Over **stdio**, a line longer than
+`StdioMcpTransport.MaxMessageBytes` (16 MiB) is discarded without buffering it, stderr lines passed to `OnStderr` are cut
+at 64 KiB, and the message queue is bounded (a server that floods stdout blocks instead of filling memory).
+
+> [!NOTE]
+> **Roots and sampling are experimental (`AISDKMCP001`).** The MCP specification 2026-07-28 deprecates roots, sampling
+> and logging (they remain for at least 12 months) and moves to a stateless protocol. The SDK keeps supporting them for
+> 2025-11-25 servers, but `Roots`, `SetRootsAsync`, `SamplingModel`, `SamplingHandler`, `ApproveSampling` and related
+> types may change before 1.0: using them produces the `AISDKMCP001` diagnostic (suppress it with
+> `<NoWarn>$(NoWarn);AISDKMCP001</NoWarn>`). Tools, resources and prompts are stable.
 
 **Tools are pinned.** The first time a tool is listed, the client stores a SHA-256 hash of its definition (name, title,
 description, input schema and annotations). If a later listing returns a different definition (a "rug pull"),

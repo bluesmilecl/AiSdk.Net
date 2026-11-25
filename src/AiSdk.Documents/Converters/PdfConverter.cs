@@ -107,6 +107,11 @@ public sealed partial class PdfConverter : IDocumentConverter
             warnings.Add(limit);
         }
 
+        if (context.OversizedImageWarning() is { } oversized)
+        {
+            warnings.Add(oversized);
+        }
+
         return DocumentConversionResult.FromPages(source, pages, title, warnings);
     }
 
