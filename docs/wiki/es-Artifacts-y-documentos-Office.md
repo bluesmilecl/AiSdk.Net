@@ -53,7 +53,7 @@ var style = new DocumentStyleOptions { Title = "Informe Q3", Author = "Ventas", 
 File.WriteAllBytes("informe.docx", DocumentGenerator.ToDocx(markdown, style));   // estilos reales de Word, editable
 File.WriteAllBytes("informe.pdf", DocumentGenerator.ToPdf(markdown, style));     // sin navegador ni dependencias nativas
 
-var xlsx = new SpreadsheetBuilder()
+var xlsx = new SpreadsheetBuilder { AllowFormulas = true }                       // datos de confianza: "=..." es fórmula
     .AddSheet("Ventas", ventas, new SheetOptions { Totals = true })               // desde objetos: tipos y formatos automáticos
     .AddSheet("Cálculo", [new("Item"), new("Precio", ColumnType.Currency), new("Cant."), new("Subtotal", ColumnType.Currency)],
               [["Mesa", 120.5, 2, "=B2*C2"]])                                    // fórmulas con "="
@@ -68,6 +68,15 @@ var xlsx = new SpreadsheetBuilder()
   acentos, ñ, griego y símbolos; para otros alfabetos: `PdfFonts.FromSingle(File.ReadAllBytes("NotoSansCJK.ttf"))`.
 - **Excel**: columnas tipadas (moneda, porcentaje, fechas...), encabezado con estilo, filtros, panel fijo, anchos
   automáticos, fila de totales con `SUM` y fórmulas; entiende números como `1.234,50` y `12,5%`.
+- **Enlaces** en Word y PDF: solo se crean para `http`, `https` y `mailto`; `file:`, rutas UNC, `javascript:` o
+  `data:` quedan como texto.
+
+> [!WARNING]
+> **Las fórmulas están desactivadas por defecto** (desde la 0.2). Los textos que empiezan con `=`, `+`, `-` o `@` se
+> escriben como texto (con el prefijo de comilla de Excel), así los datos de usuarios finales (`AddSheet<T>`) o de un
+> modelo (`AddMarkdownTables`, `ToXlsx`) no se convierten en `=HYPERLINK(...)`, `=WEBSERVICE(...)` ni DDE que filtren
+> datos al abrir el archivo. Actívelas con `AllowFormulas = true` para datos de confianza, opcionalmente con
+> `FormulaFilter = SpreadsheetBuilder.IsSafeFormula` (solo funciones de cálculo: sin red, enlaces, DDE ni otros libros).
 
 Para que el **agente** genere los archivos (se guardan como artifacts descargables):
 
@@ -75,6 +84,11 @@ Para que el **agente** genere los archivos (se guardan como artifacts descargabl
 Tools = DocumentTools.Create(new DocumentToolOptions { Store = store, ArtifactOptions = new() { Url = a => $"/artifacts/{a.Id}" } }),
 // create_word_document, create_pdf, create_spreadsheet  (+ DocumentTools.Instructions en el system prompt)
 ```
+
+`create_spreadsheet` conserva las fórmulas de cálculo del modelo (`=B2*C2`, `=SUM(D2:D9)`), pero solo las que acepta
+`DocumentToolOptions.FormulaFilter` (por defecto `SpreadsheetBuilder.IsSafeFormula`); las demás se escriben como
+texto. El modelo puede estar siguiendo instrucciones inyectadas en una página o un correo que leyó, y una fórmula de
+red filtraría datos cuando el usuario abra el archivo. `AllowFormulas = false` escribe todo como texto.
 
 ---
 
