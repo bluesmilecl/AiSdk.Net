@@ -66,7 +66,12 @@ dotnet test tests/AiSdk.IntegrationTests
 - **Paquetes:** las versiones están en `Directory.Packages.props` (Central Package Management). No agregues
   `Version=` a `PackageReference`.
 - **API pública:** mantén los nombres coherentes con la API existente (y con el AI SDK de Vercel cuando haya un
-  equivalente). Agrega documentación XML a los miembros públicos nuevos.
+  equivalente). Agrega documentación XML **en inglés** a los miembros públicos nuevos y anótalos en el
+  `PublicAPI.Unshipped.txt` del proyecto (la compilación indica la línea exacta; la corrección "Add to public API" del
+  IDE la escribe). Los cambios incompatibles esperan a la siguiente versión mayor.
+- **Mensajes:** nunca escribas en el código textos para personas o modelos. Agrégalos al `Resources/Strings.resx`
+  (inglés) **y** al `Resources/Strings.es.resx` (español) del proyecto, y usa la clase generada `Resources.Strings`
+  (`string.Format(CultureInfo.CurrentCulture, Strings.X, ...)` cuando lleven parámetros).
 - **Estilo:** imita el código que lo rodea: nombres, comentarios e idioms. El `.editorconfig` define lo básico.
 - **Documentación:** si cambias un comportamiento, actualiza la página de la wiki en `docs/wiki` en **ambos
   idiomas** si puedes (inglés `Pagina.md` y español `es-Pagina.md`). Si solo escribes uno, indícalo en el PR y

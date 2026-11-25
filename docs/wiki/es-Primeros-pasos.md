@@ -19,15 +19,15 @@ flowchart LR
 ## 📦 Instalación
 
 ```bash
-dotnet add package AiSdk.Net --prerelease               # núcleo
-dotnet add package AiSdk.Net.Anthropic --prerelease     # o AiSdk.Net.OpenAI, .Google, .Mistral, .Bedrock, .Cohere
-dotnet add package AiSdk.Net.Mcp --prerelease           # cliente MCP
-dotnet add package AiSdk.Net.AspNetCore --prerelease    # backend para useChat
-dotnet add package AiSdk.Net.Documents --prerelease     # leer (PDF/Office/imágenes/audio/video → Markdown + OCR) y generar Word/PDF/Excel
-dotnet add package AiSdk.Net.Workflows --prerelease     # workflows durables, triggers y automatizaciones
-dotnet add package AiSdk.Net.Workflows.Postgres --prerelease  # almacén de workflows en PostgreSQL (varias máquinas)
-dotnet add package AiSdk.Net.PgVector --prerelease      # almacén PostgreSQL + pgvector
-dotnet add package AiSdk.Net.VectorData --prerelease    # Qdrant, Pinecone, Azure AI Search… vía Microsoft.Extensions.VectorData
+dotnet add package AiSdk.Net               # núcleo
+dotnet add package AiSdk.Net.Anthropic     # o AiSdk.Net.OpenAI, .Google, .Mistral, .Bedrock, .Cohere
+dotnet add package AiSdk.Net.Mcp           # cliente MCP
+dotnet add package AiSdk.Net.AspNetCore    # backend para useChat
+dotnet add package AiSdk.Net.Documents     # leer (PDF/Office/imágenes/audio/video → Markdown + OCR) y generar Word/PDF/Excel
+dotnet add package AiSdk.Net.Workflows     # workflows durables, triggers y automatizaciones
+dotnet add package AiSdk.Net.Workflows.Postgres  # almacén de workflows en PostgreSQL (varias máquinas)
+dotnet add package AiSdk.Net.PgVector      # almacén PostgreSQL + pgvector
+dotnet add package AiSdk.Net.VectorData    # Qdrant, Pinecone, Azure AI Search… vía Microsoft.Extensions.VectorData
 ```
 
 > [!NOTE]

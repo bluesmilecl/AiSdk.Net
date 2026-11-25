@@ -7,10 +7,10 @@ and the Laravel AI SDK. Open source (MIT), created by Bluesmile ([@bluesmilecl](
 
 ## Install
 
-AiSdk.Net is in preview: install it with `--prerelease` (the API may change before the first stable version).
+AiSdk.Net 1.0 is stable: the public API follows [Semantic Versioning](https://semver.org/).
 
 ```bash
-dotnet add package AiSdk.Net.OpenAI --prerelease   # or AiSdk.Net.Anthropic, .Google, .Mistral, .Bedrock, .Cohere
+dotnet add package AiSdk.Net.OpenAI   # or AiSdk.Net.Anthropic, .Google, .Mistral, .Bedrock, .Cohere
 ```
 
 ## Quick start

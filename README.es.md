@@ -54,11 +54,11 @@ pruebas en vivo contra APIs reales.
 ## 🚀 Inicio rápido
 
 > [!NOTE]
-> AiSdk.Net está en **versión preliminar** (`0.3.0-preview.1` en [NuGet](https://www.nuget.org/packages/AiSdk.Net)):
-> instálalo con `--prerelease`. La API todavía puede cambiar antes de la primera versión estable.
+> AiSdk.Net **1.0** es estable ([NuGet](https://www.nuget.org/packages/AiSdk.Net)): la API pública sigue
+> [Versionado Semántico](https://semver.org/lang/es/). Ver [Versiones y compatibilidad](https://github.com/bluesmilecl/AiSdk.Net/wiki/es-Calidad#versiones-y-compatibilidad).
 
 ```bash
-dotnet add package AiSdk.Net.OpenAI --prerelease   # o .Anthropic, .Google, .Mistral, .Bedrock, .Cohere
+dotnet add package AiSdk.Net.OpenAI   # o .Anthropic, .Google, .Mistral, .Bedrock, .Cohere
 ```
 
 ```csharp
@@ -180,8 +180,8 @@ timeline
           : 7 proveedores, MCP, RAG, documentos y OCR
           : Orquestación, artifacts, workflows, Skills
           : Versiones preliminares en NuGet 0.1 → 0.3 (seguridad, aprobaciones en useChat, workflows en PostgreSQL)
-    Siguiente : API estable 1.0 (analizadores de API pública, telemetría gen_ai)
-              : Pruebas en vivo con Claude, Gemini y Mistral
+          : 1.0 estable (API pública congelada, telemetría gen_ai, IChatClient, mensajes en inglés y español)
+    Siguiente : Pruebas en vivo con Claude, Gemini y Mistral
               : Vertex AI y Azure OpenAI con Entra ID
 ```
 

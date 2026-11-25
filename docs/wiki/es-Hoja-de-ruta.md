@@ -17,11 +17,12 @@
 - [x] `TimeProvider` en `WorkflowEngine`.
 - [x] `IWorkflowStore` en PostgreSQL (`AiSdk.Net.Workflows.Postgres`) para varias réplicas.
 
-## 🎯 Hacia la 1.0
+## 🎯 1.0 (estable)
 
-- [ ] Decidir el nombre de paquetes y namespaces (namespaces `AiSdk.*` con paquetes `AiSdk.Net.*`, o `AiSdk.Net.*` en todo)
-- [ ] Documentación XML en inglés
-- [ ] Analizadores de API pública (`PublicAPI.Shipped.txt`) para que la API no cambie por accidente
+- [x] Nombres: paquetes `AiSdk.Net.*` con namespaces cortos `AiSdk.*` (igual que en 0.x)
+- [x] Documentación XML en inglés
+- [x] Mensajes en inglés por defecto y en español con una cultura de interfaz española (recursos `.resx`, ensamblados satélite)
+- [x] Analizadores de API pública (`PublicAPI.Shipped.txt`) para que la API no cambie por accidente
 - [x] Convenciones semánticas `gen_ai` de OpenTelemetry
 - [x] Interoperabilidad inversa con Microsoft.Extensions.AI (exponer los modelos de AiSdk como `IChatClient` e `IEmbeddingGenerator`)
 

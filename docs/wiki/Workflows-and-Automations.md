@@ -155,7 +155,7 @@ replica) and, after the tolerance window, it is rejected. Senders that cannot si
 several replicas (pods, VMs, regions behind a load balancer) against one database, use `AiSdk.Net.Workflows.Postgres`:
 
 ```bash
-dotnet add package AiSdk.Net.Workflows.Postgres --prerelease
+dotnet add package AiSdk.Net.Workflows.Postgres
 ```
 
 ```csharp

@@ -4,12 +4,12 @@
 
 ## Supported versions
 
-AiSdk.Net is at version 0.x. Security fixes are released for the **latest published version** only.
+Security fixes are released for the **latest 1.x version**.
 
 | Version | Supported |
 |---|---|
-| Latest 0.x | ✅ |
-| Older | ❌ |
+| Latest 1.x | ✅ |
+| 0.x previews | ❌ (upgrade to 1.x) |
 
 ## Reporting a vulnerability
 

@@ -157,7 +157,7 @@ red). Para ejecutar varias réplicas (pods, VMs, regiones detrás de un balancea
 `AiSdk.Net.Workflows.Postgres`:
 
 ```bash
-dotnet add package AiSdk.Net.Workflows.Postgres --prerelease
+dotnet add package AiSdk.Net.Workflows.Postgres
 ```
 
 ```csharp

@@ -46,8 +46,9 @@ namespaces: `using AiSdk;`, `using AiSdk.OpenAI;`.
 <details>
 <summary><b>Is it production ready?</b></summary>
 
-The project is at version 0.x: the API is complete and tested (450+ unit tests and live tests), but it may still
-change before 1.0. Pin versions and check the [Roadmap](Roadmap) and release notes in `CHANGELOG.md`.
+Yes. Version 1.0 freezes the public API (tracked with public API analyzers) and follows Semantic Versioning: no
+breaking changes until 2.0. It ships with 500+ unit tests, integration tests against PostgreSQL and live tests. See
+[Versioning and compatibility](Quality#versioning-and-compatibility) and the release notes in `CHANGELOG.md`.
 </details>
 
 <details>
@@ -56,6 +57,15 @@ change before 1.0. Pin versions and check the [Roadmap](Roadmap) and release not
 No. It only emits spans and metrics on the `"AiSdk"` `ActivitySource` and `Meter` (OpenTelemetry GenAI conventions,
 without prompts or responses); they go nowhere unless your app configures OpenTelemetry to export them (see
 [Testing and telemetry](Testing-and-Telemetry)).
+</details>
+
+<details>
+<summary><b>In which language are errors and warnings?</b></summary>
+
+English by default, and Spanish when `CultureInfo.CurrentUICulture` is Spanish (`es`, `es-CL`, `es-ES`...): the
+Spanish texts ship as satellite assemblies inside the packages. This also applies to the texts the model receives
+(for example when a user denies a tool). In ASP.NET Core, set the culture with `UseRequestLocalization` or
+`CultureInfo.DefaultThreadCurrentUICulture`. Messages are for people and models: do not parse them.
 </details>
 
 <details>
