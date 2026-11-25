@@ -140,7 +140,7 @@ humana para herramientas sensibles y enviar todo en streaming a la interfaz.
 | `AiSdk.Net` | Núcleo: API `Ai.*`, herramientas, agentes, orquestación, artifacts, skills, middleware, registro, embeddings, UI stream, `MockLanguageModel` |
 | `AiSdk.Net.OpenAI` · `.Anthropic` · `.Google` · `.Mistral` · `.Bedrock` · `.Cohere` | Proveedores nativos |
 | `AiSdk.Net.Mcp` | Cliente Model Context Protocol (stdio y Streamable HTTP) |
-| `AiSdk.Net.Extensions.AI` | Adaptador de Microsoft.Extensions.AI en ambas direcciones (`AsLanguageModel()`, `AsChatClient()`, `AsEmbeddingModel()`, `AsEmbeddingGenerator()`) |
+| `AiSdk.Net.Extensions.AI` | Adaptador de Microsoft.Extensions.AI en ambas direcciones (`AsLanguageModel()`, `AsIChatClient()`, `AsEmbeddingModel()`, `AsIEmbeddingGenerator()`) |
 | `AiSdk.Net.Extensions.DependencyInjection` | `services.AddAiSdk(...)`, `IHttpClientFactory`, agentes en el contenedor |
 | `AiSdk.Net.AspNetCore` | `ToUIMessageStreamResult()`, `MapArtifacts()`, `MapWorkflows()`, `MapSkills()` |
 | `AiSdk.Net.Documents` | Documentos → Markdown con OCR página por página; generación de Word, PDF y Excel; herramientas externas con un ejecutor configurable (sandbox, entorno limpio) |

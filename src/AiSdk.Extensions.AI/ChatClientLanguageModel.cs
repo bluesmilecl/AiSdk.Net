@@ -13,7 +13,7 @@ namespace AiSdk.Extensions.AI;
 /// Tools are sent as declarations only: AiSdk runs them in its own loop. Provider-defined tools, provider options and
 /// headers have no Microsoft.Extensions.AI equivalent; they only reach the model when the client pipeline ends in a
 /// <see cref="LanguageModelChatClient"/> (an AiSdk model exposed with
-/// <see cref="MicrosoftExtensionsAIExtensions.AsChatClient(ILanguageModel, Uri?)"/>).
+/// <see cref="MicrosoftExtensionsAIExtensions.AsIChatClient(ILanguageModel, Uri?)"/>).
 /// </remarks>
 /// <param name="client">The Microsoft.Extensions.AI chat client to adapt.</param>
 /// <param name="provider">Provider name reported by <see cref="Provider"/>.</param>

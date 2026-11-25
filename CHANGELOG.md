@@ -7,8 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 ## [Unreleased]
 
 ### Added
-- **Reverse interop with Microsoft.Extensions.AI** in `AiSdk.Net.Extensions.AI`: `model.AsChatClient()` exposes any
-  `ILanguageModel` as an `IChatClient` (`LanguageModelChatClient`) and `embeddingModel.AsEmbeddingGenerator()` exposes
+- **Reverse interop with Microsoft.Extensions.AI** in `AiSdk.Net.Extensions.AI`: `model.AsIChatClient()` exposes any
+  `ILanguageModel` as an `IChatClient` (`LanguageModelChatClient`) and `embeddingModel.AsIEmbeddingGenerator()` exposes
   any `IEmbeddingModel` as an `IEmbeddingGenerator<string, Embedding<float>>` (`EmbeddingModelGenerator`, batched by
   `MaxEmbeddingsPerCall`, with usage). Semantic Kernel, Microsoft Agent Framework, `FunctionInvokingChatClient`,
   OpenTelemetry and caching middleware, Aspire and evaluation libraries can now use any AiSdk.Net provider.
@@ -20,7 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
   can return `ProviderOptions` or a `LanguageModelRequest`; `GetService` returns `ChatClientMetadata` /
   `EmbeddingGeneratorMetadata` (with an optional endpoint) and the underlying model. Reasoning signatures and provider
   metadata survive streaming and conversation histories saved as JSON.
-- Converting back unwraps instead of wrapping twice (`model.AsChatClient().AsLanguageModel()` returns `model`, and the
+- Converting back unwraps instead of wrapping twice (`model.AsIChatClient().AsLanguageModel()` returns `model`, and the
   same for embeddings). Through an MEAI pipeline (`.UseOpenTelemetry()`, ...) provider options, headers and
   provider-defined tools still reach the AiSdk.Net model.
 

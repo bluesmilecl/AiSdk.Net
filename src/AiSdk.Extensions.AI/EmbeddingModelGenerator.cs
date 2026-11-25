@@ -5,7 +5,7 @@ namespace AiSdk.Extensions.AI;
 /// <summary>
 /// Exposes an AiSdk <see cref="IEmbeddingModel"/> as a Microsoft.Extensions.AI
 /// <see cref="IEmbeddingGenerator{TInput, TEmbedding}"/>. Usually created with
-/// <see cref="MicrosoftExtensionsAIExtensions.AsEmbeddingGenerator(IEmbeddingModel, Uri?)"/>.
+/// <see cref="MicrosoftExtensionsAIExtensions.AsIEmbeddingGenerator(IEmbeddingModel, Uri?)"/>.
 /// </summary>
 /// <remarks>
 /// Inputs are split into batches of <see cref="IEmbeddingModel.MaxEmbeddingsPerCall"/>. AiSdk embedding models have a

@@ -44,7 +44,7 @@ public class MicrosoftExtensionsAITests
             Usage = new Usage { InputTokens = 10, OutputTokens = 5, ReasoningTokens = 2, CachedInputTokens = 3 },
             Response = new ResponseMetadata("resp_1", "mock-model-2026", new DateTimeOffset(2026, 1, 2, 3, 4, 5, TimeSpan.Zero)),
         });
-        using var client = model.AsChatClient();
+        using var client = model.AsIChatClient();
 
         var response = await client.GetResponseAsync("Hi", cancellationToken: Ct);
 
@@ -73,7 +73,7 @@ public class MicrosoftExtensionsAITests
     public async Task GetResponseWithoutMetadataUsesModelId()
     {
         var model = new MockLanguageModel().Returns(_ => new LanguageModelResult { Content = [new TextPart("ok")] });
-        using var client = model.AsChatClient();
+        using var client = model.AsIChatClient();
 
         var response = await client.GetResponseAsync("Hi", cancellationToken: Ct);
 
@@ -94,7 +94,7 @@ public class MicrosoftExtensionsAITests
     public async Task MapsFinishReasons(FinishReason reason, string? expected)
     {
         var model = new MockLanguageModel().Returns(_ => new LanguageModelResult { Content = [new TextPart("x")], FinishReason = reason });
-        using var client = model.AsChatClient();
+        using var client = model.AsIChatClient();
 
         var response = await client.GetResponseAsync("Hi", cancellationToken: Ct);
 
@@ -105,7 +105,7 @@ public class MicrosoftExtensionsAITests
     public async Task MapsMessagesAndChatOptionsToTheRequest()
     {
         var model = new MockLanguageModel().ReturnsText("ok");
-        using var client = model.AsChatClient();
+        using var client = model.AsIChatClient();
         var schema = JsonElement.Parse("""{"type":"object","properties":{"answer":{"type":"string"}}}""");
         List<ChatMessage> messages =
         [
@@ -197,7 +197,7 @@ public class MicrosoftExtensionsAITests
     public async Task MapsToolModes(string mode, ToolChoiceKind expected)
     {
         var model = new MockLanguageModel().ReturnsText("ok").ReturnsText("ok");
-        using var client = model.AsChatClient();
+        using var client = model.AsIChatClient();
         ChatToolMode toolMode = mode switch
         {
             "auto" => ChatToolMode.Auto,
@@ -219,7 +219,7 @@ public class MicrosoftExtensionsAITests
     public async Task RawRepresentationFactoryProvidesProviderOptionsHeadersAndSettings()
     {
         var model = new MockLanguageModel().ReturnsText("ok").ReturnsText("ok");
-        using var client = model.AsChatClient();
+        using var client = model.AsIChatClient();
         var providerOptions = new ProviderOptions { ["mock"] = new() { ["reasoningEffort"] = "high" } };
 
         await client.GetResponseAsync("Hi", new ChatOptions { RawRepresentationFactory = _ => providerOptions }, Ct);
@@ -248,7 +248,7 @@ public class MicrosoftExtensionsAITests
     {
         var calls = new List<string>();
         var model = new MockLanguageModel().ReturnsToolCall("get_weather", new { city = "Santiago" }, "call_1");
-        using var client = model.AsChatClient();
+        using var client = model.AsIChatClient();
 
         var response = await client.GetResponseAsync("Weather?", new ChatOptions { Tools = [WeatherFunction(calls)] }, Ct);
 
@@ -270,7 +270,7 @@ public class MicrosoftExtensionsAITests
             Content = [new ToolCallPart("call_1", "get_weather", JsonSerializer.SerializeToElement("{\"city\":")) { InvalidInput = true }],
             FinishReason = FinishReason.ToolCalls,
         });
-        using var client = model.AsChatClient();
+        using var client = model.AsIChatClient();
 
         var response = await client.GetResponseAsync("Weather?", cancellationToken: Ct);
 
@@ -285,7 +285,7 @@ public class MicrosoftExtensionsAITests
         var model = new MockLanguageModel()
             .ReturnsToolCall("get_weather", new { city = "Santiago" }, "call_1")
             .ReturnsText("It is sunny in Santiago");
-        using var client = model.AsChatClient().AsBuilder().UseFunctionInvocation().Build();
+        using var client = model.AsIChatClient().AsBuilder().UseFunctionInvocation().Build();
 
         var response = await client.GetResponseAsync("Weather in Santiago?", new ChatOptions { Tools = [WeatherFunction(calls)] }, Ct);
 
@@ -316,7 +316,7 @@ public class MicrosoftExtensionsAITests
         var model = new MockLanguageModel()
             .ReturnsToolCall("get_weather", new { city = "Lima" }, "call_1")
             .ReturnsText("Sunny in Lima, enjoy");
-        using var client = model.AsChatClient().AsBuilder().UseFunctionInvocation().Build();
+        using var client = model.AsIChatClient().AsBuilder().UseFunctionInvocation().Build();
 
         var updates = new List<ChatResponseUpdate>();
         await foreach (var update in client.GetStreamingResponseAsync("Weather in Lima?", new ChatOptions { Tools = [WeatherFunction(calls)] }, Ct))
@@ -337,7 +337,7 @@ public class MicrosoftExtensionsAITests
         var model = new MockLanguageModel()
             .ReturnsToolCall("explode", new { }, "call_1")
             .ReturnsText("Sorry");
-        using var client = model.AsChatClient().AsBuilder().UseFunctionInvocation().Build();
+        using var client = model.AsIChatClient().AsBuilder().UseFunctionInvocation().Build();
         var explode = AIFunctionFactory.Create(string () => throw new InvalidOperationException("boom"), "explode");
 
         await client.GetResponseAsync("Go", new ChatOptions { Tools = [explode] }, Ct);
@@ -365,7 +365,7 @@ public class MicrosoftExtensionsAITests
             })
             .ReturnsText("Anything else?");
         var calls = new List<string>();
-        using var client = model.AsChatClient().AsBuilder().UseFunctionInvocation().Build();
+        using var client = model.AsIChatClient().AsBuilder().UseFunctionInvocation().Build();
         var history = new List<ChatMessage> { new(MEAI.ChatRole.User, "Search dotnet") };
 
         var response = await client.GetResponseAsync(history, new ChatOptions { Tools = [WeatherFunction(calls)] }, Ct);
@@ -406,7 +406,7 @@ public class MicrosoftExtensionsAITests
             Usage = new Usage { InputTokens = 7, OutputTokens = 4 },
             Response = new ResponseMetadata("resp_9", "mock-model-2026", DateTimeOffset.UnixEpoch),
         });
-        using var client = model.AsChatClient();
+        using var client = model.AsIChatClient();
 
         var updates = new List<ChatResponseUpdate>();
         await foreach (var update in client.GetStreamingResponseAsync("Hi", cancellationToken: Ct))
@@ -434,7 +434,7 @@ public class MicrosoftExtensionsAITests
     [Fact]
     public async Task StreamingErrorsAreThrown()
     {
-        using var client = new ScriptedLanguageModel([new TextDeltaPart("0", "partial"), new ErrorPart(new InvalidOperationException("boom"))]).AsChatClient();
+        using var client = new ScriptedLanguageModel([new TextDeltaPart("0", "partial"), new ErrorPart(new InvalidOperationException("boom"))]).AsIChatClient();
 
         var error = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
         {
@@ -462,7 +462,7 @@ public class MicrosoftExtensionsAITests
                 FinishReason = FinishReason.ToolCalls,
             })
             .ReturnsText("Thanks");
-        using var client = model.AsChatClient();
+        using var client = model.AsIChatClient();
 
         var updates = new List<ChatResponseUpdate>();
         await foreach (var update in client.GetStreamingResponseAsync("Hi", cancellationToken: Ct))
@@ -499,7 +499,7 @@ public class MicrosoftExtensionsAITests
     public async Task StructuredOutputUsesTheJsonSchemaResponseFormat()
     {
         var model = new MockLanguageModel().ReturnsText("""{"name":"Santiago","population":7000000}""");
-        using var client = model.AsChatClient();
+        using var client = model.AsIChatClient();
 
         var response = await client.GetResponseAsync<MeaiCityInfo>("Largest city of Chile?", cancellationToken: Ct);
 
@@ -513,7 +513,7 @@ public class MicrosoftExtensionsAITests
     public async Task CancellationIsHonored()
     {
         var model = new ScriptedLanguageModel([new TextDeltaPart("0", "partial")]) { BlockAfterScript = true };
-        using var client = model.AsChatClient();
+        using var client = model.AsIChatClient();
 
         using var cancelled = new CancellationTokenSource();
         await cancelled.CancelAsync();
@@ -540,7 +540,7 @@ public class MicrosoftExtensionsAITests
     public void ExposesMetadataAndTheUnderlyingModel()
     {
         var model = new MockLanguageModel("gpt-test", "openai");
-        using var client = model.AsChatClient(new Uri("https://api.example.test/v1"));
+        using var client = model.AsIChatClient(new Uri("https://api.example.test/v1"));
 
         var metadata = client.GetService<ChatClientMetadata>()!;
         Assert.Equal("openai", metadata.ProviderName);
@@ -560,7 +560,7 @@ public class MicrosoftExtensionsAITests
     public void ConvertingBackReturnsTheOriginalObject()
     {
         var model = new MockLanguageModel();
-        var client = model.AsChatClient();
+        var client = model.AsIChatClient();
         Assert.Same(model, client.AsLanguageModel());
 
         // Overriding the identity creates a real adapter.
@@ -571,7 +571,7 @@ public class MicrosoftExtensionsAITests
         Assert.IsType<ChatClientLanguageModel>(adapted);
         Assert.Equal("mock", adapted.Provider);
         Assert.Equal("mock-model", adapted.ModelId);
-        Assert.Same(pipeline, adapted.AsChatClient());
+        Assert.Same(pipeline, adapted.AsIChatClient());
     }
 
     [Fact]
@@ -589,7 +589,7 @@ public class MicrosoftExtensionsAITests
                 Usage = new Usage { InputTokens = 3, OutputTokens = 2 },
             })
             .ReturnsText("21C in Bogota");
-        using var pipeline = new PassThroughChatClient(model.AsChatClient());
+        using var pipeline = new PassThroughChatClient(model.AsIChatClient());
 
         var result = await Ai.GenerateTextAsync(new GenerateTextOptions
         {
@@ -635,7 +635,7 @@ public class MicrosoftExtensionsAITests
                 FinishReason = FinishReason.ToolCalls,
             })
             .ReturnsText("21C in Lima");
-        using var pipeline = new PassThroughChatClient(model.AsChatClient());
+        using var pipeline = new PassThroughChatClient(model.AsIChatClient());
 
         var stream = Ai.StreamText(new GenerateTextOptions
         {
@@ -688,7 +688,7 @@ public class MicrosoftExtensionsAITests
         var model = new MockLanguageModel()
             .ReturnsToolCall("get_weather", new { city = "Santiago" }, "call_1")
             .ReturnsText("Sunny in Santiago today");
-        using var pipeline = model.AsChatClient()
+        using var pipeline = model.AsIChatClient()
             .AsBuilder()
             .UseFunctionInvocation(configure: f => f.AdditionalTools = [WeatherFunction(calls)])
             .Build();
@@ -715,7 +715,7 @@ public class MicrosoftExtensionsAITests
     public async Task EmbeddingGeneratorBatchesAndReportsUsage()
     {
         var model = new MockEmbeddingModel(dimensions: 4, maxEmbeddingsPerCall: 2);
-        using var generator = model.AsEmbeddingGenerator();
+        using var generator = model.AsIEmbeddingGenerator();
 
         var embeddings = await generator.GenerateAsync(["uno", "dos", "tres"], cancellationToken: Ct);
 
@@ -742,7 +742,7 @@ public class MicrosoftExtensionsAITests
     public async Task EmbeddingGeneratorExposesMetadataAndConvertsBack()
     {
         var model = new MockEmbeddingModel();
-        using var generator = model.AsEmbeddingGenerator(new Uri("https://embeddings.example.test"));
+        using var generator = model.AsIEmbeddingGenerator(new Uri("https://embeddings.example.test"));
 
         var metadata = generator.GetService<EmbeddingGeneratorMetadata>()!;
         Assert.Equal("mock", metadata.ProviderName);
@@ -757,7 +757,7 @@ public class MicrosoftExtensionsAITests
         var adapted = pipeline.AsEmbeddingModel();
         Assert.IsType<EmbeddingGeneratorModel>(adapted);
         Assert.Equal("mock-embedding", adapted.ModelId);
-        Assert.Same(pipeline, adapted.AsEmbeddingGenerator());
+        Assert.Same(pipeline, adapted.AsIEmbeddingGenerator());
         var result = await adapted.EmbedAsync(["a", "bc"], Ct);
         Assert.Equal(2, result.Embeddings.Count);
         Assert.Equal(3, result.Usage!.Tokens);
@@ -767,7 +767,7 @@ public class MicrosoftExtensionsAITests
     public async Task CancelledEmbeddingRequestsDoNotCallTheModel()
     {
         var model = new MockEmbeddingModel();
-        using var generator = model.AsEmbeddingGenerator();
+        using var generator = model.AsIEmbeddingGenerator();
         using var cts = new CancellationTokenSource();
         await cts.CancelAsync();
 

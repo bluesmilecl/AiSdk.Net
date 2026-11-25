@@ -193,7 +193,7 @@ IEmbeddingModel embeddings = generator.AsEmbeddingModel();   // desde un IEmbedd
 
 ### Usar un proveedor de AiSdk.Net desde código MEAI
 
-`AsChatClient()` expone cualquier `ILanguageModel` como `IChatClient`, y `AsEmbeddingGenerator()` expone cualquier
+`AsIChatClient()` expone cualquier `ILanguageModel` como `IChatClient`, y `AsIEmbeddingGenerator()` expone cualquier
 `IEmbeddingModel` como `IEmbeddingGenerator<string, Embedding<float>>`. Así Semantic Kernel, Microsoft Agent Framework,
 el middleware de MEAI (`FunctionInvokingChatClient`, OpenTelemetry, caché), Aspire y las librerías de evaluación pueden
 usar cualquier proveedor de AiSdk.Net:
@@ -205,7 +205,7 @@ using AiSdk.OpenAI;
 using Microsoft.Extensions.AI;
 
 IChatClient client = AnthropicProvider.Default.Messages("claude-opus-5-5")
-    .AsChatClient()
+    .AsIChatClient()
     .AsBuilder()
     .UseFunctionInvocation()   // MEAI ejecuta las herramientas
     .Build();
@@ -216,7 +216,7 @@ var response = await client.GetResponseAsync("¿Qué tiempo hace en Santiago?", 
 });
 
 IEmbeddingGenerator<string, Embedding<float>> generator =
-    OpenAIProvider.Default.Embedding("text-embedding-3-small").AsEmbeddingGenerator();
+    OpenAIProvider.Default.Embedding("text-embedding-3-small").AsIEmbeddingGenerator();
 ```
 
 Cómo traduce el adaptador:
@@ -230,7 +230,7 @@ Cómo traduce el adaptador:
 | `Tools` (`AIFunctionDeclaration`: nombre, descripción, esquema) y `ToolMode` | Declaraciones de herramientas y `ToolChoice`; las herramientas hospedadas se ignoran |
 | `RawRepresentationFactory` que devuelve `ProviderOptions` o un `LanguageModelRequest` | Opciones del proveedor, cabeceras y herramientas definidas por el proveedor |
 | `ChatResponse`: `Usage`, `FinishReason`, `ResponseId`, `ModelId`, `CreatedAt` | `Usage` (incluidos tokens de razonamiento y en caché), motivo de fin, metadatos de la respuesta |
-| `GetService<ChatClientMetadata>()` | Nombre del proveedor, id del modelo y el endpoint opcional pasado a `AsChatClient(uri)` |
+| `GetService<ChatClientMetadata>()` | Nombre del proveedor, id del modelo y el endpoint opcional pasado a `AsIChatClient(uri)` |
 
 > [!IMPORTANT]
 > El `IChatClient` nunca ejecuta herramientas: cada llamada hace una sola llamada al modelo y devuelve
@@ -242,7 +242,7 @@ Cómo traduce el adaptador:
 - `ChatOptions.ModelId`, `ConversationId`, `AllowMultipleToolCalls` y `Reasoning` no se traducen: el modelo es fijo y
   los modelos de AiSdk.Net no guardan estado. Usa `ProviderOptions` para ajustes propios del proveedor, como el esfuerzo
   de razonamiento.
-- Convertir de vuelta desenvuelve en lugar de envolver dos veces: `model.AsChatClient().AsLanguageModel()` devuelve
+- Convertir de vuelta desenvuelve en lugar de envolver dos veces: `model.AsIChatClient().AsLanguageModel()` devuelve
   `model`. A través de un pipeline de MEAI (por ejemplo `.UseOpenTelemetry()`), las opciones del proveedor, las
   cabeceras y las herramientas definidas por el proveedor siguen llegando al modelo de AiSdk.Net.
 

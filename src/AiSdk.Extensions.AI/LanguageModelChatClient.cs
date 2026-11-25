@@ -9,7 +9,7 @@ namespace AiSdk.Extensions.AI;
 /// Exposes an AiSdk <see cref="ILanguageModel"/> as a Microsoft.Extensions.AI <see cref="IChatClient"/>, so any code
 /// built on Microsoft.Extensions.AI (Semantic Kernel, Microsoft Agent Framework, <c>FunctionInvokingChatClient</c>,
 /// evaluation libraries...) can use an AiSdk provider. Usually created with
-/// <see cref="MicrosoftExtensionsAIExtensions.AsChatClient(ILanguageModel, Uri?)"/>.
+/// <see cref="MicrosoftExtensionsAIExtensions.AsIChatClient(ILanguageModel, Uri?)"/>.
 /// </summary>
 /// <remarks>
 /// <para>

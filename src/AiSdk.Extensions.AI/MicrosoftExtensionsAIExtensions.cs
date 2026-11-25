@@ -74,7 +74,7 @@ public static class MicrosoftExtensionsAIExtensions
     /// The wrapped client when <paramref name="model"/> is a <see cref="ChatClientLanguageModel"/> and no
     /// <paramref name="providerUri"/> is given; otherwise a <see cref="LanguageModelChatClient"/>.
     /// </returns>
-    public static IChatClient AsChatClient(this ILanguageModel model, Uri? providerUri = null)
+    public static IChatClient AsIChatClient(this ILanguageModel model, Uri? providerUri = null)
     {
         ArgumentNullException.ThrowIfNull(model);
         return model is ChatClientLanguageModel adapter && providerUri is null
@@ -92,7 +92,7 @@ public static class MicrosoftExtensionsAIExtensions
     /// The wrapped generator when <paramref name="model"/> is an <see cref="EmbeddingGeneratorModel"/> and no
     /// <paramref name="providerUri"/> is given; otherwise an <see cref="EmbeddingModelGenerator"/>.
     /// </returns>
-    public static IEmbeddingGenerator<string, Embedding<float>> AsEmbeddingGenerator(this IEmbeddingModel model, Uri? providerUri = null)
+    public static IEmbeddingGenerator<string, Embedding<float>> AsIEmbeddingGenerator(this IEmbeddingModel model, Uri? providerUri = null)
     {
         ArgumentNullException.ThrowIfNull(model);
         return model is EmbeddingGeneratorModel adapter && providerUri is null

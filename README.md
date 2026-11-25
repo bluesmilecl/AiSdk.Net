@@ -139,7 +139,7 @@ approval for sensitive tools and stream everything to the UI.
 | `AiSdk.Net` | Core: `Ai.*` API, tools, agents, orchestration, artifacts, skills, middleware, registry, embeddings, UI stream, `MockLanguageModel` |
 | `AiSdk.Net.OpenAI` · `.Anthropic` · `.Google` · `.Mistral` · `.Bedrock` · `.Cohere` | Native providers |
 | `AiSdk.Net.Mcp` | Model Context Protocol client (stdio and Streamable HTTP) |
-| `AiSdk.Net.Extensions.AI` | Microsoft.Extensions.AI adapter in both directions (`AsLanguageModel()`, `AsChatClient()`, `AsEmbeddingModel()`, `AsEmbeddingGenerator()`) |
+| `AiSdk.Net.Extensions.AI` | Microsoft.Extensions.AI adapter in both directions (`AsLanguageModel()`, `AsIChatClient()`, `AsEmbeddingModel()`, `AsIEmbeddingGenerator()`) |
 | `AiSdk.Net.Extensions.DependencyInjection` | `services.AddAiSdk(...)`, `IHttpClientFactory`, agents in the container |
 | `AiSdk.Net.AspNetCore` | `ToUIMessageStreamResult()`, `MapArtifacts()`, `MapWorkflows()`, `MapSkills()` |
 | `AiSdk.Net.Documents` | Documents → Markdown with page-by-page OCR; Word, PDF and Excel generation; external tools through a configurable runner (sandbox, clean environment) |

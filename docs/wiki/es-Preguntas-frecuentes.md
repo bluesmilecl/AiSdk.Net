@@ -9,7 +9,7 @@ Microsoft.Extensions.AI ofrece abstracciones de bajo nivel (`IChatClient`); AiSd
 sobre una abstracción similar: bucle de agentes, orquestación multi-agente, Skills, artifacts, workflows durables,
 RAG, conversión de documentos y un backend para `useChat`. Se complementan en ambas direcciones: cualquier
 `IChatClient` se puede usar como modelo de AiSdk.Net con `AsLanguageModel()`, y cualquier modelo de AiSdk.Net se puede
-usar como `IChatClient` con `AsChatClient()` (Semantic Kernel, Microsoft Agent Framework…); ver
+usar como `IChatClient` con `AsIChatClient()` (Semantic Kernel, Microsoft Agent Framework…); ver
 [ASP.NET Core y useChat](es-ASP.NET-Core-y-useChat#microsoftextensionsai).
 Si conoces el AI SDK de Vercel o Laravel AI, la API te resultará familiar ([Equivalencias](es-Equivalencias)).
 </details>

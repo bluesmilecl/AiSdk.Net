@@ -191,7 +191,7 @@ IEmbeddingModel embeddings = generator.AsEmbeddingModel();   // from an IEmbeddi
 
 ### Use an AiSdk.Net provider from MEAI code
 
-`AsChatClient()` exposes any `ILanguageModel` as an `IChatClient`, and `AsEmbeddingGenerator()` exposes any
+`AsIChatClient()` exposes any `ILanguageModel` as an `IChatClient`, and `AsIEmbeddingGenerator()` exposes any
 `IEmbeddingModel` as an `IEmbeddingGenerator<string, Embedding<float>>`. Semantic Kernel, Microsoft Agent Framework,
 MEAI middleware (`FunctionInvokingChatClient`, OpenTelemetry, caching), Aspire and evaluation libraries can then use
 any AiSdk.Net provider:
@@ -203,7 +203,7 @@ using AiSdk.OpenAI;
 using Microsoft.Extensions.AI;
 
 IChatClient client = AnthropicProvider.Default.Messages("claude-opus-5-5")
-    .AsChatClient()
+    .AsIChatClient()
     .AsBuilder()
     .UseFunctionInvocation()   // MEAI runs the tools
     .Build();
@@ -214,7 +214,7 @@ var response = await client.GetResponseAsync("What's the weather in Santiago?", 
 });
 
 IEmbeddingGenerator<string, Embedding<float>> generator =
-    OpenAIProvider.Default.Embedding("text-embedding-3-small").AsEmbeddingGenerator();
+    OpenAIProvider.Default.Embedding("text-embedding-3-small").AsIEmbeddingGenerator();
 ```
 
 How the adapter maps things:
@@ -228,7 +228,7 @@ How the adapter maps things:
 | `Tools` (`AIFunctionDeclaration`: name, description, schema) and `ToolMode` | Tool declarations and `ToolChoice`; hosted tools are ignored |
 | `RawRepresentationFactory` returning `ProviderOptions` or a `LanguageModelRequest` | Provider options, headers and provider-defined tools |
 | `ChatResponse`: `Usage`, `FinishReason`, `ResponseId`, `ModelId`, `CreatedAt` | `Usage` (including reasoning and cached tokens), finish reason, response metadata |
-| `GetService<ChatClientMetadata>()` | Provider name, model id and the optional endpoint passed to `AsChatClient(uri)` |
+| `GetService<ChatClientMetadata>()` | Provider name, model id and the optional endpoint passed to `AsIChatClient(uri)` |
 
 > [!IMPORTANT]
 > The `IChatClient` never executes tools: each call makes one model call and returns `FunctionCallContent`, so
@@ -239,7 +239,7 @@ How the adapter maps things:
   `AdditionalProperties`, so they survive streaming and a conversation history saved as JSON.
 - `ChatOptions.ModelId`, `ConversationId`, `AllowMultipleToolCalls` and `Reasoning` are not mapped: the model is fixed
   and AiSdk.Net models are stateless. Use `ProviderOptions` for provider-specific settings such as reasoning effort.
-- Converting back unwraps instead of wrapping twice: `model.AsChatClient().AsLanguageModel()` returns `model`. Through
+- Converting back unwraps instead of wrapping twice: `model.AsIChatClient().AsLanguageModel()` returns `model`. Through
   an MEAI pipeline (for example `.UseOpenTelemetry()`), provider options, headers and provider-defined tools still
   reach the AiSdk.Net model.
 
