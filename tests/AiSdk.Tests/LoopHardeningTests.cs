@@ -6,6 +6,7 @@ using AiSdk.Internal;
 namespace AiSdk.Tests;
 
 /// <summary>Regresiones del bucle de herramientas: aprobaciones, paralelismo, reparación, JSON parcial y alias.</summary>
+[Collection(nameof(PerformanceSensitive))]
 public sealed class LoopHardeningTests
 {
     private sealed record Input(string City);

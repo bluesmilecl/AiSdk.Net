@@ -4,6 +4,8 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../AiSdk/AiSdk.csproj" />
+    <!-- Parser HTML (ya llegaba por ReverseMarkdown): se fija porque el convertidor HTML lo usa directamente. -->
+    <PackageReference Include="AngleSharp" />
     <PackageReference Include="DocumentFormat.OpenXml" />
     <PackageReference Include="PdfPig" />
     <PackageReference Include="ReverseMarkdown" />

