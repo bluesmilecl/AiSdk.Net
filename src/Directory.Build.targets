@@ -1,0 +1,16 @@
+<Project>
+  <!--
+    Mensajes localizados: cada proyecto con Resources/Strings.resx (inglés, neutral) y Resources/Strings.es.resx
+    (español) obtiene la clase interna {RootNamespace}.Resources.Strings, generada en la compilación. El idioma sale de
+    CultureInfo.CurrentUICulture; el español viaja como ensamblado satélite (es/) dentro del paquete.
+  -->
+  <ItemGroup Condition="Exists('$(MSBuildProjectDirectory)/Resources/Strings.resx')">
+    <EmbeddedResource Update="Resources/Strings.resx">
+      <Generator>MSBuild:Compile</Generator>
+      <StronglyTypedFileName>$(IntermediateOutputPath)Strings.Designer.cs</StronglyTypedFileName>
+      <StronglyTypedLanguage>CSharp</StronglyTypedLanguage>
+      <StronglyTypedNamespace>$(RootNamespace).Resources</StronglyTypedNamespace>
+      <StronglyTypedClassName>Strings</StronglyTypedClassName>
+    </EmbeddedResource>
+  </ItemGroup>
+</Project>

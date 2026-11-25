@@ -29,7 +29,7 @@ public sealed class CohereProvider : IProvider
     public string Name => _options.Name;
 
     public ILanguageModel LanguageModel(string modelId) =>
-        throw new NotSupportedException("El proveedor Cohere de AiSdk solo ofrece reranking y embeddings.");
+        throw new NotSupportedException(Resources.Strings.OnlyRerankAndEmbeddings);
 
     /// <summary>Reranking model, e.g. <c>"rerank-v3.5"</c>.</summary>
     public IRerankingModel Reranking(string modelId = "rerank-v3.5") => new CohereRerankingModel(modelId, this);

@@ -20,6 +20,9 @@
     <RepositoryUrl>https://github.com/bluesmilecl/AiSdk.Net</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
 
+    <!-- Mensajes en inglés por defecto (recursos neutrales) y en español con CurrentUICulture "es*" (ensamblado satélite). -->
+    <NeutralLanguage>en</NeutralLanguage>
+
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!-- La documentación XML es obligatoria en la API pública nueva, pero no se exige en cada miembro existente. -->
     <NoWarn>$(NoWarn);CS1591</NoWarn>
