@@ -1,9 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace AiSdk.Mcp;
 
 /// <summary>Raíz (directorio o URI) que el cliente expone al servidor.</summary>
+[Experimental(McpDiagnostics.DeprecatedInSpec, UrlFormat = McpDiagnostics.UrlFormat)]
 public sealed record McpRoot(string Uri, string? Name = null);
 
 /// <summary>Recurso publicado por un servidor MCP.</summary>
@@ -39,6 +41,7 @@ public sealed record McpPrompt(string Name, string? Description, IReadOnlyList<M
 public sealed record McpPromptResult(string? Description, IReadOnlyList<ModelMessage> Messages);
 
 /// <summary>Petición de <c>sampling/createMessage</c>: el servidor pide al cliente que genere con un modelo.</summary>
+[Experimental(McpDiagnostics.DeprecatedInSpec, UrlFormat = McpDiagnostics.UrlFormat)]
 public sealed record McpSamplingRequest(
     IReadOnlyList<ModelMessage> Messages,
     string? SystemPrompt,
@@ -47,6 +50,7 @@ public sealed record McpSamplingRequest(
     IReadOnlyList<string>? StopSequences,
     JsonNode? ModelPreferences);
 
+[Experimental(McpDiagnostics.DeprecatedInSpec, UrlFormat = McpDiagnostics.UrlFormat)]
 public sealed record McpSamplingResult(string Text, string Model, string StopReason = "endTurn");
 
 /// <summary>
@@ -117,4 +121,17 @@ internal static class McpConvert
         };
         return new ModelMessage(role, parts.OfType<ContentPart>().ToList());
     }
+}
+
+/// <summary>Identificadores de diagnóstico del cliente MCP.</summary>
+public static class McpDiagnostics
+{
+    /// <summary>
+    /// Funciones que la especificación MCP 2026-07-28 deja obsoletas (roots, sampling y logging; se mantienen al menos
+    /// 12 meses): el SDK las conserva para servidores 2025-11-25, pero pueden cambiar o desaparecer antes de la 1.0.
+    /// Para usarlas, suprima el diagnóstico (<c>&lt;NoWarn&gt;$(NoWarn);AISDKMCP001&lt;/NoWarn&gt;</c>).
+    /// </summary>
+    public const string DeprecatedInSpec = "AISDKMCP001";
+
+    internal const string UrlFormat = "https://github.com/bluesmilecl/AiSdk.Net/wiki/MCP#{0}";
 }

@@ -34,7 +34,11 @@ public sealed class ImageConverter : IDocumentConverter
             kind = kind == PageTextSource.Text ? PageTextSource.Ocr : kind;
         }
 
-        if (ocr is null && description is null)
+        if (context.OversizedImagesSkipped > 0)
+        {
+            warnings.Add(context.OversizedImageWarning()!);
+        }
+        else if (ocr is null && description is null)
         {
             warnings.Add("No hay Ocr ni VisionModel configurado: la imagen no se pudo analizar.");
         }
@@ -76,7 +80,38 @@ public sealed class AudioConverter : IDocumentConverter
             };
         }
 
-        var transcript = await MediaHelpers.TranscribeAsync(context, source.Data, source.MediaType, source.FileName, cancellationToken).ConfigureAwait(false);
+        // Con ffmpeg se mide la duración y, si supera MaxMediaDuration, solo se transcribe ese tramo (la transcripción
+        // suele cobrarse por minuto); sin ffmpeg se envía tal cual (solo acota MaxInputBytes).
+        var warnings = new List<string>();
+        var (audio, mediaType, fileName) = (source.Data, source.MediaType, source.FileName);
+        var options = context.Options;
+        var runner = options.ProcessRunner ?? ExternalProcess.Runner;
+        if (runner.Exists(options.FfmpegPath))
+        {
+            using var temp = new TempDirectory();
+            var input = temp.File("input" + MediaTypes.ExtensionFor(source.MediaType));
+            await File.WriteAllBytesAsync(input, source.Data, cancellationToken).ConfigureAwait(false);
+            var maxSeconds = Math.Max(1, options.MaxMediaDuration.TotalSeconds);
+            if (await VideoConverter.ProbeDurationAsync(runner, options.FfmpegPath, input, cancellationToken).ConfigureAwait(false) is { } duration
+                && duration > maxSeconds)
+            {
+                var clip = temp.File("audio.mp3");
+                var cut = await runner.RunAsync(
+                    options.FfmpegPath,
+                    ["-nostdin", "-v", "error", .. VideoConverter.SafeInputArguments, "-t", maxSeconds.ToString("0.###", CultureInfo.InvariantCulture), "-i", input,
+                     "-vn", "-ac", "1", "-ar", "16000", "-b:a", "48k", "-f", "mp3", clip],
+                    cancellationToken: cancellationToken).ConfigureAwait(false);
+                if (cut.ExitCode != 0 || !File.Exists(clip))
+                {
+                    throw new InvalidDataException($"El audio dura {MediaHelpers.Timestamp(duration)} (más que MaxMediaDuration) y no se pudo recortar: {cut.Error.Trim()}");
+                }
+
+                (audio, mediaType, fileName) = (await File.ReadAllBytesAsync(clip, cancellationToken).ConfigureAwait(false), "audio/mpeg", "audio.mp3");
+                warnings.Add($"El audio dura {MediaHelpers.Timestamp(duration)}: solo se transcribieron los primeros {MediaHelpers.Timestamp(maxSeconds)} (MaxMediaDuration).");
+            }
+        }
+
+        var transcript = await MediaHelpers.TranscribeAsync(context, audio, mediaType, fileName, cancellationToken).ConfigureAwait(false);
         var markdown = $"## Transcripción: {source.FileName ?? "audio"}\n\n{MediaHelpers.FormatTranscript(transcript)}";
         return new DocumentConversionResult
         {
@@ -84,6 +119,7 @@ public sealed class AudioConverter : IDocumentConverter
             MediaType = source.MediaType,
             FileName = source.FileName,
             Pages = [new DocumentPage(1, markdown, PageTextSource.Transcript)],
+            Warnings = warnings,
         };
     }
 }
@@ -281,9 +317,9 @@ public sealed class VideoConverter : IDocumentConverter
     }
 
     /// <summary>Opciones de entrada de ffmpeg y ffprobe: solo el protocolo <c>file</c> y los formatos de <see cref="AllowedFormats"/>.</summary>
-    private static readonly string[] SafeInputArguments = ["-protocol_whitelist", "file", "-format_whitelist", AllowedFormats];
+    internal static readonly string[] SafeInputArguments = ["-protocol_whitelist", "file", "-format_whitelist", AllowedFormats];
 
-    private static async Task<double?> ProbeDurationAsync(IExternalProcessRunner runner, string ffmpeg, string input, CancellationToken cancellationToken)
+    internal static async Task<double?> ProbeDurationAsync(IExternalProcessRunner runner, string ffmpeg, string input, CancellationToken cancellationToken)
     {
         var ffprobe = Path.Combine(Path.GetDirectoryName(ffmpeg) ?? string.Empty, Path.GetFileName(ffmpeg).Replace("ffmpeg", "ffprobe", StringComparison.OrdinalIgnoreCase));
         if (!runner.Exists(ffprobe))

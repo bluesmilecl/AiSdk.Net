@@ -1024,6 +1024,93 @@ public class GenerationSecurityTests
 }
 
 [Collection(nameof(PerformanceSensitive))]
+public class MediaLimitTests
+{
+    [Theory]
+    [InlineData("3x2.png", "image/png")]
+    [InlineData("3x2.jpg", "image/jpeg")]
+    [InlineData("3x2.gif", "image/gif")]
+    [InlineData("3x2.bmp", "image/bmp")]
+    [InlineData("3x2-lossy.webp", "image/webp")]
+    [InlineData("3x2-lossless.webp", "image/webp")]
+    public async Task ImageSizeIsReadFromTheHeaderBeforeOcr(string file, string mediaType)
+    {
+        // 3 × 2 píxeles = 6: con un máximo de 2 × 2 no va a OCR; con 3 × 3, sí.
+        var data = await File.ReadAllBytesAsync(DocumentConverterTests.Fixture(Path.Combine("sizes", file)), TestContext.Current.CancellationToken);
+        var tooSmallLimit = new DocumentConverterTests.FakeOcr("texto", mediaType);
+        var rejected = await new MarkdownConverter(new MarkdownConverterOptions { Ocr = tooSmallLimit, MaxRasterPixels = 2 })
+            .ConvertAsync(data, mediaType, file, TestContext.Current.CancellationToken);
+        Assert.Equal(0, tooSmallLimit.Calls);
+        Assert.Contains(rejected.Warnings, w => w.Contains("MaxRasterPixels", StringComparison.Ordinal));
+
+        var enough = new DocumentConverterTests.FakeOcr("texto", mediaType);
+        await new MarkdownConverter(new MarkdownConverterOptions { Ocr = enough, MaxRasterPixels = 3 })
+            .ConvertAsync(data, mediaType, file, TestContext.Current.CancellationToken);
+        Assert.Equal(1, enough.Calls);
+    }
+
+    [Fact]
+    public async Task DecompressionBombImagesNeverReachOcr()
+    {
+        // Cabecera PNG que declara 60.000 × 60.000 píxeles (3.600 millones): Tesseract intentaría reservar gigabytes.
+        var png = new byte[64];
+        new byte[] { 0x89, (byte)'P', (byte)'N', (byte)'G', 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, (byte)'I', (byte)'H', (byte)'D', (byte)'R' }.CopyTo(png, 0);
+        System.Buffers.Binary.BinaryPrimitives.WriteInt32BigEndian(png.AsSpan(16), 60_000);
+        System.Buffers.Binary.BinaryPrimitives.WriteInt32BigEndian(png.AsSpan(20), 60_000);
+        var ocr = new DocumentConverterTests.FakeOcr("texto");
+
+        var result = await new MarkdownConverter(new MarkdownConverterOptions { Ocr = ocr })
+            .ConvertAsync(png, "image/png", "bomba.png", TestContext.Current.CancellationToken);
+
+        Assert.Equal(0, ocr.Calls);
+        Assert.Contains(result.Warnings, w => w.Contains("5000 × 5000", StringComparison.Ordinal));
+    }
+
+    private sealed class CapturingTranscription : ITranscriptionModel
+    {
+        public TranscriptionModelRequest? Request { get; private set; }
+
+        public string Provider => "prueba";
+
+        public string ModelId => "captura";
+
+        public Task<TranscriptionModelResult> TranscribeAsync(TranscriptionModelRequest request, CancellationToken cancellationToken = default)
+        {
+            Request = request;
+            return Task.FromResult(new TranscriptionModelResult("hola"));
+        }
+    }
+
+    [Fact]
+    public async Task LongAudioIsTrimmedToMaxMediaDurationBeforeTranscription()
+    {
+        Assert.SkipUnless(ExternalProcess.Exists("ffmpeg") && ExternalProcess.Exists("ffprobe"), "ffmpeg no instalado");
+        var wav = Path.Combine(Path.GetTempPath(), $"aisdk-tono-{Guid.NewGuid():N}.wav");
+        await ExternalProcess.RunCheckedAsync("ffmpeg", ["-nostdin", "-v", "error", "-f", "lavfi", "-i", "sine=frequency=440:duration=6", "-ar", "16000", wav], cancellationToken: TestContext.Current.CancellationToken);
+        try
+        {
+            var transcription = new CapturingTranscription();
+            var result = await new MarkdownConverter(new MarkdownConverterOptions { Transcription = transcription, MaxMediaDuration = TimeSpan.FromSeconds(2) })
+                .ConvertFileAsync(wav, TestContext.Current.CancellationToken);
+
+            // Se envía un recorte de 2 s en MP3 (el original dura 6 s en WAV, ~190 KB).
+            Assert.Equal("audio/mpeg", transcription.Request!.MediaType);
+            Assert.InRange(transcription.Request.Audio.Length, 1, 40_000);
+            Assert.Contains(result.Warnings, w => w.Contains("MaxMediaDuration", StringComparison.Ordinal));
+
+            var shortAudio = new CapturingTranscription();
+            var full = await new MarkdownConverter(new MarkdownConverterOptions { Transcription = shortAudio })
+                .ConvertFileAsync(wav, TestContext.Current.CancellationToken);
+            Assert.Equal("audio/wav", shortAudio.Request!.MediaType, ignoreCase: true);
+            Assert.Empty(full.Warnings);
+        }
+        finally
+        {
+            File.Delete(wav);
+        }
+    }
+}
+
 public class OutputEscapingTests
 {
     [Fact]

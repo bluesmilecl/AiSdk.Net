@@ -36,7 +36,8 @@ public interface IMcpTransport : IAsyncDisposable
 /// </remarks>
 public sealed class StdioMcpTransport : IMcpTransport
 {
-    private readonly Channel<JsonObject> _messages = Channel.CreateUnbounded<JsonObject>();
+    // Cola acotada: si el cliente no consume, la lectura se detiene y el servidor queda bloqueado en su stdout.
+    private readonly Channel<JsonObject> _messages = Channel.CreateBounded<JsonObject>(new BoundedChannelOptions(1024) { SingleReader = true, SingleWriter = true });
     private readonly SemaphoreSlim _writeLock = new(1, 1);
     private readonly ProcessStartInfo? _startInfo;
     private readonly IReadOnlyDictionary<string, string> _environment = new Dictionary<string, string>();
@@ -45,6 +46,12 @@ public sealed class StdioMcpTransport : IMcpTransport
     private Stream? _output;
     private Task? _readLoop;
     private readonly CancellationTokenSource _cts = new();
+
+    /// <summary>Tamaño máximo de un mensaje JSON-RPC (una línea de stdout), en bytes: 16 MiB. Uno mayor se descarta.</summary>
+    public long MaxMessageBytes { get; init; } = 16 * 1024 * 1024;
+
+    /// <summary>Largo máximo de una línea de stderr que se entrega a <c>OnStderr</c>, en bytes (64 KiB); el resto se corta.</summary>
+    public int MaxStderrLineBytes { get; init; } = 64 * 1024;
 
     /// <summary>Lanza <paramref name="command"/> con los argumentos y variables de entorno indicados.</summary>
     /// <param name="command">Ejecutable del servidor (se lanza sin shell).</param>
@@ -120,11 +127,19 @@ public sealed class StdioMcpTransport : IMcpTransport
             _process = Process.Start(_startInfo) ?? throw new AiSdkException($"No se pudo iniciar el servidor MCP '{_startInfo.FileName}'.");
             _input = _process.StandardInput.BaseStream;
             _output = _process.StandardOutput.BaseStream;
+            var stderr = new BoundedLineReader(_process.StandardError.BaseStream, MaxStderrLineBytes);
             _ = Task.Run(async () =>
             {
-                while (await _process.StandardError.ReadLineAsync().ConfigureAwait(false) is { } line)
+                try
                 {
-                    OnStderr?.Invoke(line);
+                    while (await stderr.ReadLineAsync(CancellationToken.None).ConfigureAwait(false) is { } line)
+                    {
+                        OnStderr?.Invoke(line.Text);
+                    }
+                }
+                catch (Exception ex) when (ex is IOException or ObjectDisposedException)
+                {
+                    // El proceso terminó.
                 }
             }, CancellationToken.None);
         }
@@ -178,9 +193,17 @@ public sealed class StdioMcpTransport : IMcpTransport
     {
         try
         {
-            using var reader = new StreamReader(_output!, Encoding.UTF8);
-            while (await reader.ReadLineAsync(_cts.Token).ConfigureAwait(false) is { } line)
+            var reader = new BoundedLineReader(_output!, MaxMessageBytes);
+            while (await reader.ReadLineAsync(_cts.Token).ConfigureAwait(false) is { } read)
             {
+                if (read.Truncated)
+                {
+                    // Un mensaje más grande que el límite no se acumula en memoria: se descarta y se informa.
+                    OnStderr?.Invoke($"Mensaje del servidor MCP descartado: supera el límite de {MaxMessageBytes} bytes.");
+                    continue;
+                }
+
+                var line = read.Text;
                 if (string.IsNullOrWhiteSpace(line))
                 {
                     continue;
@@ -547,5 +570,53 @@ public sealed class HttpMcpTransport : IMcpTransport
 
         _messages.Writer.TryComplete();
         _cts.Dispose();
+    }
+}
+
+/// <summary>
+/// Lector de líneas UTF-8 con tamaño máximo: nunca acumula más de <c>maxBytes</c> por línea (lo que sobra se descarta
+/// hasta el salto de línea y la línea queda marcada como truncada). Lee por bloques, no byte a byte.
+/// </summary>
+internal sealed class BoundedLineReader(Stream stream, long maxBytes)
+{
+    private readonly byte[] _buffer = new byte[64 * 1024];
+    private int _start;
+    private int _end;
+
+    /// <summary>La siguiente línea (sin <c>\n</c> ni <c>\r</c> final); null al terminar el flujo.</summary>
+    public async Task<(string Text, bool Truncated)?> ReadLineAsync(CancellationToken cancellationToken)
+    {
+        using var line = new MemoryStream();
+        var truncated = false;
+        while (true)
+        {
+            if (_start == _end)
+            {
+                _start = 0;
+                _end = await stream.ReadAsync(_buffer, cancellationToken).ConfigureAwait(false);
+                if (_end == 0)
+                {
+                    return line.Length > 0 || truncated ? (Decode(line), truncated) : null;
+                }
+            }
+
+            var available = _buffer.AsSpan(_start, _end - _start);
+            var newline = available.IndexOf((byte)'\n');
+            var chunk = newline >= 0 ? available[..newline] : available;
+            var room = (int)Math.Min(chunk.Length, Math.Max(0, maxBytes - line.Length));
+            line.Write(chunk[..room]);
+            truncated |= room < chunk.Length;
+            _start += newline >= 0 ? newline + 1 : available.Length;
+            if (newline >= 0)
+            {
+                return (Decode(line), truncated);
+            }
+        }
+    }
+
+    private static string Decode(MemoryStream bytes)
+    {
+        var span = bytes.GetBuffer().AsSpan(0, (int)bytes.Length);
+        return Encoding.UTF8.GetString(span.EndsWith("\r"u8) ? span[..^1] : span);
     }
 }

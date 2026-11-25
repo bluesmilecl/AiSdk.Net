@@ -384,6 +384,32 @@ public class WorkflowEndpointSecurityTests
     }
 
     [Fact]
+    public async Task AnEventOnlyResumesTheRunsThatCanSendEventSaw()
+    {
+        string? late = null;
+        await using var app = await StartAsync(new WorkflowEndpointOptions
+        {
+            CanSendEvent = async (http, e) =>
+            {
+                // Entre la autorización y el envío otra ejecución empieza a esperar el mismo evento con la misma clave.
+                var engine = http.RequestServices.GetRequiredService<WorkflowEngine>();
+                late = (await engine.StartAsync("approval", new Order("A-3", 1), triggeredBy: "user:carla", cancellationToken: http.RequestAborted)).Id;
+                return e.WaitingRuns.Count == 1;
+            },
+        });
+        var id = await StartRunAsync(TestAuth.Client(app, "ana"), "A-3");
+        var engine = app.Services.GetRequiredService<WorkflowEngine>();
+
+        var response = await TestAuth.Client(app, "gerente").PostAsync("/workflows/events/order.approval?key=A-3", TestAuth.Json("""{"approved":true}"""), Ct);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        await engine.WhenIdleAsync();
+
+        Assert.Equal("aprobado", (await engine.GetRunAsync(id, Ct))!.GetOutput<string>());
+        Assert.Equal(WorkflowStatus.WaitingForEvent, (await engine.GetRunAsync(late!, Ct))!.Status);
+        Assert.Equal([id], (await response.Content.ReadFromJsonAsync<JsonElement>(Ct)).GetProperty("runs").EnumerateArray().Select(r => r.GetString()));
+    }
+
+    [Fact]
     public async Task OversizedBodiesAreRejectedBeforeBeingBuffered()
     {
         await using var app = await StartAsync();

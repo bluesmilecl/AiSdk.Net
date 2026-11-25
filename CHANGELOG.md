@@ -23,6 +23,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
   `WriteUIMessageStreamAsync`, `UIMessageStream.ToChunks`/`WriteAsync` and `UIMessageStreamWriter.Merge`;
   `AgentCallOptions.DeferToolApprovals`; stream parts `ToolApprovalRequestStreamPart` and `ToolOutputDeniedStreamPart`.
 - `samples/ChatApi`: `send_weather_alert` requires the user's approval in the chat.
+- `WorkflowEngine.SendEventToRunsAsync`: delivers an event only to the given runs (still re-checked under the run lock),
+  and fires matching `EventTrigger` automations like `SendEventAsync`.
 
 ### Changed
 - Denied calls are emitted as `ToolOutputDeniedStreamPart` instead of an error `ToolResultStreamPart` (the model still
@@ -32,6 +34,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
   executed once.
 - `UIMessageStream.WriteAsync` takes `toolApprovals` before `cancellationToken`. Migration: pass the token by name
   (`cancellationToken: ct`).
+- MCP: roots and sampling (`Roots`, `SetRootsAsync`, `SamplingModel`, `SamplingHandler`, `ApproveSampling`,
+  `ReviewSamplingResult`, `MaxSamplingTokens` and their types) are marked `[Experimental("AISDKMCP001")]`: the MCP
+  specification 2026-07-28 deprecates them. Suppress the diagnostic to keep using them.
+- Audio: with ffmpeg installed, audio longer than `MaxMediaDuration` is trimmed before transcription, with a warning.
 
 ### Security
 - Approved calls are never repaired by `RepairToolCall`: repairing would execute something other than what the user
@@ -42,6 +48,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
   history reusing an approved call's id for another tool or input) are both closed with an error: an approval is never
   applied to a call other than the one it was granted for.
 - `UIMessageStreamWriter.WriteSource` no longer writes `"title": null` without a title (ai 6.0.x rejects it).
+- MCP over stdio: lines longer than `StdioMcpTransport.MaxMessageBytes` (16 MiB) are discarded without buffering them,
+  stderr lines are cut at 64 KiB (`MaxStderrLineBytes`) and the incoming message queue is bounded.
+- Documents: an image whose header declares more than `MaxRasterPixels` × `MaxRasterPixels` pixels is never sent to OCR
+  (PNG, JPEG, GIF, BMP and WebP headers are read without decoding), with a warning.
+- Google: model ids are escaped segment by segment and `.`/`..` segments are rejected.
+- Skills: `SkillLibrary.SaveAsync` writes each file to a hidden temporary file and renames it over the target, so a
+  hard link, FIFO or symlink left in the skill folder is replaced instead of written through (a hard link to a file
+  outside the skill is indistinguishable from a regular file). Empty files and FIFOs are never opened when loading or
+  reading a skill folder.
+
+- Workflows: `POST /events/{event}` only resumes the runs `CanSendEvent` approved. A run that started waiting for the
+  same event between the check and the delivery used to be resumed too; it now keeps waiting.
 
 ## [0.2.0-preview.1] - 2026-11-25
 

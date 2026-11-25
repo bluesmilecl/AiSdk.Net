@@ -87,7 +87,17 @@ await using var mcp = await McpClient.ConnectAsync(transport, new McpClientOptio
 **HTTP robusto.** `RequestTimeout` cubre la petición completa, incluida la lectura del cuerpo de la respuesta; las
 respuestas y eventos SSE mayores que `HttpMcpTransport.MaxMessageBytes` (16 MiB) se rechazan; un stream SSE cortado o
 con datos inválidos hace fallar de inmediato la petición pendiente; `DisposeAsync` nunca lanza y siempre cierra la sesión
-(`DELETE`). Los listados paginados se detienen ante un cursor repetido y tras `MaxListPages` (100) páginas.
+(`DELETE`). Los listados paginados se detienen ante un cursor repetido y tras `MaxListPages` (100) páginas. Por
+**stdio**, una línea más larga que `StdioMcpTransport.MaxMessageBytes` (16 MiB) se descarta sin acumularla, las líneas de
+stderr que llegan a `OnStderr` se cortan en 64 KiB y la cola de mensajes es acotada (un servidor que inunda stdout queda
+bloqueado en vez de llenar la memoria).
+
+> [!NOTE]
+> **Roots y sampling son experimentales (`AISDKMCP001`).** La especificación MCP 2026-07-28 deja obsoletos roots,
+> sampling y logging (se mantienen al menos 12 meses) y pasa a un protocolo sin estado. El SDK los sigue soportando para
+> servidores 2025-11-25, pero `Roots`, `SetRootsAsync`, `SamplingModel`, `SamplingHandler`, `ApproveSampling` y sus
+> tipos pueden cambiar antes de la 1.0: usarlos produce el diagnóstico `AISDKMCP001` (suprímelo con
+> `<NoWarn>$(NoWarn);AISDKMCP001</NoWarn>`). Herramientas, recursos y prompts son estables.
 
 **Las herramientas quedan fijadas.** La primera vez que se lista una herramienta, el cliente guarda un hash SHA-256 de
 su definición (nombre, título, descripción, esquema de entrada y anotaciones). Si un listado posterior trae otra

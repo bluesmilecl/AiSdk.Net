@@ -9,6 +9,8 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <IsTestingPlatformApplication>false</IsTestingPlatformApplication>
+    <!-- Las pruebas cubren también roots y sampling de MCP (experimentales: ver McpDiagnostics). -->
+    <NoWarn>$(NoWarn);AISDKMCP001</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

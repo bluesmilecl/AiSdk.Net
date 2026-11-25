@@ -61,7 +61,16 @@ public sealed class GoogleProvider : IProvider
     internal Uri ModelUrl(string modelId, string method, string? query = null)
     {
         var model = modelId.StartsWith("models/", StringComparison.Ordinal) ? modelId : "models/" + modelId;
-        return new Uri($"{_options.BaseUrl.TrimEnd('/')}/{model}:{method}{(query is null ? string.Empty : "?" + query)}");
+
+        // Cada segmento se escapa y no se aceptan "." ni "..": un id de modelo no puede apuntar a otra ruta de la API.
+        var segments = model.Split('/');
+        if (segments.Any(segment => segment is "" or "." or ".."))
+        {
+            throw new ArgumentException($"Id de modelo inválido: '{modelId}'.", nameof(modelId));
+        }
+
+        var path = string.Join('/', segments.Select(Uri.EscapeDataString));
+        return new Uri($"{_options.BaseUrl.TrimEnd('/')}/{path}:{method}{(query is null ? string.Empty : "?" + query)}");
     }
 
     internal static string ModelName(string modelId) => modelId.StartsWith("models/", StringComparison.Ordinal) ? modelId : "models/" + modelId;

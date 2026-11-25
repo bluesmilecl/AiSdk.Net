@@ -179,15 +179,15 @@ public static class WorkflowEndpoints
 
             var payload = await ReadJsonAsync(http).ConfigureAwait(false);
             var engine = Engine(http);
-            var waiting = (await engine.Store.ListRunsAsync(WorkflowStatus.WaitingForEvent, limit: int.MaxValue, cancellationToken: http.RequestAborted).ConfigureAwait(false))
-                .Where(r => r.Waiting is { } w && w.EventName == eventName && (w.Key is null || w.Key == key))
-                .ToList();
+            var waiting = await engine.Store.ListRunsWaitingForEventAsync(eventName, key, int.MaxValue, http.RequestAborted).ConfigureAwait(false);
             if (!await options.CanSendEvent(http, new WorkflowEventRequest(eventName, key, payload, waiting)).ConfigureAwait(false))
             {
                 return EndpointSecurity.Forbidden($"No puede enviar el evento '{eventName}'.");
             }
 
-            var runs = await engine.SendEventAsync(eventName, payload, key, http.RequestAborted).ConfigureAwait(false);
+            // Solo se reanudan las ejecuciones que vio CanSendEvent: una que empiece a esperar el evento entre la
+            // autorización y el envío no queda aprobada por una decisión que no la incluía.
+            var runs = await engine.SendEventToRunsAsync(eventName, waiting.Select(r => r.Id), payload, key, http.RequestAborted).ConfigureAwait(false);
             return Results.Ok(new { runs });
         });
 

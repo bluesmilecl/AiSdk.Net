@@ -252,6 +252,7 @@ public sealed class DocumentConversionContext(MarkdownConverterOptions options, 
 {
     private int _imageAnalyses;
     private int _imageAnalysesSkipped;
+    private int _oversizedImages;
 
     public MarkdownConverterOptions Options { get; } = options;
 
@@ -299,11 +300,31 @@ public sealed class DocumentConversionContext(MarkdownConverterOptions options, 
             ? null
             : $"{ImageAnalysesSkipped} página(s) o imagen(es) no se enviaron a OCR ni a visión: se alcanzó el máximo del documento (MaxOcrPages = {Options.MaxOcrPages}).";
 
-    /// <summary>OCR de una imagen o documento; null si no hay motor configurado.</summary>
+    /// <summary>Imágenes que no se enviaron a OCR por superar <see cref="MarkdownConverterOptions.MaxRasterPixels"/> al cuadrado.</summary>
+    public int OversizedImagesSkipped => Volatile.Read(ref _oversizedImages);
+
+    /// <summary>Aviso para las imágenes omitidas por tamaño en píxeles; null si no hubo.</summary>
+    public string? OversizedImageWarning() =>
+        OversizedImagesSkipped == 0
+            ? null
+            : $"{OversizedImagesSkipped} imagen(es) no se enviaron a OCR: superan {Options.MaxRasterPixels} × {Options.MaxRasterPixels} píxeles (MaxRasterPixels); una imagen pequeña en bytes puede ocupar gigabytes al decodificarse.";
+
+    /// <summary>
+    /// OCR de una imagen o documento; null si no hay motor configurado o si la imagen supera
+    /// <see cref="MarkdownConverterOptions.MaxRasterPixels"/> al cuadrado (se lee el tamaño de la cabecera, sin decodificarla).
+    /// </summary>
     public async Task<OcrResult?> OcrAsync(byte[] data, string mediaType, CancellationToken cancellationToken)
     {
         if (Options.Ocr is not { } ocr || !ocr.Supports(mediaType))
         {
+            return null;
+        }
+
+        if (mediaType.StartsWith("image/", StringComparison.Ordinal)
+            && ImageHeader.TryGetSize(data, out var width, out var height)
+            && (long)width * height > (long)Options.MaxRasterPixels * Options.MaxRasterPixels)
+        {
+            Interlocked.Increment(ref _oversizedImages);
             return null;
         }
 
