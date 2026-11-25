@@ -5,7 +5,7 @@ using AddedFont = UglyToad.PdfPig.Writer.PdfDocumentBuilder.AddedFont;
 
 namespace AiSdk.Documents.Generation;
 
-/// <summary>Fuentes TrueType usadas en los PDF generados.</summary>
+/// <summary>TrueType fonts used in the generated PDFs.</summary>
 public sealed class PdfFonts
 {
     public required byte[] Regular { get; init; }
@@ -19,13 +19,13 @@ public sealed class PdfFonts
     public required byte[] Mono { get; init; }
 
     /// <summary>
-    /// Fuentes incluidas en el paquete ("AiSdk Sans" y "AiSdk Mono", derivadas de Liberation, licencia OFL):
-    /// latín (incluidos acentos y ñ), griego, puntuación, monedas, flechas y símbolos matemáticos.
-    /// Para otros alfabetos (cirílico, CJK, árabe...) pase sus propias fuentes.
+    /// Fonts included in the package ("AiSdk Sans" and "AiSdk Mono", derived from Liberation, OFL license): Latin
+    /// (including accented letters and ñ), Greek, punctuation, currencies, arrows and mathematical symbols.
+    /// For other scripts (Cyrillic, CJK, Arabic...) pass your own fonts.
     /// </summary>
     public static PdfFonts Default => DefaultFonts.Value;
 
-    /// <summary>Usa la misma fuente para todas las variantes (útil con fuentes CJK como Noto Sans CJK).</summary>
+    /// <summary>Uses the same font for all variants (useful with CJK fonts such as Noto Sans CJK).</summary>
     public static PdfFonts FromSingle(byte[] font, byte[]? mono = null) =>
         new() { Regular = font, Bold = font, Italic = font, BoldItalic = font, Mono = mono ?? font };
 
@@ -48,7 +48,7 @@ public sealed class PdfFonts
     }
 }
 
-/// <summary>Markdown → PDF con diagramación propia (sin navegador ni dependencias nativas).</summary>
+/// <summary>Markdown → PDF with its own layout engine (no browser or native dependencies).</summary>
 public static class PdfWriter
 {
     public static byte[] FromMarkdown(string markdown, DocumentStyleOptions? options = null) =>
@@ -372,7 +372,7 @@ internal sealed class PdfLayout : IDisposable
 
     private static int FontOf(TextRun run) => run.Code ? Mono : run.Bold && run.Italic ? BoldItalic : run.Bold ? Bold : run.Italic ? Italic : Regular;
 
-    /// <summary>Parte los fragmentos en líneas que caben en <paramref name="width"/>.</summary>
+    /// <summary>Splits the fragments into lines that fit in <paramref name="width"/>.</summary>
     private List<List<Token>> Wrap(IReadOnlyList<TextRun> runs, double width, double size)
     {
         var lines = new List<List<Token>> { new() };
@@ -471,7 +471,7 @@ internal sealed class PdfLayout : IDisposable
         yield return text[start..];
     }
 
-    /// <summary>Dibuja fragmentos con ajuste de línea desde la posición actual.</summary>
+    /// <summary>Draws fragments with line wrapping from the current position.</summary>
     private void DrawRuns(IReadOnlyList<TextRun> runs, double left, double right, double size, (byte R, byte G, byte B) color)
     {
         var lineHeight = size * LineFactor;
@@ -549,7 +549,7 @@ internal sealed class PdfLayout : IDisposable
         return total * size;
     }
 
-    /// <summary>Ancho del carácter a tamaño 1 (NaN si la fuente no lo tiene).</summary>
+    /// <summary>Width of the character at size 1 (NaN if the font does not have it).</summary>
     private double CharWidth(int font, char c)
     {
         if (_widths.TryGetValue((font, c), out var width))
@@ -571,7 +571,7 @@ internal sealed class PdfLayout : IDisposable
         return double.IsNaN(width) ? CharWidth(font, '?') : width;
     }
 
-    /// <summary>Reemplaza caracteres que la fuente no tiene (emojis, otros alfabetos) por equivalentes o '?'.</summary>
+    /// <summary>Replaces characters the font does not have (emojis, other scripts) with equivalents or '?'.</summary>
     private string Sanitize(string text, int font)
     {
         Span<char> buffer = text.Length <= 512 ? stackalloc char[text.Length] : new char[text.Length];

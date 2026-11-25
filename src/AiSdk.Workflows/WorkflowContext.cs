@@ -3,7 +3,7 @@ using System.Text.Json;
 namespace AiSdk.Workflows;
 
 /// <summary>
-/// API disponible dentro de un workflow: pasos durables, esperas, eventos y agentes.
+/// API available inside a workflow: durable steps, waits, events and agents.
 /// </summary>
 public sealed class WorkflowContext
 {
@@ -31,13 +31,13 @@ public sealed class WorkflowContext
 
     public IServiceProvider? Services { get; }
 
-    /// <summary>Se cancela al apagar el proceso, al cancelar la ejecución (<see cref="WorkflowEngine.CancelAsync"/>) o si otra instancia la reclamó.</summary>
+    /// <summary>Cancelled when the process shuts down, when the run is cancelled (<see cref="WorkflowEngine.CancelAsync"/>) or if another instance claimed it.</summary>
     public CancellationToken CancellationToken { get; }
 
     /// <summary>
-    /// Ejecuta un paso una sola vez: si ya se completó en una ejecución anterior, devuelve el resultado
-    /// guardado sin volver a ejecutarlo. Reintenta con espera exponencial según <paramref name="options"/>.
-    /// Los nombres repetidos (p. ej. en bucles) se numeran automáticamente.
+    /// Runs a step only once: if it was already completed in a previous execution, returns the saved result without
+    /// running it again. Retries with exponential backoff according to <paramref name="options"/>.
+    /// Repeated names (e.g. in loops) are numbered automatically.
     /// </summary>
     public async Task<T> StepAsync<T>(string name, Func<CancellationToken, Task<T>> run, StepOptions? options = null)
     {
@@ -96,8 +96,8 @@ public sealed class WorkflowContext
         }, options);
 
     /// <summary>
-    /// Ejecuta un agente como paso durable y devuelve su texto final. <paramref name="context"/> llega a las herramientas
-    /// del agente como <see cref="ToolExecutionContext.Context"/> (p. ej. el id del usuario dueño de la tarea).
+    /// Runs an agent as a durable step and returns its final text. <paramref name="context"/> reaches the agent's tools
+    /// as <see cref="ToolExecutionContext.Context"/> (e.g. the id of the user who owns the task).
     /// </summary>
     public Task<string> RunAgentAsync(IAgent agent, string prompt, string? stepName = null, StepOptions? options = null, IReadOnlyDictionary<string, object?>? context = null) =>
         StepAsync(stepName ?? $"agent:{agent.Name}", async ct =>
@@ -106,7 +106,7 @@ public sealed class WorkflowContext
             return result.Text;
         }, options);
 
-    /// <summary>Ejecuta una orquestación multi-agente como paso durable.</summary>
+    /// <summary>Runs a multi-agent orchestration as a durable step.</summary>
     public Task<string> RunAsync(IOrchestrationNode node, string input, string? stepName = null, StepOptions? options = null) =>
         StepAsync(stepName ?? $"node:{node.Name}", ct => node.RunAsync(input, new OrchestrationContext(new OrchestrationOptions
         {
@@ -115,12 +115,12 @@ public sealed class WorkflowContext
         })), options);
 
     /// <summary>
-    /// Duerme de forma durable: la ejecución se suspende y el motor la reanuda al vencer el plazo
-    /// (aunque el proceso se haya reiniciado entre medio).
+    /// Sleeps durably: the run is suspended and the engine resumes it when the time is up
+    /// (even if the process was restarted in the meantime).
     /// </summary>
     public Task SleepAsync(string name, TimeSpan duration) => SleepUntilInternalAsync(name, () => _engine.Now + duration);
 
-    /// <summary>Duerme hasta una fecha.</summary>
+    /// <summary>Sleeps until a given date.</summary>
     public Task SleepUntilAsync(string name, DateTimeOffset until) => SleepUntilInternalAsync(name, () => until);
 
     private async Task SleepUntilInternalAsync(string name, Func<DateTimeOffset> until)
@@ -146,9 +146,9 @@ public sealed class WorkflowContext
     }
 
     /// <summary>
-    /// Espera un evento externo enviado con <see cref="WorkflowEngine.SendEventAsync"/> (aprobación humana,
-    /// webhook de pago, respuesta de un cliente...). Devuelve el contenido del evento o <c>default</c> si
-    /// vence <paramref name="timeout"/>. Use <paramref name="key"/> para distinguir instancias (p. ej. el id del pedido).
+    /// Waits for an external event sent with <see cref="WorkflowEngine.SendEventAsync"/> (human approval, payment
+    /// webhook, a customer's reply...). Returns the event payload, or <c>default</c> if <paramref name="timeout"/>
+    /// elapses. Use <paramref name="key"/> to tell instances apart (e.g. the order id).
     /// </summary>
     public Task<T?> WaitForEventAsync<T>(string eventName, string? key = null, TimeSpan? timeout = null)
     {
@@ -180,7 +180,7 @@ public sealed class WorkflowContext
         }
     }
 
-    /// <summary>Agrega una línea al registro de la ejecución.</summary>
+    /// <summary>Adds a line to the run's log.</summary>
     public void Log(string message)
     {
         lock (_gate)
@@ -208,9 +208,9 @@ public sealed class WorkflowContext
     }
 
     /// <summary>
-    /// Aplica <paramref name="mutate"/> y guarda una copia con concurrencia optimista. Los guardados se hacen de a uno, así
-    /// cada copia lleva la versión del anterior. Lanza <see cref="WorkflowConcurrencyException"/> si otra instancia (o una
-    /// cancelación) cambió la ejecución.
+    /// Applies <paramref name="mutate"/> and saves a copy with optimistic concurrency. Saves happen one at a time, so each
+    /// copy carries the version of the previous one. Throws <see cref="WorkflowConcurrencyException"/> if another instance
+    /// (or a cancellation) changed the run.
     /// </summary>
     internal Task<WorkflowRun> PersistAsync(Action<WorkflowRun>? mutate)
     {

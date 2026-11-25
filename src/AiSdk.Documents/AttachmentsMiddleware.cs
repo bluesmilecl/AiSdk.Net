@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 
 namespace AiSdk.Documents;
 
-/// <summary>Tipos de adjunto que el modelo entiende de forma nativa (no se convierten).</summary>
+/// <summary>Attachment types the model understands natively (they are not converted).</summary>
 [Flags]
 public enum NativeAttachments
 {
@@ -15,44 +15,44 @@ public enum NativeAttachments
     All = Images | Pdf | Audio | Video,
 }
 
-/// <summary>Opciones de <see cref="DocumentMiddlewares.ConvertAttachments(MarkdownConverter, AttachmentConversionOptions?)"/>.</summary>
+/// <summary>Options for <see cref="DocumentMiddlewares.ConvertAttachments(MarkdownConverter, AttachmentConversionOptions?)"/>.</summary>
 public sealed partial class AttachmentConversionOptions
 {
-    /// <summary>Lo que el modelo procesa por sí mismo. Por defecto nada: todo se convierte a texto.</summary>
+    /// <summary>What the model processes by itself. None by default: everything is converted to text.</summary>
     public NativeAttachments Native { get; init; } = NativeAttachments.None;
 
-    /// <summary>Tokens máximos por adjunto convertido. Si se supera, se comprime (ver abajo) o se recorta.</summary>
+    /// <summary>Maximum tokens per converted attachment. If exceeded, the attachment is compressed (see below) or truncated.</summary>
     public int? MaxTokensPerAttachment { get; init; }
 
     /// <summary>
-    /// Compresión extractiva: conserva los fragmentos más relevantes para el último mensaje del usuario.
-    /// Tiene prioridad sobre <see cref="Summarizer"/>.
+    /// Extractive compression: keeps the chunks most relevant to the user's last message.
+    /// Takes precedence over <see cref="Summarizer"/>.
     /// </summary>
     public IEmbeddingModel? CompressionEmbeddings { get; init; }
 
-    /// <summary>Compresión abstractiva: resume el adjunto con este modelo.</summary>
+    /// <summary>Abstractive compression: summarizes the attachment with this model.</summary>
     public ILanguageModel? Summarizer { get; init; }
 
     /// <summary>
-    /// Descarga adjuntos referenciados por URL (desactivado por defecto). Usa el descargador del convertidor
-    /// (<see cref="MarkdownConverterOptions.UrlDownload"/>): solo http/https públicas, sin redes internas ni metadatos de
-    /// la nube, con tamaño, tiempo y redirecciones acotados.
+    /// Downloads attachments referenced by URL (disabled by default). Uses the converter's downloader
+    /// (<see cref="MarkdownConverterOptions.UrlDownload"/>): public http/https only, no internal networks or cloud
+    /// metadata, with bounded size, time and redirects.
     /// </summary>
     public bool DownloadUrls { get; init; }
 
     /// <summary>
-    /// Formato del texto insertado en lugar del adjunto. El nombre y el contenido los controla quien envía el archivo:
-    /// un formato propio debe escaparlos (ver <see cref="DefaultFormat"/>).
+    /// Format of the text inserted in place of the attachment. The name and content are controlled by whoever sends the
+    /// file: a custom format must escape them (see <see cref="DefaultFormat"/>).
     /// </summary>
     public Func<DocumentConversionResult, string> Format { get; init; } = DefaultFormat;
 
-    /// <summary>Entradas máximas de la caché de conversiones (se reutilizan entre turnos).</summary>
+    /// <summary>Maximum entries in the conversion cache (reused across turns).</summary>
     public int CacheSize { get; init; } = 256;
 
     /// <summary>
-    /// <c>&lt;document name="..." type="..."&gt;contenido&lt;/document&gt;</c>. El nombre y el tipo se escapan como
-    /// atributos y las etiquetas <c>&lt;document</c> / <c>&lt;/document</c> del contenido se neutralizan
-    /// (<c>&amp;lt;/document</c>), así un archivo no puede cerrar el envoltorio e inyectar texto fuera de él.
+    /// <c>&lt;document name="..." type="..."&gt;content&lt;/document&gt;</c>. The name and type are escaped as
+    /// attributes and the <c>&lt;document</c> / <c>&lt;/document</c> tags in the content are neutralized
+    /// (<c>&amp;lt;/document</c>), so a file cannot close the wrapper and inject text outside it.
     /// </summary>
     public static string DefaultFormat(DocumentConversionResult result)
     {
@@ -73,7 +73,7 @@ public sealed partial class AttachmentConversionOptions
             .Replace('\n', ' ')
             .Replace('\t', ' ');
 
-    /// <summary>Convierte <c>&lt;document</c> y <c>&lt;/document</c> (con o sin espacios, en cualquier caja) en <c>&amp;lt;...</c>.</summary>
+    /// <summary>Turns <c>&lt;document</c> and <c>&lt;/document</c> (with or without spaces, in any case) into <c>&amp;lt;...</c>.</summary>
     private static string NeutralizeTags(string text) => DocumentTag().Replace(text, "&lt;");
 
     // Grupos atómicos: sin retroceso cuadrático con muchos espacios.
@@ -81,14 +81,14 @@ public sealed partial class AttachmentConversionOptions
     private static partial System.Text.RegularExpressions.Regex DocumentTag();
 }
 
-/// <summary>Middlewares de documentos.</summary>
+/// <summary>Document middlewares.</summary>
 public static class DocumentMiddlewares
 {
     /// <summary>
-    /// Reemplaza imágenes, PDF, documentos Office, audio y video de los mensajes por su versión en
-    /// Markdown (OCR, descripción con visión, transcripción). Permite usar modelos sin visión ni
-    /// soporte de archivos —o más baratos— con cualquier adjunto, y reduce tokens frente a enviar
-    /// imágenes de páginas. Las conversiones se cachean, así que el historial no se reprocesa.
+    /// Replaces images, PDFs, Office documents, audio and video in messages with their Markdown version (OCR,
+    /// vision-based description, transcription). Lets you use models without vision or file support (or cheaper
+    /// ones) with any attachment, and uses fewer tokens than sending page images. Conversions are cached, so the
+    /// history is not reprocessed.
     /// </summary>
     public static ILanguageModelMiddleware ConvertAttachments(MarkdownConverter converter, AttachmentConversionOptions? options = null) =>
         new AttachmentConversionMiddleware(converter, options ?? new AttachmentConversionOptions());

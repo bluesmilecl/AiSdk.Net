@@ -3,13 +3,13 @@ using AiSdk.Documents.Converters;
 namespace AiSdk.Documents;
 
 /// <summary>
-/// Convierte documentos de cualquier tipo a Markdown, el formato que los modelos entienden mejor y
-/// con menos tokens. Equivalente a MarkItDown / Docling para .NET.
+/// Converts documents of any type to Markdown, the format models understand best and with the fewest
+/// tokens. The .NET equivalent of MarkItDown / Docling.
 /// </summary>
 /// <example>
 /// <code>
 /// var converter = new MarkdownConverter(new() { Ocr = new TesseractOcr("spa+eng") });
-/// var result = await converter.ConvertFileAsync("contrato.pdf");
+/// var result = await converter.ConvertFileAsync("contract.pdf");
 /// Console.WriteLine(result.Markdown);
 /// </code>
 /// </example>
@@ -35,10 +35,10 @@ public sealed class MarkdownConverter
 
     public MarkdownConverterOptions Options { get; }
 
-    /// <summary>Convertidores registrados, en orden de prioridad.</summary>
+    /// <summary>Registered converters, in priority order.</summary>
     public IReadOnlyList<IDocumentConverter> Converters => _converters;
 
-    /// <summary>Registra un convertidor con prioridad sobre los incluidos.</summary>
+    /// <summary>Registers a converter that takes precedence over the built-in ones.</summary>
     public MarkdownConverter Use(IDocumentConverter converter)
     {
         _converters.Insert(0, converter);
@@ -47,7 +47,7 @@ public sealed class MarkdownConverter
 
     public bool CanConvert(string mediaType) => _converters.Any(c => c.CanConvert(MediaTypes.Normalize(mediaType)));
 
-    /// <exception cref="DocumentTooLargeException">El documento supera <see cref="MarkdownConverterOptions.MaxInputBytes"/>.</exception>
+    /// <exception cref="DocumentTooLargeException">The document exceeds <see cref="MarkdownConverterOptions.MaxInputBytes"/>.</exception>
     public async Task<DocumentConversionResult> ConvertAsync(DocumentSource source, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -61,7 +61,7 @@ public sealed class MarkdownConverter
         return await converter.ConvertAsync(source, new DocumentConversionContext(Options, this), cancellationToken).ConfigureAwait(false);
     }
 
-    /// <exception cref="DocumentTooLargeException">El archivo supera <see cref="MarkdownConverterOptions.MaxInputBytes"/> (se comprueba antes de leerlo).</exception>
+    /// <exception cref="DocumentTooLargeException">The file exceeds <see cref="MarkdownConverterOptions.MaxInputBytes"/> (checked before reading it).</exception>
     public async Task<DocumentConversionResult> ConvertFileAsync(string path, CancellationToken cancellationToken = default)
     {
         var length = new FileInfo(path).Length;
@@ -77,13 +77,13 @@ public sealed class MarkdownConverter
         ConvertAsync(new DocumentSource(data, mediaType, fileName), cancellationToken);
 
     /// <summary>
-    /// Convierte una parte de mensaje (<see cref="ImagePart"/> o <see cref="FilePart"/>) con datos en
-    /// línea o, si <paramref name="downloadUrls"/> es true, descargando su URL con las protecciones de
-    /// <see cref="MarkdownConverterOptions.UrlDownload"/> (solo http/https públicas, tamaño y tiempo acotados; ver
-    /// <see cref="UrlDownloader"/>). Las URLs <c>data:</c> se decodifican con el mismo límite de tamaño.
+    /// Converts a message part (<see cref="ImagePart"/> or <see cref="FilePart"/>) with inline data or, if
+    /// <paramref name="downloadUrls"/> is true, by downloading its URL with the protections of
+    /// <see cref="MarkdownConverterOptions.UrlDownload"/> (public http/https only, bounded size and time; see
+    /// <see cref="UrlDownloader"/>). <c>data:</c> URLs are decoded with the same size limit.
     /// </summary>
-    /// <exception cref="UrlDownloadException">La URL no está permitida o la descarga falló.</exception>
-    /// <exception cref="DocumentTooLargeException">El adjunto supera el tamaño máximo.</exception>
+    /// <exception cref="UrlDownloadException">The URL is not allowed or the download failed.</exception>
+    /// <exception cref="DocumentTooLargeException">The attachment exceeds the maximum size.</exception>
     public async Task<DocumentConversionResult> ConvertAsync(ContentPart part, bool downloadUrls = false, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(part);
@@ -116,12 +116,12 @@ public sealed class MarkdownConverter
     }
 }
 
-/// <summary>Extensiones para indexar documentos en almacenes vectoriales.</summary>
+/// <summary>Extensions for indexing documents in vector stores.</summary>
 public static class DocumentVectorStoreExtensions
 {
     /// <summary>
-    /// Convierte el documento a Markdown, lo divide por página y en fragmentos y lo guarda en el almacén.
-    /// Devuelve el resultado de la conversión (útil para revisar avisos).
+    /// Converts the document to Markdown, splits it by page and into chunks, and saves it in the store.
+    /// Returns the conversion result (useful for reviewing warnings).
     /// </summary>
     public static async Task<DocumentConversionResult> IngestAsync(
         this IVectorStore store,

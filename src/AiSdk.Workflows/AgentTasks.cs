@@ -4,47 +4,47 @@ using System.Text.Json;
 
 namespace AiSdk.Workflows;
 
-/// <summary>Entrada del workflow <see cref="AgentTasks.WorkflowName"/>.</summary>
+/// <summary>Input of the <see cref="AgentTasks.WorkflowName"/> workflow.</summary>
 public sealed record AgentTaskInput(string Task, string Prompt, string? Owner = null);
 
-/// <summary>Resultado de una tarea programada.</summary>
+/// <summary>Result of a scheduled task.</summary>
 public sealed record AgentTaskResult(string Task, string Prompt, string Text, string? Owner, string RunId);
 
-/// <summary>Opciones de las tareas programadas por agentes.</summary>
+/// <summary>Options for agent-scheduled tasks.</summary>
 public sealed class AgentTaskOptions
 {
-    /// <summary>Agente que ejecuta cada tarea (recibe los servicios del motor).</summary>
+    /// <summary>Agent that runs each task (receives the engine's services).</summary>
     public required Func<IServiceProvider?, IAgent> Agent { get; init; }
 
-    /// <summary>Se llama al terminar cada tarea: enviar correo, Slack, guardar en BD, notificar en la app...</summary>
+    /// <summary>Called when each task finishes: send an email or a Slack message, save to a database, notify in the app...</summary>
     public Func<AgentTaskResult, IServiceProvider?, CancellationToken, Task>? OnCompleted { get; init; }
 
-    /// <summary>Intervalo mínimo permitido entre ejecuciones (evita abusos y costos inesperados).</summary>
+    /// <summary>Minimum interval allowed between runs (prevents abuse and unexpected costs).</summary>
     public TimeSpan MinimumInterval { get; init; } = TimeSpan.FromMinutes(15);
 
-    /// <summary>Tareas activas máximas por dueño.</summary>
+    /// <summary>Maximum active tasks per owner.</summary>
     public int MaxTasksPerOwner { get; init; } = 20;
 
     /// <summary>
-    /// Clave de <see cref="ToolExecutionContext.Context"/> con el usuario dueño. Es obligatoria: sin dueño las herramientas
-    /// se niegan a operar (no hay tareas "de todos"). La misma clave llega al agente cuando la tarea se ejecuta.
+    /// <see cref="ToolExecutionContext.Context"/> key holding the owning user. It is required: without an owner the tools
+    /// refuse to operate (there are no tasks that belong to "everyone"). The same key reaches the agent when the task runs.
     /// </summary>
     public string OwnerKey { get; init; } = "userId";
 
-    /// <summary>Zona horaria por defecto para expresiones cron.</summary>
+    /// <summary>Default time zone for cron expressions.</summary>
     public string? DefaultTimeZone { get; init; }
 }
 
 /// <summary>
-/// Tareas programadas por agentes (como "recuérdame cada lunes..." o "revisa los precios todos los días a las 9"):
-/// registra el workflow que ejecuta un agente y ofrece herramientas para crear, listar, ejecutar y cancelar
-/// automatizaciones desde la conversación.
+/// Tasks scheduled by agents (such as "remind me every Monday..." or "check prices every day at 9"): registers the
+/// workflow that runs an agent and provides tools to create, list, run and cancel automations from the
+/// conversation.
 /// </summary>
 public static class AgentTasks
 {
     public const string WorkflowName = "agent-task";
 
-    /// <summary>Instrucciones de sistema recomendadas.</summary>
+    /// <summary>Recommended system instructions.</summary>
     public const string Instructions =
         """
         Puedes programar tareas que se ejecutarán más tarde sin el usuario presente: schedule_task con una expresión
@@ -54,7 +54,7 @@ public static class AgentTasks
         cancel_scheduled_task para gestionarlas.
         """;
 
-    /// <summary>Registra el workflow que ejecuta las tareas.</summary>
+    /// <summary>Registers the workflow that runs the tasks.</summary>
     public static WorkflowEngine AddAgentTasks(this WorkflowEngine engine, AgentTaskOptions options) =>
         engine.Register(Workflow.Create<AgentTaskInput, string>(WorkflowName, async (ctx, input) =>
         {
@@ -70,7 +70,7 @@ public static class AgentTasks
             return text;
         }, "Ejecuta un agente con un prompt programado."));
 
-    /// <summary>Herramientas para que el agente gestione tareas programadas.</summary>
+    /// <summary>Tools that let the agent manage scheduled tasks.</summary>
     public static IReadOnlyList<Tool> CreateTools(WorkflowEngine engine, AgentTaskOptions options)
     {
         // Sin dueño no se opera: si faltara la clave, todos los usuarios compartirían el dueño null y verían las tareas ajenas.
@@ -171,9 +171,9 @@ public static class AgentTasks
     }
 
     /// <summary>
-    /// Comprueba que el disparador no se ejecute más seguido que <paramref name="minimum"/>. Para cron se revisa el menor
-    /// intervalo entre ocurrencias consecutivas durante 8 días desde la primera (cubre los patrones por hora, día y día de
-    /// la semana), no solo entre las dos primeras.
+    /// Checks that the trigger does not run more often than <paramref name="minimum"/>. For cron, the shortest interval
+    /// between consecutive occurrences is checked over 8 days from the first one (covering hourly, daily and day-of-week
+    /// patterns), not just between the first two.
     /// </summary>
     public static void ValidateFrequency(AutomationTrigger trigger, TimeSpan minimum)
     {

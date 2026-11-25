@@ -5,46 +5,46 @@ using NpgsqlTypes;
 
 namespace AiSdk.Workflows.Postgres;
 
-/// <summary>Opciones de <see cref="PostgresWorkflowStore"/>.</summary>
+/// <summary>Options for <see cref="PostgresWorkflowStore"/>.</summary>
 public sealed class PostgresWorkflowStoreOptions
 {
-    /// <summary>Esquema de las tablas (se crea si no existe). Por defecto, <c>public</c>.</summary>
+    /// <summary>Schema of the tables (created if it does not exist). Defaults to <c>public</c>.</summary>
     public string Schema { get; init; } = "public";
 
     /// <summary>
-    /// Prefijo de tablas e índices: las tablas son <c>{prefijo}runs</c> y <c>{prefijo}automations</c>. Por defecto,
-    /// <c>aisdk_workflow_</c>. Permite tener varios almacenes independientes en el mismo esquema.
+    /// Prefix of tables and indexes: the tables are <c>{prefix}runs</c> and <c>{prefix}automations</c>. Defaults to
+    /// <c>aisdk_workflow_</c>. Allows several independent stores in the same schema.
     /// </summary>
     public string TablePrefix { get; init; } = "aisdk_workflow_";
 
     /// <summary>
-    /// Crea esquema, tablas e índices en el primer uso si falta alguno (por defecto, true). Si la aplicación se conecta con
-    /// un usuario sin permisos de DDL, desactívelo y cree el esquema en el despliegue con
-    /// <see cref="PostgresWorkflowStore.EnsureSchemaAsync"/> y un usuario que sí los tenga.
+    /// Creates the schema, tables and indexes on first use if any are missing (true by default). If the application
+    /// connects with a user without DDL permissions, disable it and create the schema at deployment time with
+    /// <see cref="PostgresWorkflowStore.EnsureSchemaAsync"/> and a user that does have them.
     /// </summary>
     public bool CreateIfNotExists { get; init; } = true;
 }
 
 /// <summary>
-/// Almacén de workflows en PostgreSQL: varias réplicas del motor, en la misma máquina o en otras, comparten ejecuciones y
-/// automatizaciones a través de la base de datos.
+/// PostgreSQL workflow store: several engine replicas, on the same machine or on others, share runs and automations
+/// through the database.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Cada ejecución y automatización se guarda completa como JSON (<see cref="JsonSchema.DefaultSerializerOptions"/>), junto a
-/// columnas con lo que filtran y ordenan las consultas del motor (estado, <c>resume_at</c>, <c>lease_expires_at</c>, evento
-/// esperado...) e índices parciales sobre las ejecuciones activas, de modo que los ciclos no recorren el historial. Los
-/// criterios son los de <see cref="WorkflowRunQueries"/>.
+/// Each run and automation is saved in full as JSON (<see cref="JsonSchema.DefaultSerializerOptions"/>), along with
+/// columns holding what the engine's queries filter and sort by (status, <c>resume_at</c>, <c>lease_expires_at</c>, awaited
+/// event...) and partial indexes on the active runs, so the cycles do not scan the history. The criteria are those of
+/// <see cref="WorkflowRunQueries"/>.
 /// </para>
 /// <para>
-/// <b>Concurrencia optimista</b>: <c>UPDATE ... WHERE id = $1 AND version = $n</c> para las existentes e
-/// <c>INSERT ... ON CONFLICT (id) DO NOTHING</c> para las nuevas; 0 filas afectadas = <see cref="WorkflowConcurrencyException"/>.
+/// <b>Optimistic concurrency</b>: <c>UPDATE ... WHERE id = $1 AND version = $n</c> for existing rows and
+/// <c>INSERT ... ON CONFLICT (id) DO NOTHING</c> for new ones; 0 affected rows = <see cref="WorkflowConcurrencyException"/>.
 /// </para>
 /// <para>
-/// El JSON va en una columna <c>json</c> (el texto tal cual) y no <c>jsonb</c>: <c>jsonb</c> reordena las propiedades y
-/// System.Text.Json exige que el discriminador de un tipo polimórfico (<c>kind</c> de <see cref="AutomationTrigger"/>,
-/// <c>type</c> de las partes de un mensaje guardado en un paso) sea la primera; además, <c>jsonb</c> rechaza <c>\u0000</c>.
-/// Las columnas de fechas tienen la precisión de PostgreSQL (microsegundos); el JSON conserva la exacta.
+/// The JSON is stored in a <c>json</c> column (the text as is), not <c>jsonb</c>: <c>jsonb</c> reorders properties and
+/// System.Text.Json requires the discriminator of a polymorphic type (<c>kind</c> of <see cref="AutomationTrigger"/>,
+/// <c>type</c> of the parts of a message saved in a step) to be the first one; in addition, <c>jsonb</c> rejects <c>\u0000</c>.
+/// Date columns have PostgreSQL's precision (microseconds); the JSON keeps the exact value.
 /// </para>
 /// </remarks>
 public sealed partial class PostgresWorkflowStore : IWorkflowStore, IAsyncDisposable, IDisposable
@@ -65,8 +65,8 @@ public sealed partial class PostgresWorkflowStore : IWorkflowStore, IAsyncDispos
     private readonly SemaphoreSlim _initLock = new(1, 1);
     private volatile bool _initialized;
 
-    /// <param name="dataSource">Fuente de datos de Npgsql (la comparten todas las réplicas que apuntan a la misma base).</param>
-    /// <param name="options">Esquema, prefijo de tablas y creación automática.</param>
+    /// <param name="dataSource">Npgsql data source (shared by all replicas that point to the same database).</param>
+    /// <param name="options">Schema, table prefix and automatic creation.</param>
     public PostgresWorkflowStore(NpgsqlDataSource dataSource, PostgresWorkflowStoreOptions? options = null)
         : this(dataSource, options ?? new PostgresWorkflowStoreOptions(), ownsDataSource: false)
     {
@@ -157,8 +157,8 @@ public sealed partial class PostgresWorkflowStore : IWorkflowStore, IAsyncDispos
     }
 
     /// <summary>
-    /// Crea el almacén a partir de una cadena de conexión. La fuente de datos es suya: se libera con
-    /// <see cref="DisposeAsync"/> (el contenedor de DI lo hace al apagar la aplicación).
+    /// Creates the store from a connection string. The store owns the data source: it is disposed of with
+    /// <see cref="DisposeAsync"/> (the DI container does this when the application shuts down).
     /// </summary>
     public static PostgresWorkflowStore Create(string connectionString, PostgresWorkflowStoreOptions? options = null)
     {
@@ -177,9 +177,9 @@ public sealed partial class PostgresWorkflowStore : IWorkflowStore, IAsyncDispos
     internal string DueAutomationsSql { get; }
 
     /// <summary>
-    /// Crea el esquema, las tablas y los índices que falten. Es idempotente y seguro con varias réplicas a la vez (se
-    /// serializa con un bloqueo consultivo de PostgreSQL); si todo existe no ejecuta DDL ni bloquea las tablas. Funciona
-    /// aunque <see cref="PostgresWorkflowStoreOptions.CreateIfNotExists"/> sea false (para crearlo en el despliegue).
+    /// Creates any missing schema, tables and indexes. It is idempotent and safe with several replicas at once (it is
+    /// serialized with a PostgreSQL advisory lock); if everything exists, it runs no DDL and does not lock the tables. Works
+    /// even if <see cref="PostgresWorkflowStoreOptions.CreateIfNotExists"/> is false (to create it at deployment time).
     /// </summary>
     public async Task EnsureSchemaAsync(CancellationToken cancellationToken = default)
     {
@@ -195,7 +195,7 @@ public sealed partial class PostgresWorkflowStore : IWorkflowStore, IAsyncDispos
         }
     }
 
-    /// <summary>Con <see cref="PostgresWorkflowStoreOptions.CreateIfNotExists"/>, crea lo que falte en el primer uso.</summary>
+    /// <summary>With <see cref="PostgresWorkflowStoreOptions.CreateIfNotExists"/>, creates whatever is missing on first use.</summary>
     private async ValueTask EnsureCreatedAsync(CancellationToken cancellationToken)
     {
         if (_initialized || !_options.CreateIfNotExists)
@@ -256,7 +256,7 @@ public sealed partial class PostgresWorkflowStore : IWorkflowStore, IAsyncDispos
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Cuántas de las tablas e índices del almacén existen ya.</summary>
+    /// <summary>How many of the store's tables and indexes already exist.</summary>
     private async Task<long> CountExistingAsync(NpgsqlConnection? connection, CancellationToken cancellationToken)
     {
         const string Sql = "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = $1 AND c.relname = ANY($2)";
@@ -446,7 +446,7 @@ public sealed partial class PostgresWorkflowStore : IWorkflowStore, IAsyncDispos
     // Utilidades
     // ---------------------------------------------------------------------
 
-    /// <summary>Como los demás almacenes, un límite de 0 o negativo devuelve una lista vacía.</summary>
+    /// <summary>As with the other stores, a limit of 0 or less returns an empty list.</summary>
     private async Task<IReadOnlyList<T>> LimitedAsync<T>(int limit, string sql, Func<NpgsqlDataReader, T> read, CancellationToken cancellationToken, params NpgsqlParameter[] parameters) =>
         limit <= 0 ? [] : await QueryAsync(sql, read, cancellationToken, parameters).ConfigureAwait(false);
 
@@ -465,7 +465,7 @@ public sealed partial class PostgresWorkflowStore : IWorkflowStore, IAsyncDispos
         return results;
     }
 
-    /// <summary>Error de concurrencia con la versión guardada (0 si ya no existe), con el mismo texto que los demás almacenes.</summary>
+    /// <summary>Concurrency error with the saved version (0 if it no longer exists), with the same text as the other stores.</summary>
     private async Task<WorkflowConcurrencyException> ConflictAsync(string kind, string table, string id, long expected, CancellationToken cancellationToken)
     {
         await using var command = _dataSource.CreateCommand($"SELECT version FROM {table} WHERE id = $1");
@@ -488,7 +488,7 @@ public sealed partial class PostgresWorkflowStore : IWorkflowStore, IAsyncDispos
 
     private static string Quote(string name) => $"\"{name}\"";
 
-    /// <summary>Libera la fuente de datos si la creó el almacén (<see cref="Create"/>); una recibida no se toca.</summary>
+    /// <summary>Disposes of the data source if the store created it (<see cref="Create"/>); one that was passed in is left untouched.</summary>
     public async ValueTask DisposeAsync()
     {
         _initLock.Dispose();
@@ -508,7 +508,7 @@ public sealed partial class PostgresWorkflowStore : IWorkflowStore, IAsyncDispos
         }
     }
 
-    /// <summary>Nombres de tablas e índices, validados (solo letras, dígitos y _; máximo 63 caracteres: sin inyección SQL).</summary>
+    /// <summary>Validated names of tables and indexes (only letters, digits and _; at most 63 characters: no SQL injection).</summary>
     private sealed record Names(string Prefix)
     {
         public static readonly string[] Indexes =

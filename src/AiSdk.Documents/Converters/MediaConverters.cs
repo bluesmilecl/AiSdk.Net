@@ -4,8 +4,8 @@ using System.Text;
 namespace AiSdk.Documents.Converters;
 
 /// <summary>
-/// Imágenes a Markdown: texto reconocido por OCR y/o descripción de un modelo con visión. Permite que
-/// modelos sin visión "vean" capturas, fotos de documentos, gráficos y diagramas.
+/// Images to Markdown: text recognized by OCR and/or a description from a vision model. Lets models without vision
+/// "see" screenshots, photos of documents, charts and diagrams.
 /// </summary>
 public sealed class ImageConverter : IDocumentConverter
 {
@@ -54,7 +54,7 @@ public sealed class ImageConverter : IDocumentConverter
         };
     }
 
-    /// <summary>True si la descripción ya incluye casi todo el texto del OCR (evita duplicar tokens).</summary>
+    /// <summary>True if the description already includes almost all of the OCR text (avoids duplicating tokens).</summary>
     private static bool Contains(string description, string ocr)
     {
         var words = ocr.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Where(w => w.Length > 3).ToList();
@@ -62,7 +62,7 @@ public sealed class ImageConverter : IDocumentConverter
     }
 }
 
-/// <summary>Audio a Markdown mediante un <see cref="ITranscriptionModel"/>, con marcas de tiempo si existen.</summary>
+/// <summary>Audio to Markdown through an <see cref="ITranscriptionModel"/>, with timestamps if available.</summary>
 public sealed class AudioConverter : IDocumentConverter
 {
     public bool CanConvert(string mediaType) => MediaTypes.IsAudio(mediaType);
@@ -125,15 +125,15 @@ public sealed class AudioConverter : IDocumentConverter
 }
 
 /// <summary>
-/// Video a Markdown con <c>ffmpeg</c>: transcribe el audio y describe fotogramas a intervalos
-/// regulares, generando una línea de tiempo que un modelo sin soporte de video puede leer. ffmpeg y ffprobe solo
-/// pueden leer el archivo local (<c>-protocol_whitelist file</c>) con formatos de audio y video
-/// (<c>-format_whitelist</c>: no listas de reproducción HLS ni <c>concat</c>, que podrían leer URLs u otros archivos) y
-/// solo los primeros <see cref="MarkdownConverterOptions.MaxMediaDuration"/>.
+/// Video to Markdown with <c>ffmpeg</c>: transcribes the audio and describes frames at regular intervals, producing a
+/// timeline that a model without video support can read. ffmpeg and ffprobe can only read the local file
+/// (<c>-protocol_whitelist file</c>) with audio and video formats (<c>-format_whitelist</c>: no HLS playlists or
+/// <c>concat</c>, which could read URLs or other files), and only the first
+/// <see cref="MarkdownConverterOptions.MaxMediaDuration"/>.
 /// </summary>
 public sealed class VideoConverter : IDocumentConverter
 {
-    /// <summary>Demuxers que ffmpeg puede usar con un video adjunto.</summary>
+    /// <summary>Demuxers ffmpeg can use with an attached video.</summary>
     public const string AllowedFormats = "mov,mp4,m4a,3gp,3g2,mj2,matroska,webm,avi,asf,flv,mpegts,mpeg,ogg,mp3,wav,aac,flac,m4v,h264,hevc";
 
     public const string FramePrompt =
@@ -316,7 +316,7 @@ public sealed class VideoConverter : IDocumentConverter
         return pages;
     }
 
-    /// <summary>Opciones de entrada de ffmpeg y ffprobe: solo el protocolo <c>file</c> y los formatos de <see cref="AllowedFormats"/>.</summary>
+    /// <summary>Input options for ffmpeg and ffprobe: only the <c>file</c> protocol and the formats in <see cref="AllowedFormats"/>.</summary>
     internal static readonly string[] SafeInputArguments = ["-protocol_whitelist", "file", "-format_whitelist", AllowedFormats];
 
     internal static async Task<double?> ProbeDurationAsync(IExternalProcessRunner runner, string ffmpeg, string input, CancellationToken cancellationToken)

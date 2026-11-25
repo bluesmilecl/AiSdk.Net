@@ -3,10 +3,10 @@ using Npgsql;
 
 namespace AiSdk.Workflows.Postgres;
 
-/// <summary>Registro de <see cref="PostgresWorkflowStore"/> en <c>AddAiSdkWorkflows</c>.</summary>
+/// <summary>Registration of <see cref="PostgresWorkflowStore"/> in <c>AddAiSdkWorkflows</c>.</summary>
 public static class PostgresWorkflowBuilderExtensions
 {
-    /// <summary>Persiste ejecuciones y automatizaciones en PostgreSQL con la fuente de datos indicada.</summary>
+    /// <summary>Persists runs and automations in PostgreSQL with the given data source.</summary>
     public static WorkflowBuilder UsePostgresStore(this WorkflowBuilder builder, NpgsqlDataSource dataSource, PostgresWorkflowStoreOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(builder);
@@ -14,8 +14,8 @@ public static class PostgresWorkflowBuilderExtensions
     }
 
     /// <summary>
-    /// Persiste en PostgreSQL con una cadena de conexión. El almacén crea su propia fuente de datos y el contenedor la
-    /// libera al apagar la aplicación.
+    /// Persists to PostgreSQL with a connection string. The store creates its own data source and the container
+    /// disposes of it when the application shuts down.
     /// </summary>
     public static WorkflowBuilder UsePostgresStore(this WorkflowBuilder builder, string connectionString, PostgresWorkflowStoreOptions? options = null)
     {
@@ -25,8 +25,8 @@ public static class PostgresWorkflowBuilderExtensions
     }
 
     /// <summary>
-    /// Persiste en PostgreSQL con la <see cref="NpgsqlDataSource"/> registrada en el contenedor (p. ej. con
-    /// <c>AddNpgsqlDataSource</c> de Npgsql.DependencyInjection o con Aspire).
+    /// Persists to PostgreSQL with the <see cref="NpgsqlDataSource"/> registered in the container (e.g. with
+    /// <c>AddNpgsqlDataSource</c> from Npgsql.DependencyInjection or with Aspire).
     /// </summary>
     public static WorkflowBuilder UsePostgresStore(this WorkflowBuilder builder, PostgresWorkflowStoreOptions? options = null)
     {

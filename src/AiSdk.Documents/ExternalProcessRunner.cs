@@ -5,40 +5,39 @@ using System.Diagnostics;
 namespace AiSdk.Documents;
 
 /// <summary>
-/// Lanza las herramientas de línea de comandos (tesseract, pdftoppm, ffmpeg...). Se reemplaza para ejecutarlas
-/// en un entorno aislado (contenedor, <c>bwrap</c>, <c>firejail</c>, un servicio remoto) o para registrarlas y
-/// probarlas. El ejecutor global es <see cref="ExternalProcess.Runner"/>; los componentes que lanzan procesos
-/// también aceptan uno propio.
+/// Launches the command-line tools (tesseract, pdftoppm, ffmpeg...). Replace it to run them in an isolated
+/// environment (a container, <c>bwrap</c>, <c>firejail</c>, a remote service) or to log and test them. The global
+/// runner is <see cref="ExternalProcess.Runner"/>; components that launch processes also accept their own.
 /// </summary>
 public interface IExternalProcessRunner
 {
-    /// <summary>Indica si la herramienta se puede ejecutar (ruta absoluta o nombre en el PATH).</summary>
+    /// <summary>Indicates whether the tool can be run (absolute path or name on the PATH).</summary>
     bool Exists(string executable);
 
-    /// <summary>Ejecuta la herramienta y devuelve su salida estándar, su error estándar y el código de salida.</summary>
+    /// <summary>Runs the tool and returns its standard output, its standard error and the exit code.</summary>
     Task<ExternalProcess.Result> RunAsync(string executable, IReadOnlyList<string> arguments, byte[]? input = null, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
-/// Opciones de <see cref="ExternalProcessRunner"/>. Por defecto cada herramienta recibe solo las variables de
-/// <see cref="CommonEnvironmentVariables"/> (no las claves ni cadenas de conexión de la aplicación), se detiene a los
-/// 10 minutos y no puede escribir más de 64 MB en su salida estándar.
+/// Options for <see cref="ExternalProcessRunner"/>. By default each tool receives only the variables in
+/// <see cref="CommonEnvironmentVariables"/> (not the application's keys or connection strings), is stopped after
+/// 10 minutes and cannot write more than 64 MB to its standard output.
 /// </summary>
 public sealed class ExternalProcessOptions
 {
     /// <summary>
-    /// Variables habituales que una herramienta necesita para funcionar (PATH, HOME, idioma, temporales y, en Windows,
-    /// las del sistema), además de <c>TESSDATA_PREFIX</c> y <c>OMP_THREAD_LIMIT</c>. Valor por defecto de
-    /// <see cref="AllowedEnvironmentVariables"/>.
-    /// </summary>
-    /// <summary>
-    /// Si es true (por defecto) y nadie fijó <c>OMP_THREAD_LIMIT</c>, las herramientas corren con
-    /// <c>OMP_THREAD_LIMIT=1</c>. Tesseract usa OpenMP: cada proceso abre un hilo por núcleo y espera activamente, así que
-    /// varias páginas en paralelo (como hace el SDK) se estorban: 4 páginas tardaban más de 10 minutos en 4 núcleos en vez
-    /// de 2 segundos. Con un hilo por proceso el paralelismo lo da el SDK (una página por proceso).
+    /// If true (the default) and nobody has set <c>OMP_THREAD_LIMIT</c>, the tools run with
+    /// <c>OMP_THREAD_LIMIT=1</c>. Tesseract uses OpenMP: each process opens one thread per core and busy-waits, so several
+    /// pages in parallel (as the SDK does) get in each other's way: 4 pages took more than 10 minutes on 4 cores instead
+    /// of 2 seconds. With one thread per process, the parallelism comes from the SDK (one page per process).
     /// </summary>
     public bool LimitOpenMpThreads { get; init; } = true;
 
+    /// <summary>
+    /// Common variables a tool needs in order to work (PATH, HOME, language, temporary directories and, on Windows, the
+    /// system ones), plus <c>TESSDATA_PREFIX</c> and <c>OMP_THREAD_LIMIT</c>. Default value of
+    /// <see cref="AllowedEnvironmentVariables"/>.
+    /// </summary>
     public static IReadOnlyList<string> CommonEnvironmentVariables { get; } =
     [
         "PATH", "HOME", "LANG", "LANGUAGE", "LC_*", "TMPDIR", "TEMP", "TMP", "TZ",
@@ -47,54 +46,54 @@ public sealed class ExternalProcessOptions
     ];
 
     /// <summary>
-    /// Programa que envuelve cada ejecución (p. ej. <c>nice</c>, <c>firejail</c> o un script propio): se lanza
-    /// <c>Wrapper [WrapperArguments...] herramienta [argumentos...]</c>. Null ejecuta la herramienta directamente.
+    /// Program that wraps each execution (e.g. <c>nice</c>, <c>firejail</c> or a custom script): it is launched as
+    /// <c>Wrapper [WrapperArguments...] tool [arguments...]</c>. Null runs the tool directly.
     /// </summary>
     public string? Wrapper { get; init; }
 
-    /// <summary>Argumentos del envoltorio, antes del nombre de la herramienta (p. ej. <c>["-n", "10"]</c> para <c>nice</c>).</summary>
+    /// <summary>Wrapper arguments, before the tool name (e.g. <c>["-n", "10"]</c> for <c>nice</c>).</summary>
     public IReadOnlyList<string> WrapperArguments { get; init; } = [];
 
     /// <summary>
-    /// Variables del entorno actual que recibe el proceso (además de <see cref="EnvironmentVariables"/>), así no hereda
-    /// cadenas de conexión ni claves. Una entrada terminada en <c>*</c> es un prefijo (p. ej. <c>"LC_*"</c>). Por
-    /// defecto <see cref="CommonEnvironmentVariables"/>. Asigne null de forma explícita para heredar todo el entorno.
+    /// Variables from the current environment that the process receives (in addition to <see cref="EnvironmentVariables"/>),
+    /// so it does not inherit connection strings or keys. An entry ending in <c>*</c> is a prefix (e.g. <c>"LC_*"</c>).
+    /// Defaults to <see cref="CommonEnvironmentVariables"/>. Set it explicitly to null to inherit the whole environment.
     /// </summary>
     public IReadOnlyCollection<string>? AllowedEnvironmentVariables { get; init; } = CommonEnvironmentVariables;
 
     /// <summary>
-    /// Tiempo máximo de cada ejecución (por defecto 10 minutos): al superarlo se detiene el proceso con todos sus
-    /// hijos y se lanza <see cref="TimeoutException"/>. Null o <see cref="Timeout.InfiniteTimeSpan"/>: sin límite.
+    /// Maximum time for each execution (10 minutes by default): when exceeded, the process is stopped along with all its
+    /// children and <see cref="TimeoutException"/> is thrown. Null or <see cref="Timeout.InfiniteTimeSpan"/>: no limit.
     /// </summary>
     public TimeSpan? Timeout { get; init; } = TimeSpan.FromMinutes(10);
 
     /// <summary>
-    /// Bytes máximos de la salida estándar (por defecto 64 MB): al superarlos se detiene el proceso con todos sus hijos
-    /// y se lanza <see cref="InvalidOperationException"/>. Del error estándar se conservan los primeros
-    /// <see cref="ExternalProcessRunner.MaxErrorBytes"/> bytes (el resto se descarta sin detener el proceso).
+    /// Maximum bytes of standard output (64 MB by default): when exceeded, the process is stopped along with all its
+    /// children and <see cref="InvalidOperationException"/> is thrown. From standard error, the first
+    /// <see cref="ExternalProcessRunner.MaxErrorBytes"/> bytes are kept (the rest is discarded without stopping the process).
     /// </summary>
     public long MaxOutputBytes { get; init; } = 64L * 1024 * 1024;
 
-    /// <summary>Variables que se fijan en el proceso (un valor null la quita), p. ej. <c>OMP_THREAD_LIMIT=1</c> para Tesseract.</summary>
+    /// <summary>Variables set in the process (a null value removes it), e.g. <c>OMP_THREAD_LIMIT=1</c> for Tesseract.</summary>
     public IReadOnlyDictionary<string, string?> EnvironmentVariables { get; init; } = new Dictionary<string, string?>();
 
-    /// <summary>Directorio de trabajo del proceso (por defecto el actual).</summary>
+    /// <summary>Working directory of the process (the current one by default).</summary>
     public string? WorkingDirectory { get; init; }
 
     /// <summary>
-    /// Si es true (por defecto), <see cref="ExternalProcessRunner.Exists"/> también exige que la herramienta esté en
-    /// este equipo. Use false cuando el envoltorio la ejecuta en otro lugar (un contenedor, un servidor): entonces
-    /// solo se comprueba el envoltorio.
+    /// If true (the default), <see cref="ExternalProcessRunner.Exists"/> also requires the tool to be present on this
+    /// machine. Use false when the wrapper runs it somewhere else (a container, a server): then only the wrapper is
+    /// checked.
     /// </summary>
     public bool CheckExecutable { get; init; } = true;
 }
 
 /// <summary>
-/// Ejecutor de procesos locales con envoltorio, entorno, tiempo y salida configurables (ver <see cref="ExternalProcessOptions"/>).
+/// Local process runner with configurable wrapper, environment, time and output (see <see cref="ExternalProcessOptions"/>).
 /// </summary>
 /// <example>
 /// <code>
-/// // Herramientas con prioridad baja, sin secretos del entorno y con a lo más 2 minutos por ejecución.
+/// // Tools at low priority, without environment secrets and with at most 2 minutes per execution.
 /// ExternalProcess.Runner = new ExternalProcessRunner(new ExternalProcessOptions
 /// {
 ///     Wrapper = "nice",
@@ -106,7 +105,7 @@ public sealed class ExternalProcessOptions
 /// </example>
 public sealed class ExternalProcessRunner(ExternalProcessOptions? options = null) : IExternalProcessRunner
 {
-    /// <summary>Bytes del error estándar que se conservan en <see cref="ExternalProcess.Result.Error"/> (64 KB).</summary>
+    /// <summary>Bytes of standard error kept in <see cref="ExternalProcess.Result.Error"/> (64 KB).</summary>
     public const int MaxErrorBytes = 64 * 1024;
 
     private readonly ConcurrentDictionary<string, bool> _available = new();
@@ -114,19 +113,19 @@ public sealed class ExternalProcessRunner(ExternalProcessOptions? options = null
     public ExternalProcessOptions Options { get; } = options ?? new ExternalProcessOptions();
 
     /// <summary>
-    /// Indica si la herramienta (salvo con <see cref="ExternalProcessOptions.CheckExecutable"/> en false) y el envoltorio,
-    /// si hay uno, existen. El resultado se guarda en caché.
+    /// Indicates whether the tool (unless <see cref="ExternalProcessOptions.CheckExecutable"/> is false) and the wrapper,
+    /// if any, exist. The result is cached.
     /// </summary>
     public bool Exists(string executable) =>
         (Options.Wrapper is not null && !Options.CheckExecutable || _available.GetOrAdd(executable, ExistsOnPath))
         && (Options.Wrapper is null || _available.GetOrAdd(Options.Wrapper, ExistsOnPath));
 
     /// <summary>
-    /// Ejecuta la herramienta. Si supera <see cref="ExternalProcessOptions.Timeout"/> o
-    /// <see cref="ExternalProcessOptions.MaxOutputBytes"/>, o se cancela, detiene el proceso con todos sus hijos.
+    /// Runs the tool. If it exceeds <see cref="ExternalProcessOptions.Timeout"/> or
+    /// <see cref="ExternalProcessOptions.MaxOutputBytes"/>, or is cancelled, stops the process along with all its children.
     /// </summary>
-    /// <exception cref="TimeoutException">Superó <see cref="ExternalProcessOptions.Timeout"/>.</exception>
-    /// <exception cref="InvalidOperationException">No se pudo iniciar o superó <see cref="ExternalProcessOptions.MaxOutputBytes"/>.</exception>
+    /// <exception cref="TimeoutException">Exceeded <see cref="ExternalProcessOptions.Timeout"/>.</exception>
+    /// <exception cref="InvalidOperationException">Could not be started or exceeded <see cref="ExternalProcessOptions.MaxOutputBytes"/>.</exception>
     public async Task<ExternalProcess.Result> RunAsync(string executable, IReadOnlyList<string> arguments, byte[]? input = null, CancellationToken cancellationToken = default)
     {
         var timeout = Options.Timeout is { } limit && limit > TimeSpan.Zero && limit != System.Threading.Timeout.InfiniteTimeSpan ? limit : (TimeSpan?)null;
@@ -191,7 +190,7 @@ public sealed class ExternalProcessRunner(ExternalProcessOptions? options = null
         }
     }
 
-    /// <summary>Copia hasta <paramref name="maxBytes"/>; si se superan, llama a <paramref name="onOverflow"/> y deja de leer.</summary>
+    /// <summary>Copies up to <paramref name="maxBytes"/>; if exceeded, calls <paramref name="onOverflow"/> and stops reading.</summary>
     private static async Task CopyLimitedAsync(Stream source, Stream destination, long maxBytes, Action onOverflow, CancellationToken cancellationToken)
     {
         var buffer = new byte[81920];
@@ -208,7 +207,7 @@ public sealed class ExternalProcessRunner(ExternalProcessOptions? options = null
         }
     }
 
-    /// <summary>Error estándar: conserva los primeros <see cref="MaxErrorBytes"/> bytes y descarta el resto (sin bloquear al proceso).</summary>
+    /// <summary>Standard error: keeps the first <see cref="MaxErrorBytes"/> bytes and discards the rest (without blocking the process).</summary>
     private static async Task<string> ReadErrorAsync(Stream source, CancellationToken cancellationToken)
     {
         using var kept = new MemoryStream();
@@ -226,7 +225,7 @@ public sealed class ExternalProcessRunner(ExternalProcessOptions? options = null
         return truncated ? text + "…" : text;
     }
 
-    /// <summary>Arma el <see cref="ProcessStartInfo"/> con el envoltorio y el entorno configurados (sin iniciarlo).</summary>
+    /// <summary>Builds the <see cref="ProcessStartInfo"/> with the configured wrapper and environment (without starting it).</summary>
     public ProcessStartInfo CreateStartInfo(string executable, IReadOnlyList<string> arguments, bool redirectInput = false)
     {
         ArgumentException.ThrowIfNullOrEmpty(executable);
@@ -320,10 +319,10 @@ public sealed class ExternalProcessRunner(ExternalProcessOptions? options = null
     }
 }
 
-/// <summary>Extensiones de <see cref="IExternalProcessRunner"/>.</summary>
+/// <summary>Extensions for <see cref="IExternalProcessRunner"/>.</summary>
 public static class ExternalProcessRunnerExtensions
 {
-    /// <summary>Ejecuta y lanza una excepción con el error estándar si el código de salida no es 0.</summary>
+    /// <summary>Runs the tool and throws an exception with the standard error if the exit code is not 0.</summary>
     public static async Task<byte[]> RunCheckedAsync(this IExternalProcessRunner runner, string executable, IReadOnlyList<string> arguments, byte[]? input = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(runner);

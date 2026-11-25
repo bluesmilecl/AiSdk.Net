@@ -5,7 +5,7 @@ using DocumentFormat.OpenXml.Wordprocessing;
 
 namespace AiSdk.Documents.Generation;
 
-/// <summary>Tamaño de página.</summary>
+/// <summary>Page size.</summary>
 public enum PaperSize
 {
     A4,
@@ -13,48 +13,48 @@ public enum PaperSize
     Legal,
 }
 
-/// <summary>Opciones de generación de Word y PDF.</summary>
+/// <summary>Options for generating Word and PDF documents.</summary>
 public sealed class DocumentStyleOptions
 {
-    /// <summary>Título del documento (propiedades y, si <see cref="TitlePage"/>, portada).</summary>
+    /// <summary>Document title (properties and, if <see cref="TitlePage"/>, title page).</summary>
     public string? Title { get; init; }
 
     public string? Subtitle { get; init; }
 
     public string? Author { get; init; }
 
-    /// <summary>Muestra título, subtítulo, autor y fecha al inicio.</summary>
+    /// <summary>Shows the title, subtitle, author and date at the beginning.</summary>
     public bool TitlePage { get; init; }
 
     public PaperSize PaperSize { get; init; } = PaperSize.A4;
 
     public bool Landscape { get; init; }
 
-    /// <summary>Margen en centímetros.</summary>
+    /// <summary>Margin in centimeters.</summary>
     public double MarginCm { get; init; } = 2.2;
 
-    /// <summary>Fuente base de Word (en PDF se usa la fuente incrustada o <see cref="PdfFonts"/>).</summary>
+    /// <summary>Base Word font (PDF uses the embedded font or <see cref="PdfFonts"/>).</summary>
     public string FontFamily { get; init; } = "Calibri";
 
     public double FontSize { get; init; } = 11;
 
-    /// <summary>Color de acento (títulos, encabezados de tabla) en hexadecimal.</summary>
+    /// <summary>Accent color (headings, table headers) in hexadecimal.</summary>
     public string AccentColor { get; init; } = "1F4E79";
 
-    /// <summary>Texto del encabezado de cada página.</summary>
+    /// <summary>Header text on each page.</summary>
     public string? HeaderText { get; init; }
 
-    /// <summary>Pie de página con "Página n de N".</summary>
+    /// <summary>Footer with "Page n of N".</summary>
     public bool PageNumbers { get; init; } = true;
 
-    /// <summary>Idioma del documento (revisión ortográfica de Word).</summary>
+    /// <summary>Document language (Word spell checking).</summary>
     public string Language { get; init; } = "es-ES";
 
-    /// <summary>Fuentes TrueType para PDF (por defecto se incrustan AiSdk Sans/Mono, que cubren alfabetos latinos y griego).</summary>
+    /// <summary>TrueType fonts for PDF (by default AiSdk Sans/Mono are embedded, which cover Latin and Greek scripts).</summary>
     public PdfFonts? PdfFonts { get; init; }
 }
 
-/// <summary>Markdown → Word (.docx) con estilos reales (Título 1, Lista, Tabla...), editables en Word.</summary>
+/// <summary>Markdown → Word (.docx) with real styles (Heading 1, List, Table...), editable in Word.</summary>
 public static class DocxWriter
 {
     private const int BulletAbstractId = 1;
@@ -452,7 +452,7 @@ public static class DocxWriter
     }
 }
 
-/// <summary>Ordena los hijos de las propiedades según el esquema de WordprocessingML (Word es estricto con el orden).</summary>
+/// <summary>Sorts the children of the properties according to the WordprocessingML schema (Word is strict about order).</summary>
 internal static class SchemaOrder
 {
     private static readonly string[] RunOrder =

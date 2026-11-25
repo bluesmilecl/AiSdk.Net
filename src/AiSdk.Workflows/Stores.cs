@@ -3,46 +3,46 @@ using System.Text.Json;
 namespace AiSdk.Workflows;
 
 /// <summary>
-/// Persistencia de ejecuciones y automatizaciones. Implemente esta interfaz para SQL, Redis, Cosmos...
+/// Persistence of runs and automations. Implement this interface for SQL, Redis, Cosmos...
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Concurrencia optimista</b> (obligatoria para varias réplicas sobre el mismo almacén): <see cref="SaveRunAsync"/> y
-/// <see cref="SaveAutomationAsync"/> solo guardan si la <c>Version</c> recibida coincide con la almacenada (0 = no existe)
-/// y la incrementan; si no coincide lanzan <see cref="WorkflowConcurrencyException"/>. En SQL: <c>UPDATE ... WHERE id = @id
-/// AND version = @version</c> (0 filas = conflicto) e <c>INSERT</c> con clave primaria para las nuevas.
+/// <b>Optimistic concurrency</b> (required for multiple replicas on the same store): <see cref="SaveRunAsync"/> and
+/// <see cref="SaveAutomationAsync"/> only save if the received <c>Version</c> matches the stored one (0 = does not exist)
+/// and increment it; if it does not match, they throw <see cref="WorkflowConcurrencyException"/>. In SQL: <c>UPDATE ... WHERE id = @id
+/// AND version = @version</c> (0 rows = conflict) and <c>INSERT</c> with a primary key for new ones.
 /// </para>
 /// <para>
-/// <b>Consultas indexadas</b>: el motor no lista todo el historial en cada ciclo; usa <see cref="ListDueRunsAsync"/>,
-/// <see cref="ListRunsWaitingForEventAsync"/> y <see cref="ListDueAutomationsAsync"/>, cuyos criterios están en
-/// <see cref="WorkflowRunQueries"/>. Conviene indexar estado, <c>ResumeAt</c>, <c>LeaseExpiresAt</c> y el evento esperado.
+/// <b>Indexed queries</b>: the engine does not list the whole history on every cycle; it uses <see cref="ListDueRunsAsync"/>,
+/// <see cref="ListRunsWaitingForEventAsync"/> and <see cref="ListDueAutomationsAsync"/>, whose criteria are in
+/// <see cref="WorkflowRunQueries"/>. Consider indexing status, <c>ResumeAt</c>, <c>LeaseExpiresAt</c> and the awaited event.
 /// </para>
 /// </remarks>
 public interface IWorkflowStore
 {
     /// <summary>
-    /// Guarda la ejecución si <see cref="WorkflowRun.Version"/> coincide con la almacenada (0 = nueva, no debe existir) y
-    /// deja en <paramref name="run"/> la versión nueva. Si no coincide lanza <see cref="WorkflowConcurrencyException"/>.
+    /// Saves the run if <see cref="WorkflowRun.Version"/> matches the stored one (0 = new, must not exist) and leaves the
+    /// new version in <paramref name="run"/>. If it does not match, throws <see cref="WorkflowConcurrencyException"/>.
     /// </summary>
     Task SaveRunAsync(WorkflowRun run, CancellationToken cancellationToken = default);
 
     Task<WorkflowRun?> GetRunAsync(string id, CancellationToken cancellationToken = default);
 
-    /// <summary>Ejecuciones filtradas (más recientes primero).</summary>
+    /// <summary>Filtered runs (most recent first).</summary>
     Task<IReadOnlyList<WorkflowRun>> ListRunsAsync(WorkflowStatus? status = null, string? workflowName = null, int limit = 100, CancellationToken cancellationToken = default);
 
-    /// <summary>Ejecuciones que el motor debe atender en <paramref name="now"/> (<see cref="WorkflowRunQueries.IsDue(WorkflowRun, DateTimeOffset)"/>), las más atrasadas primero.</summary>
+    /// <summary>Runs the engine must handle at <paramref name="now"/> (<see cref="WorkflowRunQueries.IsDue(WorkflowRun, DateTimeOffset)"/>), most overdue first.</summary>
     Task<IReadOnlyList<WorkflowRun>> ListDueRunsAsync(DateTimeOffset now, int limit = 100, CancellationToken cancellationToken = default);
 
-    /// <summary>Ejecuciones que esperan el evento (<see cref="WorkflowRunQueries.IsWaitingFor"/>).</summary>
+    /// <summary>Runs waiting for the event (<see cref="WorkflowRunQueries.IsWaitingFor"/>).</summary>
     Task<IReadOnlyList<WorkflowRun>> ListRunsWaitingForEventAsync(string eventName, string? key, int limit = 100, CancellationToken cancellationToken = default);
 
-    /// <summary>Borra hasta <paramref name="limit"/> ejecuciones terminadas antes de <paramref name="finishedBefore"/>. Devuelve cuántas borró.</summary>
+    /// <summary>Deletes up to <paramref name="limit"/> runs finished before <paramref name="finishedBefore"/>. Returns how many were deleted.</summary>
     Task<int> DeleteFinishedRunsAsync(DateTimeOffset finishedBefore, int limit = 1000, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Guarda la automatización si <see cref="Automation.Version"/> coincide con la almacenada (0 = nueva) y devuelve la
-    /// copia guardada con la versión nueva. Si no coincide lanza <see cref="WorkflowConcurrencyException"/>.
+    /// Saves the automation if <see cref="Automation.Version"/> matches the stored one (0 = new) and returns the saved copy
+    /// with the new version. If it does not match, throws <see cref="WorkflowConcurrencyException"/>.
     /// </summary>
     Task<Automation> SaveAutomationAsync(Automation automation, CancellationToken cancellationToken = default);
 
@@ -50,19 +50,19 @@ public interface IWorkflowStore
 
     Task<IReadOnlyList<Automation>> ListAutomationsAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>Automatizaciones activas con <see cref="Automation.NextRunAt"/> vencido (<see cref="WorkflowRunQueries.IsDue(Automation, DateTimeOffset)"/>).</summary>
+    /// <summary>Enabled automations whose <see cref="Automation.NextRunAt"/> is due (<see cref="WorkflowRunQueries.IsDue(Automation, DateTimeOffset)"/>).</summary>
     Task<IReadOnlyList<Automation>> ListDueAutomationsAsync(DateTimeOffset now, int limit = 100, CancellationToken cancellationToken = default);
 
     Task DeleteAutomationAsync(string id, CancellationToken cancellationToken = default);
 }
 
-/// <summary>Criterios de las consultas del motor (para implementar <see cref="IWorkflowStore"/>).</summary>
+/// <summary>Criteria of the engine's queries (for implementing <see cref="IWorkflowStore"/>).</summary>
 public static class WorkflowRunQueries
 {
     /// <summary>
-    /// Una ejecución está vencida si duerme o espera un evento con <see cref="WorkflowRun.ResumeAt"/> &lt;= <paramref name="now"/>,
-    /// o si está pendiente o en curso sin reclamo vigente (<see cref="WorkflowRun.LeaseExpiresAt"/> nulo o vencido: la
-    /// instancia que la ejecutaba murió o se apagó).
+    /// A run is due if it is sleeping or waiting for an event with <see cref="WorkflowRun.ResumeAt"/> &lt;= <paramref name="now"/>,
+    /// or if it is pending or running without a valid claim (<see cref="WorkflowRun.LeaseExpiresAt"/> null or expired: the
+    /// instance that was running it died or shut down).
     /// </summary>
     public static bool IsDue(WorkflowRun run, DateTimeOffset now) => run.Status switch
     {
@@ -71,29 +71,29 @@ public static class WorkflowRunQueries
         _ => false,
     };
 
-    /// <summary>Desde cuándo está vencida (para atender primero las más atrasadas).</summary>
+    /// <summary>Since when it has been due (to handle the most overdue first).</summary>
     public static DateTimeOffset DueAt(WorkflowRun run) =>
         run.Status is WorkflowStatus.Sleeping or WorkflowStatus.WaitingForEvent
             ? run.ResumeAt ?? run.UpdatedAt
             : run.LeaseExpiresAt ?? run.UpdatedAt;
 
-    /// <summary>La ejecución espera <paramref name="eventName"/> sin clave o con la clave <paramref name="key"/>.</summary>
+    /// <summary>The run is waiting for <paramref name="eventName"/> with no key or with the key <paramref name="key"/>.</summary>
     public static bool IsWaitingFor(WorkflowRun run, string eventName, string? key) =>
         run.Status == WorkflowStatus.WaitingForEvent
         && run.Waiting is { } wait
         && wait.EventName == eventName
         && (wait.Key is null || wait.Key == key);
 
-    /// <summary>Activa y con <see cref="Automation.NextRunAt"/> &lt;= <paramref name="now"/>.</summary>
+    /// <summary>Enabled and with <see cref="Automation.NextRunAt"/> &lt;= <paramref name="now"/>.</summary>
     public static bool IsDue(Automation automation, DateTimeOffset now) => automation.Enabled && automation.NextRunAt is { } next && next <= now;
 
-    /// <summary>Cuándo terminó (para la retención).</summary>
+    /// <summary>When it finished (for retention).</summary>
     public static DateTimeOffset FinishedAt(WorkflowRun run) => run.CompletedAt ?? run.UpdatedAt;
 
     internal static WorkflowConcurrencyException Conflict(string kind, string id, long expected, long stored) =>
         new($"La {kind} '{id}' cambió en el almacén (versión {stored}, se esperaba {expected}).");
 
-    /// <summary>Copia ligera para índices: sin pasos, registro, entrada ni salida.</summary>
+    /// <summary>Lightweight copy for indexes: without steps, log, input or output.</summary>
     internal static WorkflowRun Projection(WorkflowRun run) => new()
     {
         Id = run.Id,
@@ -115,8 +115,8 @@ public static class WorkflowRunQueries
 }
 
 /// <summary>
-/// Almacén en memoria (pruebas y desarrollo; se pierde al reiniciar). Conserva como mucho
-/// <see cref="MaxFinishedRuns"/> ejecuciones terminadas: al superarlo descarta las más antiguas.
+/// In-memory store (testing and development; lost on restart). Keeps at most <see cref="MaxFinishedRuns"/> finished
+/// runs: when exceeded, it discards the oldest ones.
 /// </summary>
 public sealed class InMemoryWorkflowStore(int maxFinishedRuns = 10_000) : IWorkflowStore
 {
@@ -125,7 +125,7 @@ public sealed class InMemoryWorkflowStore(int maxFinishedRuns = 10_000) : IWorkf
     private readonly Dictionary<string, Automation> _automations = new(StringComparer.Ordinal);
     private int _finished;
 
-    /// <summary>Ejecuciones terminadas que se conservan como máximo.</summary>
+    /// <summary>Maximum number of finished runs kept.</summary>
     public int MaxFinishedRuns { get; } = maxFinishedRuns > 0 ? maxFinishedRuns : throw new ArgumentOutOfRangeException(nameof(maxFinishedRuns));
 
     private sealed record StoredRun(string Json, WorkflowRun Index);
@@ -279,14 +279,14 @@ public sealed class InMemoryWorkflowStore(int maxFinishedRuns = 10_000) : IWorkf
 }
 
 /// <summary>
-/// Almacén en disco (un JSON por ejecución y por automatización). Sobrevive reinicios. Las ejecuciones activas tienen
-/// además una entrada pequeña en <c>runs-active/</c>, de modo que los ciclos del motor no leen el historial completo.
+/// On-disk store (one JSON file per run and per automation). Survives restarts. Active runs also have a small entry in
+/// <c>runs-active/</c>, so the engine's cycles do not read the whole history.
 /// </summary>
 /// <remarks>
-/// Varios procesos de la <b>misma máquina</b> pueden compartir el directorio: las escrituras se serializan con un archivo
-/// de bloqueo (<c>.lock</c>) y se verifican las versiones. Para varias máquinas use un almacén de base de datos, como
-/// <c>PostgresWorkflowStore</c> (paquete <c>AiSdk.Net.Workflows.Postgres</c>): el bloqueo de archivos no es fiable en
-/// discos de red.
+/// Several processes on the <b>same machine</b> can share the directory: writes are serialized with a lock file
+/// (<c>.lock</c>) and versions are checked. For several machines, use a database store, such as
+/// <c>PostgresWorkflowStore</c> (package <c>AiSdk.Net.Workflows.Postgres</c>): file locking is not reliable on network
+/// drives.
 /// </remarks>
 public sealed class FileSystemWorkflowStore : IWorkflowStore, IDisposable
 {
@@ -320,7 +320,7 @@ public sealed class FileSystemWorkflowStore : IWorkflowStore, IDisposable
 
     private string AutomationPath(string id) => Path.Combine(_automations, SafeName(id));
 
-    /// <summary>Crea el índice de ejecuciones activas la primera vez (almacenes creados con versiones anteriores).</summary>
+    /// <summary>Creates the index of active runs the first time (stores created with earlier versions).</summary>
     private void EnsureIndex()
     {
         var marker = Path.Combine(_active, IndexMarker);
@@ -417,7 +417,7 @@ public sealed class FileSystemWorkflowStore : IWorkflowStore, IDisposable
     public Task<IReadOnlyList<WorkflowRun>> ListRunsWaitingForEventAsync(string eventName, string? key, int limit = 100, CancellationToken cancellationToken = default) =>
         FromIndexAsync(r => WorkflowRunQueries.IsWaitingFor(r, eventName, key), r => r.CreatedAt.UtcTicks, limit, cancellationToken);
 
-    /// <summary>Filtra con el índice de activas y confirma cada candidata con la ejecución guardada.</summary>
+    /// <summary>Filters with the index of active runs and confirms each candidate against the saved run.</summary>
     private async Task<IReadOnlyList<WorkflowRun>> FromIndexAsync(Func<WorkflowRun, bool> predicate, Func<WorkflowRun, long> order, int limit, CancellationToken cancellationToken)
     {
         if (limit <= 0)
@@ -553,7 +553,7 @@ public sealed class FileSystemWorkflowStore : IWorkflowStore, IDisposable
         }, cancellationToken);
     }
 
-    /// <summary>Serializa las escrituras dentro del proceso (semáforo) y entre procesos (archivo de bloqueo).</summary>
+    /// <summary>Serializes writes within the process (semaphore) and across processes (lock file).</summary>
     private async Task<T> WithLockAsync<T>(Func<Task<T>> action, CancellationToken cancellationToken)
     {
         await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);

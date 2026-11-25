@@ -10,17 +10,16 @@ using UglyToad.PdfPig.DocumentLayoutAnalysis.WordExtractor;
 namespace AiSdk.Documents.Converters;
 
 /// <summary>
-/// PDF a Markdown. Extrae el texto en orden de lectura, detecta títulos por tamaño de fuente y quita
-/// encabezados y pies de página repetidos. Las páginas escaneadas (sin texto) pasan por OCR: el motor
-/// recibe el PDF completo si lo admite (Mistral OCR) o cada página como imagen, una por una (pdftoppm o,
-/// si no se puede rasterizar, la imagen incrustada en esa página). Se procesan a lo más
-/// <see cref="MarkdownConverterOptions.MaxPdfPages"/> páginas y se reconocen a lo más
-/// <see cref="MarkdownConverterOptions.MaxOcrPages"/>, cada una rasterizada sin superar
-/// <see cref="MarkdownConverterOptions.MaxRasterPixels"/> por lado.
+/// PDF to Markdown. Extracts the text in reading order, detects headings by font size and removes repeated headers and
+/// footers. Scanned pages (without text) go through OCR: the engine receives the whole PDF if it supports it (Mistral
+/// OCR) or each page as an image, one at a time (pdftoppm or, if the page cannot be rasterized, the image embedded in
+/// that page). At most <see cref="MarkdownConverterOptions.MaxPdfPages"/> pages are processed and at most
+/// <see cref="MarkdownConverterOptions.MaxOcrPages"/> are recognized, each rasterized without exceeding
+/// <see cref="MarkdownConverterOptions.MaxRasterPixels"/> per side.
 /// </summary>
 public sealed partial class PdfConverter : IDocumentConverter
 {
-    /// <summary>Resolución con la que se rasterizan las páginas para OCR (menor en páginas muy grandes).</summary>
+    /// <summary>Resolution at which pages are rasterized for OCR (lower for very large pages).</summary>
     public const int OcrDpi = 200;
 
     public bool CanConvert(string mediaType) => mediaType == MediaTypes.Pdf;
@@ -115,7 +114,7 @@ public sealed partial class PdfConverter : IDocumentConverter
         return DocumentConversionResult.FromPages(source, pages, title, warnings);
     }
 
-    /// <summary>Resolución para rasterizar una página cuyo lado mayor mide <paramref name="points"/> puntos, sin superar <paramref name="maxPixels"/> píxeles.</summary>
+    /// <summary>Resolution for rasterizing a page whose longer side measures <paramref name="points"/> points, without exceeding <paramref name="maxPixels"/> pixels.</summary>
     internal static int RasterDpi(double points, int maxPixels) =>
         points <= 0 ? OcrDpi : (int)Math.Clamp(Math.Floor(Math.Max(1, maxPixels) * 72.0 / points), 1, OcrDpi);
 
@@ -264,7 +263,7 @@ public sealed partial class PdfConverter : IDocumentConverter
         }
     }
 
-    /// <summary>True si <see cref="DocumentSource.FilePath"/> existe y tiene el mismo tamaño que los datos (no cambió).</summary>
+    /// <summary>True if <see cref="DocumentSource.FilePath"/> exists and has the same size as the data (it has not changed).</summary>
     private static bool IsSameFile(DocumentSource source)
     {
         try
@@ -278,8 +277,8 @@ public sealed partial class PdfConverter : IDocumentConverter
     }
 
     /// <summary>
-    /// Bloques de texto en orden de lectura con su tamaño de fuente. Las líneas iniciales con fuente
-    /// distinta del resto del bloque (p. ej. un título pegado al párrafo) se separan en su propio bloque.
+    /// Text blocks in reading order with their font size. Leading lines with a font different from the rest of the block
+    /// (e.g. a heading attached to the paragraph) are split into their own block.
     /// </summary>
     private static List<(string Text, double Size)> ExtractBlocks(Page page)
     {
@@ -320,8 +319,8 @@ public sealed partial class PdfConverter : IDocumentConverter
     }
 
     /// <summary>
-    /// La imagen incrustada más grande de la página (la del escaneo), o null si no hay ninguna utilizable. Las de más de
-    /// <paramref name="maxPixels"/>² píxeles se ignoran sin decodificarlas (una imagen comprimida puede ocupar gigabytes).
+    /// The largest embedded image on the page (the scan), or null if there is no usable one. Images of more than
+    /// <paramref name="maxPixels"/>² pixels are ignored without decoding them (a compressed image can take up gigabytes).
     /// </summary>
     private static byte[]? LargestImage(Page page, int minBytes, int maxPixels)
     {
@@ -351,7 +350,7 @@ public sealed partial class PdfConverter : IDocumentConverter
         return largest;
     }
 
-    /// <summary>Une las líneas de un bloque en un párrafo, reparando palabras cortadas con guion.</summary>
+    /// <summary>Joins the lines of a block into a paragraph, rejoining hyphenated words.</summary>
     private static string JoinLines(List<string> lines)
     {
         var builder = new StringBuilder();
@@ -404,7 +403,7 @@ public sealed partial class PdfConverter : IDocumentConverter
         return builder.ToString().Trim();
     }
 
-    /// <summary>Textos que aparecen al inicio o final de la mayoría de las páginas (encabezados y pies).</summary>
+    /// <summary>Text that appears at the start or end of most pages (headers and footers).</summary>
     private static HashSet<string> RepeatedEdges(List<List<string>> pages)
     {
         var result = new HashSet<string>();

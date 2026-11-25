@@ -5,42 +5,42 @@ using System.Text;
 namespace AiSdk.Documents;
 
 /// <summary>
-/// Opciones de <see cref="UrlDownloader"/>: los adjuntos por URL los puede elegir quien escribe el mensaje, y su
-/// contenido se muestra al modelo, así que por defecto solo se descargan URLs http/https públicas, sin seguir
-/// redirecciones hacia redes privadas, con tamaño y tiempo acotados.
+/// Options for <see cref="UrlDownloader"/>: URL attachments can be chosen by whoever writes the message, and their
+/// content is shown to the model, so by default only public http/https URLs are downloaded, without following
+/// redirects to private networks, with bounded size and time.
 /// </summary>
 public sealed class UrlDownloadOptions
 {
-    /// <summary>Bytes máximos de una descarga (por defecto 25 MB; nunca más que <see cref="MarkdownConverterOptions.MaxInputBytes"/>). Se comprueba mientras se lee.</summary>
+    /// <summary>Maximum bytes of a download (25 MB by default; never more than <see cref="MarkdownConverterOptions.MaxInputBytes"/>). Checked while reading.</summary>
     public long MaxBytes { get; init; } = 25L * 1024 * 1024;
 
-    /// <summary>Tiempo máximo de toda la descarga, incluidas las redirecciones (por defecto 30 s).</summary>
+    /// <summary>Maximum time for the whole download, including redirects (30 s by default).</summary>
     public TimeSpan Timeout { get; init; } = TimeSpan.FromSeconds(30);
 
-    /// <summary>Redirecciones máximas (por defecto 5). Cada destino se valida igual que la URL original.</summary>
+    /// <summary>Maximum redirects (5 by default). Each target is validated the same way as the original URL.</summary>
     public int MaxRedirects { get; init; } = 5;
 
     /// <summary>
-    /// Permite descargar desde loopback, redes privadas (RFC 1918), link-local (incluido 169.254.169.254, los
-    /// metadatos de la nube), CGNAT, direcciones locales únicas IPv6, multicast y otras reservadas. Desactívelo solo si
-    /// las URLs vienen de una fuente de confianza: con él, quien controle la URL puede leer servicios internos.
+    /// Allows downloading from loopback, private networks (RFC 1918), link-local (including 169.254.169.254, the cloud
+    /// metadata endpoint), CGNAT, IPv6 unique local addresses, multicast and other reserved ranges. Enable it only if
+    /// the URLs come from a trusted source: with it, whoever controls the URL can read internal services.
     /// </summary>
     public bool AllowPrivateNetworks { get; init; }
 
     /// <summary>
-    /// Validación adicional de cada URL, incluidas las de las redirecciones (p. ej. una lista de dominios permitidos).
-    /// Si devuelve false, la descarga se rechaza.
+    /// Additional validation of each URL, including redirect targets (e.g. an allowlist of domains). If it returns false,
+    /// the download is rejected.
     /// </summary>
     public Func<Uri, bool>? UrlValidator { get; init; }
 
     /// <summary>
-    /// Decide a qué direcciones IP se puede conectar, en lugar de la regla por defecto (<see cref="UrlDownloader.IsPublicAddress"/>,
-    /// o cualquiera con <see cref="AllowPrivateNetworks"/>). Se evalúa con cada dirección resuelta, al conectar.
+    /// Decides which IP addresses can be connected to, instead of the default rule (<see cref="UrlDownloader.IsPublicAddress"/>,
+    /// or any address with <see cref="AllowPrivateNetworks"/>). Evaluated with each resolved address, when connecting.
     /// </summary>
     public Func<IPAddress, bool>? AddressValidator { get; init; }
 }
 
-/// <summary>Descarga rechazada (esquema, dirección o URL no permitidos, demasiadas redirecciones, error HTTP o tiempo agotado).</summary>
+/// <summary>Rejected download (disallowed scheme, address or URL, too many redirects, HTTP error or timeout).</summary>
 public sealed class UrlDownloadException : AiSdkException
 {
     public UrlDownloadException(string message, Exception? inner = null) : base(message, inner)
@@ -48,19 +48,19 @@ public sealed class UrlDownloadException : AiSdkException
     }
 }
 
-/// <summary>Contenido descargado: bytes, tipo MIME informado por el servidor (o la URL <c>data:</c>) y URL final.</summary>
+/// <summary>Downloaded content: bytes, MIME type reported by the server (or the <c>data:</c> URL) and final URL.</summary>
 public sealed record UrlDownloadResult(byte[] Data, string? MediaType, Uri Url);
 
 /// <summary>
-/// Descargas con protección SSRF: solo http/https (y URLs <c>data:</c>), conexión directa (sin proxy) a la dirección IP
-/// ya validada —así un DNS que cambia entre la validación y la conexión no sirve para llegar a una red interna—,
-/// redirecciones manuales validadas en cada salto, tamaño máximo comprobado mientras se lee y tiempo máximo.
+/// Downloads with SSRF protection: http/https only (and <c>data:</c> URLs), direct connection (no proxy) to the already
+/// validated IP address (so a DNS record that changes between validation and connection cannot be used to reach an
+/// internal network), manual redirects validated at each hop, maximum size checked while reading, and a maximum time.
 /// </summary>
 public static class UrlDownloader
 {
-    /// <summary>Descarga <paramref name="url"/> con las protecciones de <paramref name="options"/>.</summary>
-    /// <exception cref="UrlDownloadException">URL, esquema o dirección no permitidos, error HTTP, demasiadas redirecciones o tiempo agotado.</exception>
-    /// <exception cref="DocumentTooLargeException">El contenido supera <see cref="UrlDownloadOptions.MaxBytes"/>.</exception>
+    /// <summary>Downloads <paramref name="url"/> with the protections of <paramref name="options"/>.</summary>
+    /// <exception cref="UrlDownloadException">Disallowed URL, scheme or address, HTTP error, too many redirects or timeout.</exception>
+    /// <exception cref="DocumentTooLargeException">The content exceeds <see cref="UrlDownloadOptions.MaxBytes"/>.</exception>
     public static Task<UrlDownloadResult> DownloadAsync(Uri url, UrlDownloadOptions? options = null, CancellationToken cancellationToken = default)
     {
         options ??= new UrlDownloadOptions();
@@ -138,10 +138,10 @@ public static class UrlDownloader
     }
 
     /// <summary>
-    /// True si la dirección es pública (unicast global). Rechaza loopback, "esta red" (0.0.0.0/8), RFC 1918, CGNAT
-    /// (100.64.0.0/10), link-local (169.254.0.0/16 y fe80::/10), redes de documentación y pruebas, multicast,
-    /// reservadas, locales únicas IPv6 (fc00::/7), y las IPv6 que encapsulan una IPv4 (mapeadas, NAT64, 6to4, Teredo)
-    /// cuando la IPv4 no es pública.
+    /// True if the address is public (global unicast). Rejects loopback, "this network" (0.0.0.0/8), RFC 1918, CGNAT
+    /// (100.64.0.0/10), link-local (169.254.0.0/16 and fe80::/10), documentation and test networks, multicast,
+    /// reserved ranges, IPv6 unique local addresses (fc00::/7), and IPv6 addresses that embed an IPv4 address (mapped,
+    /// NAT64, 6to4, Teredo) when the IPv4 address is not public.
     /// </summary>
     public static bool IsPublicAddress(IPAddress address)
     {
@@ -288,7 +288,7 @@ public static class UrlDownloader
         return buffer.ToArray();
     }
 
-    /// <summary>URL <c>data:[tipo][;base64],datos</c>, comprobando el tamaño antes de decodificar.</summary>
+    /// <summary><c>data:[type][;base64],data</c> URL, checking the size before decoding.</summary>
     private static UrlDownloadResult DecodeDataUrl(Uri url, long maxBytes)
     {
         var raw = url.OriginalString;
@@ -327,7 +327,7 @@ public static class UrlDownloader
         $"Descarga bloqueada: '{host}' corresponde a una dirección no pública ({string.Join(", ", addresses)}). " +
         "Use UrlDownloadOptions.AllowPrivateNetworks o AddressValidator solo si la URL es de confianza.";
 
-    /// <summary>URL sin credenciales ni consulta, para mensajes de error.</summary>
+    /// <summary>URL without credentials or query, for error messages.</summary>
     private static string Describe(Uri url) =>
         url.IsAbsoluteUri ? $"'{url.GetComponents(UriComponents.SchemeAndServer | UriComponents.Path, UriFormat.SafeUnescaped)}'" : $"'{url}'";
 }

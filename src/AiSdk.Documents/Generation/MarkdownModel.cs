@@ -8,10 +8,10 @@ using MdTable = Markdig.Extensions.Tables.Table;
 
 namespace AiSdk.Documents.Generation;
 
-/// <summary>Fragmento de texto con formato.</summary>
+/// <summary>Formatted text fragment.</summary>
 public sealed record TextRun(string Text, bool Bold = false, bool Italic = false, bool Code = false, string? Link = null, bool Strike = false);
 
-/// <summary>Bloque de un documento (modelo intermedio común a Word y PDF).</summary>
+/// <summary>Block of a document (intermediate model shared by Word and PDF).</summary>
 public abstract record DocBlock;
 
 public sealed record HeadingBlockModel(int Level, IReadOnlyList<TextRun> Runs) : DocBlock;
@@ -33,14 +33,14 @@ public enum CellAlign
     Right,
 }
 
-/// <summary>Tabla; la primera fila es el encabezado.</summary>
+/// <summary>Table; the first row is the header.</summary>
 public sealed record TableModel(IReadOnlyList<IReadOnlyList<IReadOnlyList<TextRun>>> Rows, IReadOnlyList<CellAlign> Align) : DocBlock;
 
 public sealed record RuleModel : DocBlock;
 
 public sealed record PageBreakModel : DocBlock;
 
-/// <summary>Convierte Markdown (GFM: tablas, listas de tareas, tachado) al modelo intermedio.</summary>
+/// <summary>Converts Markdown (GFM: tables, task lists, strikethrough) to the intermediate model.</summary>
 public static class MarkdownModel
 {
     private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
@@ -52,9 +52,9 @@ public static class MarkdownModel
         .Build();
 
     /// <summary>
-    /// Esquemas de enlace que se escriben como hipervínculos en Word y PDF: <c>http</c>, <c>https</c> y <c>mailto</c>.
-    /// Otros (<c>file:</c>, rutas UNC <c>\\servidor\recurso</c>, <c>javascript:</c>, <c>data:</c>...) quedan como texto: el
-    /// Markdown puede venir de un modelo o de un usuario, y esos enlaces filtran credenciales de red o ejecutan código.
+    /// Link schemes written as hyperlinks in Word and PDF: <c>http</c>, <c>https</c> and <c>mailto</c>. Others
+    /// (<c>file:</c>, UNC paths <c>\\server\share</c>, <c>javascript:</c>, <c>data:</c>...) are left as text: the Markdown
+    /// may come from a model or a user, and those links leak network credentials or execute code.
     /// </summary>
     public static bool IsSafeLink(string? url, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out Uri? uri)
     {
