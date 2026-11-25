@@ -11,16 +11,27 @@ public static class StreamResultExtensions
     /// <summary>
     /// Devuelve el stream en formato UI Message Stream (SSE), compatible con
     /// <c>useChat</c> de <c>@ai-sdk/react</c> (equivalente a <c>toUIMessageStreamResponse()</c>).
+    /// Con <paramref name="toolApprovals"/> (<see cref="ToolApprovalProtection.ForChat"/>), las llamadas pendientes de
+    /// aprobación llegan a <c>useChat</c> en el estado <c>approval-requested</c>.
     /// </summary>
-    public static IResult ToUIMessageStreamResult(this StreamTextResult result, string? messageId = null, Func<Exception, string>? onError = null) =>
-        new UIMessageStreamHttpResult(result.FullStream, messageId, onError);
+    public static IResult ToUIMessageStreamResult(
+        this StreamTextResult result,
+        string? messageId = null,
+        Func<Exception, string>? onError = null,
+        ToolApprovalProtector? toolApprovals = null) =>
+        new UIMessageStreamHttpResult(result.FullStream, messageId, onError, toolApprovals);
 
     /// <summary>Devuelve solo el texto como <c>text/plain</c> en streaming (equivalente a <c>toTextStreamResponse()</c>).</summary>
     public static IResult ToTextStreamResult(this StreamTextResult result) => new TextStreamHttpResult(result.TextStream);
 
     /// <summary>Escribe el stream UI directamente en la respuesta HTTP.</summary>
-    public static Task WriteUIMessageStreamAsync(this HttpResponse response, StreamTextResult result, string? messageId = null, Func<Exception, string>? onError = null) =>
-        new UIMessageStreamHttpResult(result.FullStream, messageId, onError).ExecuteAsync(response.HttpContext);
+    public static Task WriteUIMessageStreamAsync(
+        this HttpResponse response,
+        StreamTextResult result,
+        string? messageId = null,
+        Func<Exception, string>? onError = null,
+        ToolApprovalProtector? toolApprovals = null) =>
+        new UIMessageStreamHttpResult(result.FullStream, messageId, onError, toolApprovals).ExecuteAsync(response.HttpContext);
 
     /// <summary>
     /// Devuelve el stream como respuesta <b>reanudable</b>: la generación se guarda en
@@ -29,6 +40,7 @@ public static class StreamResultExtensions
     /// El stream se guarda bajo el chat <b>y su dueño</b> (<paramref name="owner"/> o, si es null, el usuario
     /// autenticado): otro usuario con el mismo id de chat no puede reemplazarlo ni reanudarlo.
     /// Sin dueño la respuesta falla: en aplicaciones anónimas pase un id de sesión que emita el servidor.
+    /// <paramref name="toolApprovals"/>: ver <see cref="ToUIMessageStreamResult"/>.
     /// </summary>
     public static IResult ToResumableUIMessageStreamResult(
         this StreamTextResult result,
@@ -36,8 +48,9 @@ public static class StreamResultExtensions
         string chatId,
         string? messageId = null,
         Func<Exception, string>? onError = null,
-        string? owner = null) =>
-        UIMessageStreamResults.Resumable(store, chatId, UIMessageStream.ToChunks(result.FullStream, messageId, onError), owner);
+        string? owner = null,
+        ToolApprovalProtector? toolApprovals = null) =>
+        UIMessageStreamResults.Resumable(store, chatId, UIMessageStream.ToChunks(result.FullStream, messageId, onError, toolApprovals), owner);
 
     internal static void SetSseHeaders(HttpResponse response)
     {
@@ -49,12 +62,16 @@ public static class StreamResultExtensions
         response.Headers[UIMessageStream.HeaderName] = UIMessageStream.HeaderValue;
     }
 
-    private sealed class UIMessageStreamHttpResult(IAsyncEnumerable<StreamPart> parts, string? messageId, Func<Exception, string>? onError) : IResult
+    private sealed class UIMessageStreamHttpResult(
+        IAsyncEnumerable<StreamPart> parts,
+        string? messageId,
+        Func<Exception, string>? onError,
+        ToolApprovalProtector? toolApprovals) : IResult
     {
         public async Task ExecuteAsync(HttpContext httpContext)
         {
             SetSseHeaders(httpContext.Response);
-            await UIMessageStream.WriteAsync(parts, httpContext.Response.Body, messageId, onError, httpContext.RequestAborted).ConfigureAwait(false);
+            await UIMessageStream.WriteAsync(parts, httpContext.Response.Body, messageId, onError, toolApprovals, httpContext.RequestAborted).ConfigureAwait(false);
         }
     }
 

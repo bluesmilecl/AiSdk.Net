@@ -40,6 +40,13 @@ public sealed class AgentCallOptions
     /// <summary>Decisiones sobre llamadas pendientes de aprobación (ver <see cref="GenerateTextOptions.ToolApprovals"/>).</summary>
     public IReadOnlyList<ToolApprovalResponse>? ToolApprovals { get; init; }
 
+    /// <summary>
+    /// Difiere las aprobaciones en esta llamada aunque el agente no lo haga en su configuración
+    /// (<see cref="CallSettings.DeferToolApprovals"/>). Útil en un endpoint de <c>useChat</c>, que es quien puede mostrar
+    /// la aprobación al usuario. Si hay un manejador (<see cref="OnToolApproval"/> o el del agente), decide él.
+    /// </summary>
+    public bool DeferToolApprovals { get; init; }
+
     public CancellationToken CancellationToken { get; init; }
 
     public static implicit operator AgentCallOptions(string prompt) => new() { Prompt = prompt };
@@ -186,7 +193,7 @@ public abstract class Agent : IAgent, IOrchestrationNode
                     await call.OnStepFinish(step).ConfigureAwait(false);
                 },
             OnToolApproval = HandlesApprovals ? ApproveToolCallAsync : s.OnToolApproval ?? call.OnToolApproval,
-            DeferToolApprovals = s.DeferToolApprovals,
+            DeferToolApprovals = s.DeferToolApprovals || call.DeferToolApprovals,
             ToolApprovals = call.ToolApprovals,
             MaxParallelToolCalls = s.MaxParallelToolCalls,
             MaxOutputTokens = s.MaxOutputTokens,

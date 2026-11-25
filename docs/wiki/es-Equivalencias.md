@@ -24,6 +24,7 @@ Cómo se corresponden los conceptos del AI SDK de Vercel (TypeScript) y del Lara
 | `createProviderRegistry` | `config/ai.php` | `ProviderRegistry` / `AddAiSdk(...)` |
 | `embed`, `embedMany`, `cosineSimilarity` | `Embeddings` | `Ai.EmbedAsync`, `Ai.EmbedManyAsync`, `Ai.CosineSimilarity` |
 | `toUIMessageStreamResponse()` + `useChat` | — | `stream.ToUIMessageStreamResult()` + `UIMessageConverter` |
+| `needsApproval` + `addToolApprovalResponse` (`useChat`) | — | `RequireApproval()` + `UIMessageConverter.ToModelInput` + `ToUIMessageStreamResult(toolApprovals: ToolApprovalProtection.ForChat(http, chatId))` |
 | `MockLanguageModelV2` | `Ai::fake()` | `MockLanguageModel` |
 | `experimental_createMCPClient` | — | `McpClient.ConnectAsync(...)` + `GetToolsAsync()` |
 | `anthropic.tools.webSearch_*`, `openai.tools.webSearch` | provider tools | `AnthropicTools.WebSearch()`, `OpenAITools.WebSearch()` |

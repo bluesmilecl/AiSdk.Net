@@ -49,7 +49,9 @@ public class CallSettings
     /// Sin <see cref="OnToolApproval"/>, deja pendientes las llamadas que requieren aprobación en vez de rechazarlas
     /// (aprobación diferida, como <c>tool-approval-request</c> del AI SDK): el bucle se detiene, las llamadas quedan
     /// en <see cref="GenerateTextResult.PendingApprovals"/> y se resuelven en la siguiente llamada con
-    /// <see cref="GenerateTextOptions.ToolApprovals"/> (o <see cref="AgentSession.SendApprovalsAsync"/>).
+    /// <see cref="GenerateTextOptions.ToolApprovals"/> (o <see cref="AgentSession.SendApprovalsAsync"/>). En streaming
+    /// se emite <see cref="ToolApprovalRequestStreamPart"/>, que <c>useChat</c> muestra en el estado
+    /// <c>approval-requested</c> (ver <see cref="UI.ToolApprovalProtector"/>).
     /// </summary>
     public bool DeferToolApprovals { get; init; }
 
@@ -159,6 +161,9 @@ public sealed class GenerateTextOptions : CallSettings
     /// <remarks>
     /// Las aprobaciones se aplican a las llamadas de los mensajes que usted entrega: si el historial viene del cliente,
     /// valídelo (o guárdelo en el servidor, como <see cref="AgentSession"/>) para que no se aprueben llamadas inventadas.
+    /// Con <c>useChat</c>, <see cref="UI.UIMessageConverter.ToModelInput"/> solo devuelve las aprobaciones cuyo
+    /// <c>approvalId</c> emitió el servidor para esa misma llamada (<see cref="UI.ToolApprovalProtector"/>). Las llamadas
+    /// aprobadas nunca se reparan (<see cref="CallSettings.RepairToolCall"/>): se ejecutan con la entrada aprobada o fallan.
     /// </remarks>
     public IReadOnlyList<ToolApprovalResponse>? ToolApprovals { get; init; }
 

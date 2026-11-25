@@ -37,20 +37,31 @@ public sealed class UIMessageStreamWriter
             transient));
 
     /// <summary>Envía una fuente (<c>source-url</c>).</summary>
-    public void WriteSource(string url, string? title = null) =>
-        Write(new JsonObject { ["type"] = "source-url", ["sourceId"] = Guid.NewGuid().ToString("N"), ["url"] = url, ["title"] = title });
+    public void WriteSource(string url, string? title = null)
+    {
+        // Sin título no se envía "title": null (ai 6.0.x valida el chunk con title opcional de tipo string y rechaza null).
+        var chunk = new JsonObject { ["type"] = "source-url", ["sourceId"] = Guid.NewGuid().ToString("N"), ["url"] = url };
+        if (title is not null)
+        {
+            chunk["title"] = title;
+        }
+
+        Write(chunk);
+    }
 
     /// <summary>
     /// Mezcla un stream de texto en este stream (sin sus chunks <c>start</c>/<c>finish</c>, que
     /// emite el escritor). El stream final no termina hasta que todas las mezclas terminen.
+    /// <paramref name="toolApprovals"/> emite las aprobaciones pendientes (ver <see cref="UIMessageStream.ToChunks"/>).
     /// </summary>
-    public void Merge(StreamTextResult result) => Merge(result.FullStream);
+    public void Merge(StreamTextResult result, ToolApprovalProtector? toolApprovals = null) => Merge(result.FullStream, toolApprovals);
 
-    public void Merge(IAsyncEnumerable<StreamPart> parts)
+    /// <inheritdoc cref="Merge(StreamTextResult, ToolApprovalProtector?)"/>
+    public void Merge(IAsyncEnumerable<StreamPart> parts, ToolApprovalProtector? toolApprovals = null)
     {
         _merges.Add(Task.Run(async () =>
         {
-            await foreach (var chunk in UIMessageStream.ToChunks(parts, onError: _onError).ConfigureAwait(false))
+            await foreach (var chunk in UIMessageStream.ToChunks(parts, onError: _onError, toolApprovals: toolApprovals).ConfigureAwait(false))
             {
                 var type = (string?)chunk["type"];
                 if (type is not ("start" or "finish"))

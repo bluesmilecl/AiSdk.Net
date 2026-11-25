@@ -6,7 +6,55 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+### Added
+- **Tool approval with `useChat`**, using the AI SDK's own protocol (`ai@6` and `ai@7`): a call left pending by
+  `DeferToolApprovals` is streamed as `tool-approval-request` (`approvalId`, `toolCallId`), so `useChat` shows the part
+  in state `approval-requested`; the browser answers with `addToolApprovalResponse` and sends the conversation back
+  (`sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses`). `UIMessageConverter.ToModelInput`
+  returns the messages plus the verified `ToolApprovals`: approved calls run with the input the model produced, denied
+  ones stream `tool-output-denied` and the model gets the denial with the user's reason. `output-denied` parts in the
+  history reach the model as denials.
+- `ToolApprovalProtector`: the `approvalId` is an opaque token that binds the approval to the tool call id, tool name
+  and a SHA-256 of the canonical JSON input, to a scope (user and chat) and to an expiry (1 hour by default). Forged ids,
+  another user's or chat's approvals, expired ones, and changed inputs or call ids are rejected (the tool does not run
+  and the model gets an error). `ToolApprovalProtection.ForChat(http, chatId)` in ASP.NET Core (Data Protection, no
+  secret to configure); `ToolApprovalProtector.CreateHmac(key, scope)` elsewhere.
+- `toolApprovals` parameter on `ToUIMessageStreamResult`, `ToResumableUIMessageStreamResult`,
+  `WriteUIMessageStreamAsync`, `UIMessageStream.ToChunks`/`WriteAsync` and `UIMessageStreamWriter.Merge`;
+  `AgentCallOptions.DeferToolApprovals`; stream parts `ToolApprovalRequestStreamPart` and `ToolOutputDeniedStreamPart`.
+- `samples/ChatApi`: `send_weather_alert` requires the user's approval in the chat.
+- `WorkflowEngine.SendEventToRunsAsync`: delivers an event only to the given runs (still re-checked under the run lock),
+  and fires matching `EventTrigger` automations like `SendEventAsync`.
+- New package `AiSdk.Net.Workflows.Postgres`: `PostgresWorkflowStore`, an `IWorkflowStore` on PostgreSQL so durable
+  workflows run on several machines against one database. Optimistic concurrency in SQL (`UPDATE ... WHERE version`,
+  `INSERT ... ON CONFLICT DO NOTHING`), partial indexes for the engine queries, batched retention with `SKIP LOCKED`,
+  idempotent schema creation safe across replicas (`EnsureSchemaAsync`, configurable schema and table prefix) and
+  `UsePostgresStore()` for `AddAiSdkWorkflows`.
+
+### Changed
+- Denied calls are emitted as `ToolOutputDeniedStreamPart` instead of an error `ToolResultStreamPart` (the model still
+  receives the same error result). Migration: read `ToolOutputDeniedStreamPart.ToolResult` where you handled denials.
+- A call that is pending without a decision when resuming now reads "no hubo una decisión válida"; pending calls of
+  tools that no longer exist are closed with an error instead of being left without a result; a repeated call id is
+  executed once.
+- `UIMessageStream.WriteAsync` takes `toolApprovals` before `cancellationToken`. Migration: pass the token by name
+  (`cancellationToken: ct`).
+- Workflows: `FileSystemWorkflowStore` honors a `limit` of 0 or less like the other stores (no runs listed, none
+  deleted); it used to return or delete one run.
+- MCP: roots and sampling (`Roots`, `SetRootsAsync`, `SamplingModel`, `SamplingHandler`, `ApproveSampling`,
+  `ReviewSamplingResult`, `MaxSamplingTokens` and their types) are marked `[Experimental("AISDKMCP001")]`: the MCP
+  specification 2026-07-28 deprecates them. Suppress the diagnostic to keep using them.
+- Audio: with ffmpeg installed, audio longer than `MaxMediaDuration` is trimmed before transcription, with a warning.
+
 ### Security
+- Approved calls are never repaired by `RepairToolCall`: repairing would execute something other than what the user
+  approved, so an approved call with invalid input fails instead.
+- Without a `ToolApprovalProtector`, a call waiting for approval is streamed as `tool-output-error` and approval answers
+  are ignored (fails closed); `ToModelMessages` drops `approval-responded` parts.
+- When resuming approvals, two different calls with the same tool call id in the last assistant message (a tampered
+  history reusing an approved call's id for another tool or input) are both closed with an error: an approval is never
+  applied to a call other than the one it was granted for.
+- `UIMessageStreamWriter.WriteSource` no longer writes `"title": null` without a title (ai 6.0.x rejects it).
 - MCP over stdio: lines longer than `StdioMcpTransport.MaxMessageBytes` (16 MiB) are discarded without buffering them,
   stderr lines are cut at 64 KiB (`MaxStderrLineBytes`) and the incoming message queue is bounded.
 - Documents: an image whose header declares more than `MaxRasterPixels` × `MaxRasterPixels` pixels is never sent to OCR
@@ -19,23 +67,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 - Workflows: `POST /events/{event}` only resumes the runs `CanSendEvent` approved. A run that started waiting for the
   same event between the check and the delivery used to be resumed too; it now keeps waiting.
-
-### Added
-- `WorkflowEngine.SendEventToRunsAsync`: delivers an event only to the given runs (still re-checked under the run lock),
-  and fires matching `EventTrigger` automations like `SendEventAsync`.
-- New package `AiSdk.Net.Workflows.Postgres`: `PostgresWorkflowStore`, an `IWorkflowStore` on PostgreSQL so durable
-  workflows run on several machines against one database. Optimistic concurrency in SQL (`UPDATE ... WHERE version`,
-  `INSERT ... ON CONFLICT DO NOTHING`), partial indexes for the engine queries, batched retention with `SKIP LOCKED`,
-  idempotent schema creation safe across replicas (`EnsureSchemaAsync`, configurable schema and table prefix) and
-  `UsePostgresStore()` for `AddAiSdkWorkflows`.
-
-### Changed
-- Workflows: `FileSystemWorkflowStore` honors a `limit` of 0 or less like the other stores (no runs listed, none
-  deleted); it used to return or delete one run.
-- MCP: roots and sampling (`Roots`, `SetRootsAsync`, `SamplingModel`, `SamplingHandler`, `ApproveSampling`,
-  `ReviewSamplingResult`, `MaxSamplingTokens` and their types) are marked `[Experimental("AISDKMCP001")]`: the MCP
-  specification 2026-07-28 deprecates them. Suppress the diagnostic to keep using them.
-- Audio: with ffmpeg installed, audio longer than `MaxMediaDuration` is trimmed before transcription, with a warning.
 
 ## [0.2.0-preview.1] - 2026-11-25
 

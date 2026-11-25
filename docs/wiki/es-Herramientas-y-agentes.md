@@ -162,6 +162,22 @@ Las llamadas aprobadas se ejecutan antes de volver a llamar al modelo y sus resu
 > `AgentSession`) en vez de confiar en un historial enviado por el cliente, o un cliente podría lograr que se apruebe una
 > llamada inventada.
 
+**Con `useChat`** el historial lo tiene el navegador, así que la aprobación viaja con el protocolo del AI SDK: el stream
+envía `tool-approval-request` con un `approvalId` firmado, el usuario responde con `addToolApprovalResponse` y
+`UIMessageConverter.ToModelInput` solo acepta las respuestas cuyo `approvalId` emitió el servidor para esa misma llamada
+(mismo usuario, chat, id de llamada, herramienta y entrada). Las llamadas aprobadas nunca se reparan (`RepairToolCall`):
+se ejecutan con la entrada aprobada o fallan.
+
+```csharp
+var approvals = ToolApprovalProtection.ForChat(http, chatId);
+var input = UIMessageConverter.ToModelInput(req.Messages, new() { ToolApprovals = approvals, ServerExecutedTools = ["delete_user"] });
+return agent.Stream(new AgentCallOptions { Messages = input.Messages, ToolApprovals = input.ToolApprovals, DeferToolApprovals = true })
+    .ToUIMessageStreamResult(toolApprovals: approvals);
+// Navegador: addToolApprovalResponse({ id: part.approval.id, approved: true })
+```
+
+El ejemplo completo (endpoint y componente de React) está en [ASP.NET Core y useChat](es-ASP.NET-Core-y-useChat).
+
 **Control por paso** (`PrepareStep`): cambiar de modelo, forzar herramientas o recortar el contexto.
 
 ```csharp

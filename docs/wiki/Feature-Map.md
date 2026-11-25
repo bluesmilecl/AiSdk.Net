@@ -24,6 +24,7 @@ How the concepts of the Vercel AI SDK (TypeScript) and the Laravel AI SDK map to
 | `createProviderRegistry` | `config/ai.php` | `ProviderRegistry` / `AddAiSdk(...)` |
 | `embed`, `embedMany`, `cosineSimilarity` | `Embeddings` | `Ai.EmbedAsync`, `Ai.EmbedManyAsync`, `Ai.CosineSimilarity` |
 | `toUIMessageStreamResponse()` + `useChat` | — | `stream.ToUIMessageStreamResult()` + `UIMessageConverter` |
+| `needsApproval` + `addToolApprovalResponse` (`useChat`) | — | `RequireApproval()` + `UIMessageConverter.ToModelInput` + `ToUIMessageStreamResult(toolApprovals: ToolApprovalProtection.ForChat(http, chatId))` |
 | `MockLanguageModelV2` | `Ai::fake()` | `MockLanguageModel` |
 | `experimental_createMCPClient` | — | `McpClient.ConnectAsync(...)` + `GetToolsAsync()` |
 | `anthropic.tools.webSearch_*`, `openai.tools.webSearch` | provider tools | `AnthropicTools.WebSearch()`, `OpenAITools.WebSearch()` |

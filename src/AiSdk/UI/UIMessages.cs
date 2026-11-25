@@ -58,6 +58,31 @@ public sealed class UIMessageConverterOptions
     /// navegador (sin <c>execute</c> en el servidor), cuyo resultado sí debe llegar desde el cliente.
     /// </summary>
     public IReadOnlyCollection<string>? ServerExecutedTools { get; init; }
+
+    /// <summary>
+    /// Verifica en <see cref="UIMessageConverter.ToModelInput"/> las respuestas de aprobación que devuelve <c>useChat</c>
+    /// (partes en estado <c>approval-responded</c>). Debe ser el mismo protector (clave y ámbito) con el que se escribió
+    /// el stream que pidió la aprobación. Sin protector ninguna aprobación es válida: las llamadas se cierran con un error
+    /// y no se ejecutan.
+    /// </summary>
+    public ToolApprovalProtector? ToolApprovals { get; init; }
+}
+
+/// <summary>
+/// Conversación de <c>useChat</c> convertida para el modelo por <see cref="UIMessageConverter.ToModelInput"/>: los mensajes
+/// y las decisiones de aprobación verificadas, que se pasan juntos al agente
+/// (<see cref="AgentCallOptions.Messages"/> y <see cref="AgentCallOptions.ToolApprovals"/>).
+/// </summary>
+public sealed class UIModelInput
+{
+    /// <summary>Mensajes para el modelo.</summary>
+    public required IReadOnlyList<ModelMessage> Messages { get; init; }
+
+    /// <summary>
+    /// Decisiones (aprobar o denegar) cuyo approvalId verificó. Es null si el último mensaje no responde aprobaciones;
+    /// si las responde, nunca es null (aunque esté vacía): las llamadas sin una decisión válida se cierran con un error.
+    /// </summary>
+    public IReadOnlyList<ToolApprovalResponse>? ToolApprovals { get; init; }
 }
 
 public static class UIMessageConverter
@@ -65,21 +90,46 @@ public static class UIMessageConverter
     /// <summary>
     /// Convierte mensajes de UI a mensajes de modelo (equivalente a <c>convertToModelMessages</c>).
     /// Los mensajes <c>system</c> del cliente se descartan y las partes inválidas (archivos con URL o data URL
-    /// incorrectas, campos con tipos inesperados) se ignoran en lugar de producir un error 500.
+    /// incorrectas, campos con tipos inesperados) se ignoran en lugar de producir un error 500. Las respuestas de
+    /// aprobación (<c>approval-responded</c>) se descartan: para reanudar aprobaciones use <see cref="ToModelInput"/>.
     /// </summary>
-    public static List<ModelMessage> ToModelMessages(IEnumerable<UIMessage> messages, UIMessageConverterOptions? options = null)
+    public static List<ModelMessage> ToModelMessages(IEnumerable<UIMessage> messages, UIMessageConverterOptions? options = null) =>
+        ConvertMessages(messages, options ?? new UIMessageConverterOptions(), collectApprovals: false).Messages;
+
+    /// <summary>
+    /// Como <see cref="ToModelMessages"/>, y además reanuda las aprobaciones de herramientas: si el último mensaje es del
+    /// asistente y su último paso tiene partes en estado <c>approval-responded</c> (<c>addToolApprovalResponse</c>),
+    /// devuelve sus llamadas y decisiones para el motor. Una respuesta solo cuenta si su <c>approvalId</c> verifica con
+    /// <see cref="UIMessageConverterOptions.ToolApprovals"/> contra la llamada reenviada (mismo id, herramienta y
+    /// entrada): una aprobación inventada, de otro usuario o chat, expirada o con la entrada cambiada no se ejecuta, y el
+    /// modelo recibe un error. Las llamadas aprobadas se ejecutan con la entrada que firmó el servidor.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// var input = UIMessageConverter.ToModelInput(request.Messages, new() { ToolApprovals = approvals, ServerExecutedTools = ["send_email"] });
+    /// var stream = agent.Stream(new AgentCallOptions { Messages = input.Messages, ToolApprovals = input.ToolApprovals, DeferToolApprovals = true });
+    /// return stream.ToUIMessageStreamResult(toolApprovals: approvals);
+    /// </code>
+    /// </example>
+    public static UIModelInput ToModelInput(IEnumerable<UIMessage> messages, UIMessageConverterOptions? options = null)
+    {
+        var (result, approvals) = ConvertMessages(messages, options ?? new UIMessageConverterOptions(), collectApprovals: true);
+        return new UIModelInput { Messages = result, ToolApprovals = approvals };
+    }
+
+    private static (List<ModelMessage> Messages, List<ToolApprovalResponse>? Approvals) ConvertMessages(
+        IEnumerable<UIMessage> messages,
+        UIMessageConverterOptions options,
+        bool collectApprovals)
     {
         ArgumentNullException.ThrowIfNull(messages);
-        options ??= new UIMessageConverterOptions();
         var serverTools = options.ServerExecutedTools is { Count: > 0 } names ? new HashSet<string>(names, StringComparer.Ordinal) : null;
+        var list = messages.Where(m => m is not null).ToList();
         var result = new List<ModelMessage>();
-        foreach (var message in messages)
+        List<ToolApprovalResponse>? approvals = null;
+        for (var i = 0; i < list.Count; i++)
         {
-            if (message is null)
-            {
-                continue;
-            }
-
+            var message = list[i];
             var parts = message.Parts?.Where(p => p is not null).ToList() ?? [];
             switch (message.Role)
             {
@@ -90,12 +140,16 @@ public static class UIMessageConverter
                     result.Add(new ModelMessage(ChatRole.User, parts.Select(ToUserPart).OfType<ContentPart>().ToList()));
                     break;
                 case "assistant":
-                    AddAssistant(result, parts, serverTools);
+                    // Solo se reanudan las aprobaciones del último paso del último mensaje: las demás ya no están pendientes.
+                    var approvalsFrom = collectApprovals && i == list.Count - 1
+                        ? parts.FindLastIndex(p => Str(p["type"]) == "step-start") + 1
+                        : int.MaxValue;
+                    AddAssistant(result, parts, serverTools, approvalsFrom, options.ToolApprovals, ref approvals);
                     break;
             }
         }
 
-        return result;
+        return (result, approvals);
     }
 
     private static bool IsText(JsonObject p) => Str(p["type"]) == "text";
@@ -170,7 +224,13 @@ public static class UIMessageConverter
         return false;
     }
 
-    private static void AddAssistant(List<ModelMessage> result, List<JsonObject> parts, HashSet<string>? serverTools)
+    private static void AddAssistant(
+        List<ModelMessage> result,
+        List<JsonObject> parts,
+        HashSet<string>? serverTools,
+        int approvalsFrom,
+        ToolApprovalProtector? protector,
+        ref List<ToolApprovalResponse>? approvals)
     {
         var content = new List<ContentPart>();
         var toolResults = new List<ToolResultPart>();
@@ -191,8 +251,10 @@ public static class UIMessageConverter
             toolResults.Clear();
         }
 
-        foreach (var part in parts)
+        var approvalCalls = new HashSet<string>(StringComparer.Ordinal);
+        for (var index = 0; index < parts.Count; index++)
         {
+            var part = parts[index];
             var type = Str(part["type"]) ?? string.Empty;
             if (type == "step-start")
             {
@@ -213,6 +275,26 @@ public static class UIMessageConverter
             else if (type.StartsWith("tool-", StringComparison.Ordinal) || type == "dynamic-tool")
             {
                 var toolName = type == "dynamic-tool" ? Str(part["toolName"]) ?? "tool" : type["tool-".Length..];
+                var state = Str(part["state"]);
+                var input = part["input"] is { } i ? JsonSerializer.SerializeToElement(i) : JsonUtil.EmptyObject;
+                if (state == "approval-responded")
+                {
+                    // Respuesta a una aprobación (addToolApprovalResponse). Se reanuda solo si sigue pendiente (último paso
+                    // del último mensaje); vale incluso para herramientas del servidor, porque su approvalId lo verifica.
+                    if (index >= approvalsFrom && Str(part["toolCallId"]) is { Length: > 0 } callId && approvalCalls.Add(callId))
+                    {
+                        var call = new ToolCallPart(callId, toolName, input);
+                        content.Add(call);
+                        approvals ??= [];
+                        if (ApprovalDecision(part, call, protector) is { } decision)
+                        {
+                            approvals.Add(decision);
+                        }
+                    }
+
+                    continue;
+                }
+
                 if (serverTools is not null && serverTools.Contains(toolName))
                 {
                     // Resultado de una herramienta del servidor reenviado por el cliente: podría estar falsificado.
@@ -220,9 +302,7 @@ public static class UIMessageConverter
                 }
 
                 var id = Str(part["toolCallId"]) ?? Guid.NewGuid().ToString("N");
-                var state = Str(part["state"]);
-                var input = part["input"] is { } i ? JsonSerializer.SerializeToElement(i) : JsonUtil.EmptyObject;
-                if (state is "input-available" or "output-available" or "output-error")
+                if (state is "input-available" or "output-available" or "output-error" or "output-denied")
                 {
                     content.Add(new ToolCallPart(id, toolName, input));
                 }
@@ -237,6 +317,7 @@ public static class UIMessageConverter
                 {
                     "output-available" => new ToolResultPart(id, toolName, JsonSerializer.SerializeToElement(part["output"])) { ProviderExecuted = providerExecuted },
                     "output-error" => new ToolResultPart(id, toolName, JsonSerializer.SerializeToElement(Str(part["errorText"]))) { IsError = true, ProviderExecuted = providerExecuted },
+                    "output-denied" => GenerationEngine.Denied(new ToolCallPart(id, toolName, input), Str((part["approval"] as JsonObject)?["reason"])) with { ProviderExecuted = providerExecuted },
                     _ => null,
                 };
                 if (toolResult is not null)
@@ -255,6 +336,22 @@ public static class UIMessageConverter
         }
 
         Flush();
+    }
+
+    /// <summary>Decisión de una parte <c>approval-responded</c>, o null si su approvalId no verifica para esa llamada.</summary>
+    private static ToolApprovalResponse? ApprovalDecision(JsonObject part, ToolCallPart call, ToolApprovalProtector? protector)
+    {
+        if (protector is null
+            || part["approval"] is not JsonObject approval
+            || approval["approved"] is not JsonValue flag
+            || !flag.TryGetValue<bool>(out var approved)
+            || !protector.VerifyApprovalId(Str(approval["id"]), call))
+        {
+            return null;
+        }
+
+        // Como en el AI SDK, el motivo solo llega al modelo cuando se deniega.
+        return new ToolApprovalResponse(call.ToolCallId, approved, approved ? null : Str(approval["reason"]));
     }
 }
 
@@ -292,10 +389,39 @@ public static partial class UIMessageStream
     public const string ContentType = "text/event-stream";
 
     /// <summary>Convierte las partes del stream en chunks JSON del protocolo.</summary>
-    public static async IAsyncEnumerable<JsonObject> ToChunks(IAsyncEnumerable<StreamPart> parts, string? messageId = null, Func<Exception, string>? onError = null)
+    /// <param name="parts">Partes del stream (<see cref="StreamTextResult.FullStream"/>).</param>
+    /// <param name="messageId">Id del mensaje del asistente (chunk <c>start</c>).</param>
+    /// <param name="onError">Texto de error que ve el cliente (por defecto uno genérico).</param>
+    /// <param name="toolApprovals">
+    /// Emite los <c>approvalId</c> de las llamadas pendientes de aprobación (chunk <c>tool-approval-request</c>). Sin él,
+    /// una llamada que quedó pendiente se informa como error (<c>tool-output-error</c>): el servidor no podría verificar
+    /// la respuesta del usuario.
+    /// </param>
+    public static async IAsyncEnumerable<JsonObject> ToChunks(
+        IAsyncEnumerable<StreamPart> parts,
+        string? messageId = null,
+        Func<Exception, string>? onError = null,
+        ToolApprovalProtector? toolApprovals = null)
     {
+        // Entrada que ya vio el cliente de cada llamada: si se reparó antes de pedir la aprobación, se vuelve a enviar.
+        var streamedInputs = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
         await foreach (var part in parts.ConfigureAwait(false))
         {
+            if (part is ToolApprovalRequestStreamPart approval)
+            {
+                foreach (var approvalChunk in ApprovalChunks(approval.Request.ToolCall, streamedInputs, onError, toolApprovals))
+                {
+                    yield return approvalChunk;
+                }
+
+                continue;
+            }
+
+            if (part is ToolCallStreamPart streamed)
+            {
+                streamedInputs[streamed.ToolCall.ToolCallId] = streamed.ToolCall.Input;
+            }
+
             JsonObject? chunk = part switch
             {
                 StartPart => messageId is null ? new() { ["type"] = "start" } : new() { ["type"] = "start", ["messageId"] = messageId },
@@ -328,6 +454,7 @@ public static partial class UIMessageStream
                     ["toolCallId"] = r.ToolResult.ToolCallId,
                     ["output"] = JsonUtil.ToNode(r.ToolResult.Output),
                 }, r.ToolResult.ProviderExecuted),
+                ToolOutputDeniedStreamPart d => new() { ["type"] = "tool-output-denied", ["toolCallId"] = d.ToolResult.ToolCallId },
                 SourceStreamPart src => SourceChunk(src.Source),
                 FinishStepPart => new() { ["type"] = "finish-step" },
                 FinishPart => new() { ["type"] = "finish" },
@@ -342,6 +469,46 @@ public static partial class UIMessageStream
                 yield return chunk;
             }
         }
+    }
+
+    /// <summary>
+    /// Chunks de una llamada pendiente de aprobación. El chunk <c>tool-approval-request</c> lleva solo
+    /// <c>approvalId</c> y <c>toolCallId</c>: las versiones 6.0.x de <c>ai</c> validan ese chunk como objeto estricto
+    /// y rechazan cualquier otro campo.
+    /// </summary>
+    private static IEnumerable<JsonObject> ApprovalChunks(
+        ToolCallPart call,
+        Dictionary<string, JsonElement> streamedInputs,
+        Func<Exception, string>? onError,
+        ToolApprovalProtector? protector)
+    {
+        if (protector is null)
+        {
+            // Falla cerrado: una aprobación que el servidor no podrá verificar nunca se ejecutaría.
+            var error = new ToolErrorException(call.ToolName, call.ToolCallId,
+                "La herramienta requiere aprobación, pero el stream UI no tiene un ToolApprovalProtector (toolApprovals) para pedirla; no se ejecutó.");
+            yield return new JsonObject { ["type"] = "tool-output-error", ["toolCallId"] = call.ToolCallId, ["errorText"] = ErrorText(error, onError) };
+            yield break;
+        }
+
+        // El usuario debe ver exactamente la entrada que aprueba (la firmada), aunque se haya reparado tras emitirla.
+        if (!streamedInputs.TryGetValue(call.ToolCallId, out var shown) || !JsonElement.DeepEquals(shown, call.Input))
+        {
+            yield return new JsonObject
+            {
+                ["type"] = "tool-input-available",
+                ["toolCallId"] = call.ToolCallId,
+                ["toolName"] = call.ToolName,
+                ["input"] = JsonUtil.ToNode(call.Input),
+            };
+        }
+
+        yield return new JsonObject
+        {
+            ["type"] = "tool-approval-request",
+            ["approvalId"] = protector.CreateApprovalId(call),
+            ["toolCallId"] = call.ToolCallId,
+        };
     }
 
     /// <summary>Texto de error que recibe el cliente: el de <paramref name="onError"/> o uno genérico.</summary>
@@ -396,11 +563,13 @@ public static partial class UIMessageStream
     }
 
     /// <summary>Escribe el stream SSE completo (incluido <c>data: [DONE]</c>) en <paramref name="output"/>.</summary>
+    /// <remarks><paramref name="toolApprovals"/>: ver <see cref="ToChunks"/>.</remarks>
     public static Task WriteAsync(
         IAsyncEnumerable<StreamPart> parts,
         Stream output,
         string? messageId = null,
         Func<Exception, string>? onError = null,
+        ToolApprovalProtector? toolApprovals = null,
         CancellationToken cancellationToken = default) =>
-        WriteChunksAsync(ToChunks(parts, messageId, onError), output, cancellationToken);
+        WriteChunksAsync(ToChunks(parts, messageId, onError, toolApprovals), output, cancellationToken);
 }
