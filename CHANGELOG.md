@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Documents: an image whose header declares more than `MaxRasterPixels` × `MaxRasterPixels` pixels is never sent to OCR
   (PNG, JPEG, GIF, BMP and WebP headers are read without decoding), with a warning.
 - Google: model ids are escaped segment by segment and `.`/`..` segments are rejected.
+- Skills: `SkillLibrary.SaveAsync` writes each file to a hidden temporary file and renames it over the target, so a
+  hard link, FIFO or symlink left in the skill folder is replaced instead of written through (a hard link to a file
+  outside the skill is indistinguishable from a regular file). Empty files and FIFOs are never opened when loading or
+  reading a skill folder.
 
 ### Changed
 - MCP: roots and sampling (`Roots`, `SetRootsAsync`, `SamplingModel`, `SamplingHandler`, `ApproveSampling`,

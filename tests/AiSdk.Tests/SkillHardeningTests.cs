@@ -215,6 +215,63 @@ public sealed class SkillHardeningTests : IDisposable
         }
     }
 
+    [Fact]
+    public async Task SavingOverAHardLinkReplacesTheNameInsteadOfWritingThroughIt()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "Usa ln para crear hard links.");
+        var outside = Path.Combine(_root, "fuera");
+        await WriteAsync(Path.Combine(outside, "config.txt"), "CONFIG-ORIGINAL");
+        await WriteAsync(Path.Combine(outside, "skill.txt"), "SKILL-ORIGINAL");
+        var dir = Path.Combine(_root, "guardadas");
+        var skill = TestSkill("dura", trusted: false, ("references/x.md", "contenido nuevo"));
+        var folder = await SkillLibrary.SaveAsync(skill, dir, TestContext.Current.CancellationToken);
+
+        // Un hard link no es un enlace simbólico: no tiene ReparsePoint y no se distingue de un archivo normal.
+        foreach (var (name, target) in new[] { ("references/x.md", "config.txt"), ("SKILL.md", "skill.txt"), (SkillLibrary.ProvenanceFileName, "config.txt") })
+        {
+            var path = Path.Combine(folder, name);
+            File.Delete(path);
+            using var ln = Process.Start("ln", [Path.Combine(outside, target), path])!;
+            await ln.WaitForExitAsync(TestContext.Current.CancellationToken);
+            Assert.Equal(0, ln.ExitCode);
+        }
+
+        await SkillLibrary.SaveAsync(skill, dir, TestContext.Current.CancellationToken);
+
+        Assert.Equal("CONFIG-ORIGINAL", await File.ReadAllTextAsync(Path.Combine(outside, "config.txt"), TestContext.Current.CancellationToken));
+        Assert.Equal("SKILL-ORIGINAL", await File.ReadAllTextAsync(Path.Combine(outside, "skill.txt"), TestContext.Current.CancellationToken));
+        Assert.Equal("contenido nuevo", await File.ReadAllTextAsync(Path.Combine(folder, "references", "x.md"), TestContext.Current.CancellationToken));
+        Assert.Contains("name: dura", await File.ReadAllTextAsync(Path.Combine(folder, "SKILL.md"), TestContext.Current.CancellationToken));
+        Assert.Empty(Directory.GetFiles(folder, "*.tmp", SearchOption.AllDirectories));
+        Assert.False(Assert.Single(new SkillLibrary().LoadDirectory(dir, new SkillLoadOptions { Trusted = true })).Trusted);
+    }
+
+    [Fact]
+    public async Task FifosInASkillFolderDoNotHangLoadingOrReading()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "Usa mkfifo.");
+        var skills = Path.Combine(_root, "skills");
+        await WriteAsync(Path.Combine(skills, "buena", "SKILL.md"), SkillMd("buena"));
+        Directory.CreateDirectory(Path.Combine(skills, "buena", "references"));
+        Directory.CreateDirectory(Path.Combine(skills, "tuberia"));
+        foreach (var fifo in new[] { Path.Combine(skills, "buena", "references", "fifo.md"), Path.Combine(skills, "tuberia", "SKILL.md") })
+        {
+            using var mkfifo = Process.Start("mkfifo", [fifo])!;
+            await mkfifo.WaitForExitAsync(TestContext.Current.CancellationToken);
+            Assert.Equal(0, mkfifo.ExitCode);
+        }
+
+        var library = new SkillLibrary();
+        var loaded = await Task.Run(() => library.LoadDirectory(skills), TestContext.Current.CancellationToken)
+            .WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+
+        Assert.Equal("buena", Assert.Single(loaded).Name);
+        Assert.Contains(library.LoadErrors, e => e.Contains("vacío", StringComparison.Ordinal));
+        var read = await loaded[0].Files.ReadAsync("references/fifo.md", TestContext.Current.CancellationToken)
+            .WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Assert.Empty(read!);
+    }
+
     // -----------------------------------------------------------------
     // #3 run_skill_script requiere aprobación
     // -----------------------------------------------------------------

@@ -223,7 +223,8 @@ public static class SkillFiles
                 throw new IOException($"El archivo '{relative}' de la skill supera el tamaño máximo ({maxFileBytes} bytes).");
             }
 
-            return await File.ReadAllBytesAsync(full, cancellationToken).ConfigureAwait(false);
+            // Longitud 0: no se abre (un FIFO también mide 0 y bloquearía la lectura hasta que alguien escriba).
+            return length == 0 ? [] : await File.ReadAllBytesAsync(full, cancellationToken).ConfigureAwait(false);
         }
     }
 }

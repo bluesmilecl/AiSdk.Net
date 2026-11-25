@@ -111,9 +111,16 @@ public sealed class SkillLibrary
             TryAdd(
                 () =>
                 {
-                    if (new FileInfo(skillMd).Length > options.MaxFileBytes)
+                    var length = new FileInfo(skillMd).Length;
+                    if (length > options.MaxFileBytes)
                     {
                         throw new InvalidDataException($"El SKILL.md supera el tamaño máximo ({options.MaxFileBytes} bytes).");
+                    }
+
+                    if (length == 0)
+                    {
+                        // Vacío o un FIFO (que también mide 0): abrirlo bloquearía la carga hasta que alguien escriba.
+                        throw new InvalidDataException("El SKILL.md está vacío.");
                     }
 
                     var files = SkillFiles.FromDirectory(folder, options.MaxFileBytes);
@@ -313,10 +320,10 @@ public sealed class SkillLibrary
                 ["savedAt"] = DateTimeOffset.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
                 ["note"] = "Skill no confiable: revísela y borre este archivo para confiar en ella.",
             };
-            await File.WriteAllTextAsync(marker, provenance.ToJsonString(), cancellationToken).ConfigureAwait(false);
+            await WriteReplacingAsync(marker, Encoding.UTF8.GetBytes(provenance.ToJsonString()), cancellationToken).ConfigureAwait(false);
         }
 
-        await File.WriteAllTextAsync(Path.Combine(folder, "SKILL.md"), skill.ToMarkdown(), cancellationToken).ConfigureAwait(false);
+        await WriteReplacingAsync(Path.Combine(folder, "SKILL.md"), Encoding.UTF8.GetBytes(skill.ToMarkdown()), cancellationToken).ConfigureAwait(false);
         foreach (var path in skill.Files.List())
         {
             var data = await skill.Files.ReadAsync(path, cancellationToken).ConfigureAwait(false);
@@ -334,7 +341,7 @@ public sealed class SkillLibrary
             EnsureNoLinks(folder, relative);
             var target = Path.Combine(folder, relative);
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-            await File.WriteAllBytesAsync(target, data, cancellationToken).ConfigureAwait(false);
+            await WriteReplacingAsync(target, data, cancellationToken).ConfigureAwait(false);
         }
 
         if (untrustedSource is null && File.Exists(marker))
@@ -343,6 +350,42 @@ public sealed class SkillLibrary
         }
 
         return folder;
+    }
+
+    /// <summary>
+    /// Escribe en un archivo temporal oculto de la misma carpeta y lo renombra sobre <paramref name="target"/>. Así se
+    /// reemplaza la entrada del directorio en vez de escribir en el archivo existente: si <paramref name="target"/> es un
+    /// hard link a un archivo de fuera de la skill (que no se distingue de un archivo normal), un FIFO o un enlace, el
+    /// otro archivo no se modifica y la escritura no se bloquea.
+    /// </summary>
+    private static async Task WriteReplacingAsync(string target, byte[] data, CancellationToken cancellationToken)
+    {
+        var temp = Path.Combine(Path.GetDirectoryName(target)!, $".{Path.GetFileName(target)}.{Guid.NewGuid():N}.tmp");
+        try
+        {
+            // CreateNew (O_EXCL) no sigue un enlace que alguien hubiera dejado con ese nombre.
+            await using (var stream = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.Asynchronous))
+            {
+                await stream.WriteAsync(data, cancellationToken).ConfigureAwait(false);
+            }
+
+            File.Move(temp, target, overwrite: true);
+        }
+        catch
+        {
+            try
+            {
+                File.Delete(temp);
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+
+            throw;
+        }
     }
 
     /// <summary>Impide escribir a través de un enlace simbólico o junction que apunte fuera de la carpeta.</summary>
