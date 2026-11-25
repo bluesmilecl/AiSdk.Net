@@ -44,7 +44,7 @@ dotnet add package AiSdk.Net.VectorData --prerelease    # Qdrant, Pinecone, Azur
 | `AiSdk.Net.Bedrock` | Amazon Bedrock (API Converse): Claude, Llama, Nova, Mistral… con SigV4 o API key; embeddings Titan y Cohere |
 | `AiSdk.Net.Cohere` | Reranking (Rerank) y embeddings (Embed) |
 | `AiSdk.Net.Mcp` | Cliente MCP (Model Context Protocol): herramientas, recursos, prompts, roots, sampling y elicitation; stdio y Streamable HTTP |
-| `AiSdk.Net.Extensions.AI` | Adaptador de `Microsoft.Extensions.AI` (`IChatClient`, `IEmbeddingGenerator`) → cualquier proveedor de ese ecosistema |
+| `AiSdk.Net.Extensions.AI` | Adaptador de `Microsoft.Extensions.AI` en ambas direcciones: cualquier `IChatClient` / `IEmbeddingGenerator` como modelo, y cualquier modelo como `IChatClient` / `IEmbeddingGenerator` |
 | `AiSdk.Net.Extensions.DependencyInjection` | `services.AddAiSdk(...)`, `IHttpClientFactory`, agentes en el contenedor |
 | `AiSdk.Net.AspNetCore` | `ToUIMessageStreamResult()` / `ToTextStreamResult()`, `MapArtifacts()` y `MapWorkflows()` para Minimal APIs |
 | `AiSdk.Net.Documents` | `MarkdownConverter` (PDF, Word, Excel, PowerPoint, HTML, CSV/JSON, imágenes, audio, video), OCR con Tesseract, middleware `ConvertAttachments` para modelos sin visión; generación de Word, PDF y Excel (`DocxWriter`, `PdfWriter`, `SpreadsheetBuilder`, `DocumentTools`) |

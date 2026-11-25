@@ -123,7 +123,7 @@ approval for sensitive tools and stream everything to the UI.
 | `AiSdk.Net.Mistral` | Chat, Magistral reasoning, tools, structured output, embeddings, OCR |
 | `AiSdk.Net.Bedrock` | Converse API (Claude, Llama, Nova, Mistral…) with SigV4 or API key |
 | `AiSdk.Net.Cohere` | Rerank and Embed |
-| `AiSdk.Net.Extensions.AI` | Any `IChatClient` / `IEmbeddingGenerator` from Microsoft.Extensions.AI |
+| `AiSdk.Net.Extensions.AI` | Microsoft.Extensions.AI in both directions: any `IChatClient` / `IEmbeddingGenerator` as an AiSdk model, and any AiSdk model as an `IChatClient` / `IEmbeddingGenerator` (Semantic Kernel, Agent Framework…) |
 
 ## 🏛️ Architecture
 
@@ -139,7 +139,7 @@ approval for sensitive tools and stream everything to the UI.
 | `AiSdk.Net` | Core: `Ai.*` API, tools, agents, orchestration, artifacts, skills, middleware, registry, embeddings, UI stream, `MockLanguageModel` |
 | `AiSdk.Net.OpenAI` · `.Anthropic` · `.Google` · `.Mistral` · `.Bedrock` · `.Cohere` | Native providers |
 | `AiSdk.Net.Mcp` | Model Context Protocol client (stdio and Streamable HTTP) |
-| `AiSdk.Net.Extensions.AI` | Microsoft.Extensions.AI adapter |
+| `AiSdk.Net.Extensions.AI` | Microsoft.Extensions.AI adapter in both directions (`AsLanguageModel()`, `AsChatClient()`, `AsEmbeddingModel()`, `AsEmbeddingGenerator()`) |
 | `AiSdk.Net.Extensions.DependencyInjection` | `services.AddAiSdk(...)`, `IHttpClientFactory`, agents in the container |
 | `AiSdk.Net.AspNetCore` | `ToUIMessageStreamResult()`, `MapArtifacts()`, `MapWorkflows()`, `MapSkills()` |
 | `AiSdk.Net.Documents` | Documents → Markdown with page-by-page OCR; Word, PDF and Excel generation; external tools through a configurable runner (sandbox, clean environment) |

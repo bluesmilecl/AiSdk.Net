@@ -20,4 +20,5 @@
 | Skills | `new SkillLibrary().LoadDirectory("skills")`, `AgentSettings.Skills`, `SkillAuthoringTools.Create(...)` |
 | Anthropic Skills | `AnthropicSkills.Options([AnthropicSkill.Excel])` + `AnthropicTools.CodeExecution()` |
 | ASP.NET + useChat | `stream.ToUIMessageStreamResult()`, `UIMessageConverter.ToModelMessages(request.Messages)`; tool approval in the chat: `ToolApprovalProtection.ForChat(http, chatId)`, `UIMessageConverter.ToModelInput(...)`, `DeferToolApprovals = true`, `ToUIMessageStreamResult(toolApprovals: ...)` |
+| Microsoft.Extensions.AI | `chatClient.AsLanguageModel()`, `generator.AsEmbeddingModel()`; reverse: `model.AsChatClient()` (`IChatClient` that returns `FunctionCallContent` without running tools, for `UseFunctionInvocation()`, Semantic Kernel, Agent Framework), `embeddingModel.AsEmbeddingGenerator()` |
 | Testing | `MockLanguageModel`, `MockEmbeddingModel` |
