@@ -247,7 +247,7 @@ public class DocumentGenerationTests
     [Fact]
     public async Task SpreadsheetsHaveTypesFormatsTotalsAndFormulas()
     {
-        var bytes = new SpreadsheetBuilder { Title = "Ventas" }
+        var bytes = new SpreadsheetBuilder { Title = "Ventas", AllowFormulas = true } // datos de confianza: fórmulas activas
             .AddSheet("Ventas", [new Venta("Café", new DateTime(2026, 3, 15), 10, 1500.5m), new Venta("Té", new DateTime(2026, 4, 1), 4, 980m)], new SheetOptions { Totals = true })
             .AddSheet(
                 "Cálculo",

