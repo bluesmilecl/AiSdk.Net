@@ -5,8 +5,8 @@ using AiSdk.Internal;
 namespace AiSdk.Testing;
 
 /// <summary>
-/// Modelo simulado para pruebas unitarias (equivalente a <c>MockLanguageModelV2</c>).
-/// Devuelve las respuestas configuradas en orden y registra las peticiones recibidas.
+/// Mock model for unit tests (equivalent to <c>MockLanguageModelV2</c>).
+/// Returns the configured responses in order and records the requests received.
 /// </summary>
 public sealed class MockLanguageModel : ILanguageModel
 {
@@ -23,10 +23,10 @@ public sealed class MockLanguageModel : ILanguageModel
 
     public string ModelId { get; }
 
-    /// <summary>Peticiones recibidas, en orden.</summary>
+    /// <summary>Gets the requests received, in order.</summary>
     public IReadOnlyList<LanguageModelRequest> Requests => _requests;
 
-    /// <summary>Tamaño de los fragmentos de texto al simular streaming.</summary>
+    /// <summary>Gets or sets the size of the text chunks when simulating streaming.</summary>
     public int StreamChunkSize { get; init; } = 4;
 
     public MockLanguageModel Returns(Func<LanguageModelRequest, LanguageModelResult> response)
@@ -85,7 +85,7 @@ public sealed class MockLanguageModel : ILanguageModel
     }
 }
 
-/// <summary>Modelo de embeddings simulado: vector determinista (hash FNV-1a del texto).</summary>
+/// <summary>Mock embedding model: deterministic vector (FNV-1a hash of the text).</summary>
 public sealed class MockEmbeddingModel(int dimensions = 8, int? maxEmbeddingsPerCall = null) : IEmbeddingModel
 {
     public string Provider => "mock";

@@ -4,12 +4,12 @@ using System.Text.Json.Nodes;
 
 namespace AiSdk.Internal;
 
-/// <summary>Utilidades JSON compartidas por el núcleo y los proveedores.</summary>
+/// <summary>JSON utilities shared by the core and the providers.</summary>
 public static class JsonUtil
 {
     public static JsonElement EmptyObject { get; } = JsonElement.Parse("{}");
 
-    /// <summary>Parsea JSON; si falla devuelve <c>false</c> y el texto como string JSON.</summary>
+    /// <summary>Parses JSON; on failure, returns <c>false</c> and the text as a JSON string.</summary>
     public static bool TryParseElement(string? text, out JsonElement element)
     {
         if (string.IsNullOrWhiteSpace(text))
@@ -31,7 +31,7 @@ public static class JsonUtil
         }
     }
 
-    /// <summary>Fusión profunda: las propiedades de <paramref name="source"/> sobrescriben las de <paramref name="target"/>.</summary>
+    /// <summary>Deep merge: the properties of <paramref name="source"/> overwrite those of <paramref name="target"/>.</summary>
     public static void DeepMerge(JsonObject target, JsonObject? source)
     {
         if (source is null)
@@ -55,12 +55,12 @@ public static class JsonUtil
     public static JsonNode? ToNode(JsonElement element) => JsonNode.Parse(element.GetRawText());
 
     /// <summary>
-    /// Intenta parsear JSON incompleto (por ejemplo, mientras se recibe por streaming),
-    /// cerrando strings, arrays y objetos abiertos. Devuelve null si no es posible.
+    /// Tries to parse incomplete JSON (for example, while it is being received by streaming),
+    /// closing open strings, arrays and objects. Returns null if that is not possible.
     /// </summary>
     /// <remarks>
-    /// Tiempo lineal: un solo recorrido repara el prefijo (como <c>fixJson</c> del AI SDK) y se parsea una vez.
-    /// Se llama con el texto acumulado en cada fragmento del stream, así que no puede probar prefijos más cortos.
+    /// Linear time: a single pass repairs the prefix (like the AI SDK's <c>fixJson</c>) and it is parsed once.
+    /// It is called with the accumulated text on every stream chunk, so it cannot try shorter prefixes.
     /// </remarks>
     public static JsonNode? ParsePartial(string text)
     {
@@ -109,10 +109,10 @@ public static class JsonUtil
     }
 
     /// <summary>
-    /// Devuelve el prefijo válido más largo de <paramref name="text"/> (que empieza con <c>{</c> o <c>[</c>) con sus
-    /// strings, literales, arrays y objetos cerrados. Las claves incompletas y los valores a medio escribir que no
-    /// pueden completarse (p. ej. <c>"a":</c> o <c>1.</c>) se descartan; lo que sigue a un carácter inválido o al
-    /// cierre del valor raíz se ignora.
+    /// Returns the longest valid prefix of <paramref name="text"/> (starting with <c>{</c> or <c>[</c>) with its
+    /// strings, literals, arrays and objects closed. Incomplete keys and half-written values that cannot
+    /// be completed (e.g. <c>"a":</c> or <c>1.</c>) are discarded; anything after an invalid character or after the
+    /// end of the root value is ignored.
     /// </summary>
     internal static string RepairPartialJson(ReadOnlySpan<char> text)
     {

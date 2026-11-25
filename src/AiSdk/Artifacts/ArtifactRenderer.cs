@@ -5,8 +5,8 @@ using System.Text.Json;
 namespace AiSdk.Artifacts;
 
 /// <summary>
-/// Convierte un artifact de texto en una página HTML autónoma para mostrarlo en un iframe o una pestaña
-/// (Markdown con marked, diagramas con Mermaid, componentes React con Babel, CSV como tabla...).
+/// Converts a text artifact into a self-contained HTML page to display in an iframe or a tab
+/// (Markdown with marked, diagrams with Mermaid, React components with Babel, CSV as a table...).
 /// </summary>
 public static class ArtifactRenderer
 {
@@ -17,7 +17,7 @@ public static class ArtifactRenderer
     private const string Babel = "https://unpkg.com/@babel/standalone@7.24.7/babel.min.js";
     private const string Tailwind = "https://cdn.tailwindcss.com/3.4.5";
 
-    /// <summary>Política CSP recomendada al servir artifacts: origen aislado, scripts permitidos.</summary>
+    /// <summary>Recommended CSP policy for serving artifacts: isolated origin, scripts allowed.</summary>
     public const string ContentSecurityPolicy = "sandbox allow-scripts allow-forms allow-popups allow-modals allow-downloads";
 
     public static string ToHtml(Artifact artifact)

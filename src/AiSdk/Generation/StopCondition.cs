@@ -1,8 +1,8 @@
 namespace AiSdk;
 
 /// <summary>
-/// Condición de parada del bucle de herramientas (equivalente a <c>stopWhen</c>).
-/// Se combinan con <c>|</c> (cualquiera) o <c>&amp;</c> (todas).
+/// Stop condition of the tool loop (equivalent to <c>stopWhen</c>).
+/// Conditions are combined with <c>|</c> (any) or <c>&amp;</c> (all).
 /// </summary>
 public sealed class StopCondition
 {
@@ -12,14 +12,14 @@ public sealed class StopCondition
 
     public bool IsMet(IReadOnlyList<StepResult> steps) => _predicate(steps);
 
-    /// <summary>Se detiene al alcanzar <paramref name="count"/> pasos.</summary>
+    /// <summary>Stops when <paramref name="count"/> steps have been reached.</summary>
     public static StopCondition StepCountIs(int count) => new(steps => steps.Count >= count);
 
-    /// <summary>Se detiene cuando el último paso llamó a la herramienta indicada.</summary>
+    /// <summary>Stops when the last step called the specified tool.</summary>
     public static StopCondition HasToolCall(string toolName) =>
         new(steps => steps.Count > 0 && steps[^1].ToolCalls.Any(c => c.ToolName == toolName));
 
-    /// <summary>Se detiene cuando el uso acumulado de tokens supera el límite.</summary>
+    /// <summary>Stops when the accumulated token usage exceeds the limit.</summary>
     public static StopCondition TotalTokensExceed(int maxTokens) =>
         new(steps => steps.Sum(s => s.Usage.TotalTokens ?? 0) >= maxTokens);
 

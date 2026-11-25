@@ -6,8 +6,8 @@ using AiSdk.Internal;
 namespace AiSdk;
 
 /// <summary>
-/// Resultado de <see cref="Ai.StreamText(GenerateTextOptions)"/>. La generación comienza de inmediato; los
-/// streams pueden consumirse varias veces y por varios consumidores a la vez.
+/// Result of <see cref="Ai.StreamText(GenerateTextOptions)"/>. Generation starts immediately; the
+/// streams can be consumed several times and by several consumers at once.
 /// </summary>
 public sealed class StreamTextResult
 {
@@ -24,13 +24,13 @@ public sealed class StreamTextResult
 
     internal GenerateTextOptions Options { get; }
 
-    /// <summary>Todas las partes: texto, razonamiento, llamadas y resultados de herramientas, pasos, errores.</summary>
+    /// <summary>Gets all the parts: text, reasoning, tool calls and results, steps, errors.</summary>
     public IAsyncEnumerable<StreamPart> FullStream => _buffer.ReadAllAsync();
 
-    /// <summary>Solo los fragmentos de texto. Lanza la excepción si el stream falla.</summary>
+    /// <summary>Gets only the text chunks. Throws the exception if the stream fails.</summary>
     public IAsyncEnumerable<string> TextStream => ReadText();
 
-    /// <summary>Resultado completo, disponible al terminar.</summary>
+    /// <summary>Gets the full result, available when the stream finishes.</summary>
     public Task<GenerateTextResult> Result => _completion.Task;
 
     public Task<string> Text => Then(r => r.Text);
@@ -43,7 +43,7 @@ public sealed class StreamTextResult
 
     public Task<IReadOnlyList<ModelMessage>> ResponseMessages => Then(r => r.ResponseMessages);
 
-    /// <summary>Consume el stream completo sin procesarlo (útil si solo interesan los callbacks).</summary>
+    /// <summary>Consumes the whole stream without processing it (useful when only the callbacks matter).</summary>
     public async Task ConsumeAsync(CancellationToken cancellationToken = default)
     {
         await foreach (var _ in _buffer.ReadAllAsync(cancellationToken).ConfigureAwait(false))
@@ -52,8 +52,8 @@ public sealed class StreamTextResult
     }
 
     /// <summary>
-    /// Stream de la salida estructurada parcial (requiere <see cref="GenerateTextOptions.Output"/>).
-    /// Emite un nuevo valor cada vez que el JSON parcial cambia.
+    /// Streams the partial structured output (requires <see cref="GenerateTextOptions.Output"/>).
+    /// Emits a new value each time the partial JSON changes.
     /// </summary>
     public async IAsyncEnumerable<T> PartialOutputStream<T>([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
@@ -108,22 +108,22 @@ public sealed class StreamTextResult
         selector(await _completion.Task.ConfigureAwait(false));
 }
 
-/// <summary>Resultado de <see cref="Ai.StreamObject{T}"/>.</summary>
+/// <summary>Result of <see cref="Ai.StreamObject{T}"/>.</summary>
 public sealed class StreamObjectResult<T>
 {
     private readonly StreamTextResult _inner;
 
     internal StreamObjectResult(StreamTextResult inner) => _inner = inner;
 
-    /// <summary>Objetos parciales a medida que llega el JSON.</summary>
+    /// <summary>Gets the partial objects as the JSON arrives.</summary>
     public IAsyncEnumerable<T> PartialObjectStream => _inner.PartialOutputStream<T>();
 
-    /// <summary>JSON crudo a medida que llega.</summary>
+    /// <summary>Gets the raw JSON as it arrives.</summary>
     public IAsyncEnumerable<string> TextStream => _inner.TextStream;
 
     public IAsyncEnumerable<StreamPart> FullStream => _inner.FullStream;
 
-    /// <summary>Objeto final validado.</summary>
+    /// <summary>Gets the final validated object.</summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1720:Identifier contains type name", Justification = "Mismo nombre que en el AI SDK (Output.object / result.object) para facilitar la migración.")]
     public Task<T> Object => GetObjectAsync();
 

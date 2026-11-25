@@ -1,6 +1,6 @@
 namespace AiSdk;
 
-/// <summary>Excepción base del SDK.</summary>
+/// <summary>Base exception of the SDK.</summary>
 public class AiSdkException : Exception
 {
     public AiSdkException(string message, Exception? inner = null) : base(message, inner)
@@ -8,7 +8,7 @@ public class AiSdkException : Exception
     }
 }
 
-/// <summary>Error HTTP devuelto por la API de un proveedor.</summary>
+/// <summary>HTTP error returned by a provider's API.</summary>
 public sealed class ApiCallException : AiSdkException
 {
     public ApiCallException(string message, int statusCode, string? responseBody, Uri? url, TimeSpan? retryAfter = null)
@@ -28,11 +28,11 @@ public sealed class ApiCallException : AiSdkException
 
     public TimeSpan? RetryAfter { get; }
 
-    /// <summary>408, 409, 429 y 5xx se consideran reintentables.</summary>
+    /// <summary>Gets whether the error is retryable: 408, 409, 429 and 5xx are considered retryable.</summary>
     public bool IsRetryable => StatusCode is 408 or 409 or 429 or >= 500;
 }
 
-/// <summary>El modelo no produjo un objeto que cumpla el esquema.</summary>
+/// <summary>The model did not produce an object that conforms to the schema.</summary>
 public sealed class NoObjectGeneratedException : AiSdkException
 {
     public NoObjectGeneratedException(string message, string? text, Exception? inner = null) : base(message, inner)
@@ -40,11 +40,11 @@ public sealed class NoObjectGeneratedException : AiSdkException
         Text = text;
     }
 
-    /// <summary>Texto crudo devuelto por el modelo.</summary>
+    /// <summary>Gets the raw text returned by the model.</summary>
     public string? Text { get; }
 }
 
-/// <summary>Se superó el número de reintentos.</summary>
+/// <summary>The maximum number of retries was exceeded.</summary>
 public sealed class RetryException : AiSdkException
 {
     public RetryException(string message, IReadOnlyList<Exception> errors)

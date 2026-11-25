@@ -1,23 +1,25 @@
 namespace AiSdk;
 
 /// <summary>
-/// Filtro declarativo sobre los metadatos de <see cref="VectorDocument"/>. Cada almacén lo traduce
-/// a su propio lenguaje (SQL en pgvector, filtros de Qdrant, Pinecone...), así el filtrado ocurre
-/// en la base de datos y no en memoria.
+/// Declarative filter over the metadata of <see cref="VectorDocument"/>. Each store translates it
+/// into its own language (SQL in pgvector, Qdrant filters, Pinecone...), so filtering happens
+/// in the database rather than in memory.
 /// </summary>
-/// <example><c>VectorFilter.Eq("tipo", "manual") &amp; VectorFilter.In("pais", "CL", "PE")</c></example>
+/// <example><c>VectorFilter.Eq("type", "manual") &amp; VectorFilter.In("country", "CL", "PE")</c></example>
 public abstract record VectorFilter
 {
-    /// <summary>El metadato <paramref name="key"/> es igual a <paramref name="value"/>.</summary>
+    /// <summary>The metadata entry <paramref name="key"/> equals <paramref name="value"/>.</summary>
     public static VectorFilter Eq(string key, string value) => new EqFilter(key, value);
 
-    /// <summary>El metadato <paramref name="key"/> es distinto de <paramref name="value"/> (o no existe).</summary>
+    /// <summary>
+    /// The metadata entry <paramref name="key"/> differs from <paramref name="value"/> (or does not exist).
+    /// </summary>
     public static VectorFilter Ne(string key, string value) => new NotFilter(new EqFilter(key, value));
 
-    /// <summary>El metadato <paramref name="key"/> es alguno de <paramref name="values"/>.</summary>
+    /// <summary>The metadata entry <paramref name="key"/> is one of <paramref name="values"/>.</summary>
     public static VectorFilter In(string key, params string[] values) => new InFilter(key, values);
 
-    /// <summary>El documento tiene el metadato <paramref name="key"/>.</summary>
+    /// <summary>The document has the metadata entry <paramref name="key"/>.</summary>
     public static VectorFilter Exists(string key) => new ExistsFilter(key);
 
     public static VectorFilter And(params VectorFilter[] filters) => new AndFilter(filters);
@@ -32,10 +34,10 @@ public abstract record VectorFilter
 
     public static VectorFilter operator !(VectorFilter a) => new NotFilter(a);
 
-    /// <summary>Evalúa el filtro en memoria.</summary>
+    /// <summary>Evaluates the filter in memory.</summary>
     public abstract bool Matches(IReadOnlyDictionary<string, string>? metadata);
 
-    /// <summary>Claves de metadatos que usa el filtro.</summary>
+    /// <summary>Gets the metadata keys used by the filter.</summary>
     public abstract IEnumerable<string> Keys { get; }
 }
 

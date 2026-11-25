@@ -9,8 +9,8 @@ using AiSdk.Internal;
 namespace AiSdk.UI;
 
 /// <summary>
-/// Escritor para componer un stream UI propio (equivalente a <c>createUIMessageStream</c>):
-/// mezcla uno o varios <see cref="StreamTextResult"/> con datos propios (<c>data-*</c>).
+/// Writer for composing a custom UI stream (equivalent to <c>createUIMessageStream</c>):
+/// merges one or more <see cref="StreamTextResult"/> with custom data (<c>data-*</c>).
 /// </summary>
 public sealed class UIMessageStreamWriter
 {
@@ -22,12 +22,12 @@ public sealed class UIMessageStreamWriter
 
     internal ChannelReader<JsonObject> Reader => _channel.Reader;
 
-    /// <summary>Escribe un chunk crudo del protocolo.</summary>
+    /// <summary>Writes a raw protocol chunk.</summary>
     public void Write(JsonObject chunk) => _channel.Writer.TryWrite(chunk);
 
     /// <summary>
-    /// Envía datos propios como parte <c>data-{type}</c>. Con el mismo <paramref name="id"/>, el cliente
-    /// reemplaza el dato anterior (útil para progreso). Los transitorios no se guardan en el mensaje.
+    /// Sends custom data as a <c>data-{type}</c> part. With the same <paramref name="id"/>, the client
+    /// replaces the previous data (useful for progress). Transient data is not saved in the message.
     /// </summary>
     public void WriteData(string type, object? data, string? id = null, bool transient = false) =>
         Write(UIMessageStream.DataChunk(
@@ -36,7 +36,7 @@ public sealed class UIMessageStreamWriter
             id,
             transient));
 
-    /// <summary>Envía una fuente (<c>source-url</c>).</summary>
+    /// <summary>Sends a source (<c>source-url</c>).</summary>
     public void WriteSource(string url, string? title = null)
     {
         // Sin título no se envía "title": null (ai 6.0.x valida el chunk con title opcional de tipo string y rechaza null).
@@ -50,9 +50,9 @@ public sealed class UIMessageStreamWriter
     }
 
     /// <summary>
-    /// Mezcla un stream de texto en este stream (sin sus chunks <c>start</c>/<c>finish</c>, que
-    /// emite el escritor). El stream final no termina hasta que todas las mezclas terminen.
-    /// <paramref name="toolApprovals"/> emite las aprobaciones pendientes (ver <see cref="UIMessageStream.ToChunks"/>).
+    /// Merges a text stream into this stream (without its <c>start</c>/<c>finish</c> chunks, which
+    /// the writer emits). The final stream does not end until all merges have finished.
+    /// <paramref name="toolApprovals"/> emits the pending approvals (see <see cref="UIMessageStream.ToChunks"/>).
     /// </summary>
     public void Merge(StreamTextResult result, ToolApprovalProtector? toolApprovals = null) => Merge(result.FullStream, toolApprovals);
 
@@ -101,11 +101,11 @@ public sealed class UIMessageStreamWriter
 public static partial class UIMessageStream
 {
     /// <summary>
-    /// Crea un stream UI propio. Ejemplo:
+    /// Creates a custom UI stream. Example:
     /// <code>
     /// var chunks = UIMessageStream.Create(async writer =>
     /// {
-    ///     writer.WriteData("status", new { step = "buscando" }, id: "status");
+    ///     writer.WriteData("status", new { step = "searching" }, id: "status");
     ///     writer.Merge(agent.Stream(messages));
     /// });
     /// </code>
@@ -129,7 +129,7 @@ public static partial class UIMessageStream
         yield return new JsonObject { ["type"] = "finish" };
     }
 
-    /// <summary>Convierte chunks del protocolo en eventos SSE (<c>data: {...}\n\n</c>), terminando en <c>[DONE]</c>.</summary>
+    /// <summary>Converts protocol chunks into SSE events (<c>data: {...}\n\n</c>), ending with <c>[DONE]</c>.</summary>
     public static async IAsyncEnumerable<string> ToSseEvents(IAsyncEnumerable<JsonObject> chunks, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         await foreach (var chunk in chunks.WithCancellation(cancellationToken).ConfigureAwait(false))
@@ -140,7 +140,7 @@ public static partial class UIMessageStream
         yield return "data: [DONE]\n\n";
     }
 
-    /// <summary>Escribe chunks del protocolo como SSE en <paramref name="output"/>.</summary>
+    /// <summary>Writes protocol chunks as SSE to <paramref name="output"/>.</summary>
     public static async Task WriteChunksAsync(IAsyncEnumerable<JsonObject> chunks, Stream output, CancellationToken cancellationToken = default)
     {
         await foreach (var sse in ToSseEvents(chunks, cancellationToken).ConfigureAwait(false))
@@ -156,9 +156,9 @@ public static partial class UIMessageStream
 // ---------------------------------------------------------------------------
 
 /// <summary>
-/// Almacén de streams reanudables: guarda los eventos SSE de cada respuesta para que el cliente
-/// pueda reconectarse (recargar la página, cambio de red) y continuar donde iba.
-/// Implementa uno propio sobre Redis para varias instancias del servidor.
+/// Store of resumable streams: saves the SSE events of each response so that the client
+/// can reconnect (page reload, network change) and continue where it left off.
+/// Implement your own on top of Redis for multiple server instances.
 /// </summary>
 public interface IResumableStreamStore
 {
@@ -168,7 +168,7 @@ public interface IResumableStreamStore
 
     Task CompleteAsync(string streamId, CancellationToken cancellationToken = default);
 
-    /// <summary>Devuelve los eventos desde el principio y sigue los nuevos hasta que el stream termina.</summary>
+    /// <summary>Returns the events from the beginning and follows new ones until the stream ends.</summary>
     IAsyncEnumerable<string> ReadAsync(string streamId, CancellationToken cancellationToken = default);
 
     Task SetActiveStreamAsync(string chatId, string? streamId, CancellationToken cancellationToken = default);
@@ -176,7 +176,7 @@ public interface IResumableStreamStore
     Task<string?> GetActiveStreamAsync(string chatId, CancellationToken cancellationToken = default);
 }
 
-/// <summary>Almacén en memoria (una sola instancia del servidor). Los streams expiran tras <paramref name="ttl"/>.</summary>
+/// <summary>In-memory store (a single server instance). Streams expire after <paramref name="ttl"/>.</summary>
 public sealed class InMemoryResumableStreamStore(TimeSpan? ttl = null) : IResumableStreamStore
 {
     private readonly TimeSpan _ttl = ttl ?? TimeSpan.FromHours(1);
@@ -257,9 +257,9 @@ public sealed class InMemoryResumableStreamStore(TimeSpan? ttl = null) : IResuma
 public static class ResumableUIMessageStream
 {
     /// <summary>
-    /// Clave del chat dentro del ámbito de su dueño. El id de chat lo elige el cliente, así que por sí solo no sirve
-    /// para autorizar: combinándolo con el usuario (o una sesión que emitió el servidor) nadie puede reemplazar ni
-    /// reanudar el stream de otro usuario aunque conozca o adivine su id de chat.
+    /// Key of the chat within its owner's scope. The chat id is chosen by the client, so on its own it cannot be used
+    /// for authorization: by combining it with the user (or a server-issued session), nobody can replace or
+    /// resume another user's stream even if they know or guess their chat id.
     /// </summary>
     public static string ScopedChatId(string owner, string chatId)
     {
@@ -269,10 +269,10 @@ public static class ResumableUIMessageStream
     }
 
     /// <summary>
-    /// Empieza a volcar el stream en el almacén en segundo plano (sigue aunque el cliente se
-    /// desconecte) y lo marca como el stream activo del chat. Devuelve el id del stream.
-    /// <paramref name="chatId"/> es la clave del almacén: en un servidor con varios usuarios use
-    /// <see cref="ScopedChatId"/> (los endpoints de <c>AiSdk.AspNetCore</c> ya lo hacen).
+    /// Starts writing the stream to the store in the background (it continues even if the client
+    /// disconnects) and marks it as the chat's active stream. Returns the stream id.
+    /// <paramref name="chatId"/> is the store key: on a server with multiple users use
+    /// <see cref="ScopedChatId"/> (the <c>AiSdk.AspNetCore</c> endpoints already do).
     /// </summary>
     public static async Task<string> StartAsync(IResumableStreamStore store, string chatId, IAsyncEnumerable<JsonObject> chunks)
     {

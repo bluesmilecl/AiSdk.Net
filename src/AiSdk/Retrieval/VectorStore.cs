@@ -3,18 +3,18 @@ using System.Text;
 
 namespace AiSdk;
 
-/// <summary>Documento indexado en un almacén vectorial.</summary>
+/// <summary>Document indexed in a vector store.</summary>
 public sealed record VectorDocument(string Id, string Text)
 {
     public IReadOnlyDictionary<string, string>? Metadata { get; init; }
 
-    /// <summary>Embedding precalculado (si es null, el almacén lo calcula).</summary>
+    /// <summary>Gets the precomputed embedding (if null, the store computes it).</summary>
     public float[]? Embedding { get; init; }
 }
 
 public sealed record VectorSearchResult(VectorDocument Document, double Score);
 
-/// <summary>Almacén vectorial para RAG. Implementa uno propio sobre pgvector, Qdrant, Azure AI Search...</summary>
+/// <summary>Vector store for RAG. Implement your own on top of pgvector, Qdrant, Azure AI Search...</summary>
 public interface IVectorStore
 {
     Task UpsertAsync(IEnumerable<VectorDocument> documents, CancellationToken cancellationToken = default);
@@ -28,7 +28,7 @@ public interface IVectorStore
     Task DeleteAsync(IEnumerable<string> ids, CancellationToken cancellationToken = default);
 }
 
-/// <summary>Almacén vectorial en memoria (búsqueda exacta por similitud coseno).</summary>
+/// <summary>In-memory vector store (exact search by cosine similarity).</summary>
 public sealed class InMemoryVectorStore(IEmbeddingModel embeddingModel) : IVectorStore
 {
     private readonly Dictionary<string, (VectorDocument Document, float[] Embedding)> _items = [];
@@ -64,7 +64,7 @@ public sealed class InMemoryVectorStore(IEmbeddingModel embeddingModel) : IVecto
         }
     }
 
-    /// <summary>Atajo: divide textos en fragmentos y los indexa.</summary>
+    /// <summary>Shortcut: splits texts into chunks and indexes them.</summary>
     public Task AddTextsAsync(IEnumerable<(string Id, string Text)> texts, int chunkSize = 1000, int overlap = 100, CancellationToken cancellationToken = default) =>
         UpsertAsync(
             texts.SelectMany(t => TextChunker.Split(t.Text, chunkSize, overlap)
@@ -112,8 +112,8 @@ public sealed class InMemoryVectorStore(IEmbeddingModel embeddingModel) : IVecto
 public static class VectorStoreExtensions
 {
     /// <summary>
-    /// Expone el almacén como herramienta de búsqueda para que el agente consulte la base de
-    /// conocimiento cuando lo necesite (RAG agéntico).
+    /// Exposes the store as a search tool so the agent can query the knowledge
+    /// base when it needs to (agentic RAG).
     /// </summary>
     public static Tool AsTool(
         this IVectorStore store,
@@ -139,7 +139,7 @@ public static class VectorStoreExtensions
             return hits.Select(h => new KnowledgeHit(h.Document.Id, h.Document.Text, Math.Round(h.Score, 4), h.Document.Metadata)).ToList();
         });
 
-    /// <summary>Busca y formatea los resultados como contexto para un prompt (RAG clásico).</summary>
+    /// <summary>Searches and formats the results as context for a prompt (classic RAG).</summary>
     public static async Task<string> BuildContextAsync(this IVectorStore store, string query, int topK = 5, CancellationToken cancellationToken = default)
     {
         var hits = await store.SearchAsync(query, topK, cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -157,12 +157,12 @@ public static class VectorStoreExtensions
     private sealed record KnowledgeHit(string Id, string Text, double Score, IReadOnlyDictionary<string, string>? Metadata);
 }
 
-/// <summary>Divide texto en fragmentos para indexarlo.</summary>
+/// <summary>Splits text into chunks for indexing.</summary>
 public static class TextChunker
 {
     /// <summary>
-    /// Divide por párrafos y oraciones intentando no superar <paramref name="maxChars"/>, con
-    /// <paramref name="overlap"/> caracteres repetidos entre fragmentos consecutivos.
+    /// Splits by paragraphs and sentences, trying not to exceed <paramref name="maxChars"/>, with
+    /// <paramref name="overlap"/> characters repeated between consecutive chunks.
     /// </summary>
     public static IReadOnlyList<string> Split(string text, int maxChars = 1000, int overlap = 100)
     {

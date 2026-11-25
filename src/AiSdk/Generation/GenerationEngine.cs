@@ -4,7 +4,7 @@ using AiSdk.Internal;
 
 namespace AiSdk;
 
-/// <summary>Implementación compartida del bucle de herramientas (generate y stream).</summary>
+/// <summary>Shared implementation of the tool loop (generate and stream).</summary>
 internal static class GenerationEngine
 {
     private static readonly StopCondition DefaultStop = StopCondition.StepCountIs(1);
@@ -19,7 +19,7 @@ internal static class GenerationEngine
 
     private readonly record struct ProcessedCall(ToolCallPart Call, ToolResultPart? Result, ToolApprovalRequest? PendingApproval = null);
 
-    /// <summary>Resultados de reanudar aprobaciones diferidas: el mensaje de herramienta y las partes a emitir en streaming.</summary>
+    /// <summary>Results of resuming deferred approvals: the tool message and the parts to emit while streaming.</summary>
     internal sealed record ApprovalResolution(ModelMessage Message, IReadOnlyList<StreamPart> Parts);
 
     public static List<ModelMessage> InitialMessages(GenerateTextOptions o)
@@ -108,7 +108,7 @@ internal static class GenerationEngine
             processed.Select(p => p.PendingApproval).OfType<ToolApprovalRequest>().ToList());
     }
 
-    /// <summary>Ejecuta en paralelo con un máximo de <paramref name="limit"/> tareas a la vez, conservando el orden.</summary>
+    /// <summary>Runs in parallel with at most <paramref name="limit"/> tasks at a time, preserving order.</summary>
     private static async Task<T[]> RunLimitedAsync<T>(IReadOnlyList<ToolCallPart> calls, int limit, Func<ToolCallPart, Task<T>> run, CancellationToken cancellationToken)
     {
         using var gate = new SemaphoreSlim(Math.Max(1, limit));
@@ -238,20 +238,20 @@ internal static class GenerationEngine
         }
     }
 
-    /// <summary>Resultado que recibe el modelo cuando el usuario deniega una llamada.</summary>
+    /// <summary>Result the model receives when the user denies a call.</summary>
     internal const string DeniedMessage = "El usuario denegó la ejecución de la herramienta.";
 
     private const string AmbiguousCallMessage = "Hay más de una llamada distinta con este id en el historial; no se ejecutó ninguna.";
 
     private const string NoDecisionMessage = "La llamada requería aprobación y no hubo una decisión válida al reanudar; no se ejecutó.";
 
-    /// <summary>Resultado de error de una llamada denegada, con el motivo opcional del usuario.</summary>
+    /// <summary>Error result for a denied call, with the user's optional reason.</summary>
     internal static ToolResultPart Denied(ToolCallPart call, string? reason) =>
         Error(call, reason is { Length: > 0 } ? $"{DeniedMessage} Motivo: {reason}" : DeniedMessage);
 
     /// <summary>
-    /// Reanudación de aprobaciones diferidas: resuelve con <see cref="GenerateTextOptions.ToolApprovals"/> las llamadas
-    /// sin resultado del último mensaje del asistente y devuelve el mensaje de herramienta con sus resultados.
+    /// Resumes deferred approvals: resolves, using <see cref="GenerateTextOptions.ToolApprovals"/>, the calls without
+    /// a result in the last assistant message and returns the tool message with their results.
     /// </summary>
     public static async Task<ApprovalResolution?> ResolveApprovalsAsync(GenerateTextOptions o, List<ModelMessage> conversation, Action<StreamPart>? emit, CancellationToken cancellationToken)
     {

@@ -1,13 +1,13 @@
 namespace AiSdk;
 
-/// <summary>Proveedor de modelos (OpenAI, Anthropic, ...).</summary>
+/// <summary>Model provider (OpenAI, Anthropic, ...).</summary>
 public interface IProvider
 {
     string Name { get; }
 
     ILanguageModel LanguageModel(string modelId);
 
-    /// <summary>Devuelve un modelo de embeddings o lanza <see cref="NotSupportedException"/>.</summary>
+    /// <summary>Returns an embedding model or throws <see cref="NotSupportedException"/>.</summary>
     IEmbeddingModel EmbeddingModel(string modelId) =>
         throw new NotSupportedException($"El proveedor '{Name}' no ofrece modelos de embeddings.");
 
@@ -25,9 +25,9 @@ public interface IProvider
 }
 
 /// <summary>
-/// Registro de proveedores (equivalente a <c>createProviderRegistry</c>): resuelve
-/// modelos con identificadores <c>"proveedor:modelo"</c>, p. ej. <c>"openai:gpt-5"</c>.
-/// También admite alias (<c>"rapido"</c> → <c>"anthropic:claude-haiku-5-5"</c>).
+/// Provider registry (equivalent to <c>createProviderRegistry</c>): resolves
+/// models with <c>"provider:model"</c> identifiers, e.g. <c>"openai:gpt-5"</c>.
+/// It also supports aliases (<c>"fast"</c> → <c>"anthropic:claude-haiku-5-5"</c>).
 /// </summary>
 public sealed class ProviderRegistry
 {
@@ -48,7 +48,7 @@ public sealed class ProviderRegistry
         return this;
     }
 
-    /// <summary>Registra un alias para un modelo concreto (puede incluir middleware).</summary>
+    /// <summary>Registers an alias for a specific model (it can include middleware).</summary>
     public ProviderRegistry Alias(string alias, Func<ILanguageModel> factory)
     {
         _aliases[alias] = factory;
@@ -58,7 +58,7 @@ public sealed class ProviderRegistry
     public ProviderRegistry Alias(string alias, string target) => Alias(alias, () => LanguageModel(target));
 
     /// <summary>
-    /// Registra un alias con conmutación por error: <c>Fallback("chat", "anthropic:claude-opus-5-5", "openai:gpt-5")</c>.
+    /// Registers an alias with failover: <c>Fallback("chat", "anthropic:claude-opus-5-5", "openai:gpt-5")</c>.
     /// </summary>
     public ProviderRegistry Fallback(string alias, params string[] modelIds)
     {

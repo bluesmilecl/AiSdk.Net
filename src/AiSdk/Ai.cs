@@ -1,35 +1,35 @@
 namespace AiSdk;
 
 /// <summary>
-/// Punto de entrada principal del SDK (equivalente a las funciones
+/// Main entry point of the SDK (equivalent to the AI SDK's
 /// <c>generateText</c>, <c>streamText</c>, <c>generateObject</c>, <c>streamObject</c>,
-/// <c>embed</c> y <c>embedMany</c> del AI SDK).
+/// <c>embed</c> and <c>embedMany</c> functions).
 /// </summary>
 public static class Ai
 {
-    /// <summary>Genera texto, ejecutando herramientas en bucle según <see cref="GenerateTextOptions.StopWhen"/>.</summary>
+    /// <summary>Generates text, running tools in a loop according to <see cref="GenerateTextOptions.StopWhen"/>.</summary>
     public static Task<GenerateTextResult> GenerateTextAsync(GenerateTextOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
         return GenerationEngine.GenerateAsync(options);
     }
 
-    /// <summary>Atajo: genera texto a partir de un prompt.</summary>
+    /// <summary>Shortcut: generates text from a prompt.</summary>
     public static Task<GenerateTextResult> GenerateTextAsync(ILanguageModel model, string prompt, CancellationToken cancellationToken = default) =>
         GenerateTextAsync(new GenerateTextOptions { Model = model, Prompt = prompt, CancellationToken = cancellationToken });
 
-    /// <summary>Genera texto en streaming. Devuelve inmediatamente.</summary>
+    /// <summary>Generates text with streaming. Returns immediately.</summary>
     public static StreamTextResult StreamText(GenerateTextOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
         return new StreamTextResult(options);
     }
 
-    /// <summary>Atajo: streaming a partir de un prompt.</summary>
+    /// <summary>Shortcut: streams text from a prompt.</summary>
     public static StreamTextResult StreamText(ILanguageModel model, string prompt, CancellationToken cancellationToken = default) =>
         StreamText(new GenerateTextOptions { Model = model, Prompt = prompt, CancellationToken = cancellationToken });
 
-    /// <summary>Genera un objeto tipado que cumple el esquema de <typeparamref name="T"/>.</summary>
+    /// <summary>Generates a typed object that conforms to the schema of <typeparamref name="T"/>.</summary>
     public static async Task<GenerateObjectResult<T>> GenerateObjectAsync<T>(GenerateObjectOptions options)
     {
         var output = Output.Object<T>(options.SchemaName, options.SchemaDescription);
@@ -37,21 +37,23 @@ public static class Ai
         return new GenerateObjectResult<T>(result.GetOutput<T>(), result.FinishReason, result.TotalUsage, result.Response, result.Text);
     }
 
-    /// <summary>Genera un objeto tipado en streaming (objetos parciales + objeto final).</summary>
+    /// <summary>Generates a typed object with streaming (partial objects + final object).</summary>
     public static StreamObjectResult<T> StreamObject<T>(GenerateObjectOptions options)
     {
         var output = Output.Object<T>(options.SchemaName, options.SchemaDescription);
         return new StreamObjectResult<T>(StreamText(ToTextOptions(options, output)));
     }
 
-    /// <summary>Genera un embedding para un valor.</summary>
+    /// <summary>Generates an embedding for a value.</summary>
     public static async Task<EmbedResult> EmbedAsync(IEmbeddingModel model, string value, CancellationToken cancellationToken = default)
     {
         var result = await model.EmbedAsync([value], cancellationToken).ConfigureAwait(false);
         return new EmbedResult(value, result.Embeddings[0], result.Usage);
     }
 
-    /// <summary>Genera embeddings para varios valores, dividiendo en lotes si el modelo lo requiere.</summary>
+    /// <summary>
+    /// Generates embeddings for several values, splitting them into batches if the model requires it.
+    /// </summary>
     public static async Task<EmbedManyResult> EmbedManyAsync(IEmbeddingModel model, IReadOnlyList<string> values, CancellationToken cancellationToken = default)
     {
         var batchSize = model.MaxEmbeddingsPerCall ?? int.MaxValue;
@@ -68,8 +70,8 @@ public static class Ai
     }
 
     /// <summary>
-    /// Genera imágenes. Si se piden más de las que admite el modelo por llamada,
-    /// se hacen varias llamadas en paralelo.
+    /// Generates images. If more images are requested than the model supports per call,
+    /// several calls are made in parallel.
     /// </summary>
     public static async Task<GenerateImageResult> GenerateImageAsync(GenerateImageOptions options)
     {
@@ -104,7 +106,7 @@ public static class Ai
         return new GenerateImageResult(images, results.SelectMany(r => r.Warnings).ToList());
     }
 
-    /// <summary>Convierte texto en audio.</summary>
+    /// <summary>Converts text to audio.</summary>
     public static async Task<GenerateSpeechResult> GenerateSpeechAsync(GenerateSpeechOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -131,7 +133,7 @@ public static class Ai
         return new GenerateSpeechResult(result.Audio, result.Warnings);
     }
 
-    /// <summary>Transcribe audio a texto.</summary>
+    /// <summary>Transcribes audio to text.</summary>
     public static async Task<TranscriptionModelResult> TranscribeAsync(TranscribeOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -150,7 +152,7 @@ public static class Ai
             options.CancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Reordena documentos de texto por relevancia respecto a la consulta.</summary>
+    /// <summary>Reranks text documents by relevance to the query.</summary>
     public static Task<RerankResult<string>> RerankAsync(
         IRerankingModel model,
         string query,
@@ -159,7 +161,7 @@ public static class Ai
         CancellationToken cancellationToken = default) =>
         RerankAsync(model, query, documents, d => d, topN, cancellationToken);
 
-    /// <summary>Reordena objetos por relevancia, usando <paramref name="text"/> para obtener su texto.</summary>
+    /// <summary>Reranks objects by relevance, using <paramref name="text"/> to get their text.</summary>
     public static async Task<RerankResult<T>> RerankAsync<T>(
         IRerankingModel model,
         string query,
@@ -183,8 +185,8 @@ public static class Ai
     }
 
     /// <summary>
-    /// Cuenta los tokens de entrada que consumiría la llamada (mensajes, sistema y herramientas).
-    /// Requiere un modelo que implemente <see cref="ITokenCountingModel"/>.
+    /// Counts the input tokens the call would consume (messages, system prompt and tools).
+    /// Requires a model that implements <see cref="ITokenCountingModel"/>.
     /// </summary>
     public static async Task<int> CountTokensAsync(GenerateTextOptions options)
     {
@@ -194,7 +196,7 @@ public static class Ai
             : throw new NotSupportedException($"El modelo '{plan.Model.Provider}:{plan.Model.ModelId}' no permite contar tokens.");
     }
 
-    /// <summary>Similitud coseno entre dos vectores.</summary>
+    /// <summary>Computes the cosine similarity between two vectors.</summary>
     public static double CosineSimilarity(ReadOnlySpan<float> a, ReadOnlySpan<float> b)
     {
         if (a.Length != b.Length)

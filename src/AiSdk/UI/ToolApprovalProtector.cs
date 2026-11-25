@@ -7,41 +7,41 @@ using System.Text.Json;
 namespace AiSdk.UI;
 
 /// <summary>
-/// Emite y verifica los <c>approvalId</c> del protocolo de aprobación de herramientas de AI SDK UI: el chunk
-/// <c>tool-approval-request</c> que muestra la parte en el estado <c>approval-requested</c> y la respuesta
-/// (<c>addToolApprovalResponse</c>, estado <c>approval-responded</c>) que el navegador devuelve en el historial.
+/// Issues and verifies the <c>approvalId</c> values of the AI SDK UI tool approval protocol: the
+/// <c>tool-approval-request</c> chunk that shows the part in the <c>approval-requested</c> state, and the response
+/// (<c>addToolApprovalResponse</c>, <c>approval-responded</c> state) that the browser sends back in the history.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <c>useChat</c> reenvía en cada petición toda la conversación, y el navegador puede cambiarla: podría "aprobar" una
-/// llamada que el modelo nunca hizo o cambiar la entrada de una llamada real antes de aprobarla. Por eso el approvalId no
-/// es un id aleatorio sino un token opaco y firmado que vincula la aprobación a la llamada exacta que emitió el servidor:
-/// su id, la herramienta y la entrada (JSON canónico, que no cambia en el viaje de ida y vuelta por el navegador), dentro
-/// de un ámbito (usuario y chat) y con caducidad. <see cref="UIMessageConverter.ToModelInput"/> solo acepta una
-/// respuesta si su approvalId verifica contra la llamada que reenvía el cliente: si cambió la entrada, el id o la
-/// herramienta, o el token es de otro usuario, de otro chat o expiró, la llamada no se ejecuta.
+/// <c>useChat</c> resends the whole conversation on every request, and the browser can change it: it could "approve" a
+/// call the model never made or change the input of a real call before approving it. That is why the approvalId is not
+/// a random id but an opaque, signed token that binds the approval to the exact call the server issued:
+/// its id, the tool and the input (canonical JSON, which does not change on the round trip through the browser), within
+/// a scope (user and chat) and with an expiration. <see cref="UIMessageConverter.ToModelInput"/> only accepts a
+/// response if its approvalId verifies against the call the client resends: if the input, the id or the
+/// tool changed, or the token belongs to another user or another chat, or it expired, the call is not executed.
 /// </para>
 /// <para>
-/// No guarda estado (como la firma opcional del AI SDK): dentro de su vigencia, el mismo usuario podría reenviar una
-/// aprobación que ya usó. Si quien aprueba no es quien conversa, o una llamada no debe repetirse nunca, guarde la
-/// conversación en el servidor (<see cref="AgentSession.SendApprovalsAsync"/>) o use un workflow con un evento de
-/// aprobación.
+/// It is stateless (like the AI SDK's optional signature): within its lifetime, the same user could resend an
+/// approval already used. If the approver is not the person chatting, or a call must never be repeated, store the
+/// conversation on the server (<see cref="AgentSession.SendApprovalsAsync"/>) or use a workflow with an approval
+/// event.
 /// </para>
 /// <para>
-/// En ASP.NET Core use <c>ToolApprovalProtection.ForChat</c> (Data Protection, sin secretos que configurar). Fuera de
-/// ASP.NET Core, <see cref="CreateHmac"/>. Para otro almacén de claves, herede e implemente <see cref="Protect"/> y
+/// In ASP.NET Core use <c>ToolApprovalProtection.ForChat</c> (Data Protection, no secrets to configure). Outside
+/// ASP.NET Core, use <see cref="CreateHmac"/>. For another key store, inherit and implement <see cref="Protect"/> and
 /// <see cref="Verify(string, ReadOnlySpan{byte})"/>.
 /// </para>
 /// </remarks>
 public abstract class ToolApprovalProtector
 {
-    /// <summary>Vigencia por defecto de un approvalId (1 hora).</summary>
+    /// <summary>Default lifetime of an approvalId (1 hour).</summary>
     public static readonly TimeSpan DefaultLifetime = TimeSpan.FromHours(1);
 
-    /// <summary>Largo máximo aceptado de un approvalId (lo que excede no se intenta verificar).</summary>
+    /// <summary>Maximum accepted length of an approvalId (anything longer is not verified).</summary>
     private const int MaxApprovalIdLength = 2048;
 
-    /// <summary>Crea el approvalId de una llamada que queda pendiente de aprobación.</summary>
+    /// <summary>Creates the approvalId of a call that is left pending approval.</summary>
     public string CreateApprovalId(ToolCallPart call)
     {
         ArgumentNullException.ThrowIfNull(call);
@@ -49,8 +49,8 @@ public abstract class ToolApprovalProtector
     }
 
     /// <summary>
-    /// True si <paramref name="approvalId"/> lo emitió este protector (misma clave y ámbito), no expiró y corresponde
-    /// exactamente a <paramref name="call"/>: mismo id de llamada, herramienta y entrada.
+    /// True if <paramref name="approvalId"/> was issued by this protector (same key and scope), has not expired and
+    /// matches <paramref name="call"/> exactly: same call id, tool and input.
     /// </summary>
     public bool VerifyApprovalId(string? approvalId, ToolCallPart call)
     {
@@ -58,16 +58,16 @@ public abstract class ToolApprovalProtector
         return approvalId is { Length: > 0 and <= MaxApprovalIdLength } && Verify(approvalId, Digest(call));
     }
 
-    /// <summary>Sella el resumen (SHA-256) de la llamada en un approvalId opaco, apto para una URL o JSON.</summary>
+    /// <summary>Seals the digest (SHA-256) of the call into an opaque approvalId, suitable for a URL or JSON.</summary>
     protected abstract string Protect(ReadOnlySpan<byte> digest);
 
-    /// <summary>True si <paramref name="approvalId"/> es válido y sella exactamente <paramref name="digest"/>.</summary>
+    /// <summary>True if <paramref name="approvalId"/> is valid and seals exactly <paramref name="digest"/>.</summary>
     protected abstract bool Verify(string approvalId, ReadOnlySpan<byte> digest);
 
     /// <summary>
-    /// Protector con HMAC-SHA256 y una clave propia (al menos 32 bytes aleatorios, la misma en todas las instancias del
-    /// servidor; guárdela como un secreto). <paramref name="scope"/> limita los ids a un ámbito, p. ej. usuario y chat
-    /// (<see cref="ResumableUIMessageStream.ScopedChatId"/>): un id emitido en otro ámbito no verifica.
+    /// Protector with HMAC-SHA256 and your own key (at least 32 random bytes, the same on all server
+    /// instances; store it as a secret). <paramref name="scope"/> restricts the ids to a scope, e.g. user and chat
+    /// (<see cref="ResumableUIMessageStream.ScopedChatId"/>): an id issued in another scope does not verify.
     /// </summary>
     public static ToolApprovalProtector CreateHmac(ReadOnlySpan<byte> key, string scope, TimeSpan? lifetime = null, TimeProvider? timeProvider = null)
     {
@@ -83,8 +83,8 @@ public abstract class ToolApprovalProtector
     }
 
     /// <summary>
-    /// SHA-256 de la llamada: id, herramienta y entrada en JSON canónico (claves ordenadas, números como double), que es
-    /// igual antes y después de que el navegador la deserialice y la vuelva a serializar.
+    /// SHA-256 of the call: id, tool and input in canonical JSON (sorted keys, numbers as double), which is
+    /// the same before and after the browser deserializes and reserializes it.
     /// </summary>
     private static byte[] Digest(ToolCallPart call)
     {
@@ -195,7 +195,7 @@ public abstract class ToolApprovalProtector
         return false;
     }
 
-    /// <summary>approvalId <c>v1.{expira (segundos Unix)}.{HMAC-SHA256}</c> sobre el ámbito, la caducidad y el resumen.</summary>
+    /// <summary>approvalId <c>v1.{expiry (Unix seconds)}.{HMAC-SHA256}</c> over the scope, the expiration and the digest.</summary>
     private sealed class HmacProtector(byte[] key, string scope, TimeSpan lifetime, TimeProvider time) : ToolApprovalProtector
     {
         protected override string Protect(ReadOnlySpan<byte> digest)

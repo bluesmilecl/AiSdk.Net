@@ -3,9 +3,9 @@ using System.Runtime.CompilerServices;
 namespace AiSdk;
 
 /// <summary>
-/// Middleware de modelo (equivalente a <c>wrapLanguageModel</c>). Permite transformar
-/// peticiones, interceptar respuestas, cachear, registrar, aplicar guardrails, etc.
-/// Todos los miembros tienen implementación por defecto: sobrescribe solo lo necesario.
+/// Model middleware (equivalent to <c>wrapLanguageModel</c>). Lets you transform
+/// requests, intercept responses, cache, log, apply guardrails, etc.
+/// All members have a default implementation: override only what you need.
 /// </summary>
 public interface ILanguageModelMiddleware
 {
@@ -57,20 +57,20 @@ internal sealed class WrappedLanguageModel(ILanguageModel inner, ILanguageModelM
     }
 }
 
-/// <summary>Middlewares incluidos.</summary>
+/// <summary>Built-in middlewares.</summary>
 public static partial class Middlewares
 {
-    /// <summary>Aplica valores por defecto a las peticiones (solo si no fueron especificados).</summary>
+    /// <summary>Applies default values to requests (only if they were not specified).</summary>
     public static ILanguageModelMiddleware DefaultSettings(
         double? temperature = null,
         int? maxOutputTokens = null,
         ProviderOptions? providerOptions = null) => new DefaultSettingsMiddleware(temperature, maxOutputTokens, providerOptions);
 
-    /// <summary>Middleware a partir de una función de transformación de la petición.</summary>
+    /// <summary>Creates a middleware from a request transformation function.</summary>
     public static ILanguageModelMiddleware TransformRequest(Func<LanguageModelRequest, LanguageModelRequest> transform) =>
         new TransformMiddleware(transform);
 
-    /// <summary>Registra cada llamada (petición y respuesta) mediante un callback.</summary>
+    /// <summary>Logs each call (request and response) through a callback.</summary>
     public static ILanguageModelMiddleware Logging(Action<string> log) => new LoggingMiddleware(log);
 
     private sealed class DefaultSettingsMiddleware(double? temperature, int? maxOutputTokens, ProviderOptions? providerOptions) : ILanguageModelMiddleware

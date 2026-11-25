@@ -4,13 +4,13 @@ using System.Text.Json;
 namespace AiSdk;
 
 /// <summary>
-/// Estimación rápida de tokens sin tokenizador (≈ 4 caracteres por token en idiomas latinos,
-/// ≈ 1 por carácter en CJK). Sirve para presupuestos; para cifras exactas usa
+/// Fast token estimation without a tokenizer (≈ 4 characters per token in Latin-script languages,
+/// ≈ 1 per character in CJK). Good enough for budgets; for exact figures use
 /// <see cref="Ai.CountTokensAsync(GenerateTextOptions)"/>.
 /// </summary>
 public static class TokenEstimator
 {
-    /// <summary>Tokens que se asumen por cada imagen o archivo binario adjunto.</summary>
+    /// <summary>Tokens assumed for each attached image or binary file.</summary>
     public const int AttachmentTokens = 1000;
 
     public static int Estimate(string? text)
@@ -47,41 +47,41 @@ public static class TokenEstimator
     };
 }
 
-/// <summary>Opciones de <see cref="Middlewares.CompressContext(ContextCompressionOptions)"/>.</summary>
+/// <summary>Options for <see cref="Middlewares.CompressContext(ContextCompressionOptions)"/>.</summary>
 public sealed class ContextCompressionOptions
 {
-    /// <summary>Presupuesto de tokens de entrada. Por encima de este valor se comprime.</summary>
+    /// <summary>Gets or sets the input token budget. Above this value, the context is compressed.</summary>
     public required int MaxInputTokens { get; init; }
 
-    /// <summary>Mensajes recientes que siempre se envían completos.</summary>
+    /// <summary>Gets or sets the number of recent messages that are always sent in full.</summary>
     public int KeepRecentMessages { get; init; } = 6;
 
     /// <summary>
-    /// Modelo que resume los mensajes antiguos (suele bastar uno pequeño y barato).
-    /// Si es null, los mensajes antiguos se descartan.
+    /// Gets or sets the model that summarizes old messages (a small, cheap one is usually enough).
+    /// If null, old messages are discarded.
     /// </summary>
     public ILanguageModel? Summarizer { get; init; }
 
-    /// <summary>Instrucciones del resumen.</summary>
+    /// <summary>Gets or sets the summary instructions.</summary>
     public string SummaryInstructions { get; init; } =
         "Resume la conversación anterior para que un asistente pueda continuarla sin perder contexto. " +
         "Conserva datos concretos (nombres, cifras, fechas, ids, decisiones, preferencias del usuario, " +
         "resultados de herramientas y tareas pendientes). Escribe en el idioma de la conversación, en viñetas concisas.";
 
-    /// <summary>Tamaño máximo (en tokens) de los resultados de herramientas antiguos antes de recortarlos.</summary>
+    /// <summary>Gets or sets the maximum size (in tokens) of old tool results before they are trimmed.</summary>
     public int MaxToolResultTokens { get; init; } = 500;
 
-    /// <summary>Función de conteo. Por defecto <see cref="TokenEstimator"/>.</summary>
+    /// <summary>Gets or sets the counting function. Defaults to <see cref="TokenEstimator"/>.</summary>
     public Func<IReadOnlyList<ModelMessage>, int>? CountTokens { get; init; }
 }
 
-/// <summary>Herramientas para reducir texto largo antes de enviarlo a un modelo.</summary>
+/// <summary>Tools for reducing long text before sending it to a model.</summary>
 public static class ContextCompressor
 {
     /// <summary>
-    /// Compresión extractiva: divide el texto, puntúa cada fragmento por similitud con
-    /// <paramref name="query"/> y conserva los más relevantes (en su orden original) hasta
-    /// <paramref name="maxTokens"/>. No usa un modelo de lenguaje, solo embeddings.
+    /// Extractive compression: splits the text, scores each chunk by similarity to
+    /// <paramref name="query"/> and keeps the most relevant ones (in their original order) up to
+    /// <paramref name="maxTokens"/>. It does not use a language model, only embeddings.
     /// </summary>
     public static async Task<string> SelectRelevantAsync(
         IEmbeddingModel embeddings,
@@ -141,11 +141,11 @@ public static class ContextCompressor
     }
 
     /// <summary>
-    /// Compresión abstractiva (map-reduce): resume por partes y luego combina los resúmenes
-    /// hasta quedar cerca de <paramref name="targetTokens"/>. Funciona con textos más grandes
-    /// que la ventana de contexto del modelo.
+    /// Abstractive compression (map-reduce): summarizes in parts and then combines the summaries
+    /// until the result is close to <paramref name="targetTokens"/>. Works with texts larger
+    /// than the model's context window.
     /// </summary>
-    /// <remarks>Parámetro <c>focus</c>: opcional, qué conservar (p. ej. "cláusulas de pago y plazos").</remarks>
+    /// <remarks><c>focus</c> parameter: optional, what to preserve (e.g. "payment clauses and deadlines").</remarks>
     public static async Task<string> SummarizeAsync(
         ILanguageModel model,
         string text,
@@ -199,10 +199,10 @@ public static class ContextCompressor
 public static partial class Middlewares
 {
     /// <summary>
-    /// Mantiene la conversación dentro de un presupuesto de tokens: recorta resultados de herramientas
-    /// antiguos y, si no basta, resume (o descarta) los mensajes antiguos conservando los recientes.
-    /// Nunca separa una llamada a herramienta de su resultado. Los resúmenes se cachean y se
-    /// actualizan de forma incremental entre turnos.
+    /// Keeps the conversation within a token budget: trims old tool results
+    /// and, if that is not enough, summarizes (or discards) old messages while keeping the recent ones.
+    /// It never separates a tool call from its result. Summaries are cached and
+    /// updated incrementally between turns.
     /// </summary>
     public static ILanguageModelMiddleware CompressContext(ContextCompressionOptions options) => new ContextCompressionMiddleware(options);
 
@@ -269,7 +269,7 @@ internal sealed class ContextCompressionMiddleware(ContextCompressionOptions opt
 
     private int SummaryBudget => Math.Clamp(options.MaxInputTokens / 4, 128, 2000);
 
-    /// <summary>Mueve el límite hacia atrás para no empezar con resultados de herramientas huérfanos.</summary>
+    /// <summary>Moves the boundary back so as not to start with orphaned tool results.</summary>
     private static int SafeBoundary(List<ModelMessage> messages, int index)
     {
         index = Math.Clamp(index, 0, messages.Count);

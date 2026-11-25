@@ -7,20 +7,20 @@ using System.Text.Json;
 namespace AiSdk;
 
 /// <summary>
-/// Unidad que puede participar en una orquestación: un agente, una función o una orquestación anidada.
-/// Los <see cref="Agent"/> ya implementan esta interfaz.
+/// Unit that can take part in an orchestration: an agent, a function or a nested orchestration.
+/// <see cref="Agent"/> classes already implement this interface.
 /// </summary>
 public interface IOrchestrationNode
 {
     string Name { get; }
 
-    /// <summary>Qué hace (lo usan el router y el supervisor para elegir).</summary>
+    /// <summary>Gets what the node does (used by the router and the supervisor to choose).</summary>
     string? Description { get; }
 
     Task<string> RunAsync(string input, OrchestrationContext context);
 }
 
-/// <summary>Evento emitido durante una orquestación (para registro, métricas o la interfaz).</summary>
+/// <summary>Event emitted during an orchestration (for logging, metrics or the UI).</summary>
 public abstract record OrchestrationEvent(string Node)
 {
     public DateTimeOffset Timestamp { get; init; } = DateTimeOffset.UtcNow;
@@ -36,29 +36,31 @@ public sealed record HandoffEvent(string Node, string To, string? Reason) : Orch
 
 public sealed record EvaluationEvent(string Node, int Iteration, bool Approved, string Feedback, int? Score) : OrchestrationEvent(Node);
 
-/// <summary>Ejecución de un agente dentro de una orquestación.</summary>
+/// <summary>Execution of an agent within an orchestration.</summary>
 public sealed record AgentRun(string Agent, string Input, string Output, Usage Usage, TimeSpan Duration);
 
-/// <summary>Opciones de ejecución de una orquestación.</summary>
+/// <summary>Execution options for an orchestration.</summary>
 public sealed class OrchestrationOptions
 {
     public IServiceProvider? Services { get; init; }
 
     public IReadOnlyDictionary<string, object?>? Context { get; init; }
 
-    /// <summary>Recibe cada evento (inicio/fin de agentes, enrutamientos, traspasos, evaluaciones).</summary>
+    /// <summary>
+    /// Gets or sets a callback that receives each event (agent start/end, routing, handoffs, evaluations).
+    /// </summary>
     public Func<OrchestrationEvent, ValueTask>? OnEvent { get; init; }
 
     /// <summary>
-    /// Manejador de aprobación para los agentes de la orquestación que no tienen uno propio. Sin él, las herramientas
-    /// que requieren aprobación se deniegan con un error explícito.
+    /// Gets or sets the approval handler for orchestration agents that do not have their own. Without it, tools
+    /// that require approval are denied with an explicit error.
     /// </summary>
     public Func<ToolApprovalRequest, ValueTask<bool>>? OnToolApproval { get; init; }
 
     public CancellationToken CancellationToken { get; init; }
 }
 
-/// <summary>Estado compartido de una ejecución: registra agentes ejecutados, uso de tokens y eventos.</summary>
+/// <summary>Shared state of a run: records executed agents, token usage and events.</summary>
 public sealed class OrchestrationContext
 {
     private readonly ConcurrentQueue<AgentRun> _runs = new();
@@ -76,20 +78,20 @@ public sealed class OrchestrationContext
 
     public Usage TotalUsage => _runs.Aggregate(Usage.Empty, (acc, r) => acc + r.Usage);
 
-    /// <summary>Último nodo que produjo la respuesta.</summary>
+    /// <summary>Gets or sets the last node that produced the response.</summary>
     public string? LastNode { get; set; }
 
-    /// <summary>Conversación final (orquestaciones con traspasos).</summary>
+    /// <summary>Gets or sets the final conversation (orchestrations with handoffs).</summary>
     public IReadOnlyList<ModelMessage>? Messages { get; set; }
 
     public ValueTask EmitAsync(OrchestrationEvent orchestrationEvent) =>
         Options.OnEvent?.Invoke(orchestrationEvent) ?? ValueTask.CompletedTask;
 
-    /// <summary>Ejecuta un agente registrando su uso y emitiendo eventos.</summary>
+    /// <summary>Runs an agent, recording its usage and emitting events.</summary>
     public Task<string> RunAgentAsync(IAgent agent, string input) =>
         RunAgentAsync(agent, new AgentCallOptions { Prompt = input }, input);
 
-    /// <summary>Ejecuta un agente con mensajes y devuelve el resultado completo.</summary>
+    /// <summary>Runs an agent with messages and returns the full result.</summary>
     public async Task<GenerateTextResult> RunAgentResultAsync(IAgent agent, AgentCallOptions call, string inputLabel)
     {
         await EmitAsync(new NodeStartedEvent(agent.Name, inputLabel)).ConfigureAwait(false);
@@ -115,29 +117,29 @@ public sealed class OrchestrationContext
     private async Task<string> RunAgentAsync(IAgent agent, AgentCallOptions call, string inputLabel) =>
         (await RunAgentResultAsync(agent, call, inputLabel).ConfigureAwait(false)).Text;
 
-    /// <summary>Registra una ejecución hecha fuera de <see cref="RunAgentAsync(IAgent, string)"/> (p. ej. una llamada directa al modelo).</summary>
+    /// <summary>Records a run performed outside <see cref="RunAgentAsync(IAgent, string)"/> (e.g. a direct model call).</summary>
     public void Record(string agent, string input, string output, Usage usage, TimeSpan duration) =>
         _runs.Enqueue(new AgentRun(agent, input, output, usage, duration));
 }
 
-/// <summary>Resultado de una orquestación.</summary>
+/// <summary>Result of an orchestration.</summary>
 public sealed record OrchestrationResult(string Text, IReadOnlyList<AgentRun> Runs, Usage TotalUsage)
 {
-    /// <summary>Conversación final (orquestaciones con traspasos).</summary>
+    /// <summary>Gets the final conversation (orchestrations with handoffs).</summary>
     public IReadOnlyList<ModelMessage>? Messages { get; init; }
 
-    /// <summary>Último agente que respondió (traspasos y router).</summary>
+    /// <summary>Gets the last agent that responded (handoffs and router).</summary>
     public string? FinalAgent { get; init; }
 }
 
-/// <summary>Base de las orquestaciones. Son nodos, así que se pueden anidar unas dentro de otras.</summary>
+/// <summary>Base class for orchestrations. They are nodes, so they can be nested inside one another.</summary>
 public abstract class Orchestration : IOrchestrationNode
 {
     public virtual string Name => GetType().Name;
 
     public virtual string? Description { get; init; }
 
-    /// <summary>Ejecuta la orquestación y devuelve texto, ejecuciones y uso total.</summary>
+    /// <summary>Runs the orchestration and returns the text, the agent runs and the total usage.</summary>
     public async Task<OrchestrationResult> RunAsync(string input, OrchestrationOptions? options = null)
     {
         var context = new OrchestrationContext(options);
@@ -149,14 +151,14 @@ public abstract class Orchestration : IOrchestrationNode
 
     protected abstract Task<string> ExecuteAsync(string input, OrchestrationContext context);
 
-    /// <summary>Expone la orquestación como herramienta de otro agente.</summary>
+    /// <summary>Exposes the orchestration as a tool for another agent.</summary>
     public Tool AsTool(string? name = null, string? description = null) => OrchestrationNodes.AsTool(this, name, description);
 }
 
-/// <summary>Utilidades para crear nodos.</summary>
+/// <summary>Helpers for creating nodes.</summary>
 public static class OrchestrationNodes
 {
-    /// <summary>Nodo a partir de una función (transformaciones, llamadas a APIs, validaciones...).</summary>
+    /// <summary>Creates a node from a function (transformations, API calls, validations...).</summary>
     public static IOrchestrationNode Function(string name, Func<string, CancellationToken, Task<string>> run, string? description = null) =>
         new FunctionNode(name, description, run);
 
@@ -164,7 +166,7 @@ public static class OrchestrationNodes
     public static IOrchestrationNode Function(string name, Func<string, string> run, string? description = null) =>
         new FunctionNode(name, description, (input, _) => Task.FromResult(run(input)));
 
-    /// <summary>Herramienta que ejecuta el nodo con <c>{ "task": "..." }</c>.</summary>
+    /// <summary>Creates a tool that runs the node with <c>{ "task": "..." }</c>.</summary>
     public static Tool AsTool(IOrchestrationNode node, string? name = null, string? description = null, OrchestrationContext? context = null) =>
         Tool.Create<TaskInput, string>(
             name ?? JsonNamingPolicy.SnakeCaseLower.ConvertName(node.Name),
@@ -177,7 +179,7 @@ public static class OrchestrationNodes
                 CancellationToken = ct,
             })));
 
-    /// <summary>Da nombre y descripción a un nodo (p. ej. una orquestación usada como ruta de un router o trabajador de un supervisor).</summary>
+    /// <summary>Gives a node a name and description (e.g. an orchestration used as a router route or a supervisor worker).</summary>
     public static IOrchestrationNode Named(this IOrchestrationNode node, string name, string? description = null) =>
         new NamedNode(name, description ?? node.Description, node);
 
@@ -210,41 +212,47 @@ public static class OrchestrationNodes
 }
 
 /// <summary>
-/// Patrones de orquestación multi-agente (ver "Building effective agents" de Anthropic y los
-/// patrones de agentes del AI SDK): cadena, paralelo, router, supervisor, traspasos y evaluador-optimizador.
+/// Multi-agent orchestration patterns (see Anthropic's "Building effective agents" and the
+/// AI SDK agent patterns): sequential, parallel, router, supervisor, handoffs and evaluator-optimizer.
 /// </summary>
 public static class Orchestrations
 {
-    /// <summary>Cadena: la salida de cada paso es la entrada del siguiente.</summary>
+    /// <summary>Sequential: the output of each step is the input of the next one.</summary>
     public static SequentialOrchestration Sequential(params IOrchestrationNode[] steps) => new(steps);
 
-    /// <summary>Paralelo: todos reciben la misma entrada; los resultados se combinan o los sintetiza un agregador.</summary>
+    /// <summary>
+    /// Parallel: all branches receive the same input; the results are combined or synthesized by an aggregator.
+    /// </summary>
     public static ParallelOrchestration Parallel(IEnumerable<IOrchestrationNode> branches, IOrchestrationNode? aggregator = null) =>
         new(branches.ToList()) { Aggregator = aggregator };
 
-    /// <summary>Router: un modelo clasifica la entrada y la envía al nodo más adecuado.</summary>
+    /// <summary>Router: a model classifies the input and sends it to the most suitable node.</summary>
     public static RouterOrchestration Router(ILanguageModel classifier, params IOrchestrationNode[] routes) => new(classifier, routes);
 
-    /// <summary>Supervisor (orquestador-trabajadores): un modelo planifica y delega subtareas, en paralelo si conviene.</summary>
+    /// <summary>Supervisor (orchestrator-workers): a model plans and delegates subtasks, in parallel when appropriate.</summary>
     public static SupervisorOrchestration Supervisor(ILanguageModel model, params IOrchestrationNode[] workers) => new(model, workers);
 
-    /// <summary>Traspasos: los agentes se ceden la conversación entre sí (estilo Swarm / OpenAI Agents).</summary>
+    /// <summary>Handoffs: agents hand the conversation over to each other (Swarm / OpenAI Agents style).</summary>
     public static HandoffOrchestration Handoffs(Agent start, params Agent[] others) => new(start, others);
 
-    /// <summary>Evaluador-optimizador: genera, evalúa contra criterios y corrige hasta aprobar.</summary>
+    /// <summary>Evaluator-optimizer: generates, evaluates against criteria and revises until approved.</summary>
     public static EvaluatorOptimizerOrchestration EvaluatorOptimizer(IOrchestrationNode generator, ILanguageModel evaluator, string criteria) =>
         new(generator, evaluator, criteria);
 }
 
-/// <summary>Cadena de pasos.</summary>
+/// <summary>Chain of steps.</summary>
 public sealed class SequentialOrchestration(IReadOnlyList<IOrchestrationNode> steps) : Orchestration
 {
     public override string Name => "sequential";
 
-    /// <summary>Si es true, cada paso recibe también la entrada original además de la salida anterior.</summary>
+    /// <summary>
+    /// Gets or sets whether each step also receives the original input in addition to the previous output.
+    /// </summary>
     public bool IncludeOriginalInput { get; init; }
 
-    /// <summary>Detiene la cadena si una salida cumple la condición (p. ej. una validación fallida).</summary>
+    /// <summary>
+    /// Gets or sets a condition that stops the chain when an output meets it (e.g. a failed validation).
+    /// </summary>
     public Func<string, string, bool>? StopWhen { get; init; }
 
     protected override async Task<string> ExecuteAsync(string input, OrchestrationContext context)
@@ -267,15 +275,19 @@ public sealed class SequentialOrchestration(IReadOnlyList<IOrchestrationNode> st
     }
 }
 
-/// <summary>Ramas en paralelo con agregación.</summary>
+/// <summary>Parallel branches with aggregation.</summary>
 public sealed class ParallelOrchestration(IReadOnlyList<IOrchestrationNode> branches) : Orchestration
 {
     public override string Name => "parallel";
 
-    /// <summary>Nodo que sintetiza los resultados (recibe la tarea original y todas las respuestas).</summary>
+    /// <summary>
+    /// Gets or sets the node that synthesizes the results (it receives the original task and all the responses).
+    /// </summary>
     public IOrchestrationNode? Aggregator { get; init; }
 
-    /// <summary>Combinación sin modelo (si no hay agregador). Por defecto, una sección por rama.</summary>
+    /// <summary>
+    /// Gets or sets a model-free combination (used when there is no aggregator). By default, one section per branch.
+    /// </summary>
     public Func<IReadOnlyList<(string Name, string Output)>, string>? Combine { get; init; }
 
     public int MaxConcurrency { get; init; } = 8;
@@ -307,15 +319,15 @@ public sealed class ParallelOrchestration(IReadOnlyList<IOrchestrationNode> bran
     }
 }
 
-/// <summary>Clasifica y enruta al nodo adecuado.</summary>
+/// <summary>Classifies the input and routes it to the appropriate node.</summary>
 public sealed class RouterOrchestration(ILanguageModel classifier, IReadOnlyList<IOrchestrationNode> routes) : Orchestration
 {
     public override string Name => "router";
 
-    /// <summary>Instrucciones adicionales para el clasificador.</summary>
+    /// <summary>Gets or sets additional instructions for the classifier.</summary>
     public string? Instructions { get; init; }
 
-    /// <summary>Nodo usado si el clasificador no elige ninguna ruta válida.</summary>
+    /// <summary>Gets or sets the node used when the classifier does not choose a valid route.</summary>
     public IOrchestrationNode? Fallback { get; init; }
 
     private sealed record Decision(
@@ -345,8 +357,8 @@ public sealed class RouterOrchestration(ILanguageModel classifier, IReadOnlyList
 }
 
 /// <summary>
-/// Un modelo supervisor descompone la tarea y delega en trabajadores expuestos como herramientas.
-/// Si el modelo pide varias delegaciones en el mismo paso, se ejecutan en paralelo.
+/// A supervisor model breaks the task down and delegates to workers exposed as tools.
+/// If the model requests several delegations in the same step, they run in parallel.
 /// </summary>
 public sealed class SupervisorOrchestration(ILanguageModel model, IReadOnlyList<IOrchestrationNode> workers) : Orchestration
 {
@@ -359,7 +371,7 @@ public sealed class SupervisorOrchestration(ILanguageModel model, IReadOnlyList<
 
     public string Instructions { get; init; } = DefaultInstructions;
 
-    /// <summary>Herramientas propias del supervisor además de los trabajadores.</summary>
+    /// <summary>Gets or sets the supervisor's own tools, in addition to the workers.</summary>
     public IReadOnlyList<Tool> Tools { get; init; } = [];
 
     public int MaxSteps { get; init; } = 15;
@@ -383,8 +395,8 @@ public sealed class SupervisorOrchestration(ILanguageModel model, IReadOnlyList<
 }
 
 /// <summary>
-/// Agentes que se traspasan la conversación. Cada agente recibe herramientas <c>transfer_to_*</c>
-/// hacia los demás; al usarlas, el siguiente agente continúa con todo el historial.
+/// Agents that hand the conversation over to each other. Each agent receives <c>transfer_to_*</c> tools
+/// pointing to the others; when one is used, the next agent continues with the full history.
 /// </summary>
 public sealed class HandoffOrchestration : Orchestration
 {
@@ -399,17 +411,17 @@ public sealed class HandoffOrchestration : Orchestration
 
     public override string Name => "handoffs";
 
-    /// <summary>Máximo de traspasos antes de detenerse (evita ciclos).</summary>
+    /// <summary>Gets or sets the maximum number of handoffs before stopping (prevents cycles).</summary>
     public int MaxHandoffs { get; init; } = 8;
 
-    /// <summary>Quién puede traspasar a quién. Por defecto, todos a todos.</summary>
+    /// <summary>Gets or sets who can hand off to whom. By default, everyone to everyone.</summary>
     public Func<string, string, bool>? CanHandoff { get; init; }
 
     private static string ToolName(string agentName) => "transfer_to_" + JsonNamingPolicy.SnakeCaseLower.ConvertName(agentName);
 
     private sealed record HandoffInput([property: Description("Motivo del traspaso y contexto relevante para el siguiente agente.")] string Reason);
 
-    /// <summary>Continúa una conversación existente (p. ej. un chat) desde el agente indicado.</summary>
+    /// <summary>Continues an existing conversation (e.g. a chat) from the specified agent.</summary>
     public async Task<OrchestrationResult> RunAsync(IReadOnlyList<ModelMessage> messages, string? startAgent = null, OrchestrationOptions? options = null)
     {
         var context = new OrchestrationContext(options);
@@ -477,17 +489,17 @@ public sealed class HandoffOrchestration : Orchestration
     }
 }
 
-/// <summary>Genera, evalúa y corrige hasta cumplir los criterios o agotar las iteraciones.</summary>
+/// <summary>Generates, evaluates and revises until the criteria are met or the iterations run out.</summary>
 public sealed class EvaluatorOptimizerOrchestration(IOrchestrationNode generator, ILanguageModel evaluator, string criteria) : Orchestration
 {
     public override string Name => "evaluator-optimizer";
 
     public int MaxIterations { get; init; } = 3;
 
-    /// <summary>Puntaje mínimo (0-10) para aprobar, además de <c>approved</c>.</summary>
+    /// <summary>Gets or sets the minimum score (0-10) required for approval, in addition to <c>approved</c>.</summary>
     public int? MinScore { get; init; }
 
-    /// <summary>Evaluaciones de la última ejecución.</summary>
+    /// <summary>Evaluations from the last run.</summary>
     public sealed record Evaluation(
         [property: Description("True si el resultado cumple todos los criterios.")] bool Approved,
         [property: Description("Puntaje de 0 a 10.")] int Score,

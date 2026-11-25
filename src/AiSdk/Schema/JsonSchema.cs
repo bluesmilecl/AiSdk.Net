@@ -9,13 +9,13 @@ using System.Text.Json.Serialization.Metadata;
 namespace AiSdk;
 
 /// <summary>
-/// Generación de JSON Schema a partir de tipos .NET (equivalente a usar Zod en el AI SDK).
-/// Usa <see cref="JsonSchemaExporter"/> de System.Text.Json y respeta
-/// <see cref="DescriptionAttribute"/> en tipos, propiedades y parámetros.
+/// JSON Schema generation from .NET types (equivalent to using Zod in the AI SDK).
+/// Uses System.Text.Json's <see cref="JsonSchemaExporter"/> and honors
+/// <see cref="DescriptionAttribute"/> on types, properties and parameters.
 /// </summary>
 public static class JsonSchema
 {
-    /// <summary>Opciones de serialización por defecto: camelCase, enums como texto.</summary>
+    /// <summary>Gets the default serialization options: camelCase, enums as strings.</summary>
     public static JsonSerializerOptions DefaultSerializerOptions { get; } = CreateDefaultOptions();
 
     private static JsonSerializerOptions CreateDefaultOptions()
@@ -34,7 +34,7 @@ public static class JsonSchema
         return options;
     }
 
-    /// <summary>Versión tolerante de unas opciones (para deserializar objetos parciales durante el streaming).</summary>
+    /// <summary>Lenient version of a set of options (for deserializing partial objects during streaming).</summary>
     internal static JsonSerializerOptions Lenient(JsonSerializerOptions options)
     {
         var lenient = new JsonSerializerOptions(options)
@@ -46,14 +46,14 @@ public static class JsonSchema
         return lenient;
     }
 
-    /// <summary>Genera el esquema de <typeparamref name="T"/>.</summary>
+    /// <summary>Generates the schema of <typeparamref name="T"/>.</summary>
     public static JsonElement For<T>(JsonSerializerOptions? options = null) => For(typeof(T), options);
 
-    /// <summary>Genera el esquema de <paramref name="type"/>.</summary>
+    /// <summary>Generates the schema of <paramref name="type"/>.</summary>
     public static JsonElement For(Type type, JsonSerializerOptions? options = null) =>
         JsonSerializer.SerializeToElement(NodeFor(type, options));
 
-    /// <summary>Genera el esquema como <see cref="JsonNode"/> (editable).</summary>
+    /// <summary>Generates the schema as a <see cref="JsonNode"/> (editable).</summary>
     public static JsonNode NodeFor(Type type, JsonSerializerOptions? options = null)
     {
         options ??= DefaultSerializerOptions;
@@ -72,7 +72,7 @@ public static class JsonSchema
     }
 
     /// <summary>
-    /// Crea un esquema de objeto a partir de un conjunto de propiedades (útil para herramientas definidas a mano).
+    /// Creates an object schema from a set of properties (useful for hand-written tools).
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1720:Identifier contains type name", Justification = "Nombre del tipo JSON Schema (\"type\": \"object\").")]
     public static JsonElement Object(IEnumerable<(string Name, JsonNode Schema, bool Required)> properties)
@@ -97,12 +97,12 @@ public static class JsonSchema
         return JsonSerializer.SerializeToElement(obj);
     }
 
-    /// <summary>Parsea un esquema escrito a mano en JSON.</summary>
+    /// <summary>Parses a schema hand-written in JSON.</summary>
     public static JsonElement Parse(string json) => JsonElement.Parse(json);
 
     /// <summary>
-    /// Convierte un esquema al modo "estricto" que exigen OpenAI y Anthropic para
-    /// salidas estructuradas: <c>additionalProperties: false</c> y todas las propiedades requeridas.
+    /// Converts a schema to the "strict" mode that OpenAI and Anthropic require for
+    /// structured outputs: <c>additionalProperties: false</c> and all properties required.
     /// </summary>
     public static JsonElement ToStrict(JsonElement schema)
     {

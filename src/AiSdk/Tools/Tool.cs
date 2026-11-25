@@ -6,32 +6,32 @@ using AiSdk.Internal;
 
 namespace AiSdk;
 
-/// <summary>Contexto disponible durante la ejecución de una herramienta.</summary>
+/// <summary>Context available while a tool is executing.</summary>
 public sealed class ToolExecutionContext
 {
     public required string ToolCallId { get; init; }
 
     public required string ToolName { get; init; }
 
-    /// <summary>Mensajes enviados al modelo en el paso que originó la llamada.</summary>
+    /// <summary>Gets the messages sent to the model in the step that originated the call.</summary>
     public required IReadOnlyList<ModelMessage> Messages { get; init; }
 
     public int StepNumber { get; init; }
 
-    /// <summary>Servicios opcionales (por ejemplo, el <see cref="IServiceProvider"/> de ASP.NET Core).</summary>
+    /// <summary>Gets optional services (for example, the ASP.NET Core <see cref="IServiceProvider"/>).</summary>
     public IServiceProvider? Services { get; init; }
 
-    /// <summary>Estado arbitrario aportado por el llamador (<see cref="CallSettings.Context"/>).</summary>
+    /// <summary>Gets arbitrary state supplied by the caller (<see cref="CallSettings.Context"/>).</summary>
     public IReadOnlyDictionary<string, object?>? Context { get; init; }
 
     internal Action<StreamPart>? Emit { get; init; }
 
-    /// <summary>Manejador de aprobación de la llamada en curso (los sub-agentes lo heredan si no tienen uno propio).</summary>
+    /// <summary>Gets the approval handler of the current call (sub-agents inherit it if they do not have their own).</summary>
     internal Func<ToolApprovalRequest, ValueTask<bool>>? OnToolApproval { get; init; }
 
     /// <summary>
-    /// Envía datos propios a la interfaz mientras la herramienta se ejecuta (progreso, resultados
-    /// intermedios...). Llegan a <c>useChat</c> como partes <c>data-{type}</c>. Solo tiene efecto en streaming.
+    /// Sends custom data to the UI while the tool is executing (progress, intermediate
+    /// results...). It reaches <c>useChat</c> as <c>data-{type}</c> parts. Only has an effect when streaming.
     /// </summary>
     public void WriteData(string type, object? data, string? id = null, bool transient = false) =>
         Emit?.Invoke(new DataStreamPart(type, data is null ? null : System.Text.Json.JsonSerializer.SerializeToNode(data, data.GetType(), JsonSchema.DefaultSerializerOptions))
@@ -41,13 +41,13 @@ public sealed class ToolExecutionContext
         });
 }
 
-/// <summary>Función de ejecución de bajo nivel de una herramienta.</summary>
+/// <summary>Low-level execution function of a tool.</summary>
 public delegate ValueTask<object?> ToolExecuteFunc(JsonElement input, ToolExecutionContext context, CancellationToken cancellationToken);
 
 /// <summary>
-/// Herramienta que el modelo puede invocar (equivalente a <c>tool()</c> del AI SDK).
-/// Si <see cref="Execute"/> es null la herramienta es "de cliente": el bucle del agente
-/// se detiene y devuelve la llamada para que la resuelva el llamador.
+/// Tool that the model can invoke (equivalent to the AI SDK's <c>tool()</c>).
+/// If <see cref="Execute"/> is null, the tool is a "client" tool: the agent loop
+/// stops and returns the call so that the caller can resolve it.
 /// </summary>
 public sealed class Tool
 {
@@ -60,28 +60,28 @@ public sealed class Tool
     public ToolExecuteFunc? Execute { get; init; }
 
     /// <summary>
-    /// Valida la entrada antes de ejecutar (devuelve el mensaje de error o null si es válida).
+    /// Gets the input validation that runs before execution (returns the error message, or null if the input is valid).
     /// <see cref="Create{TInput,TOutput}(string,string,Func{TInput,ToolExecutionContext,CancellationToken,Task{TOutput}},JsonSerializerOptions?)"/>
-    /// y <see cref="FromDelegate"/> la configuran automáticamente.
+    /// and <see cref="FromDelegate"/> configure it automatically.
     /// </summary>
     public Func<JsonElement, string?>? ValidateInput { get; init; }
 
     /// <summary>
-    /// Si devuelve true, la ejecución requiere aprobación mediante <see cref="CallSettings.OnToolApproval"/>
-    /// (human-in-the-loop). Sin manejador, la llamada no se ejecuta y el modelo recibe un error, salvo con
-    /// <see cref="CallSettings.DeferToolApprovals"/>.
+    /// Gets a predicate that, if it returns true, makes execution require approval through
+    /// <see cref="CallSettings.OnToolApproval"/> (human-in-the-loop). Without a handler, the call is not executed and
+    /// the model receives an error, except with <see cref="CallSettings.DeferToolApprovals"/>.
     /// </summary>
     public Func<ToolCallPart, ValueTask<bool>>? NeedsApproval { get; init; }
 
-    /// <summary>Solicita validación estricta del esquema al proveedor.</summary>
+    /// <summary>Gets whether strict schema validation is requested from the provider.</summary>
     public bool Strict { get; init; }
 
     public JsonSerializerOptions SerializerOptions { get; init; } = JsonSchema.DefaultSerializerOptions;
 
-    /// <summary>Proveedor que ejecuta esta herramienta en su servidor (null = herramienta local).</summary>
+    /// <summary>Gets the provider that executes this tool on its server (null = local tool).</summary>
     public string? ProviderName { get; init; }
 
-    /// <summary>Definición cruda que se envía al proveedor (solo herramientas de servidor).</summary>
+    /// <summary>Gets the raw definition sent to the provider (server-side tools only).</summary>
     public JsonObject? ProviderDefinition { get; init; }
 
     public bool IsProviderTool => ProviderDefinition is not null;
@@ -94,8 +94,8 @@ public sealed class Tool
     };
 
     /// <summary>
-    /// Herramienta ejecutada por el proveedor (búsqueda web, ejecución de código...).
-    /// Normalmente se crea con las fábricas de cada proveedor (<c>AnthropicTools</c>, <c>OpenAITools</c>).
+    /// Tool executed by the provider (web search, code execution...).
+    /// Usually created with each provider's factories (<c>AnthropicTools</c>, <c>OpenAITools</c>).
     /// </summary>
     public static Tool ProviderDefined(string providerName, string name, JsonObject definition) => new()
     {
@@ -106,7 +106,7 @@ public sealed class Tool
         ProviderDefinition = definition,
     };
 
-    /// <summary>Marca la herramienta como sujeta a aprobación humana.</summary>
+    /// <summary>Marks the tool as subject to human approval.</summary>
     public Tool RequireApproval(Func<ToolCallPart, bool>? predicate = null) => new()
     {
         Name = Name,
@@ -125,7 +125,7 @@ public sealed class Tool
     // Fábricas tipadas
     // ------------------------------------------------------------------
 
-    /// <summary>Crea una herramienta cuyo input es <typeparamref name="TInput"/> (el esquema se genera automáticamente).</summary>
+    /// <summary>Creates a tool whose input is <typeparamref name="TInput"/> (the schema is generated automatically).</summary>
     public static Tool Create<TInput, TOutput>(
         string name,
         string description,
@@ -168,7 +168,7 @@ public sealed class Tool
     public static Tool Create<TInput, TOutput>(string name, string description, Func<TInput, TOutput> execute) =>
         Create<TInput, TOutput>(name, description, (input, _, _) => Task.FromResult(execute(input)));
 
-    /// <summary>Herramienta sin función de ejecución (se resuelve en el cliente).</summary>
+    /// <summary>Creates a tool without an execution function (it is resolved on the client).</summary>
     public static Tool Define<TInput>(string name, string description) => new()
     {
         Name = name,
@@ -176,7 +176,7 @@ public sealed class Tool
         InputSchema = JsonSchema.For<TInput>(),
     };
 
-    /// <summary>Herramienta con esquema JSON escrito a mano.</summary>
+    /// <summary>Creates a tool with a hand-written JSON schema.</summary>
     public static Tool FromSchema(string name, string description, JsonElement inputSchema, ToolExecuteFunc? execute) => new()
     {
         Name = name,
@@ -186,10 +186,10 @@ public sealed class Tool
     };
 
     /// <summary>
-    /// Crea una herramienta a partir de cualquier delegado o método. Cada parámetro se
-    /// convierte en una propiedad del esquema; usa <see cref="DescriptionAttribute"/>
-    /// para documentarlos. Los parámetros <see cref="CancellationToken"/>,
-    /// <see cref="ToolExecutionContext"/> e <see cref="IServiceProvider"/> se inyectan.
+    /// Creates a tool from any delegate or method. Each parameter
+    /// becomes a schema property; use <see cref="DescriptionAttribute"/>
+    /// to document them. <see cref="CancellationToken"/>,
+    /// <see cref="ToolExecutionContext"/> and <see cref="IServiceProvider"/> parameters are injected.
     /// </summary>
     public static Tool FromDelegate(string name, string description, Delegate function, JsonSerializerOptions? serializerOptions = null)
     {

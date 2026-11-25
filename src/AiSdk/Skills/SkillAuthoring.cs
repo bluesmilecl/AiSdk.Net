@@ -3,13 +3,13 @@ using System.Text;
 
 namespace AiSdk.Skills;
 
-/// <summary>Construcción fluida de skills por código.</summary>
+/// <summary>Fluent construction of skills in code.</summary>
 /// <example>
 /// <code>
-/// var skill = new SkillBuilder("revisar-contratos")
-///     .WithDescription("Revisa contratos de arriendo chilenos. Úsala cuando el usuario adjunte un contrato.")
-///     .WithInstructions("# Revisión\n\n1. Identifica las partes...")
-///     .AddFile("references/clausulas.md", clausulas)
+/// var skill = new SkillBuilder("review-contracts")
+///     .WithDescription("Reviews Chilean lease agreements. Use it when the user attaches a contract.")
+///     .WithInstructions("# Review\n\n1. Identify the parties...")
+///     .AddFile("references/clauses.md", clauses)
 ///     .Build();
 /// </code>
 /// </example>
@@ -60,7 +60,7 @@ public sealed class SkillBuilder(string name)
         return this;
     }
 
-    /// <summary>Solo el usuario puede invocarla (<c>disable-model-invocation: true</c>).</summary>
+    /// <summary>Makes the skill invocable only by the user (<c>disable-model-invocation: true</c>).</summary>
     public SkillBuilder UserInvocableOnly()
     {
         _userOnly = true;
@@ -75,10 +75,10 @@ public sealed class SkillBuilder(string name)
         return this;
     }
 
-    /// <summary>Crea la skill (lanza <see cref="FormatException"/> si no cumple el estándar).</summary>
+    /// <summary>Builds the skill (throws <see cref="FormatException"/> if it does not meet the standard).</summary>
     /// <param name="trusted">
-    /// Si la skill es de confianza (sus scripts podrán ejecutarse). Por defecto no: pase <c>true</c> solo para skills
-    /// escritas por usted, nunca para contenido que provenga de un modelo, de un usuario o de terceros.
+    /// Whether the skill is trusted (its scripts can run). Not by default: pass <c>true</c> only for skills you wrote
+    /// yourself, never for content that comes from a model, a user or a third party.
     /// </param>
     public Skill Build(bool trusted = false)
     {
@@ -100,10 +100,10 @@ public sealed class SkillBuilder(string name)
     }
 }
 
-/// <summary>Redacta skills con un modelo, siguiendo las buenas prácticas del estándar.</summary>
+/// <summary>Drafts skills with a model, following the standard's best practices.</summary>
 public static class SkillGenerator
 {
-    /// <summary>Guía de redacción que se le da al modelo (resumen de agentskills.io y dotnet/skills).</summary>
+    /// <summary>Authoring guide given to the model (a summary of agentskills.io and dotnet/skills).</summary>
     public const string AuthoringGuide =
         """
         Redacta una skill del estándar Agent Skills:
@@ -128,8 +128,8 @@ public static class SkillGenerator
         [property: Description("Contenido Markdown.")] string Content);
 
     /// <summary>
-    /// Redacta una skill a partir de un objetivo y, opcionalmente, material de referencia (procedimientos,
-    /// ejemplos, documentación interna). Reintenta corrigiendo si el resultado no pasa la validación.
+    /// Drafts a skill from a goal and, optionally, reference material (procedures,
+    /// examples, internal documentation). Retries with corrections if the result does not pass validation.
     /// </summary>
     public static async Task<Skill> GenerateAsync(
         ILanguageModel model,
@@ -172,36 +172,38 @@ public static class SkillGenerator
     }
 }
 
-/// <summary>Opciones de <see cref="SkillAuthoringTools"/>.</summary>
+/// <summary>Options for <see cref="SkillAuthoringTools"/>.</summary>
 public sealed class SkillAuthoringOptions
 {
     /// <summary>
-    /// Carpeta donde se guardan las skills creadas (si es null, solo se agregan a la librería en memoria). Las skills
-    /// se guardan siempre con el marcador <see cref="SkillLibrary.ProvenanceFileName"/>: al volver a cargarlas son
-    /// no confiables aunque la carpeta se cargue como de confianza (p. ej. con <c>AddSkills(dir)</c>).
+    /// Gets or sets the folder where created skills are saved (if null, they are only added to the in-memory library).
+    /// Skills are always saved with the <see cref="SkillLibrary.ProvenanceFileName"/> marker: when reloaded they are
+    /// untrusted even if the folder is loaded as trusted (e.g. with <c>AddSkills(dir)</c>).
     /// </summary>
     public string? Directory { get; init; }
 
-    /// <summary>Permite sobrescribir skills existentes (en la librería o en <see cref="Directory"/>).</summary>
+    /// <summary>
+    /// Gets or sets whether existing skills can be overwritten (in the library or in <see cref="Directory"/>).
+    /// </summary>
     public bool AllowOverwrite { get; init; }
 
     /// <summary>
-    /// Si la copia en memoria de las skills creadas por el agente se marca de confianza (sus scripts podrían
-    /// ejecutarse). Por defecto no. No afecta a la copia en disco, que siempre queda marcada como no confiable.
+    /// Gets or sets whether the in-memory copy of skills created by the agent is marked as trusted (their scripts could
+    /// run). Not by default. It does not affect the copy on disk, which is always marked as untrusted.
     /// </summary>
     public bool TrustCreatedSkills { get; init; }
 
     /// <summary>
-    /// Permite que <c>create_skill</c> incluya scripts (archivos en <c>scripts/</c> o con extensiones ejecutables como
-    /// <c>.py</c>, <c>.sh</c> o <c>.js</c>). Por defecto no: un agente manipulado por una inyección de prompt no
-    /// debería poder dejar código guardado. Aun permitiéndolos, la skill guardada queda marcada como no confiable.
+    /// Gets or sets whether <c>create_skill</c> can include scripts (files in <c>scripts/</c> or with executable
+    /// extensions such as <c>.py</c>, <c>.sh</c> or <c>.js</c>). Not by default: an agent manipulated by a prompt
+    /// injection should not be able to leave code saved. Even when allowed, the saved skill is marked as untrusted.
     /// </summary>
     public bool AllowScripts { get; init; }
 }
 
 /// <summary>
-/// Herramientas para que un agente cree skills (como el "skill-creator" de Claude): convierte un flujo de
-/// trabajo exitoso en una skill reutilizable, la valida y la registra.
+/// Tools that let an agent create skills (like Claude's "skill-creator"): turns a successful
+/// workflow into a reusable skill, validates it and registers it.
 /// </summary>
 public static class SkillAuthoringTools
 {
@@ -279,14 +281,14 @@ public static class SkillAuthoringTools
         ];
     }
 
-    /// <summary>Extensiones que se consideran código ejecutable (además de todo lo que esté en <c>scripts/</c>).</summary>
+    /// <summary>Extensions considered executable code (in addition to everything in <c>scripts/</c>).</summary>
     private static readonly HashSet<string> ExecutableExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".py", ".pyw", ".sh", ".bash", ".zsh", ".fish", ".js", ".mjs", ".cjs", ".ts", ".mts", ".cts", ".ps1", ".psm1", ".psd1",
         ".bat", ".cmd", ".com", ".exe", ".dll", ".so", ".dylib", ".rb", ".pl", ".php", ".lua", ".jar", ".vbs", ".wsf", ".msi", ".csx", ".cs",
     };
 
-    /// <summary>Valida las rutas de los archivos: sin archivos ocultos ni SKILL.md, y sin scripts salvo que se permitan.</summary>
+    /// <summary>Validates the file paths: no hidden files or SKILL.md, and no scripts unless they are allowed.</summary>
     private static List<string> CheckFiles(IReadOnlyList<FileInput> files, SkillAuthoringOptions options)
     {
         var errors = new List<string>();

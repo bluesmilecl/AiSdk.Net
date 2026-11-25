@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace AiSdk;
 
-/// <summary>Rol de un mensaje dentro de la conversación.</summary>
+/// <summary>Role of a message within the conversation.</summary>
 [JsonConverter(typeof(JsonStringEnumConverter<ChatRole>))]
 public enum ChatRole
 {
@@ -14,8 +14,8 @@ public enum ChatRole
 }
 
 /// <summary>
-/// Mensaje independiente del proveedor (equivalente a <c>ModelMessage</c> del AI SDK).
-/// Es serializable a JSON, por lo que puede persistirse tal cual en una base de datos.
+/// Provider-independent message (equivalent to the AI SDK's <c>ModelMessage</c>).
+/// It is JSON-serializable, so it can be persisted as is in a database.
 /// </summary>
 public sealed record ModelMessage
 {
@@ -30,7 +30,7 @@ public sealed record ModelMessage
 
     public IReadOnlyList<ContentPart> Content { get; init; }
 
-    /// <summary>Texto concatenado de todas las partes <see cref="TextPart"/>.</summary>
+    /// <summary>Gets the concatenated text of all the <see cref="TextPart"/> parts.</summary>
     [JsonIgnore]
     public string Text => string.Concat(Content.OfType<TextPart>().Select(p => p.Text));
 
@@ -47,7 +47,7 @@ public sealed record ModelMessage
     public static ModelMessage Tool(params ToolResultPart[] results) => new(ChatRole.Tool, results);
 }
 
-/// <summary>Parte de contenido de un mensaje.</summary>
+/// <summary>Content part of a message.</summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(TextPart), "text")]
 [JsonDerivedType(typeof(ReasoningPart), "reasoning")]
@@ -60,19 +60,19 @@ public sealed record ModelMessage
 public abstract record ContentPart
 {
     /// <summary>
-    /// Metadatos específicos del proveedor que deben conservarse entre turnos
-    /// (por ejemplo la firma de un bloque de razonamiento de Anthropic).
-    /// Las claves usan el formato <c>"proveedor.campo"</c>.
+    /// Gets the provider-specific metadata that must be preserved across turns
+    /// (for example, the signature of an Anthropic reasoning block).
+    /// Keys use the <c>"provider.field"</c> format.
     /// </summary>
     public IReadOnlyDictionary<string, JsonElement>? ProviderMetadata { get; init; }
 }
 
 public sealed record TextPart(string Text) : ContentPart;
 
-/// <summary>Razonamiento ("thinking") emitido por el modelo.</summary>
+/// <summary>Reasoning ("thinking") emitted by the model.</summary>
 public sealed record ReasoningPart(string Text) : ContentPart;
 
-/// <summary>Imagen, ya sea en bytes o mediante URL.</summary>
+/// <summary>Image, either as bytes or through a URL.</summary>
 public sealed record ImagePart : ContentPart
 {
     public byte[]? Data { get; init; }
@@ -81,7 +81,7 @@ public sealed record ImagePart : ContentPart
 
     public string MediaType { get; init; } = "image/png";
 
-    /// <summary>Id de un archivo ya subido al proveedor (Files API de Anthropic u OpenAI).</summary>
+    /// <summary>Gets the id of a file already uploaded to the provider (Anthropic or OpenAI Files API).</summary>
     public string? FileId { get; init; }
 
     public static ImagePart FromFileId(string fileId, string mediaType = "image/png") => new() { FileId = fileId, MediaType = mediaType };
@@ -91,7 +91,7 @@ public sealed record ImagePart : ContentPart
     public static ImagePart FromUrl(string url, string mediaType = "image/png") => new() { Url = new Uri(url), MediaType = mediaType };
 }
 
-/// <summary>Archivo (PDF, texto, audio...).</summary>
+/// <summary>File (PDF, text, audio...).</summary>
 public sealed record FilePart : ContentPart
 {
     public byte[]? Data { get; init; }
@@ -102,43 +102,43 @@ public sealed record FilePart : ContentPart
 
     public string? Filename { get; init; }
 
-    /// <summary>Id de un archivo ya subido al proveedor (Files API de Anthropic u OpenAI).</summary>
+    /// <summary>Gets the id of a file already uploaded to the provider (Anthropic or OpenAI Files API).</summary>
     public string? FileId { get; init; }
 
     public static FilePart FromFileId(string fileId, string mediaType = "application/pdf", string? filename = null) =>
         new() { FileId = fileId, MediaType = mediaType, Filename = filename };
 }
 
-/// <summary>Llamada a una herramienta solicitada por el modelo.</summary>
+/// <summary>Tool call requested by the model.</summary>
 public sealed record ToolCallPart(string ToolCallId, string ToolName, JsonElement Input) : ContentPart
 {
-    /// <summary>True si el proveedor no pudo interpretar el JSON de entrada (p. ej. salida truncada).</summary>
+    /// <summary>True if the provider could not parse the input JSON (e.g. truncated output).</summary>
     public bool InvalidInput { get; init; }
 
-    /// <summary>True si la herramienta la ejecutó el proveedor (búsqueda web, ejecución de código...).</summary>
+    /// <summary>True if the tool was executed by the provider (web search, code execution...).</summary>
     public bool ProviderExecuted { get; init; }
 }
 
-/// <summary>Resultado de la ejecución de una herramienta.</summary>
+/// <summary>Result of a tool execution.</summary>
 public sealed record ToolResultPart(string ToolCallId, string ToolName, JsonElement Output) : ContentPart
 {
     public bool IsError { get; init; }
 
-    /// <summary>True si el resultado lo produjo el proveedor (herramienta de servidor).</summary>
+    /// <summary>True if the result was produced by the provider (server-side tool).</summary>
     public bool ProviderExecuted { get; init; }
 }
 
-/// <summary>Fuente o cita usada por el modelo (búsqueda web, documentos citados...).</summary>
+/// <summary>Source or citation used by the model (web search, cited documents...).</summary>
 public sealed record SourcePart(string Id, string Url) : ContentPart
 {
     public string? Title { get; init; }
 
-    /// <summary>Texto citado de la fuente, si el proveedor lo indica.</summary>
+    /// <summary>Gets the text cited from the source, if the provider reports it.</summary>
     public string? CitedText { get; init; }
 }
 
 /// <summary>
-/// Bloque específico de un proveedor que el SDK no interpreta pero que debe
-/// conservarse y reenviarse tal cual al mismo proveedor en los turnos siguientes.
+/// Provider-specific block that the SDK does not interpret but that must be
+/// preserved and sent back as is to the same provider in subsequent turns.
 /// </summary>
 public sealed record RawProviderPart(string Provider, JsonElement Data) : ContentPart;

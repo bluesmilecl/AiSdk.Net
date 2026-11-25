@@ -6,61 +6,63 @@ using System.Text.Json.Nodes;
 
 namespace AiSdk.Http;
 
-/// <summary>Evento Server-Sent Events.</summary>
+/// <summary>Server-Sent Events event.</summary>
 public readonly record struct SseEvent(string? Event, string Data)
 {
     /// <summary>
-    /// True si el stream terminó sin la línea en blanco que cierra el evento (conexión cortada a mitad del evento,
-    /// o un servidor que no la envía al final): sus datos pueden estar truncados.
+    /// True if the stream ended without the blank line that closes the event (connection dropped mid-event,
+    /// or a server that does not send it at the end): its data may be truncated.
     /// </summary>
     public bool Incomplete { get; init; }
 }
 
-/// <summary>Límites al leer un stream SSE (ver <see cref="ProviderHttp.ReadSseAsync(HttpResponseMessage, SseReadOptions, CancellationToken)"/>).</summary>
+/// <summary>Limits for reading an SSE stream (see <see cref="ProviderHttp.ReadSseAsync(HttpResponseMessage, SseReadOptions, CancellationToken)"/>).</summary>
 public sealed record SseReadOptions
 {
-    /// <summary>Caracteres máximos de una línea (16 M por defecto). Una línea mayor detiene el stream con un error.</summary>
+    /// <summary>
+    /// Gets or sets the maximum characters in a line (16 M by default). A longer line stops the stream with an error.
+    /// </summary>
     public int MaxLineChars { get; init; } = 16 * 1024 * 1024;
 
-    /// <summary>Caracteres máximos de los datos de un evento (16 M por defecto).</summary>
+    /// <summary>Gets or sets the maximum characters in an event's data (16 M by default).</summary>
     public int MaxEventChars { get; init; } = 16 * 1024 * 1024;
 
     /// <summary>
-    /// Tiempo máximo sin recibir datos una vez llegadas las cabeceras (null = sin límite). Al superarse se lanza
-    /// <see cref="TimeoutException"/> (que se reintenta si aún no se emitió nada).
+    /// Gets or sets the maximum time without receiving data once the headers have arrived (null = no limit). When
+    /// exceeded, a <see cref="TimeoutException"/> is thrown (which is retried if nothing has been emitted yet).
     /// </summary>
     public TimeSpan? IdleTimeout { get; init; }
 
-    /// <summary>Límites por defecto, sin tiempo de inactividad.</summary>
+    /// <summary>Gets the default limits, without an idle timeout.</summary>
     public static SseReadOptions Default { get; } = new();
 }
 
-/// <summary>Utilidades HTTP compartidas por los proveedores.</summary>
+/// <summary>HTTP utilities shared by the providers.</summary>
 public static class ProviderHttp
 {
     private static readonly Lazy<HttpClient> SharedClient = new(() => new HttpClient(CreateDefaultHandler()) { Timeout = TimeSpan.FromMinutes(10) });
 
     /// <summary>
-    /// Cliente compartido por los proveedores cuando no se indica uno. Renueva las conexiones cada 5 minutos (para
-    /// respetar cambios de DNS) y sigue redirecciones con <see cref="SafeRedirectHandler"/>: las claves de API no se
-    /// reenvían a otro origen.
+    /// Gets the client shared by the providers when none is specified. It renews connections every 5 minutes (to
+    /// honor DNS changes) and follows redirects with <see cref="SafeRedirectHandler"/>: API keys are not
+    /// forwarded to another origin.
     /// </summary>
     public static HttpClient DefaultClient => SharedClient.Value;
 
     /// <summary>
-    /// Límites con que los modelos de los proveedores leen sus streams: 16 M caracteres por línea/evento y
-    /// 10 minutos de inactividad como máximo (sin él, un servidor que deja de enviar datos colgaría la llamada).
+    /// Gets or sets the limits with which provider models read their streams: 16 M characters per line/event and
+    /// at most 10 minutes of inactivity (without it, a server that stops sending data would hang the call).
     /// </summary>
     public static SseReadOptions ModelStreamOptions { get; set; } = new() { IdleTimeout = TimeSpan.FromMinutes(10) };
 
-    /// <summary>Handler recomendado para clientes de proveedores: sin redirecciones automáticas inseguras y con conexiones renovadas.</summary>
+    /// <summary>Creates the recommended handler for provider clients: no unsafe automatic redirects, and renewed connections.</summary>
     public static HttpMessageHandler CreateDefaultHandler() => new SafeRedirectHandler(new SocketsHttpHandler
     {
         AllowAutoRedirect = false,
         PooledConnectionLifetime = TimeSpan.FromMinutes(5),
     });
 
-    /// <summary>Resuelve una API key a partir del valor explícito o de una variable de entorno.</summary>
+    /// <summary>Resolves an API key from the explicit value or from an environment variable.</summary>
     public static string LoadApiKey(string? apiKey, string environmentVariable, string providerName) =>
         !string.IsNullOrWhiteSpace(apiKey)
             ? apiKey
@@ -86,7 +88,7 @@ public static class ProviderHttp
         return request;
     }
 
-    /// <summary>Crea una petición sin cuerpo (GET, DELETE...) con las cabeceras indicadas.</summary>
+    /// <summary>Creates a request without a body (GET, DELETE...) with the given headers.</summary>
     public static HttpRequestMessage CreateRequest(HttpMethod method, Uri url, IEnumerable<KeyValuePair<string, string>> headers)
     {
         var request = new HttpRequestMessage(method, url);
@@ -98,7 +100,7 @@ public static class ProviderHttp
         return request;
     }
 
-    /// <summary>Envía una petición y devuelve el JSON de la respuesta (lanza <see cref="ApiCallException"/> si falla).</summary>
+    /// <summary>Sends a request and returns the response JSON (throws <see cref="ApiCallException"/> on failure).</summary>
     public static async Task<JsonObject> SendJsonAsync(HttpClient client, HttpRequestMessage request, CancellationToken cancellationToken)
     {
         using (request)
@@ -109,7 +111,7 @@ public static class ProviderHttp
         }
     }
 
-    /// <summary>Lee un cuerpo JSONL (una línea JSON por elemento).</summary>
+    /// <summary>Reads a JSONL body (one JSON line per element).</summary>
     public static async IAsyncEnumerable<JsonObject> ReadJsonLinesAsync(HttpResponseMessage response, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
@@ -123,7 +125,7 @@ public static class ProviderHttp
         }
     }
 
-    /// <summary>Contenido multipart con un archivo y campos de texto.</summary>
+    /// <summary>Creates multipart content with a file and text fields.</summary>
     public static MultipartFormDataContent FileForm(byte[] data, string filename, string mediaType, IEnumerable<KeyValuePair<string, string>>? fields = null)
     {
         var form = new MultipartFormDataContent();
@@ -145,7 +147,9 @@ public static class ProviderHttp
         _ => null,
     };
 
-    /// <summary>Envía la petición y lanza <see cref="ApiCallException"/> si la respuesta no es exitosa.</summary>
+    /// <summary>
+    /// Sends the request and throws <see cref="ApiCallException"/> if the response is not successful.
+    /// </summary>
     public static async Task<HttpResponseMessage> SendAsync(HttpClient client, HttpRequestMessage request, bool stream, CancellationToken cancellationToken)
     {
         var response = await client.SendAsync(
@@ -174,14 +178,14 @@ public static class ProviderHttp
                ?? throw new AiSdkException("Respuesta JSON inválida del proveedor.");
     }
 
-    /// <summary>Lee un stream SSE evento por evento, con los límites de <see cref="SseReadOptions.Default"/>.</summary>
+    /// <summary>Reads an SSE stream event by event, with the limits of <see cref="SseReadOptions.Default"/>.</summary>
     public static IAsyncEnumerable<SseEvent> ReadSseAsync(HttpResponseMessage response, CancellationToken cancellationToken) =>
         ReadSseAsync(response, SseReadOptions.Default, cancellationToken);
 
     /// <summary>
-    /// Lee un stream SSE evento por evento. Ignora comentarios (<c>:</c>, keep-alive), limita el tamaño de líneas y
-    /// eventos, y con <see cref="SseReadOptions.IdleTimeout"/> lanza <see cref="TimeoutException"/> si el servidor deja
-    /// de enviar datos. Un evento sin la línea en blanco final se entrega con <see cref="SseEvent.Incomplete"/>.
+    /// Reads an SSE stream event by event. Ignores comments (<c>:</c>, keep-alive), limits the size of lines and
+    /// events, and with <see cref="SseReadOptions.IdleTimeout"/> throws <see cref="TimeoutException"/> if the server stops
+    /// sending data. An event without the final blank line is delivered with <see cref="SseEvent.Incomplete"/>.
     /// </summary>
     public static async IAsyncEnumerable<SseEvent> ReadSseAsync(
         HttpResponseMessage response,
@@ -255,10 +259,10 @@ public static class ProviderHttp
     }
 
     /// <summary>
-    /// Interpreta los datos de un evento SSE de un modelo como objeto JSON. Devuelve null (el evento se ignora) si no
-    /// son JSON, como <c>[DONE]</c> o los keep-alive de texto ("ping") de algunos servidores compatibles, o si es el
-    /// último evento cortado al cerrarse la conexión. Un evento completo con JSON inválido lanza
-    /// <see cref="AiSdkException"/> con un mensaje claro.
+    /// Parses the data of a model's SSE event as a JSON object. Returns null (the event is ignored) if it is not
+    /// JSON, such as <c>[DONE]</c> or the text keep-alives ("ping") of some compatible servers, or if it is the
+    /// last event, cut off when the connection closed. A complete event with invalid JSON throws
+    /// <see cref="AiSdkException"/> with a clear message.
     /// </summary>
     public static JsonObject? ParseSseJson(SseEvent sse, string providerName)
     {
@@ -283,7 +287,7 @@ public static class ProviderHttp
         }
     }
 
-    /// <summary>Lector de líneas SSE (CR, LF o CRLF) con tamaño máximo y tiempo de inactividad.</summary>
+    /// <summary>SSE line reader (CR, LF or CRLF) with a maximum size and an idle timeout.</summary>
     private sealed class SseLineReader(StreamReader reader, SseReadOptions options, CancellationTokenSource idle, CancellationToken cancellationToken)
     {
         private readonly char[] _buffer = new char[8192];
@@ -378,13 +382,13 @@ public static class ProviderHttp
 }
 
 /// <summary>
-/// Sigue redirecciones de forma segura para llamadas autenticadas: solo en GET y HEAD, como máximo
-/// <see cref="MaxRedirects"/>, nunca de HTTPS a HTTP y, si cambia el origen (esquema, host o puerto), sin reenviar
-/// ninguna cabecera salvo <c>Accept</c>, <c>Accept-Language</c> y <c>User-Agent</c>: .NET solo quita
-/// <c>Authorization</c> al redirigir, no cabeceras propias como <c>x-api-key</c> o <c>x-goog-api-key</c>.
-/// El resto de las redirecciones (p. ej. en un POST) se devuelve tal cual y el proveedor la informa como error.
+/// Follows redirects safely for authenticated calls: only for GET and HEAD, at most
+/// <see cref="MaxRedirects"/>, never from HTTPS to HTTP and, if the origin (scheme, host or port) changes, without forwarding
+/// any header except <c>Accept</c>, <c>Accept-Language</c> and <c>User-Agent</c>: .NET only removes
+/// <c>Authorization</c> on redirect, not custom headers such as <c>x-api-key</c> or <c>x-goog-api-key</c>.
+/// Any other redirect (e.g. on a POST) is returned as is, and the provider reports it as an error.
 /// </summary>
-/// <remarks>El handler interno debe tener las redirecciones automáticas desactivadas (<c>AllowAutoRedirect = false</c>).</remarks>
+/// <remarks>The inner handler must have automatic redirects disabled (<c>AllowAutoRedirect = false</c>).</remarks>
 public sealed class SafeRedirectHandler : DelegatingHandler
 {
     private static readonly HashSet<string> CrossOriginHeaders = new(StringComparer.OrdinalIgnoreCase) { "Accept", "Accept-Language", "User-Agent" };
@@ -398,7 +402,7 @@ public sealed class SafeRedirectHandler : DelegatingHandler
     {
     }
 
-    /// <summary>Redirecciones máximas que se siguen (5 por defecto).</summary>
+    /// <summary>Gets or sets the maximum number of redirects followed (5 by default).</summary>
     public int MaxRedirects { get; init; } = 5;
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)

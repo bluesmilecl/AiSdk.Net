@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace AiSdk.Internal;
 
-/// <summary>Reconstruye un <see cref="LanguageModelResult"/> a partir de las partes de un stream.</summary>
+/// <summary>Rebuilds a <see cref="LanguageModelResult"/> from the parts of a stream.</summary>
 public sealed class StreamAccumulator
 {
     private readonly List<object> _blocks = [];

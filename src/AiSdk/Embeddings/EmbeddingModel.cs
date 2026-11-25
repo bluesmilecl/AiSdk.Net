@@ -1,13 +1,13 @@
 namespace AiSdk;
 
-/// <summary>Modelo de embeddings (equivalente a <c>EmbeddingModelV2</c>).</summary>
+/// <summary>Embedding model (equivalent to <c>EmbeddingModelV2</c>).</summary>
 public interface IEmbeddingModel
 {
     string Provider { get; }
 
     string ModelId { get; }
 
-    /// <summary>Máximo de valores por llamada (null = sin límite).</summary>
+    /// <summary>Gets the maximum number of values per call (null = no limit).</summary>
     int? MaxEmbeddingsPerCall { get; }
 
     Task<EmbeddingModelResult> EmbedAsync(IReadOnlyList<string> values, CancellationToken cancellationToken = default);

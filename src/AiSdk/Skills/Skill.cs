@@ -5,55 +5,64 @@ using System.Text;
 namespace AiSdk.Skills;
 
 /// <summary>
-/// Una skill según el estándar abierto <see href="https://agentskills.io">Agent Skills</see>
-/// (Claude, Copilot, Codex, Cursor...): una carpeta con <c>SKILL.md</c> (nombre, descripción e
-/// instrucciones) y, opcionalmente, <c>references/</c>, <c>scripts/</c> y <c>assets/</c>.
+/// A skill according to the <see href="https://agentskills.io">Agent Skills</see> open standard
+/// (Claude, Copilot, Codex, Cursor...): a folder with <c>SKILL.md</c> (name, description and
+/// instructions) and, optionally, <c>references/</c>, <c>scripts/</c> and <c>assets/</c>.
 /// </summary>
 /// <remarks>
-/// El agente ve solo nombre y descripción de cada skill (≈100 tokens); carga las instrucciones al
-/// activarla y los archivos de referencia solo cuando los necesita (divulgación progresiva).
+/// The agent only sees the name and description of each skill (≈100 tokens); it loads the instructions when
+/// activating it and the reference files only when it needs them (progressive disclosure).
 /// </remarks>
 public sealed record Skill
 {
-    /// <summary>Nombre: 1-64 caracteres, minúsculas, números y guiones; igual al nombre de la carpeta.</summary>
+    /// <summary>
+    /// Gets the name: 1-64 characters, lowercase letters, digits and hyphens; equal to the folder name.
+    /// </summary>
     public required string Name { get; init; }
 
-    /// <summary>Qué hace y cuándo usarla (1-1024 caracteres). Es lo que el modelo usa para decidir activarla.</summary>
+    /// <summary>
+    /// Gets what the skill does and when to use it (1-1024 characters). It is what the model uses to decide
+    /// whether to activate the skill.
+    /// </summary>
     public required string Description { get; init; }
 
-    /// <summary>Cuerpo Markdown de <c>SKILL.md</c> con las instrucciones.</summary>
+    /// <summary>Gets the Markdown body of <c>SKILL.md</c> with the instructions.</summary>
     public required string Instructions { get; init; }
 
     public string? License { get; init; }
 
-    /// <summary>Requisitos de entorno (máx. 500 caracteres), p. ej. "Requiere Python 3 y acceso a internet".</summary>
+    /// <summary>
+    /// Gets the environment requirements (max. 500 characters), e.g. "Requires Python 3 and internet access".
+    /// </summary>
     public string? Compatibility { get; init; }
 
     public IReadOnlyDictionary<string, string> Metadata { get; init; } = new Dictionary<string, string>();
 
-    /// <summary>Herramientas preaprobadas (<c>allowed-tools</c>, experimental en el estándar).</summary>
+    /// <summary>Gets the pre-approved tools (<c>allowed-tools</c>, experimental in the standard).</summary>
     public IReadOnlyList<string> AllowedTools { get; init; } = [];
 
-    /// <summary>Otros campos del frontmatter (extensiones de cada cliente, p. ej. <c>disable-model-invocation</c>).</summary>
+    /// <summary>Gets other frontmatter fields (client-specific extensions, e.g. <c>disable-model-invocation</c>).</summary>
     public IReadOnlyDictionary<string, object?> Extra { get; init; } = new Dictionary<string, object?>();
 
-    /// <summary>Archivos de la skill (además de SKILL.md).</summary>
+    /// <summary>Gets the skill's files (in addition to SKILL.md).</summary>
     public ISkillFiles Files { get; init; } = SkillFiles.Empty;
 
-    /// <summary>Origen (ruta, URL o nombre de recurso), informativo.</summary>
+    /// <summary>Gets the origin (path, URL or resource name), for information only.</summary>
     public string? Location { get; init; }
 
     /// <summary>
-    /// Si es de confianza. Las skills de terceros pueden contener instrucciones o scripts maliciosos:
-    /// por defecto sus scripts no se ejecutan (ver <see cref="SkillToolOptions.AllowUntrustedScripts"/>).
+    /// Gets whether the skill is trusted. Third-party skills may contain malicious instructions or scripts:
+    /// by default their scripts are not executed (see <see cref="SkillToolOptions.AllowUntrustedScripts"/>).
     /// </summary>
     public bool Trusted { get; init; }
 
-    /// <summary>True si el modelo puede activarla por sí mismo (false con <c>disable-model-invocation: true</c>).</summary>
+    /// <summary>
+    /// True if the model can activate the skill on its own (false with <c>disable-model-invocation: true</c>).
+    /// </summary>
     public bool ModelInvocable =>
         !(Extra.TryGetValue("disable-model-invocation", out var value) && string.Equals(value?.ToString(), "true", StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>Crea una skill a partir del contenido de <c>SKILL.md</c>.</summary>
+    /// <summary>Creates a skill from the content of <c>SKILL.md</c>.</summary>
     public static Skill Parse(string skillMarkdown, ISkillFiles? files = null, string? location = null, bool trusted = false)
     {
         var (frontmatter, body) = SkillMarkdown.Parse(skillMarkdown);
@@ -86,14 +95,14 @@ public sealed record Skill
         };
     }
 
-    /// <summary>Contenido de <c>SKILL.md</c>.</summary>
+    /// <summary>Returns the content of <c>SKILL.md</c>.</summary>
     public string ToMarkdown() => SkillMarkdown.Write(this);
 
-    /// <summary>Valida contra el estándar (nombre, descripción, tamaños, referencias).</summary>
+    /// <summary>Validates against the standard (name, description, sizes, references).</summary>
     public SkillValidationResult Validate(string? directoryName = null) => SkillValidator.Validate(this, directoryName);
 }
 
-/// <summary>Archivos de una skill (rutas relativas con <c>/</c>, sin incluir <c>SKILL.md</c>).</summary>
+/// <summary>Files of a skill (relative paths with <c>/</c>, not including <c>SKILL.md</c>).</summary>
 public interface ISkillFiles
 {
     IReadOnlyList<string> List();
@@ -101,7 +110,7 @@ public interface ISkillFiles
     Task<byte[]?> ReadAsync(string path, CancellationToken cancellationToken = default);
 }
 
-/// <summary>Implementaciones de <see cref="ISkillFiles"/>.</summary>
+/// <summary>Implementations of <see cref="ISkillFiles"/>.</summary>
 public static class SkillFiles
 {
     public static ISkillFiles Empty { get; } = new InMemory(new Dictionary<string, byte[]>());
@@ -112,14 +121,14 @@ public static class SkillFiles
         new InMemory(files.ToDictionary(kv => kv.Key, kv => Encoding.UTF8.GetBytes(kv.Value)));
 
     /// <summary>
-    /// Archivos leídos desde una carpeta. No sigue enlaces simbólicos ni puntos de reanálisis (junctions): un
-    /// archivo o carpeta enlazada dentro de la skill se ignora, para que no pueda exponer archivos de fuera.
+    /// Files read from a folder. Does not follow symbolic links or reparse points (junctions): a linked
+    /// file or folder inside the skill is ignored, so that it cannot expose files from outside.
     /// </summary>
-    /// <param name="directory">Carpeta de la skill (puede ser ella misma un enlace).</param>
-    /// <param name="maxFileBytes">Tamaño máximo de un archivo al leerlo.</param>
+    /// <param name="directory">Skill folder (it may itself be a link).</param>
+    /// <param name="maxFileBytes">Maximum size of a file when reading it.</param>
     public static ISkillFiles FromDirectory(string directory, long maxFileBytes = long.MaxValue) => new Directory(directory, maxFileBytes);
 
-    /// <summary>Normaliza una ruta relativa y rechaza rutas absolutas o que salgan de la skill.</summary>
+    /// <summary>Normalizes a relative path and rejects absolute paths or paths that escape the skill.</summary>
     public static string NormalizePath(string path)
     {
         var normalized = path.Replace('\\', '/').Trim();
@@ -137,7 +146,7 @@ public static class SkillFiles
         return normalized;
     }
 
-    /// <summary>Opciones de enumeración que no entran en carpetas enlazadas ni devuelven archivos enlazados.</summary>
+    /// <summary>Enumeration options that neither enter linked folders nor return linked files.</summary>
     internal static EnumerationOptions WithoutLinks { get; } = new()
     {
         RecurseSubdirectories = true,
@@ -146,9 +155,9 @@ public static class SkillFiles
     };
 
     /// <summary>
-    /// Ruta real de <paramref name="relative"/> bajo <paramref name="root"/> si cada componente existe y ninguno es un
-    /// enlace (<see cref="FileAttributes.ReparsePoint"/>); null en otro caso. Con la ruta ya normalizada (sin <c>..</c>)
-    /// y sin enlaces, el resultado está necesariamente contenido en <paramref name="root"/>.
+    /// Real path of <paramref name="relative"/> under <paramref name="root"/> if every component exists and none is a
+    /// link (<see cref="FileAttributes.ReparsePoint"/>); null otherwise. With the path already normalized (no <c>..</c>)
+    /// and no links, the result is necessarily contained in <paramref name="root"/>.
     /// </summary>
     internal static string? ResolveInside(string root, string relative)
     {
@@ -165,7 +174,7 @@ public static class SkillFiles
         return current;
     }
 
-    /// <summary>True si la ruta no existe o es un enlace (aunque apunte a un destino inexistente).</summary>
+    /// <summary>True if the path does not exist or is a link (even if it points to a nonexistent target).</summary>
     internal static bool LinkOrMissing(string path)
     {
         FileAttributes attributes;
@@ -229,56 +238,63 @@ public static class SkillFiles
     }
 }
 
-/// <summary>Límites al cargar skills de terceros.</summary>
+/// <summary>Limits for loading third-party skills.</summary>
 public sealed record SkillLoadOptions
 {
     /// <summary>
-    /// Marca las skills cargadas como de confianza (sus scripts podrán ejecutarse). Una skill con el marcador
-    /// de procedencia <see cref="SkillLibrary.ProvenanceFileName"/> (p. ej. creada por un agente con
-    /// <c>create_skill</c>) se carga siempre como no confiable, aunque esté en una carpeta de confianza.
+    /// Gets or sets whether the loaded skills are marked as trusted (their scripts can run). A skill with the
+    /// <see cref="SkillLibrary.ProvenanceFileName"/> provenance marker (e.g. created by an agent with
+    /// <c>create_skill</c>) is always loaded as untrusted, even if it is in a trusted folder.
     /// </summary>
     public bool Trusted { get; init; }
 
-    /// <summary>Tamaño máximo por archivo (el estándar recomienda 5 MB).</summary>
+    /// <summary>Gets or sets the maximum size per file (the standard recommends 5 MB).</summary>
     public long MaxFileBytes { get; init; } = 5 * 1024 * 1024;
 
-    /// <summary>Archivos máximos por skill.</summary>
+    /// <summary>Gets or sets the maximum number of files per skill.</summary>
     public int MaxFiles { get; init; } = 500;
 
-    /// <summary>Tamaño máximo de un ZIP (o de la descarga de un repositorio de GitHub). Por defecto 100 MB.</summary>
+    /// <summary>
+    /// Gets or sets the maximum size of a ZIP (or of a GitHub repository download). Defaults to 100 MB.
+    /// </summary>
     public long MaxArchiveBytes { get; init; } = 100 * 1024 * 1024;
 
-    /// <summary>Total de bytes descomprimidos que se aceptan de un ZIP (protege de "bombas ZIP"). Por defecto 256 MB.</summary>
+    /// <summary>
+    /// Gets or sets the total decompressed bytes accepted from a ZIP (protects against "ZIP bombs").
+    /// Defaults to 256 MB.
+    /// </summary>
     public long MaxArchiveExtractedBytes { get; init; } = 256 * 1024 * 1024;
 
     /// <summary>
-    /// Con true (por defecto) se rechazan las skills que no cumplen el estándar. Con false se aceptan las que
-    /// tienen nombre y descripción, aunque incumplan límites (algunas skills publicadas superan los 1024
-    /// caracteres de descripción); los problemas quedan en <see cref="SkillLibrary.LoadErrors"/>.
+    /// Gets or sets whether skills that do not comply with the standard are rejected (true by default). With false,
+    /// skills that have a name and description are accepted even if they exceed limits (some published skills exceed
+    /// the 1024 description characters); the problems are reported in <see cref="SkillLibrary.LoadErrors"/>.
     /// </summary>
     public bool Strict { get; init; } = true;
 
-    /// <summary>Si es true, una skill inválida lanza excepción; si es false, se omite y se informa en <see cref="SkillLibrary.LoadErrors"/>.</summary>
+    /// <summary>If true, an invalid skill throws an exception; if false, it is skipped and reported in <see cref="SkillLibrary.LoadErrors"/>.</summary>
     public bool ThrowOnInvalid { get; init; }
 
     /// <summary>
-    /// Si es false (por defecto), una skill con el nombre de otra ya cargada se omite y se informa en
-    /// <see cref="SkillLibrary.LoadErrors"/> (o se lanza <see cref="InvalidOperationException"/> con
-    /// <see cref="ThrowOnInvalid"/>): se conserva la primera, para que una carga posterior (p. ej. un repositorio de
-    /// GitHub) no reemplace en silencio una skill propia. Con true, la nueva reemplaza a la anterior (útil para recargar).
+    /// If false (the default), a skill with the same name as one already loaded is skipped and reported in
+    /// <see cref="SkillLibrary.LoadErrors"/> (or an <see cref="InvalidOperationException"/> is thrown with
+    /// <see cref="ThrowOnInvalid"/>): the first one is kept, so that a later load (e.g. a GitHub repository) does not
+    /// silently replace one of your own skills. If true, the new one replaces the previous one (useful for reloading).
     /// </summary>
     public bool ReplaceExisting { get; init; }
 
     public static SkillLoadOptions Default { get; } = new();
 }
 
-/// <summary>Skill leída de un ZIP, o el error que impidió leerla (se informa por skill, sin detener la carga).</summary>
+/// <summary>
+/// Skill read from a ZIP, or the error that prevented reading it (reported per skill, without stopping the load).
+/// </summary>
 internal sealed record ArchivedSkill(string Folder, string? Markdown, Dictionary<string, byte[]>? Files, bool Untrusted, Exception? Error);
 
-/// <summary>Carga de skills desde ZIP (paquetes .skill / .zip, repositorios de GitHub).</summary>
+/// <summary>Loads skills from ZIP files (.skill / .zip packages, GitHub repositories).</summary>
 internal static class SkillArchive
 {
-    /// <summary>Lee todas las skills de un ZIP; <paramref name="prefix"/> limita a una subcarpeta.</summary>
+    /// <summary>Reads all the skills from a ZIP; <paramref name="prefix"/> restricts it to a subfolder.</summary>
     public static List<ArchivedSkill> Read(Stream zip, string? prefix, SkillLoadOptions options)
     {
         if (zip.CanSeek && zip.Length - zip.Position > options.MaxArchiveBytes)
@@ -352,7 +368,7 @@ internal static class SkillArchive
         return skills;
     }
 
-    /// <summary>Lee una entrada sin confiar en el tamaño declarado en el ZIP (puede mentir).</summary>
+    /// <summary>Reads an entry without trusting the size declared in the ZIP (it may lie).</summary>
     private static byte[] ReadBounded(ZipArchiveEntry entry, long maxBytes, string error)
     {
         using var stream = entry.Open();
@@ -387,10 +403,10 @@ internal static class SkillArchive
     }
 }
 
-/// <summary>Registro de uso de skills (para métricas o la interfaz).</summary>
+/// <summary>Record of skill usage (for metrics or the UI).</summary>
 public sealed record SkillActivation(string Skill, DateTimeOffset At, string? Arguments = null);
 
-/// <summary>Contador concurrente de activaciones por skill.</summary>
+/// <summary>Concurrent counter of activations per skill.</summary>
 internal sealed class SkillUsage
 {
     private readonly ConcurrentDictionary<string, int> _counts = new(StringComparer.Ordinal);

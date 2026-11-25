@@ -3,12 +3,12 @@ using AiSdk.Internal;
 
 namespace AiSdk;
 
-/// <summary>Estrategias de reparación de llamadas a herramientas (equivalente a <c>experimental_repairToolCall</c>).</summary>
+/// <summary>Tool call repair strategies (equivalent to <c>experimental_repairToolCall</c>).</summary>
 public static class ToolCallRepair
 {
     /// <summary>
-    /// Pide a un modelo (normalmente uno rápido y barato) que corrija la entrada de la
-    /// herramienta según su esquema. Las herramientas inexistentes no se reparan.
+    /// Asks a model (usually a fast, cheap one) to correct the tool's input
+    /// according to its schema. Nonexistent tools are not repaired.
     /// </summary>
     public static Func<ToolCallRepairContext, ValueTask<ToolCallPart?>> WithModel(ILanguageModel model, int maxRetries = 1) =>
         async context =>
@@ -57,7 +57,7 @@ public static class ToolCallRepair
                 : null;
         };
 
-    /// <summary>Repara llamadas a herramientas con nombre mal escrito (sin distinguir mayúsculas, guiones o espacios).</summary>
+    /// <summary>Repairs calls to tools whose name is misspelled (ignoring case, hyphens or spaces).</summary>
     public static Func<ToolCallRepairContext, ValueTask<ToolCallPart?>> FixToolNameCase() =>
         context =>
         {
@@ -71,7 +71,7 @@ public static class ToolCallRepair
             return ValueTask.FromResult(match is null ? null : context.ToolCall with { ToolName = match.Name });
         };
 
-    /// <summary>Combina estrategias: se usa la primera que devuelva una llamada reparada.</summary>
+    /// <summary>Combines strategies: the first one that returns a repaired call is used.</summary>
     public static Func<ToolCallRepairContext, ValueTask<ToolCallPart?>> FirstOf(params Func<ToolCallRepairContext, ValueTask<ToolCallPart?>>[] strategies) =>
         async context =>
         {

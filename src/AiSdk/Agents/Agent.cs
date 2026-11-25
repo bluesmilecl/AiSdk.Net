@@ -4,7 +4,7 @@ using AiSdk.Skills;
 
 namespace AiSdk;
 
-/// <summary>Contrato común de los agentes.</summary>
+/// <summary>Common contract for agents.</summary>
 public interface IAgent
 {
     string Name { get; }
@@ -14,36 +14,36 @@ public interface IAgent
     StreamTextResult Stream(AgentCallOptions options);
 }
 
-/// <summary>Entrada de una llamada a un agente.</summary>
+/// <summary>Input for an agent call.</summary>
 public sealed class AgentCallOptions
 {
     public string? Prompt { get; init; }
 
     public IReadOnlyList<ModelMessage>? Messages { get; init; }
 
-    /// <summary>Servicios accesibles desde las herramientas.</summary>
+    /// <summary>Gets or sets the services available to tools.</summary>
     public IServiceProvider? Services { get; init; }
 
-    /// <summary>Estado accesible desde las herramientas (p. ej. id del usuario autenticado).</summary>
+    /// <summary>Gets or sets the state available to tools (e.g. the authenticated user's id).</summary>
     public IReadOnlyDictionary<string, object?>? Context { get; init; }
 
-    /// <summary>Callback adicional por paso (se ejecuta después del del agente).</summary>
+    /// <summary>Gets or sets an additional per-step callback (runs after the agent's own).</summary>
     public Func<StepResult, ValueTask>? OnStepFinish { get; init; }
 
     /// <summary>
-    /// Manejador de aprobación para esta llamada. Se usa si el agente no gestiona sus aprobaciones
-    /// (<c>HandlesApprovals</c>) ni tiene <see cref="CallSettings.OnToolApproval"/> en su configuración. Los
-    /// sub-agentes (<see cref="Agent.AsTool"/>) reciben así el manejador del agente que los llama.
+    /// Gets or sets the approval handler for this call. It is used when the agent neither handles its own approvals
+    /// (<c>HandlesApprovals</c>) nor has <see cref="CallSettings.OnToolApproval"/> in its settings. This is how
+    /// sub-agents (<see cref="Agent.AsTool"/>) receive the handler of the agent that calls them.
     /// </summary>
     public Func<ToolApprovalRequest, ValueTask<bool>>? OnToolApproval { get; init; }
 
-    /// <summary>Decisiones sobre llamadas pendientes de aprobación (ver <see cref="GenerateTextOptions.ToolApprovals"/>).</summary>
+    /// <summary>Gets or sets the decisions on calls pending approval (see <see cref="GenerateTextOptions.ToolApprovals"/>).</summary>
     public IReadOnlyList<ToolApprovalResponse>? ToolApprovals { get; init; }
 
     /// <summary>
-    /// Difiere las aprobaciones en esta llamada aunque el agente no lo haga en su configuración
-    /// (<see cref="CallSettings.DeferToolApprovals"/>). Útil en un endpoint de <c>useChat</c>, que es quien puede mostrar
-    /// la aprobación al usuario. Si hay un manejador (<see cref="OnToolApproval"/> o el del agente), decide él.
+    /// Gets or sets whether approvals are deferred in this call even if the agent's settings do not defer them
+    /// (<see cref="CallSettings.DeferToolApprovals"/>). Useful in a <c>useChat</c> endpoint, which is what can show
+    /// the approval to the user. If there is a handler (<see cref="OnToolApproval"/> or the agent's), it decides.
     /// </summary>
     public bool DeferToolApprovals { get; init; }
 
@@ -53,26 +53,26 @@ public sealed class AgentCallOptions
 }
 
 /// <summary>
-/// Clase base para agentes definidos como clases (estilo Laravel AI SDK):
-/// sobrescribe <see cref="Model"/>, <see cref="Instructions"/>, <see cref="Tools"/>, etc.
-/// Encapsula el bucle de herramientas de <see cref="Ai.GenerateTextAsync(GenerateTextOptions)"/>.
+/// Base class for agents defined as classes (Laravel AI SDK style):
+/// override <see cref="Model"/>, <see cref="Instructions"/>, <see cref="Tools"/>, etc.
+/// Wraps the tool loop of <see cref="Ai.GenerateTextAsync(GenerateTextOptions)"/>.
 /// </summary>
 /// <example>
 /// <code>
 /// public sealed class SupportAgent(ILanguageModel model) : Agent
 /// {
 ///     protected override ILanguageModel Model => model;
-///     protected override string Instructions => "Eres un agente de soporte.";
-///     protected override IEnumerable&lt;Tool&gt; Tools => [Tool.FromDelegate("lookup_order", "Busca un pedido", LookupOrder)];
+///     protected override string Instructions => "You are a support agent.";
+///     protected override IEnumerable&lt;Tool&gt; Tools => [Tool.FromDelegate("lookup_order", "Looks up an order", LookupOrder)];
 /// }
 /// </code>
 /// </example>
 public abstract class Agent : IAgent, IOrchestrationNode
 {
-    /// <summary>Nombre del agente (por defecto, el nombre de la clase).</summary>
+    /// <summary>Gets the agent's name (defaults to the class name).</summary>
     public virtual string Name => GetType().Name;
 
-    /// <summary>Descripción usada cuando el agente se expone como herramienta.</summary>
+    /// <summary>Gets the description used when the agent is exposed as a tool.</summary>
     public virtual string? Description => null;
 
     protected abstract ILanguageModel Model { get; }
@@ -83,14 +83,14 @@ public abstract class Agent : IAgent, IOrchestrationNode
 
     protected virtual ToolChoice? ToolChoice => null;
 
-    /// <summary>Por defecto el agente se detiene tras 20 pasos.</summary>
+    /// <summary>Gets the stop condition. By default the agent stops after 20 steps.</summary>
     protected virtual StopCondition StopWhen => StopCondition.StepCountIs(20);
 
     protected virtual Output? Output => null;
 
     /// <summary>
-    /// Skills disponibles: se agrega su catálogo al prompt de sistema y las herramientas
-    /// <c>load_skill</c>/<c>read_skill_file</c> (divulgación progresiva).
+    /// Gets the available skills: their catalog is added to the system prompt, along with the
+    /// <c>load_skill</c>/<c>read_skill_file</c> tools (progressive disclosure).
     /// </summary>
     protected virtual SkillLibrary? Skills => null;
 
@@ -104,7 +104,7 @@ public abstract class Agent : IAgent, IOrchestrationNode
 
     protected virtual ValueTask<bool> ApproveToolCallAsync(ToolApprovalRequest request) => ValueTask.FromResult(false);
 
-    /// <summary>Indica si el agente gestiona aprobaciones (si no, quedan pendientes en el resultado).</summary>
+    /// <summary>Gets whether the agent handles approvals (if not, they remain pending in the result).</summary>
     protected virtual bool HandlesApprovals => false;
 
     public Task<GenerateTextResult> GenerateAsync(AgentCallOptions options) => Ai.GenerateTextAsync(BuildOptions(options));
@@ -123,19 +123,18 @@ public abstract class Agent : IAgent, IOrchestrationNode
     public StreamTextResult Stream(IReadOnlyList<ModelMessage> messages, CancellationToken cancellationToken = default) =>
         Stream(new AgentCallOptions { Messages = messages, CancellationToken = cancellationToken });
 
-    /// <summary>Crea una sesión con memoria de conversación.</summary>
+    /// <summary>Creates a session with conversation memory.</summary>
     public AgentSession CreateSession(string? conversationId = null, IConversationStore? store = null) =>
         new(this, conversationId ?? Guid.NewGuid().ToString("N"), store ?? new InMemoryConversationStore());
 
     /// <summary>
-    /// Expone el agente como herramienta para otro agente (sub-agentes / multi-agente).
-    /// La herramienta recibe <c>{ "task": "..." }</c> y devuelve el texto final del sub-agente.
+    /// Exposes the agent as a tool for another agent (sub-agents / multi-agent).
+    /// The tool receives <c>{ "task": "..." }</c> and returns the sub-agent's final text.
     /// </summary>
     /// <remarks>
-    /// Las aprobaciones de las herramientas del sub-agente se piden al manejador del agente que lo llama (si el
-    /// sub-agente no tiene uno propio); sin ninguno, se deniegan con un error explícito. Si el sub-agente se detiene
-    /// con llamadas sin resolver (herramientas de cliente o aprobaciones diferidas), la herramienta falla con un
-    /// error en vez de devolver un texto vacío.
+    /// Approvals for the sub-agent's tools are requested from the calling agent's handler (if the sub-agent has none of
+    /// its own); without any handler, they are denied with an explicit error. If the sub-agent stops with unresolved
+    /// calls (client tools or deferred approvals), the tool fails with an error instead of returning empty text.
     /// </remarks>
     public Tool AsTool(string? name = null, string? description = null) =>
         Tool.Create<SubAgentInput, string>(
@@ -155,7 +154,7 @@ public abstract class Agent : IAgent, IOrchestrationNode
                 return result.Text;
             });
 
-    /// <summary>Falla si el agente se detuvo con llamadas que nadie podrá resolver (p. ej. dentro de un sub-agente).</summary>
+    /// <summary>Throws if the agent stopped with calls that nobody can resolve (e.g. inside a sub-agent).</summary>
     internal static void EnsureCompleted(string agentName, GenerateTextResult result, bool includeClientTools)
     {
         var pending = includeClientTools ? result.PendingToolCalls : result.PendingApprovals.Select(a => a.ToolCall).ToList();
@@ -167,7 +166,7 @@ public abstract class Agent : IAgent, IOrchestrationNode
         }
     }
 
-    /// <summary>Participa en orquestaciones como un nodo más.</summary>
+    /// <summary>Takes part in orchestrations like any other node.</summary>
     Task<string> IOrchestrationNode.RunAsync(string input, OrchestrationContext context) => context.RunAgentAsync(this, input);
 
     internal GenerateTextOptions BuildOptions(AgentCallOptions call, IReadOnlyList<Tool>? extraTools = null, StopCondition? extraStop = null)
@@ -224,7 +223,7 @@ public abstract class Agent : IAgent, IOrchestrationNode
     private sealed record SubAgentInput([property: Description("Descripción completa de la tarea a realizar.")] string Task);
 }
 
-/// <summary>Configuración de <see cref="ToolLoopAgent"/>.</summary>
+/// <summary>Settings for <see cref="ToolLoopAgent"/>.</summary>
 public sealed class AgentSettings : CallSettings
 {
     public required ILanguageModel Model { get; init; }
@@ -239,15 +238,15 @@ public sealed class AgentSettings : CallSettings
 
     public ToolChoice? ToolChoice { get; init; }
 
-    /// <summary>Por defecto <c>StepCountIs(20)</c>.</summary>
+    /// <summary>Gets or sets the stop condition. Defaults to <c>StepCountIs(20)</c>.</summary>
     public StopCondition? StopWhen { get; init; }
 
     public Output? Output { get; init; }
 
-    /// <summary>Skills del agente (catálogo en el prompt y herramientas para cargarlas).</summary>
+    /// <summary>Gets or sets the agent's skills (catalog in the prompt and tools to load them).</summary>
     public SkillLibrary? Skills { get; init; }
 
-    /// <summary>Opciones de las herramientas de skills (p. ej. ejecutor de scripts).</summary>
+    /// <summary>Gets or sets the options for the skill tools (e.g. the script executor).</summary>
     public SkillToolOptions? SkillOptions { get; init; }
 
     public Func<PrepareStepContext, ValueTask<PrepareStepResult?>>? PrepareStep { get; init; }
@@ -256,8 +255,8 @@ public sealed class AgentSettings : CallSettings
 }
 
 /// <summary>
-/// Agente configurable por objeto (equivalente a <c>new ToolLoopAgent({...})</c> del AI SDK):
-/// llama al modelo, ejecuta herramientas y repite hasta cumplir la condición de parada.
+/// Agent configured through an object (equivalent to the AI SDK's <c>new ToolLoopAgent({...})</c>):
+/// calls the model, runs tools and repeats until the stop condition is met.
 /// </summary>
 public class ToolLoopAgent(AgentSettings settings) : Agent
 {

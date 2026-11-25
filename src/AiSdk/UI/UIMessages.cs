@@ -7,8 +7,8 @@ using AiSdk.Internal;
 namespace AiSdk.UI;
 
 /// <summary>
-/// Mensaje de interfaz tal como lo envía <c>useChat</c> de AI SDK UI (React, Vue, Svelte...).
-/// Permite usar un backend .NET con los frontends del AI SDK.
+/// UI message as sent by AI SDK UI's <c>useChat</c> (React, Vue, Svelte...).
+/// Lets you use a .NET backend with the AI SDK frontends.
 /// </summary>
 public sealed class UIMessage
 {
@@ -25,7 +25,7 @@ public sealed class UIMessage
     public JsonNode? Metadata { get; set; }
 }
 
-/// <summary>Cuerpo de la petición que envía <c>useChat</c> (<c>DefaultChatTransport</c>).</summary>
+/// <summary>Body of the request sent by <c>useChat</c> (<c>DefaultChatTransport</c>).</summary>
 public sealed class UIChatRequest
 {
     [JsonPropertyName("id")]
@@ -38,49 +38,50 @@ public sealed class UIChatRequest
     public string? Trigger { get; set; }
 }
 
-/// <summary>Opciones de <see cref="UIMessageConverter.ToModelMessages(IEnumerable{UIMessage}, UIMessageConverterOptions?)"/>.</summary>
+/// <summary>Options for <see cref="UIMessageConverter.ToModelMessages(IEnumerable{UIMessage}, UIMessageConverterOptions?)"/>.</summary>
 /// <remarks>
-/// Todo el historial lo envía el navegador y no es de confianza: el cliente puede escribir cualquier mensaje, incluidos
-/// textos "del asistente" y resultados de herramientas. Las instrucciones y los datos sensibles deben vivir en el servidor
-/// (instrucciones del agente, historial guardado con <c>AgentSession</c>), no en lo que reenvía el cliente.
+/// The whole history is sent by the browser and is not trusted: the client can write any message, including
+/// "assistant" text and tool results. Instructions and sensitive data must live on the server
+/// (agent instructions, history stored with <c>AgentSession</c>), not in what the client resends.
 /// </remarks>
 public sealed class UIMessageConverterOptions
 {
     /// <summary>
-    /// Acepta mensajes con rol <c>system</c> enviados por el cliente. Por defecto <c>false</c>: se descartan, porque
-    /// un usuario podría reemplazar o contradecir las instrucciones del agente.
+    /// Gets or sets whether messages with the <c>system</c> role sent by the client are accepted. Defaults to
+    /// <c>false</c>: they are discarded, because a user could replace or contradict the agent's instructions.
     /// </summary>
     public bool AllowSystemMessages { get; init; }
 
     /// <summary>
-    /// Herramientas que ejecuta el servidor. Sus partes en el historial (llamada y resultado) se descartan, porque el
-    /// cliente podría falsificar sus resultados (p. ej. un "pago aprobado"). Deje fuera las herramientas que ejecuta el
-    /// navegador (sin <c>execute</c> en el servidor), cuyo resultado sí debe llegar desde el cliente.
+    /// Gets or sets the tools executed by the server. Their parts in the history (call and result) are discarded,
+    /// because the client could forge their results (e.g. a "payment approved"). Leave out the tools executed by the
+    /// browser (without <c>execute</c> on the server), whose result must indeed come from the client.
     /// </summary>
     public IReadOnlyCollection<string>? ServerExecutedTools { get; init; }
 
     /// <summary>
-    /// Verifica en <see cref="UIMessageConverter.ToModelInput"/> las respuestas de aprobación que devuelve <c>useChat</c>
-    /// (partes en estado <c>approval-responded</c>). Debe ser el mismo protector (clave y ámbito) con el que se escribió
-    /// el stream que pidió la aprobación. Sin protector ninguna aprobación es válida: las llamadas se cierran con un error
-    /// y no se ejecutan.
+    /// Gets or sets the protector that verifies, in <see cref="UIMessageConverter.ToModelInput"/>, the approval
+    /// responses returned by <c>useChat</c> (parts in the <c>approval-responded</c> state). It must be the same
+    /// protector (key and scope) used to write the stream that requested the approval. Without a protector no approval
+    /// is valid: the calls are closed with an error and are not executed.
     /// </summary>
     public ToolApprovalProtector? ToolApprovals { get; init; }
 }
 
 /// <summary>
-/// Conversación de <c>useChat</c> convertida para el modelo por <see cref="UIMessageConverter.ToModelInput"/>: los mensajes
-/// y las decisiones de aprobación verificadas, que se pasan juntos al agente
-/// (<see cref="AgentCallOptions.Messages"/> y <see cref="AgentCallOptions.ToolApprovals"/>).
+/// <c>useChat</c> conversation converted for the model by <see cref="UIMessageConverter.ToModelInput"/>: the messages
+/// and the verified approval decisions, which are passed together to the agent
+/// (<see cref="AgentCallOptions.Messages"/> and <see cref="AgentCallOptions.ToolApprovals"/>).
 /// </summary>
 public sealed class UIModelInput
 {
-    /// <summary>Mensajes para el modelo.</summary>
+    /// <summary>Gets the messages for the model.</summary>
     public required IReadOnlyList<ModelMessage> Messages { get; init; }
 
     /// <summary>
-    /// Decisiones (aprobar o denegar) cuyo approvalId verificó. Es null si el último mensaje no responde aprobaciones;
-    /// si las responde, nunca es null (aunque esté vacía): las llamadas sin una decisión válida se cierran con un error.
+    /// Gets the decisions (approve or deny) whose approvalId verified. It is null if the last message does not
+    /// answer approvals; if it does, it is never null (even if empty): calls without a valid decision are closed
+    /// with an error.
     /// </summary>
     public IReadOnlyList<ToolApprovalResponse>? ToolApprovals { get; init; }
 }
@@ -88,21 +89,21 @@ public sealed class UIModelInput
 public static class UIMessageConverter
 {
     /// <summary>
-    /// Convierte mensajes de UI a mensajes de modelo (equivalente a <c>convertToModelMessages</c>).
-    /// Los mensajes <c>system</c> del cliente se descartan y las partes inválidas (archivos con URL o data URL
-    /// incorrectas, campos con tipos inesperados) se ignoran en lugar de producir un error 500. Las respuestas de
-    /// aprobación (<c>approval-responded</c>) se descartan: para reanudar aprobaciones use <see cref="ToModelInput"/>.
+    /// Converts UI messages into model messages (equivalent to <c>convertToModelMessages</c>).
+    /// <c>system</c> messages from the client are discarded, and invalid parts (files with an incorrect URL or data URL,
+    /// fields with unexpected types) are ignored instead of producing a 500 error. Approval
+    /// responses (<c>approval-responded</c>) are discarded: to resume approvals use <see cref="ToModelInput"/>.
     /// </summary>
     public static List<ModelMessage> ToModelMessages(IEnumerable<UIMessage> messages, UIMessageConverterOptions? options = null) =>
         ConvertMessages(messages, options ?? new UIMessageConverterOptions(), collectApprovals: false).Messages;
 
     /// <summary>
-    /// Como <see cref="ToModelMessages"/>, y además reanuda las aprobaciones de herramientas: si el último mensaje es del
-    /// asistente y su último paso tiene partes en estado <c>approval-responded</c> (<c>addToolApprovalResponse</c>),
-    /// devuelve sus llamadas y decisiones para el motor. Una respuesta solo cuenta si su <c>approvalId</c> verifica con
-    /// <see cref="UIMessageConverterOptions.ToolApprovals"/> contra la llamada reenviada (mismo id, herramienta y
-    /// entrada): una aprobación inventada, de otro usuario o chat, expirada o con la entrada cambiada no se ejecuta, y el
-    /// modelo recibe un error. Las llamadas aprobadas se ejecutan con la entrada que firmó el servidor.
+    /// Like <see cref="ToModelMessages"/>, and also resumes tool approvals: if the last message is from the
+    /// assistant and its last step has parts in the <c>approval-responded</c> state (<c>addToolApprovalResponse</c>),
+    /// returns their calls and decisions for the engine. A response only counts if its <c>approvalId</c> verifies with
+    /// <see cref="UIMessageConverterOptions.ToolApprovals"/> against the resent call (same id, tool and
+    /// input): a fabricated approval, one from another user or chat, an expired one or one with a changed input is not executed, and the
+    /// model receives an error. Approved calls run with the input the server signed.
     /// </summary>
     /// <example>
     /// <code>
@@ -154,7 +155,7 @@ public static class UIMessageConverter
 
     private static bool IsText(JsonObject p) => Str(p["type"]) == "text";
 
-    /// <summary>Valor de texto de un nodo JSON, o null si no es un string (el cliente puede enviar cualquier tipo).</summary>
+    /// <summary>Text value of a JSON node, or null if it is not a string (the client can send any type).</summary>
     private static string? Str(JsonNode? node) => node is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
 
     private static ContentPart? ToUserPart(JsonObject p)
@@ -179,7 +180,7 @@ public static class UIMessageConverter
         }
     }
 
-    /// <summary>Acepta data URLs (base64 o texto) y URLs absolutas http(s); el resto se rechaza.</summary>
+    /// <summary>Accepts data URLs (base64 or text) and absolute http(s) URLs; anything else is rejected.</summary>
     private static bool TryParseFileUrl(string? url, out byte[]? data, out Uri? uri)
     {
         data = null;
@@ -338,7 +339,7 @@ public static class UIMessageConverter
         Flush();
     }
 
-    /// <summary>Decisión de una parte <c>approval-responded</c>, o null si su approvalId no verifica para esa llamada.</summary>
+    /// <summary>Decision of an <c>approval-responded</c> part, or null if its approvalId does not verify for that call.</summary>
     private static ToolApprovalResponse? ApprovalDecision(JsonObject part, ToolCallPart call, ToolApprovalProtector? protector)
     {
         if (protector is null
@@ -356,10 +357,10 @@ public static class UIMessageConverter
 }
 
 /// <summary>
-/// Error de una herramienta tal como se pasa a <c>onError</c> al escribir el stream UI (<c>tool-output-error</c>).
-/// Por defecto el navegador solo recibe un mensaje genérico, porque el texto de una excepción puede revelar detalles
-/// internos; el modelo sí recibe el mensaje real. Para mostrarlo:
-/// <c>onError: ex =&gt; ex is ToolErrorException t ? t.Message : "Se produjo un error."</c>.
+/// Error from a tool as passed to <c>onError</c> when writing the UI stream (<c>tool-output-error</c>).
+/// By default the browser only receives a generic message, because an exception's text can reveal internal
+/// details; the model does receive the real message. To show it:
+/// <c>onError: ex =&gt; ex is ToolErrorException t ? t.Message : "An error occurred."</c>.
 /// </summary>
 public sealed class ToolErrorException : AiSdkException
 {
@@ -370,16 +371,16 @@ public sealed class ToolErrorException : AiSdkException
         ToolCallId = toolCallId;
     }
 
-    /// <summary>Herramienta que falló.</summary>
+    /// <summary>Gets the tool that failed.</summary>
     public string ToolName { get; }
 
-    /// <summary>Id de la llamada.</summary>
+    /// <summary>Gets the id of the call.</summary>
     public string ToolCallId { get; }
 }
 
 /// <summary>
-/// Escribe un stream en formato <b>UI Message Stream</b> (SSE) compatible con
-/// <c>useChat</c> del AI SDK (cabecera <c>x-vercel-ai-ui-message-stream: v1</c>).
+/// Writes a stream in the <b>UI Message Stream</b> format (SSE), compatible with
+/// the AI SDK's <c>useChat</c> (header <c>x-vercel-ai-ui-message-stream: v1</c>).
 /// </summary>
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "Nombre del protocolo UI Message Stream del AI SDK; es una clase estática de utilidades, no un Stream.")]
 public static partial class UIMessageStream
@@ -388,14 +389,14 @@ public static partial class UIMessageStream
     public const string HeaderValue = "v1";
     public const string ContentType = "text/event-stream";
 
-    /// <summary>Convierte las partes del stream en chunks JSON del protocolo.</summary>
-    /// <param name="parts">Partes del stream (<see cref="StreamTextResult.FullStream"/>).</param>
-    /// <param name="messageId">Id del mensaje del asistente (chunk <c>start</c>).</param>
-    /// <param name="onError">Texto de error que ve el cliente (por defecto uno genérico).</param>
+    /// <summary>Converts the stream parts into JSON protocol chunks.</summary>
+    /// <param name="parts">Stream parts (<see cref="StreamTextResult.FullStream"/>).</param>
+    /// <param name="messageId">Id of the assistant message (<c>start</c> chunk).</param>
+    /// <param name="onError">Error text the client sees (a generic one by default).</param>
     /// <param name="toolApprovals">
-    /// Emite los <c>approvalId</c> de las llamadas pendientes de aprobación (chunk <c>tool-approval-request</c>). Sin él,
-    /// una llamada que quedó pendiente se informa como error (<c>tool-output-error</c>): el servidor no podría verificar
-    /// la respuesta del usuario.
+    /// Emits the <c>approvalId</c> values of the calls pending approval (<c>tool-approval-request</c> chunk). Without it,
+    /// a call left pending is reported as an error (<c>tool-output-error</c>): the server would not be able to verify
+    /// the user's response.
     /// </param>
     public static async IAsyncEnumerable<JsonObject> ToChunks(
         IAsyncEnumerable<StreamPart> parts,
@@ -472,9 +473,9 @@ public static partial class UIMessageStream
     }
 
     /// <summary>
-    /// Chunks de una llamada pendiente de aprobación. El chunk <c>tool-approval-request</c> lleva solo
-    /// <c>approvalId</c> y <c>toolCallId</c>: las versiones 6.0.x de <c>ai</c> validan ese chunk como objeto estricto
-    /// y rechazan cualquier otro campo.
+    /// Chunks of a call pending approval. The <c>tool-approval-request</c> chunk carries only
+    /// <c>approvalId</c> and <c>toolCallId</c>: versions 6.0.x of <c>ai</c> validate that chunk as a strict object
+    /// and reject any other field.
     /// </summary>
     private static IEnumerable<JsonObject> ApprovalChunks(
         ToolCallPart call,
@@ -511,7 +512,7 @@ public static partial class UIMessageStream
         };
     }
 
-    /// <summary>Texto de error que recibe el cliente: el de <paramref name="onError"/> o uno genérico.</summary>
+    /// <summary>Error text the client receives: the one from <paramref name="onError"/> or a generic one.</summary>
     internal static string ErrorText(Exception error, Func<Exception, string>? onError) => onError?.Invoke(error) ?? DefaultErrorText;
 
     internal const string DefaultErrorText = "Se produjo un error.";
@@ -562,8 +563,8 @@ public static partial class UIMessageStream
         return chunk;
     }
 
-    /// <summary>Escribe el stream SSE completo (incluido <c>data: [DONE]</c>) en <paramref name="output"/>.</summary>
-    /// <remarks><paramref name="toolApprovals"/>: ver <see cref="ToChunks"/>.</remarks>
+    /// <summary>Writes the complete SSE stream (including <c>data: [DONE]</c>) to <paramref name="output"/>.</summary>
+    /// <remarks><paramref name="toolApprovals"/>: see <see cref="ToChunks"/>.</remarks>
     public static Task WriteAsync(
         IAsyncEnumerable<StreamPart> parts,
         Stream output,

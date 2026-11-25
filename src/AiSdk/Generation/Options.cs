@@ -1,6 +1,6 @@
 namespace AiSdk;
 
-/// <summary>Parámetros comunes de llamada (temperatura, tokens, reintentos...).</summary>
+/// <summary>Common call settings (temperature, tokens, retries...).</summary>
 public class CallSettings
 {
     public int? MaxOutputTokens { get; init; }
@@ -19,12 +19,13 @@ public class CallSettings
 
     public int? Seed { get; init; }
 
-    /// <summary>Reintentos ante errores transitorios (429, 5xx...). Por defecto 2.</summary>
+    /// <summary>Gets or sets the number of retries on transient errors (429, 5xx...). Defaults to 2.</summary>
     public int MaxRetries { get; init; } = 2;
 
     /// <summary>
-    /// Espera máxima que se respeta de un <c>Retry-After</c> del servidor antes de reintentar (por defecto 60 s). Si
-    /// el servidor pide esperar más, no se reintenta y se lanza el error (<see cref="ApiCallException.RetryAfter"/>).
+    /// Gets or sets the maximum server <c>Retry-After</c> wait that is honored before retrying (defaults to 60 s). If
+    /// the server asks to wait longer, no retry is made and the error is thrown
+    /// (<see cref="ApiCallException.RetryAfter"/>).
     /// </summary>
     public TimeSpan MaxRetryAfter { get; init; } = TimeSpan.FromSeconds(60);
 
@@ -32,69 +33,69 @@ public class CallSettings
 
     public ProviderOptions? ProviderOptions { get; init; }
 
-    /// <summary>Servicios accesibles desde las herramientas mediante <see cref="ToolExecutionContext.Services"/>.</summary>
+    /// <summary>Gets or sets the services available to tools through <see cref="ToolExecutionContext.Services"/>.</summary>
     public IServiceProvider? Services { get; init; }
 
-    /// <summary>Estado arbitrario accesible desde las herramientas.</summary>
+    /// <summary>Gets or sets arbitrary state available to tools.</summary>
     public IReadOnlyDictionary<string, object?>? Context { get; init; }
 
     /// <summary>
-    /// Callback de aprobación humana para herramientas con <see cref="Tool.NeedsApproval"/>. Si es null, la llamada
-    /// no se ejecuta y el modelo recibe un error explícito ("requiere aprobación y no hay un manejador"), salvo que
-    /// se active <see cref="DeferToolApprovals"/>.
+    /// Gets or sets the human approval callback for tools with <see cref="Tool.NeedsApproval"/>. If null, the call
+    /// is not executed and the model receives an explicit error (the tool requires approval and there is no handler),
+    /// unless <see cref="DeferToolApprovals"/> is enabled.
     /// </summary>
     public Func<ToolApprovalRequest, ValueTask<bool>>? OnToolApproval { get; init; }
 
     /// <summary>
-    /// Sin <see cref="OnToolApproval"/>, deja pendientes las llamadas que requieren aprobación en vez de rechazarlas
-    /// (aprobación diferida, como <c>tool-approval-request</c> del AI SDK): el bucle se detiene, las llamadas quedan
-    /// en <see cref="GenerateTextResult.PendingApprovals"/> y se resuelven en la siguiente llamada con
-    /// <see cref="GenerateTextOptions.ToolApprovals"/> (o <see cref="AgentSession.SendApprovalsAsync"/>). En streaming
-    /// se emite <see cref="ToolApprovalRequestStreamPart"/>, que <c>useChat</c> muestra en el estado
-    /// <c>approval-requested</c> (ver <see cref="UI.ToolApprovalProtector"/>).
+    /// Gets or sets whether, without <see cref="OnToolApproval"/>, calls that require approval are left pending instead of
+    /// rejected (deferred approval, like the AI SDK's <c>tool-approval-request</c>): the loop stops, the calls remain
+    /// in <see cref="GenerateTextResult.PendingApprovals"/> and are resolved in the next call with
+    /// <see cref="GenerateTextOptions.ToolApprovals"/> (or <see cref="AgentSession.SendApprovalsAsync"/>). When streaming,
+    /// a <see cref="ToolApprovalRequestStreamPart"/> is emitted, which <c>useChat</c> shows in the
+    /// <c>approval-requested</c> state (see <see cref="UI.ToolApprovalProtector"/>).
     /// </summary>
     public bool DeferToolApprovals { get; init; }
 
     /// <summary>
-    /// Máximo de herramientas que se ejecutan a la vez cuando el modelo pide varias en un mismo paso (por defecto 8;
-    /// 1 las ejecuta en orden). Limita el gasto y la carga cuando el modelo pide muchas llamadas de golpe.
+    /// Gets or sets the maximum number of tools that run at once when the model requests several in the same step
+    /// (defaults to 8; 1 runs them in order). Limits cost and load when the model requests many calls at once.
     /// </summary>
     public int MaxParallelToolCalls { get; init; } = 8;
 
     /// <summary>
-    /// Repara una llamada a herramienta inválida (JSON roto, entrada que no cumple el esquema
-    /// o herramienta inexistente). Devuelve la llamada corregida o null para informar el error al modelo.
-    /// Ver <see cref="ToolCallRepair.WithModel"/>.
+    /// Gets or sets a callback that repairs an invalid tool call (broken JSON, input that does not conform to the
+    /// schema or a nonexistent tool). It returns the corrected call, or null to report the error to the model. See
+    /// <see cref="ToolCallRepair.WithModel"/>.
     /// </summary>
     public Func<ToolCallRepairContext, ValueTask<ToolCallPart?>>? RepairToolCall { get; init; }
 
-    /// <summary>(streaming) Se invoca con cada parte de contenido: texto, razonamiento, herramientas, fuentes.</summary>
+    /// <summary>(streaming) Invoked with each content part: text, reasoning, tools, sources.</summary>
     public Func<StreamPart, ValueTask>? OnChunk { get; init; }
 
-    /// <summary>Se invoca cuando la generación falla (en streaming el error también llega como <see cref="ErrorPart"/>).</summary>
+    /// <summary>Invoked when generation fails (when streaming, the error also arrives as an <see cref="ErrorPart"/>).</summary>
     public Func<Exception, ValueTask>? OnError { get; init; }
 
-    /// <summary>Se invoca al terminar correctamente, con el resultado completo.</summary>
+    /// <summary>Invoked on successful completion, with the full result.</summary>
     public Func<GenerateTextResult, ValueTask>? OnFinish { get; init; }
 
-    /// <summary>Se invoca si la operación se cancela, con los pasos completados hasta ese momento.</summary>
+    /// <summary>Invoked if the operation is canceled, with the steps completed up to that point.</summary>
     public Func<IReadOnlyList<StepResult>, ValueTask>? OnAbort { get; init; }
 }
 
-/// <summary>Motivo por el que una llamada a herramienta necesita reparación.</summary>
+/// <summary>Reason why a tool call needs repair.</summary>
 public enum ToolCallRepairReason
 {
-    /// <summary>El modelo llamó a una herramienta que no existe.</summary>
+    /// <summary>The model called a tool that does not exist.</summary>
     UnknownTool,
 
-    /// <summary>La entrada no es JSON válido.</summary>
+    /// <summary>The input is not valid JSON.</summary>
     InvalidJson,
 
-    /// <summary>La entrada es JSON pero no cumple el esquema de la herramienta.</summary>
+    /// <summary>The input is JSON but does not conform to the tool's schema.</summary>
     InvalidInput,
 }
 
-/// <summary>Contexto entregado a <see cref="CallSettings.RepairToolCall"/>.</summary>
+/// <summary>Context passed to <see cref="CallSettings.RepairToolCall"/>.</summary>
 public sealed record ToolCallRepairContext(
     ToolCallPart ToolCall,
     ToolCallRepairReason Reason,
@@ -102,33 +103,33 @@ public sealed record ToolCallRepairContext(
     IReadOnlyList<Tool> Tools,
     IReadOnlyList<ModelMessage> Messages)
 {
-    /// <summary>Herramienta destino (null si <see cref="Reason"/> es <see cref="ToolCallRepairReason.UnknownTool"/>).</summary>
+    /// <summary>Gets the target tool (null if <see cref="Reason"/> is <see cref="ToolCallRepairReason.UnknownTool"/>).</summary>
     public Tool? Tool => Tools.FirstOrDefault(t => t.Name == ToolCall.ToolName);
 
-    /// <summary>Cancelación de la generación en curso (la reparación debe respetarla).</summary>
+    /// <summary>Gets the cancellation token of the ongoing generation (the repair must honor it).</summary>
     public CancellationToken CancellationToken { get; init; }
 }
 
-/// <summary>Solicitud de aprobación de una llamada a herramienta.</summary>
+/// <summary>Approval request for a tool call.</summary>
 public sealed record ToolApprovalRequest(ToolCallPart ToolCall, Tool Tool);
 
 /// <summary>
-/// Decisión sobre una llamada que quedó pendiente de aprobación (ver <see cref="CallSettings.DeferToolApprovals"/>).
+/// Decision on a call that was left pending approval (see <see cref="CallSettings.DeferToolApprovals"/>).
 /// </summary>
-/// <param name="ToolCallId">Id de la llamada (<see cref="ToolCallPart.ToolCallId"/>).</param>
-/// <param name="Approved">True para ejecutarla; false para responder al modelo que se denegó.</param>
-/// <param name="Reason">Motivo opcional de la denegación, que se informa al modelo.</param>
+/// <param name="ToolCallId">Id of the call (<see cref="ToolCallPart.ToolCallId"/>).</param>
+/// <param name="Approved">True to execute it; false to tell the model that it was denied.</param>
+/// <param name="Reason">Optional reason for the denial, which is reported to the model.</param>
 public sealed record ToolApprovalResponse(string ToolCallId, bool Approved, string? Reason = null);
 
-/// <summary>Opciones de <see cref="Ai.GenerateTextAsync(GenerateTextOptions)"/> y <see cref="Ai.StreamText(GenerateTextOptions)"/>.</summary>
+/// <summary>Options for <see cref="Ai.GenerateTextAsync(GenerateTextOptions)"/> and <see cref="Ai.StreamText(GenerateTextOptions)"/>.</summary>
 public sealed class GenerateTextOptions : CallSettings
 {
     public required ILanguageModel Model { get; init; }
 
-    /// <summary>Instrucciones de sistema.</summary>
+    /// <summary>Gets or sets the system instructions.</summary>
     public string? System { get; init; }
 
-    /// <summary>Prompt simple del usuario (se añade al final de <see cref="Messages"/>).</summary>
+    /// <summary>Gets or sets a simple user prompt (appended to the end of <see cref="Messages"/>).</summary>
     public string? Prompt { get; init; }
 
     public IReadOnlyList<ModelMessage>? Messages { get; init; }
@@ -137,39 +138,41 @@ public sealed class GenerateTextOptions : CallSettings
 
     public ToolChoice? ToolChoice { get; init; }
 
-    /// <summary>Limita las herramientas disponibles (por nombre) sin cambiar <see cref="Tools"/>.</summary>
+    /// <summary>
+    /// Gets or sets a restriction of the available tools (by name) without changing <see cref="Tools"/>.
+    /// </summary>
     public IReadOnlyList<string>? ActiveTools { get; init; }
 
-    /// <summary>Condición de parada del bucle de herramientas. Por defecto <c>StepCountIs(1)</c>.</summary>
+    /// <summary>Gets or sets the stop condition of the tool loop. Defaults to <c>StepCountIs(1)</c>.</summary>
     public StopCondition? StopWhen { get; init; }
 
-    /// <summary>Salida estructurada opcional (ver <see cref="AiSdk.Output"/>).</summary>
+    /// <summary>Gets or sets an optional structured output (see <see cref="AiSdk.Output"/>).</summary>
     public Output? Output { get; init; }
 
-    /// <summary>Permite modificar modelo, herramientas o mensajes antes de cada paso.</summary>
+    /// <summary>Gets or sets a callback that can modify the model, tools or messages before each step.</summary>
     public Func<PrepareStepContext, ValueTask<PrepareStepResult?>>? PrepareStep { get; init; }
 
     public Func<StepResult, ValueTask>? OnStepFinish { get; init; }
 
     /// <summary>
-    /// Decisiones sobre las llamadas que quedaron pendientes de aprobación (<see cref="CallSettings.DeferToolApprovals"/>).
-    /// <see cref="Messages"/> debe terminar en el mensaje del asistente con esas llamadas (opcionalmente seguido de
-    /// resultados de herramientas). Antes de llamar al modelo se ejecutan las aprobadas; las denegadas y las que no
-    /// tengan decisión se responden con un error. Los resultados forman parte de
-    /// <see cref="StepResult.ResponseMessages"/> del primer paso.
+    /// Gets or sets the decisions on calls that were left pending approval (<see cref="CallSettings.DeferToolApprovals"/>).
+    /// <see cref="Messages"/> must end with the assistant message containing those calls (optionally followed by
+    /// tool results). The approved calls are executed before calling the model; denied calls and calls without a
+    /// decision are answered with an error. The results are part of the first step's
+    /// <see cref="StepResult.ResponseMessages"/>.
     /// </summary>
     /// <remarks>
-    /// Las aprobaciones se aplican a las llamadas de los mensajes que usted entrega: si el historial viene del cliente,
-    /// valídelo (o guárdelo en el servidor, como <see cref="AgentSession"/>) para que no se aprueben llamadas inventadas.
-    /// Con <c>useChat</c>, <see cref="UI.UIMessageConverter.ToModelInput"/> solo devuelve las aprobaciones cuyo
-    /// <c>approvalId</c> emitió el servidor para esa misma llamada (<see cref="UI.ToolApprovalProtector"/>). Las llamadas
-    /// aprobadas nunca se reparan (<see cref="CallSettings.RepairToolCall"/>): se ejecutan con la entrada aprobada o fallan.
+    /// Approvals apply to the calls in the messages you provide: if the history comes from the client,
+    /// validate it (or store it on the server, as <see cref="AgentSession"/> does) so that fabricated calls are not approved.
+    /// With <c>useChat</c>, <see cref="UI.UIMessageConverter.ToModelInput"/> only returns approvals whose
+    /// <c>approvalId</c> was issued by the server for that same call (<see cref="UI.ToolApprovalProtector"/>). Approved
+    /// calls are never repaired (<see cref="CallSettings.RepairToolCall"/>): they run with the approved input or fail.
     /// </remarks>
     public IReadOnlyList<ToolApprovalResponse>? ToolApprovals { get; init; }
 
     /// <summary>
-    /// (streaming) Transforma el stream de cada paso antes de emitirlo, p. ej.
-    /// <see cref="StreamTransforms.Smooth"/> para una salida palabra por palabra.
+    /// (streaming) Gets or sets a transform applied to each step's stream before it is emitted, e.g.
+    /// <see cref="StreamTransforms.Smooth"/> for word-by-word output.
     /// </summary>
     public Func<IAsyncEnumerable<StreamPart>, IAsyncEnumerable<StreamPart>>? StreamTransform { get; init; }
 
@@ -182,7 +185,7 @@ public sealed record PrepareStepContext(
     ILanguageModel Model,
     IReadOnlyList<ModelMessage> Messages);
 
-/// <summary>Sobrescrituras aplicadas a un paso concreto.</summary>
+/// <summary>Overrides applied to a specific step.</summary>
 public sealed record PrepareStepResult
 {
     public ILanguageModel? Model { get; init; }
@@ -193,13 +196,13 @@ public sealed record PrepareStepResult
 
     public string? System { get; init; }
 
-    /// <summary>Reemplaza los mensajes enviados en este paso (p. ej. para recortar el contexto).</summary>
+    /// <summary>Gets the messages that replace those sent in this step (e.g. to trim the context).</summary>
     public IReadOnlyList<ModelMessage>? Messages { get; init; }
 
     public ProviderOptions? ProviderOptions { get; init; }
 }
 
-/// <summary>Opciones de <see cref="Ai.GenerateObjectAsync{T}"/> y <see cref="Ai.StreamObject{T}"/>.</summary>
+/// <summary>Options for <see cref="Ai.GenerateObjectAsync{T}"/> and <see cref="Ai.StreamObject{T}"/>.</summary>
 public sealed class GenerateObjectOptions : CallSettings
 {
     public required ILanguageModel Model { get; init; }

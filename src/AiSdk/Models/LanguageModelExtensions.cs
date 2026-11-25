@@ -2,7 +2,7 @@ namespace AiSdk;
 
 public static class LanguageModelExtensions
 {
-    /// <summary>Convierte un resultado completo en un stream simulado (útil para modelos sin streaming nativo).</summary>
+    /// <summary>Converts a complete result into a simulated stream (useful for models without native streaming).</summary>
     public static async IAsyncEnumerable<StreamPart> ToStreamParts(this LanguageModelResult result)
     {
         if (result.Response is { } response)
@@ -45,13 +45,13 @@ public static class LanguageModelExtensions
     }
 
     /// <summary>
-    /// Devuelve un modelo que, si este falla, prueba los modelos de respaldo en orden
-    /// (p. ej. Claude → GPT → Ollama local).
+    /// Returns a model that, if this one fails, tries the fallback models in order
+    /// (e.g. Claude → GPT → local Ollama).
     /// </summary>
     public static ILanguageModel WithFallback(this ILanguageModel model, params ILanguageModel[] fallbacks) =>
         new FallbackLanguageModel([model, .. fallbacks]);
 
-    /// <summary>Envuelve el modelo con middleware.</summary>
+    /// <summary>Wraps the model with middleware.</summary>
     public static ILanguageModel WithMiddleware(this ILanguageModel model, params ILanguageModelMiddleware[] middleware) =>
         middleware.Reverse().Aggregate(model, (inner, m) => new WrappedLanguageModel(inner, m));
 }

@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 
 namespace AiSdk;
 
-/// <summary>Almacén de conversaciones (memoria del agente). Implementa uno propio para EF Core, Redis, etc.</summary>
+/// <summary>Conversation store (agent memory). Implement your own for EF Core, Redis, etc.</summary>
 public interface IConversationStore
 {
     Task<IReadOnlyList<ModelMessage>> LoadAsync(string conversationId, CancellationToken cancellationToken = default);
@@ -12,7 +12,7 @@ public interface IConversationStore
     Task ClearAsync(string conversationId, CancellationToken cancellationToken = default);
 }
 
-/// <summary>Almacén en memoria (por proceso).</summary>
+/// <summary>In-memory store (per process).</summary>
 public sealed class InMemoryConversationStore : IConversationStore
 {
     private readonly ConcurrentDictionary<string, List<ModelMessage>> _conversations = new();
@@ -45,13 +45,13 @@ public sealed class InMemoryConversationStore : IConversationStore
 }
 
 /// <summary>
-/// Conversación con memoria: carga el historial, llama al agente y guarda los
-/// mensajes nuevos (equivalente a <c>RemembersConversations</c> de Laravel AI SDK).
+/// Conversation with memory: loads the history, calls the agent and saves the
+/// new messages (equivalent to Laravel AI SDK's <c>RemembersConversations</c>).
 /// </summary>
 /// <remarks>
-/// El historial nunca queda con llamadas a herramientas sin resultado que hagan fallar las peticiones siguientes:
-/// si la conversación continúa con un mensaje nuevo mientras quedan llamadas pendientes (herramientas de cliente
-/// o aprobaciones diferidas sin responder), se cierran con un resultado de error que también se guarda.
+/// The history is never left with tool calls lacking a result, which would make subsequent requests fail:
+/// if the conversation continues with a new message while calls are still pending (client tools
+/// or unanswered deferred approvals), they are closed with an error result that is also saved.
 /// </remarks>
 public sealed class AgentSession
 {
@@ -73,8 +73,8 @@ public sealed class AgentSession
         _store.LoadAsync(ConversationId, cancellationToken);
 
     /// <summary>
-    /// Llamadas sin resultado al final de la conversación: aprobaciones diferidas
-    /// (<see cref="CallSettings.DeferToolApprovals"/>) o herramientas de cliente.
+    /// Gets the calls without a result at the end of the conversation: deferred approvals
+    /// (<see cref="CallSettings.DeferToolApprovals"/>) or client tools.
     /// </summary>
     public async Task<IReadOnlyList<ToolCallPart>> GetPendingToolCallsAsync(CancellationToken cancellationToken = default)
     {
@@ -93,8 +93,8 @@ public sealed class AgentSession
         await SendAsync(ModelMessage.User(message), cancellationToken).ConfigureAwait(false);
 
     /// <summary>
-    /// Envía un mensaje. Para responder herramientas de cliente pendientes, envíe un mensaje
-    /// <see cref="ChatRole.Tool"/> con sus resultados.
+    /// Sends a message. To answer pending client tools, send a
+    /// <see cref="ChatRole.Tool"/> message with their results.
     /// </summary>
     public async Task<GenerateTextResult> SendAsync(ModelMessage message, CancellationToken cancellationToken = default)
     {
@@ -103,8 +103,8 @@ public sealed class AgentSession
     }
 
     /// <summary>
-    /// Envía en streaming. Los mensajes se guardan al terminar cada paso, por lo que
-    /// el historial está completo cuando el stream finaliza.
+    /// Sends a message with streaming. Messages are saved as each step finishes, so
+    /// the history is complete when the stream ends.
     /// </summary>
     public async Task<StreamTextResult> StreamAsync(string message, CancellationToken cancellationToken = default)
     {
@@ -113,10 +113,10 @@ public sealed class AgentSession
     }
 
     /// <summary>
-    /// Reanuda una conversación detenida por aprobaciones diferidas (<see cref="CallSettings.DeferToolApprovals"/>):
-    /// ejecuta las llamadas aprobadas, responde con un error las denegadas o sin decisión, y continúa.
+    /// Resumes a conversation stopped by deferred approvals (<see cref="CallSettings.DeferToolApprovals"/>):
+    /// runs the approved calls, answers denied or undecided calls with an error, and continues.
     /// </summary>
-    /// <exception cref="InvalidOperationException">Si la conversación no tiene llamadas pendientes.</exception>
+    /// <exception cref="InvalidOperationException">The conversation has no pending calls.</exception>
     public async Task<GenerateTextResult> SendApprovalsAsync(IReadOnlyList<ToolApprovalResponse> approvals, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(approvals);
@@ -124,8 +124,8 @@ public sealed class AgentSession
         return await _agent.GenerateAsync(options).ConfigureAwait(false);
     }
 
-    /// <summary>Como <see cref="SendApprovalsAsync"/>, en streaming.</summary>
-    /// <exception cref="InvalidOperationException">Si la conversación no tiene llamadas pendientes.</exception>
+    /// <summary>Like <see cref="SendApprovalsAsync"/>, with streaming.</summary>
+    /// <exception cref="InvalidOperationException">The conversation has no pending calls.</exception>
     public async Task<StreamTextResult> StreamApprovalsAsync(IReadOnlyList<ToolApprovalResponse> approvals, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(approvals);
@@ -162,9 +162,9 @@ public sealed class AgentSession
     }
 
     /// <summary>
-    /// Cierra con un resultado de error las llamadas a herramientas sin resultado. Las intermedias (p. ej. guardadas
-    /// por versiones anteriores) se cierran solo en memoria; el cierre de las del final se devuelve aparte para
-    /// guardarlo. <paramref name="incoming"/> puede traer resultados (mensaje <see cref="ChatRole.Tool"/>).
+    /// Closes tool calls that have no result with an error result. Intermediate ones (e.g. saved
+    /// by earlier versions) are closed in memory only; the closure of trailing ones is returned separately so it can be
+    /// saved. <paramref name="incoming"/> may carry results (a <see cref="ChatRole.Tool"/> message).
     /// </summary>
     internal static (List<ModelMessage> History, ModelMessage? Closure) CloseDanglingToolCalls(
         IReadOnlyList<ModelMessage> history,

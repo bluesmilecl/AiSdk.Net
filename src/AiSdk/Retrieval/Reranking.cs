@@ -1,6 +1,6 @@
 namespace AiSdk;
 
-/// <summary>Modelo de reranking: ordena documentos por relevancia respecto a una consulta.</summary>
+/// <summary>Reranking model: orders documents by relevance to a query.</summary>
 public interface IRerankingModel
 {
     string Provider { get; }
@@ -12,29 +12,29 @@ public interface IRerankingModel
 
 public sealed record RerankModelRequest(string Query, IReadOnlyList<string> Documents)
 {
-    /// <summary>Cuántos resultados devolver (null = todos).</summary>
+    /// <summary>Gets or sets how many results to return (null = all).</summary>
     public int? TopN { get; init; }
 
     public ProviderOptions? ProviderOptions { get; init; }
 }
 
-/// <summary>Posición en la lista original y puntuación de relevancia.</summary>
+/// <summary>Position in the original list and relevance score.</summary>
 public sealed record RerankScore(int Index, double Score);
 
 public sealed record RerankModelResult(IReadOnlyList<RerankScore> Ranking);
 
-/// <summary>Documento reordenado.</summary>
+/// <summary>Reranked document.</summary>
 public sealed record RankedDocument<T>(T Document, int OriginalIndex, double Score);
 
 public sealed record RerankResult<T>(IReadOnlyList<RankedDocument<T>> Ranking)
 {
-    /// <summary>Documentos en orden de relevancia.</summary>
+    /// <summary>Gets the documents in order of relevance.</summary>
     public IReadOnlyList<T> RerankedDocuments => Ranking.Select(r => r.Document).ToList();
 }
 
 /// <summary>
-/// Reranking sin modelo dedicado: ordena por similitud coseno entre los embeddings de la consulta
-/// y de los documentos. Útil con proveedores que solo ofrecen embeddings.
+/// Reranking without a dedicated model: orders by cosine similarity between the embeddings of the query
+/// and of the documents. Useful with providers that only offer embeddings.
 /// </summary>
 public sealed class EmbeddingRerankingModel(IEmbeddingModel embeddingModel) : IRerankingModel
 {

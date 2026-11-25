@@ -3,20 +3,20 @@ using System.Runtime.CompilerServices;
 namespace AiSdk;
 
 /// <summary>
-/// Modelo con conmutación por error (failover): prueba cada modelo en orden hasta que uno
-/// responda. En streaming solo cambia de modelo si el fallo ocurre antes del primer fragmento.
+/// Model with failover: tries each model in order until one
+/// responds. When streaming, it only switches models if the failure occurs before the first chunk.
 /// </summary>
 public sealed class FallbackLanguageModel : ILanguageModel
 {
     private readonly IReadOnlyList<ILanguageModel> _models;
     private readonly Func<Exception, bool> _shouldFallback;
 
-    /// <param name="models">Modelos en orden de preferencia (al menos uno).</param>
+    /// <param name="models">Models in order of preference (at least one).</param>
     /// <param name="shouldFallback">
-    /// Decide si un error justifica probar el siguiente modelo. Por defecto: cualquier error
-    /// salvo cancelaciones.
+    /// Decides whether an error justifies trying the next model. By default: any error
+    /// except cancellations.
     /// </param>
-    /// <param name="onFallback">Notificación opcional cada vez que se cambia de modelo.</param>
+    /// <param name="onFallback">Optional notification each time the model is switched.</param>
     public FallbackLanguageModel(
         IReadOnlyList<ILanguageModel> models,
         Func<Exception, bool>? shouldFallback = null,

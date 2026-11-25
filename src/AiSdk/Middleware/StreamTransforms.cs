@@ -4,23 +4,23 @@ using System.Text.RegularExpressions;
 
 namespace AiSdk;
 
-/// <summary>Unidad de división del texto en <see cref="StreamTransforms.Smooth"/>.</summary>
+/// <summary>Unit by which <see cref="StreamTransforms.Smooth"/> splits the text.</summary>
 public enum SmoothChunking
 {
-    /// <summary>Palabra por palabra (incluye el espacio siguiente).</summary>
+    /// <summary>Word by word (includes the following space).</summary>
     Word,
 
-    /// <summary>Línea por línea.</summary>
+    /// <summary>Line by line.</summary>
     Line,
 }
 
-/// <summary>Transformaciones para <see cref="GenerateTextOptions.StreamTransform"/>.</summary>
+/// <summary>Transforms for <see cref="GenerateTextOptions.StreamTransform"/>.</summary>
 public static partial class StreamTransforms
 {
     /// <summary>
-    /// Suaviza el streaming de texto (equivalente a <c>smoothStream()</c>): reagrupa los fragmentos
-    /// por palabra o línea y espera <paramref name="delay"/> entre cada uno, para una salida uniforme
-    /// aunque el proveedor envíe bloques grandes.
+    /// Smooths text streaming (equivalent to <c>smoothStream()</c>): regroups the chunks
+    /// by word or line and waits <paramref name="delay"/> between each one, for uniform output
+    /// even when the provider sends large blocks.
     /// </summary>
     public static Func<IAsyncEnumerable<StreamPart>, IAsyncEnumerable<StreamPart>> Smooth(
         TimeSpan? delay = null,

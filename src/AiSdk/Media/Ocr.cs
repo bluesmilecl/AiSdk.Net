@@ -1,15 +1,15 @@
 namespace AiSdk;
 
 /// <summary>
-/// Motor de reconocimiento óptico de caracteres. Convierte imágenes (y, si el motor lo admite,
-/// PDF escaneados) en texto Markdown que cualquier modelo puede leer.
+/// Optical character recognition engine. Converts images (and, if the engine supports it,
+/// scanned PDFs) into Markdown text that any model can read.
 /// </summary>
 public interface IOcrEngine
 {
-    /// <summary>Nombre descriptivo (p. ej. <c>"tesseract"</c>, <c>"mistral-ocr-latest"</c>).</summary>
+    /// <summary>Gets a descriptive name (e.g. <c>"tesseract"</c>, <c>"mistral-ocr-latest"</c>).</summary>
     string Name { get; }
 
-    /// <summary>Indica si el motor acepta directamente este tipo MIME (las imágenes siempre deberían estarlo).</summary>
+    /// <summary>Indicates whether the engine directly accepts this MIME type (images should always be supported).</summary>
     bool Supports(string mediaType);
 
     Task<OcrResult> RecognizeAsync(OcrRequest request, CancellationToken cancellationToken = default);
@@ -19,14 +19,16 @@ public sealed record OcrRequest
 {
     public required byte[] Data { get; init; }
 
-    /// <summary>Tipo MIME, p. ej. <c>"image/png"</c> o <c>"application/pdf"</c>.</summary>
+    /// <summary>Gets or sets the MIME type, e.g. <c>"image/png"</c> or <c>"application/pdf"</c>.</summary>
     public required string MediaType { get; init; }
 
-    /// <summary>Idioma ISO-639-1 esperado (p. ej. <c>"es"</c>); mejora la precisión de algunos motores.</summary>
+    /// <summary>
+    /// Gets or sets the expected ISO-639-1 language (e.g. <c>"es"</c>); it improves the accuracy of some engines.
+    /// </summary>
     public string? Language { get; init; }
 }
 
-/// <summary>Página reconocida. <see cref="Confidence"/> va de 0 a 1 cuando el motor la informa.</summary>
+/// <summary>Recognized page. <see cref="Confidence"/> ranges from 0 to 1 when the engine reports it.</summary>
 public sealed record OcrPage(int Number, string Markdown)
 {
     public double? Confidence { get; init; }
@@ -34,13 +36,13 @@ public sealed record OcrPage(int Number, string Markdown)
 
 public sealed record OcrResult(IReadOnlyList<OcrPage> Pages)
 {
-    /// <summary>Texto de todas las páginas separado por líneas en blanco.</summary>
+    /// <summary>Gets the text of all the pages, separated by blank lines.</summary>
     public string Markdown => string.Join("\n\n", Pages.Select(p => p.Markdown.Trim()).Where(t => t.Length > 0));
 }
 
 /// <summary>
-/// OCR mediante un modelo con visión (Claude, GPT, Gemini...). Lee bien tablas, escritura a mano y
-/// diseños complejos, y devuelve Markdown estructurado.
+/// OCR through a vision model (Claude, GPT, Gemini...). It reads tables, handwriting and
+/// complex layouts well, and returns structured Markdown.
 /// </summary>
 public sealed class VisionModelOcr(ILanguageModel model, string? instructions = null) : IOcrEngine
 {

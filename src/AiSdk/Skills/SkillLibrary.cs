@@ -7,24 +7,24 @@ using AiSdk.Http;
 namespace AiSdk.Skills;
 
 /// <summary>
-/// Conjunto de skills disponibles para los agentes. Carga skills desde carpetas, archivos ZIP,
-/// repositorios de GitHub o recursos embebidos, y genera el catálogo que ve el modelo.
+/// Set of skills available to agents. Loads skills from folders, ZIP files,
+/// GitHub repositories or embedded resources, and generates the catalog the model sees.
 /// </summary>
 /// <example>
 /// <code>
 /// var skills = new SkillLibrary();
-/// skills.LoadDirectory("skills", new() { Trusted = true });           // skills propias
-/// await skills.LoadFromGitHubAsync("anthropics/skills", "skills");    // skills públicas
+/// skills.LoadDirectory("skills", new() { Trusted = true });           // your own skills
+/// await skills.LoadFromGitHubAsync("anthropics/skills", "skills");    // public skills
 /// var agent = new ToolLoopAgent(new() { Model = claude, Skills = skills });
 /// </code>
 /// </example>
 public sealed class SkillLibrary
 {
     /// <summary>
-    /// Marcador de procedencia que se guarda junto al <c>SKILL.md</c> de las skills no confiables (p. ej. las
-    /// creadas por un agente con <c>create_skill</c>). Al cargar, una skill con este archivo es siempre no
-    /// confiable, aunque la carpeta se cargue con <see cref="SkillLoadOptions.Trusted"/>: así una inyección de
-    /// prompt no se convierte en código de confianza al reiniciar. Para confiar en ella, revísela y borre el archivo.
+    /// Provenance marker saved next to the <c>SKILL.md</c> of untrusted skills (e.g. those
+    /// created by an agent with <c>create_skill</c>). When loading, a skill with this file is always
+    /// untrusted, even if the folder is loaded with <see cref="SkillLoadOptions.Trusted"/>: this way a prompt
+    /// injection does not become trusted code on restart. To trust the skill, review it and delete the file.
     /// </summary>
     public const string ProvenanceFileName = ".aisdk-provenance.json";
 
@@ -44,18 +44,20 @@ public sealed class SkillLibrary
         }
     }
 
-    /// <summary>Skills ordenadas por nombre.</summary>
+    /// <summary>Gets the skills sorted by name.</summary>
     public IReadOnlyList<Skill> Skills => _skills.Values.OrderBy(s => s.Name, StringComparer.Ordinal).ToList();
 
     public int Count => _skills.Count;
 
-    /// <summary>Errores de skills omitidas al cargar (con <see cref="SkillLoadOptions.ThrowOnInvalid"/> = false).</summary>
+    /// <summary>
+    /// Gets the errors of skills skipped during loading (with <see cref="SkillLoadOptions.ThrowOnInvalid"/> = false).
+    /// </summary>
     public IReadOnlyList<string> LoadErrors => _loadErrors.ToList();
 
-    /// <summary>Activaciones por skill desde que se creó la librería.</summary>
+    /// <summary>Gets the activations per skill since the library was created.</summary>
     public IReadOnlyDictionary<string, int> Usage => _usage.Snapshot();
 
-    /// <summary>Se dispara cada vez que el modelo o el usuario activa una skill.</summary>
+    /// <summary>Raised each time the model or the user activates a skill.</summary>
     public event Action<SkillActivation>? Activated;
 
     public Skill? Get(string name) => _skills.TryGetValue(name, out var skill) ? skill : null;
@@ -63,8 +65,8 @@ public sealed class SkillLibrary
     public bool Contains(string name) => _skills.ContainsKey(name);
 
     /// <summary>
-    /// Agrega o reemplaza explícitamente una skill (la valida: una skill inválida lanza <see cref="FormatException"/>,
-    /// salvo con <paramref name="strict"/> = false). Los métodos <c>Load*</c>, en cambio, no reemplazan skills ya cargadas.
+    /// Explicitly adds or replaces a skill (it validates it: an invalid skill throws <see cref="FormatException"/>,
+    /// unless <paramref name="strict"/> is false). The <c>Load*</c> methods, by contrast, do not replace skills already loaded.
     /// </summary>
     public SkillLibrary Add(Skill skill, bool strict = true)
     {
@@ -90,8 +92,8 @@ public sealed class SkillLibrary
     // ---------------------------------------------------------------------
 
     /// <summary>
-    /// Carga todas las skills bajo <paramref name="root"/> (cada carpeta con un <c>SKILL.md</c>,
-    /// a cualquier profundidad, p. ej. <c>.claude/skills</c>, <c>plugins/*/skills</c>).
+    /// Loads all the skills under <paramref name="root"/> (every folder with a <c>SKILL.md</c>,
+    /// at any depth, e.g. <c>.claude/skills</c>, <c>plugins/*/skills</c>).
     /// </summary>
     public IReadOnlyList<Skill> LoadDirectory(string root, SkillLoadOptions? options = null)
     {
@@ -140,14 +142,14 @@ public sealed class SkillLibrary
         return loaded;
     }
 
-    /// <summary>True si la carpeta tiene el marcador <see cref="ProvenanceFileName"/> (aunque sea un enlace).</summary>
+    /// <summary>True if the folder has the <see cref="ProvenanceFileName"/> marker (even if it is a link).</summary>
     private static bool HasProvenanceMarker(string folder)
     {
         var marker = Path.Combine(folder, ProvenanceFileName);
         return File.Exists(marker) || Directory.Exists(marker) || new FileInfo(marker).LinkTarget is not null;
     }
 
-    /// <summary>Carga skills desde un ZIP (paquete de una skill o un repositorio completo).</summary>
+    /// <summary>Loads skills from a ZIP (a single skill package or a whole repository).</summary>
     public IReadOnlyList<Skill> LoadZip(Stream zip, string? path = null, SkillLoadOptions? options = null, string? location = null)
     {
         options ??= SkillLoadOptions.Default;
@@ -168,15 +170,15 @@ public sealed class SkillLibrary
     }
 
     /// <summary>
-    /// Descarga un repositorio público de GitHub y carga sus skills (p. ej. <c>anthropics/skills</c>,
-    /// <c>dotnet/skills</c>). Las skills de terceros se cargan como no confiables salvo que se indique.
+    /// Downloads a public GitHub repository and loads its skills (e.g. <c>anthropics/skills</c>,
+    /// <c>dotnet/skills</c>). Third-party skills are loaded as untrusted unless specified otherwise.
     /// </summary>
-    /// <param name="repository">"propietario/repositorio".</param>
-    /// <param name="path">Subcarpeta opcional (p. ej. <c>skills</c> o <c>plugins/dotnet-test/skills</c>).</param>
-    /// <param name="reference">Rama, tag o commit (fíjelo a un commit para builds reproducibles).</param>
-    /// <param name="options">Límites y confianza (por defecto, no confiable).</param>
-    /// <param name="httpClient">Cliente HTTP (por defecto, el compartido del SDK).</param>
-    /// <param name="cancellationToken">Token de cancelación.</param>
+    /// <param name="repository">"owner/repository".</param>
+    /// <param name="path">Optional subfolder (e.g. <c>skills</c> or <c>plugins/dotnet-test/skills</c>).</param>
+    /// <param name="reference">Branch, tag or commit (pin it to a commit for reproducible builds).</param>
+    /// <param name="options">Limits and trust (untrusted by default).</param>
+    /// <param name="httpClient">HTTP client (by default, the SDK's shared one).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     public async Task<IReadOnlyList<Skill>> LoadFromGitHubAsync(
         string repository,
         string? path = null,
@@ -228,7 +230,7 @@ public sealed class SkillLibrary
     }
 
     /// <summary>
-    /// Carga skills incluidas como recursos embebidos en un ensamblado: agregue la carpeta al proyecto con
+    /// Loads skills included as embedded resources in an assembly: add the folder to the project with
     /// <c>&lt;EmbeddedResource Include="skills/**" LogicalName="skills/%(RecursiveDir)%(Filename)%(Extension)" /&gt;</c>.
     /// </summary>
     public IReadOnlyList<Skill> LoadEmbedded(Assembly assembly, string prefix = "skills/", SkillLoadOptions? options = null)
@@ -293,14 +295,14 @@ public sealed class SkillLibrary
     // ---------------------------------------------------------------------
 
     /// <summary>
-    /// Escribe una skill en <c>{directorio}/{nombre}/</c> (SKILL.md y archivos). La confianza se conserva en disco:
-    /// si la skill no es de confianza se escribe el marcador <see cref="ProvenanceFileName"/> (y al volver a
-    /// cargarla seguirá sin serlo); si lo es, se elimina el marcador que hubiera.
+    /// Writes a skill to <c>{directory}/{name}/</c> (SKILL.md and files). Trust is preserved on disk:
+    /// if the skill is not trusted, the <see cref="ProvenanceFileName"/> marker is written (and when it is
+    /// reloaded it remains untrusted); if it is trusted, any existing marker is removed.
     /// </summary>
     public static Task<string> SaveAsync(Skill skill, string directory, CancellationToken cancellationToken = default) =>
         SaveAsync(skill, directory, skill.Trusted ? null : "untrusted", cancellationToken);
 
-    /// <summary>Escribe la skill; con <paramref name="untrustedSource"/> deja el marcador de procedencia.</summary>
+    /// <summary>Writes the skill; with <paramref name="untrustedSource"/> it leaves the provenance marker.</summary>
     internal static async Task<string> SaveAsync(Skill skill, string directory, string? untrustedSource, CancellationToken cancellationToken)
     {
         skill.Validate().ThrowIfInvalid(skill.Name);
@@ -353,10 +355,10 @@ public sealed class SkillLibrary
     }
 
     /// <summary>
-    /// Escribe en un archivo temporal oculto de la misma carpeta y lo renombra sobre <paramref name="target"/>. Así se
-    /// reemplaza la entrada del directorio en vez de escribir en el archivo existente: si <paramref name="target"/> es un
-    /// hard link a un archivo de fuera de la skill (que no se distingue de un archivo normal), un FIFO o un enlace, el
-    /// otro archivo no se modifica y la escritura no se bloquea.
+    /// Writes to a hidden temporary file in the same folder and renames it over <paramref name="target"/>. This
+    /// replaces the directory entry instead of writing into the existing file: if <paramref name="target"/> is a
+    /// hard link to a file outside the skill (indistinguishable from a regular file), a FIFO or a link, the
+    /// other file is not modified and the write does not block.
     /// </summary>
     private static async Task WriteReplacingAsync(string target, byte[] data, CancellationToken cancellationToken)
     {
@@ -388,7 +390,7 @@ public sealed class SkillLibrary
         }
     }
 
-    /// <summary>Impide escribir a través de un enlace simbólico o junction que apunte fuera de la carpeta.</summary>
+    /// <summary>Prevents writing through a symbolic link or junction that points outside the folder.</summary>
     private static void EnsureNoLinks(string root, string relative)
     {
         var current = root;
@@ -402,7 +404,7 @@ public sealed class SkillLibrary
         }
     }
 
-    /// <summary>Empaqueta una skill en ZIP (<c>nombre/SKILL.md</c>...), el formato que aceptan Claude.ai y la API de Skills.</summary>
+    /// <summary>Packs a skill into a ZIP (<c>name/SKILL.md</c>...), the format accepted by Claude.ai and the Skills API.</summary>
     public static async Task<byte[]> PackAsync(Skill skill, CancellationToken cancellationToken = default)
     {
         skill.Validate().ThrowIfInvalid(skill.Name);
@@ -433,9 +435,9 @@ public sealed class SkillLibrary
     // ---------------------------------------------------------------------
 
     /// <summary>
-    /// Catálogo para el prompt de sistema: nombre, descripción y ubicación de cada skill invocable por el
-    /// modelo, en el formato <c>&lt;available_skills&gt;</c> que usan Claude Code y Copilot.
-    /// Si supera <paramref name="maxChars"/>, las últimas skills se listan sin descripción.
+    /// Catalog for the system prompt: name, description and location of each skill the model can
+    /// invoke, in the <c>&lt;available_skills&gt;</c> format used by Claude Code and Copilot.
+    /// If it exceeds <paramref name="maxChars"/>, the last skills are listed without a description.
     /// </summary>
     public string Catalog(int maxChars = 15_000)
     {
@@ -449,7 +451,7 @@ public sealed class SkillLibrary
         return builder.Append("</available_skills>").ToString();
     }
 
-    /// <summary>Instrucciones de sistema que explican al modelo cómo usar las skills, con el catálogo.</summary>
+    /// <summary>System instructions that explain to the model how to use the skills, including the catalog.</summary>
     public string SystemPrompt(int maxCatalogChars = 15_000) =>
         $"""
         Tienes skills: paquetes de instrucciones y recursos para tareas especializadas. Cuando una tarea coincida
@@ -461,8 +463,8 @@ public sealed class SkillLibrary
         """;
 
     /// <summary>
-    /// Invocación explícita por el usuario (como <c>/nombre argumentos</c>): devuelve las instrucciones con
-    /// <c>$ARGUMENTS</c> reemplazado, listas para enviarse como mensaje.
+    /// Explicit invocation by the user (like <c>/name arguments</c>): returns the instructions with
+    /// <c>$ARGUMENTS</c> replaced, ready to be sent as a message.
     /// </summary>
     public string Invoke(string name, string? arguments = null)
     {
@@ -474,7 +476,7 @@ public sealed class SkillLibrary
         return $"<skill name=\"{skill.Name}\">\n{instructions}\n</skill>";
     }
 
-    /// <summary>Interpreta un comando de barra (<c>/skill-name argumentos</c>); null si el texto no es uno.</summary>
+    /// <summary>Interprets a slash command (<c>/skill-name arguments</c>); null if the text is not one.</summary>
     public string? TryInvokeSlashCommand(string userText)
     {
         if (!userText.StartsWith('/'))

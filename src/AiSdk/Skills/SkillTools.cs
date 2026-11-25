@@ -5,37 +5,41 @@ using System.Text;
 
 namespace AiSdk.Skills;
 
-/// <summary>Opciones de las herramientas de skills.</summary>
+/// <summary>Options for the skill tools.</summary>
 public sealed class SkillToolOptions
 {
     /// <summary>
-    /// Ejecutor de los scripts de las skills (<c>scripts/</c>). Si es null no se expone
-    /// <c>run_skill_script</c>: el modelo solo lee instrucciones y archivos.
+    /// Gets or sets the runner for skill scripts (<c>scripts/</c>). If null,
+    /// <c>run_skill_script</c> is not exposed: the model only reads instructions and files.
     /// </summary>
     public ISkillScriptRunner? ScriptRunner { get; init; }
 
-    /// <summary>Permite ejecutar scripts de skills no confiables (de terceros). Desactivado por defecto.</summary>
+    /// <summary>
+    /// Gets or sets whether scripts from untrusted (third-party) skills can run. Disabled by default.
+    /// </summary>
     public bool AllowUntrustedScripts { get; init; }
 
     /// <summary>
-    /// Si es true (por defecto), <c>run_skill_script</c> requiere aprobación humana (<see cref="CallSettings.OnToolApproval"/>)
-    /// antes de cada ejecución: las instrucciones de cualquier skill, o el resultado de otra herramienta, podrían
-    /// inducir al modelo a ejecutar el script de una skill de confianza. Sin manejador de aprobación la llamada falla
-    /// con un error explícito. Desactívelo solo si los scripts son inocuos con cualquier argumento.
+    /// Gets or sets whether <c>run_skill_script</c> requires human approval (<see cref="CallSettings.OnToolApproval"/>)
+    /// before each execution (true by default): the instructions of any skill, or the result of another tool, could
+    /// induce the model to run the script of a trusted skill. Without an approval handler the call fails
+    /// with an explicit error. Disable it only if the scripts are harmless with any arguments.
     /// </summary>
     public bool RequireScriptApproval { get; init; } = true;
 
-    /// <summary>Caracteres máximos devueltos al leer un archivo.</summary>
+    /// <summary>Gets or sets the maximum number of characters returned when reading a file.</summary>
     public int MaxFileChars { get; init; } = 60_000;
 
-    /// <summary>Envía un data part <c>data-skill</c> a la interfaz al activar una skill.</summary>
+    /// <summary>
+    /// Gets or sets whether a <c>data-skill</c> data part is sent to the UI when a skill is activated.
+    /// </summary>
     public bool NotifyUI { get; init; } = true;
 }
 
 /// <summary>
-/// Herramientas que dan al agente acceso a una <see cref="SkillLibrary"/> con divulgación progresiva:
-/// <c>load_skill</c> (instrucciones), <c>read_skill_file</c> (referencias y recursos) y, si se configura
-/// un <see cref="ISkillScriptRunner"/>, <c>run_skill_script</c>.
+/// Tools that give the agent access to a <see cref="SkillLibrary"/> with progressive disclosure:
+/// <c>load_skill</c> (instructions), <c>read_skill_file</c> (references and resources) and, if
+/// an <see cref="ISkillScriptRunner"/> is configured, <c>run_skill_script</c>.
 /// </summary>
 public static class SkillTools
 {
@@ -136,26 +140,28 @@ public static class SkillTools
         [property: Description("Argumentos de línea de comandos.")] IReadOnlyList<string>? Arguments = null);
 }
 
-/// <summary>Resultado de ejecutar un script de una skill.</summary>
+/// <summary>Result of running a skill script.</summary>
 public sealed record SkillScriptResult(int ExitCode, string Stdout, string Stderr)
 {
-    /// <summary>Archivos que el script creó o modificó (ruta relativa → contenido).</summary>
+    /// <summary>Gets the files the script created or modified (relative path → content).</summary>
     public IReadOnlyDictionary<string, byte[]> CreatedFiles { get; init; } = new Dictionary<string, byte[]>();
 
-    /// <summary>Archivos creados que no se devolvieron por superar los límites de tamaño o cantidad, o por ser enlaces.</summary>
+    /// <summary>
+    /// Gets the created files that were not returned because they exceeded the size or count limits, or were links.
+    /// </summary>
     public IReadOnlyList<string> OmittedFiles { get; init; } = [];
 }
 
-/// <summary>Ejecuta scripts de skills. Implemente esta interfaz para usar un contenedor o sandbox propio.</summary>
+/// <summary>Runs skill scripts. Implement this interface to use your own container or sandbox.</summary>
 public interface ISkillScriptRunner
 {
     Task<SkillScriptResult> RunAsync(Skill skill, string script, IReadOnlyList<string> arguments, CancellationToken cancellationToken = default);
 }
 
-/// <summary>Opciones de <see cref="ProcessSkillScriptRunner"/>.</summary>
+/// <summary>Options for <see cref="ProcessSkillScriptRunner"/>.</summary>
 public sealed class ProcessSkillScriptRunnerOptions
 {
-    /// <summary>Intérprete por extensión. Solo se ejecutan scripts con extensión registrada.</summary>
+    /// <summary>Gets or sets the interpreter per extension. Only scripts with a registered extension are run.</summary>
     public Dictionary<string, string> Interpreters { get; init; } = new(StringComparer.OrdinalIgnoreCase)
     {
         [".py"] = "python3",
@@ -165,30 +171,38 @@ public sealed class ProcessSkillScriptRunnerOptions
         [".ps1"] = "pwsh",
     };
 
-    /// <summary>Tiempo máximo de ejecución (60 s por defecto). Al superarlo se detiene el árbol de procesos.</summary>
+    /// <summary>
+    /// Gets or sets the maximum execution time (60 s by default). When exceeded, the process tree is stopped.
+    /// </summary>
     public TimeSpan Timeout { get; init; } = TimeSpan.FromSeconds(60);
 
-    /// <summary>Caracteres máximos de stdout/stderr (el resto se lee y se descarta, sin acumularlo en memoria).</summary>
+    /// <summary>
+    /// Gets or sets the maximum characters of stdout/stderr (the rest is read and discarded, without
+    /// buffering it in memory).
+    /// </summary>
     public int MaxOutputChars { get; init; } = 30_000;
 
-    /// <summary>Variables de entorno adicionales (el resto del entorno no se hereda, salvo PATH y LANG).</summary>
+    /// <summary>
+    /// Gets or sets additional environment variables (the rest of the environment is not inherited,
+    /// except PATH and LANG).
+    /// </summary>
     public Dictionary<string, string> Environment { get; init; } = [];
 
-    /// <summary>Tamaño máximo de cada archivo creado que se devuelve.</summary>
+    /// <summary>Gets or sets the maximum size of each returned created file.</summary>
     public long MaxCreatedFileBytes { get; init; } = 10 * 1024 * 1024;
 
-    /// <summary>Cantidad máxima de archivos creados que se devuelven.</summary>
+    /// <summary>Gets or sets the maximum number of created files that are returned.</summary>
     public int MaxCreatedFiles { get; init; } = 100;
 
-    /// <summary>Tamaño total máximo de los archivos creados que se devuelven.</summary>
+    /// <summary>Gets or sets the maximum total size of the created files that are returned.</summary>
     public long MaxCreatedTotalBytes { get; init; } = 50 * 1024 * 1024;
 }
 
 /// <summary>
-/// Ejecuta scripts como procesos locales en una copia temporal de la skill, sin heredar el entorno
-/// (no expone claves de API), con tiempo límite y salida acotada. Al terminar, por error, tiempo límite o
-/// cancelación del llamador, detiene siempre el árbol de procesos. No es un sandbox: para skills de
-/// terceros use un contenedor (implemente <see cref="ISkillScriptRunner"/>).
+/// Runs scripts as local processes in a temporary copy of the skill, without inheriting the environment (it does not
+/// expose API keys), with a time limit and bounded output. When it finishes, whether by error, time limit or caller
+/// cancellation, it always stops the process tree. It is not a sandbox: for third-party skills use a container
+/// (implement <see cref="ISkillScriptRunner"/>).
 /// </summary>
 public sealed class ProcessSkillScriptRunner(ProcessSkillScriptRunnerOptions? options = null) : ISkillScriptRunner
 {
@@ -310,7 +324,7 @@ public sealed class ProcessSkillScriptRunner(ProcessSkillScriptRunnerOptions? op
         }
     }
 
-    /// <summary>Archivos creados o modificados, con límites de cantidad y tamaño; no sigue enlaces.</summary>
+    /// <summary>Created or modified files, with count and size limits; does not follow links.</summary>
     private async Task<(Dictionary<string, byte[]> Created, List<string> Omitted)> CollectCreatedFilesAsync(
         string workDir,
         Dictionary<string, DateTime> before,
@@ -404,7 +418,10 @@ public sealed class ProcessSkillScriptRunner(ProcessSkillScriptRunnerOptions? op
         }
     }
 
-    /// <summary>Lee una salida sin acumular más de <c>maxChars</c>; el resto se descarta para no bloquear al proceso.</summary>
+    /// <summary>
+    /// Reads an output without buffering more than <c>maxChars</c>; the rest is discarded so the process
+    /// does not block.
+    /// </summary>
     private sealed class BoundedOutput(int maxChars)
     {
         private readonly StringBuilder _text = new();

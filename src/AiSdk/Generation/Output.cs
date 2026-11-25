@@ -5,8 +5,8 @@ using AiSdk.Internal;
 namespace AiSdk;
 
 /// <summary>
-/// Especificación de salida estructurada (equivalente a <c>Output.object()</c>,
-/// <c>Output.array()</c>, <c>Output.choice()</c> del AI SDK).
+/// Structured output specification (equivalent to the AI SDK's <c>Output.object()</c>,
+/// <c>Output.array()</c> and <c>Output.choice()</c>).
 /// </summary>
 public abstract class Output
 {
@@ -24,11 +24,11 @@ public abstract class Output
     public static Output<T> Object<T>(string? name = null, string? description = null, JsonSerializerOptions? options = null) =>
         new ObjectOutput<T>(name, description, options ?? JsonSchema.DefaultSerializerOptions);
 
-    /// <summary>Array de elementos. Internamente se envuelve en <c>{ "elements": [...] }</c>.</summary>
+    /// <summary>Array of elements. Internally it is wrapped in <c>{ "elements": [...] }</c>.</summary>
     public static Output<IReadOnlyList<T>> Array<T>(string? name = null, string? description = null, JsonSerializerOptions? options = null) =>
         new ArrayOutput<T>(name, description, options ?? JsonSchema.DefaultSerializerOptions);
 
-    /// <summary>Clasificación: el modelo elige uno de los valores dados.</summary>
+    /// <summary>Classification: the model chooses one of the given values.</summary>
     public static Output<string> Choice(params string[] options) => new ChoiceOutput(options);
 }
 

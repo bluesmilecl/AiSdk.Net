@@ -3,8 +3,8 @@ using System.Runtime.CompilerServices;
 namespace AiSdk.Internal;
 
 /// <summary>
-/// Buffer que permite múltiples consumidores independientes de un mismo stream
-/// (cada uno recibe todos los elementos desde el principio).
+/// Buffer that allows multiple independent consumers of the same stream
+/// (each one receives all the elements from the beginning).
 /// </summary>
 internal sealed class ReplayBuffer<T>
 {

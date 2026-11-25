@@ -5,30 +5,30 @@ using System.Text.Json.Serialization;
 
 namespace AiSdk.Artifacts;
 
-/// <summary>Tipos de artifact (los mismos que usa Claude).</summary>
+/// <summary>Artifact types (the same ones Claude uses).</summary>
 public static class ArtifactTypes
 {
-    /// <summary>Página HTML autocontenida (CSS y JS en línea).</summary>
+    /// <summary>Self-contained HTML page (inline CSS and JS).</summary>
     public const string Html = "html";
 
     public const string Markdown = "markdown";
 
-    /// <summary>Código fuente (indicar <see cref="Artifact.Language"/>).</summary>
+    /// <summary>Source code (set <see cref="Artifact.Language"/>).</summary>
     public const string Code = "code";
 
     public const string Svg = "svg";
 
-    /// <summary>Diagrama Mermaid.</summary>
+    /// <summary>Mermaid diagram.</summary>
     public const string Mermaid = "mermaid";
 
-    /// <summary>Componente React (export default) renderizable en el navegador.</summary>
+    /// <summary>React component (default export) that can be rendered in the browser.</summary>
     public const string React = "react";
 
     public const string Json = "json";
 
     public const string Csv = "csv";
 
-    /// <summary>Archivo binario generado (Word, Excel, PDF, imagen...).</summary>
+    /// <summary>Generated binary file (Word, Excel, PDF, image...).</summary>
     public const string File = "file";
 
     public static readonly IReadOnlyList<string> Text = [Html, Markdown, Code, Svg, Mermaid, React, Json, Csv];
@@ -44,23 +44,23 @@ public static class ArtifactTypes
     };
 }
 
-/// <summary>Una versión de un artifact.</summary>
+/// <summary>A version of an artifact.</summary>
 public sealed record Artifact
 {
     public required string Id { get; init; }
 
     public required string Title { get; init; }
 
-    /// <summary>Uno de <see cref="ArtifactTypes"/>.</summary>
+    /// <summary>Gets the type: one of <see cref="ArtifactTypes"/>.</summary>
     public required string Type { get; init; }
 
-    /// <summary>Lenguaje para artifacts de código (p. ej. <c>"csharp"</c>, <c>"python"</c>).</summary>
+    /// <summary>Gets the language of code artifacts (e.g. <c>"csharp"</c>, <c>"python"</c>).</summary>
     public string? Language { get; init; }
 
-    /// <summary>Contenido de texto (vacío para archivos binarios).</summary>
+    /// <summary>Gets the text content (empty for binary files).</summary>
     public string Content { get; init; } = string.Empty;
 
-    /// <summary>Contenido binario (artifacts de tipo <see cref="ArtifactTypes.File"/>).</summary>
+    /// <summary>Gets the binary content (artifacts of type <see cref="ArtifactTypes.File"/>).</summary>
     public byte[]? Data { get; init; }
 
     public string? MediaType { get; init; }
@@ -69,12 +69,13 @@ public sealed record Artifact
 
     public int Version { get; init; } = 1;
 
-    /// <summary>Conversación a la que pertenece el artifact (las herramientas no ven artifacts de otras conversaciones).</summary>
+    /// <summary>Gets the conversation the artifact belongs to (tools cannot see artifacts from other conversations).</summary>
     public string? ConversationId { get; init; }
 
     /// <summary>
-    /// Usuario dueño del artifact. Lo asignan <see cref="ArtifactTools"/> desde <see cref="ToolExecutionContext.Context"/>
-    /// (clave <see cref="ArtifactToolOptions.OwnerKey"/>), nunca el modelo ni el cliente; los endpoints lo usan para autorizar.
+    /// Gets the user who owns the artifact. It is set by <see cref="ArtifactTools"/> from
+    /// <see cref="ToolExecutionContext.Context"/> (key <see cref="ArtifactToolOptions.OwnerKey"/>), never by the model
+    /// or the client; endpoints use it for authorization.
     /// </summary>
     public string? Owner { get; init; }
 
@@ -86,27 +87,27 @@ public sealed record Artifact
     public string EffectiveMediaType => MediaType ?? ArtifactTypes.MediaTypeOf(Type);
 }
 
-/// <summary>Almacén de artifacts con historial de versiones.</summary>
+/// <summary>Artifact store with version history.</summary>
 public interface IArtifactStore
 {
-    /// <summary>Guarda una versión nueva (el número de versión lo asigna el almacén).</summary>
+    /// <summary>Saves a new version (the store assigns the version number).</summary>
     Task<Artifact> SaveAsync(Artifact artifact, CancellationToken cancellationToken = default);
 
-    /// <summary>Última versión, o la indicada.</summary>
+    /// <summary>Gets the latest version, or the specified one.</summary>
     Task<Artifact?> GetAsync(string id, int? version = null, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<Artifact>> GetVersionsAsync(string id, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Última versión de cada artifact (opcionalmente de una conversación). Es para listados: los almacenes pueden omitir
-    /// el contenido binario (<see cref="Artifact.Data"/>); use <see cref="GetAsync"/> para leer un artifact completo.
+    /// Lists the latest version of each artifact (optionally of one conversation). Intended for listings: stores may omit
+    /// the binary content (<see cref="Artifact.Data"/>); use <see cref="GetAsync"/> to read a complete artifact.
     /// </summary>
     Task<IReadOnlyList<Artifact>> ListAsync(string? conversationId = null, CancellationToken cancellationToken = default);
 
     Task DeleteAsync(string id, CancellationToken cancellationToken = default);
 }
 
-/// <summary>Almacén en memoria (desarrollo y pruebas).</summary>
+/// <summary>In-memory store (development and testing).</summary>
 public sealed class InMemoryArtifactStore : IArtifactStore
 {
     private readonly ConcurrentDictionary<string, List<Artifact>> _items = new();
@@ -166,8 +167,8 @@ public sealed class InMemoryArtifactStore : IArtifactStore
 }
 
 /// <summary>
-/// Almacén en disco: una carpeta por artifact con un JSON por versión (y el binario aparte).
-/// Útil para servidores pequeños o para inspeccionar los artifacts a mano.
+/// File system store: one folder per artifact with one JSON file per version (and the binary stored separately).
+/// Useful for small servers or for inspecting artifacts by hand.
 /// </summary>
 public sealed class FileSystemArtifactStore(string directory) : IArtifactStore, IDisposable
 {
@@ -288,52 +289,60 @@ public sealed class FileSystemArtifactStore(string directory) : IArtifactStore, 
     }
 }
 
-/// <summary>Opciones de <see cref="ArtifactTools"/>.</summary>
+/// <summary>Options for <see cref="ArtifactTools"/>.</summary>
 public sealed class ArtifactToolOptions
 {
-    /// <summary>Tipos permitidos (por defecto todos los de texto).</summary>
+    /// <summary>Gets or sets the allowed types (by default, all text types).</summary>
     public IReadOnlyList<string> AllowedTypes { get; init; } = ArtifactTypes.Text;
 
-    /// <summary>Tamaño máximo del contenido en caracteres.</summary>
+    /// <summary>Gets or sets the maximum content size, in characters.</summary>
     public int MaxContentLength { get; init; } = 500_000;
 
-    /// <summary>URL pública de un artifact (p. ej. <c>a => $"/artifacts/{a.Id}"</c>), que se devuelve al modelo y a la UI.</summary>
+    /// <summary>
+    /// Gets or sets the public URL of an artifact (e.g. <c>a => $"/artifacts/{a.Id}"</c>), which is returned to the
+    /// model and the UI.
+    /// </summary>
     public Func<Artifact, string?>? Url { get; init; }
 
-    /// <summary>Clave de <see cref="ToolExecutionContext.Context"/> con el id de conversación.</summary>
+    /// <summary>
+    /// Gets or sets the <see cref="ToolExecutionContext.Context"/> key that holds the conversation id.
+    /// </summary>
     public string ConversationIdKey { get; init; } = "conversationId";
 
     /// <summary>
-    /// Clave de <see cref="ToolExecutionContext.Context"/> con el usuario dueño (la misma que usan las tareas programadas).
-    /// Debe venir de la autenticación del servidor, no del cliente.
+    /// Gets or sets the <see cref="ToolExecutionContext.Context"/> key that holds the owning user (the same one scheduled
+    /// tasks use). It must come from server-side authentication, not from the client.
     /// </summary>
     public string OwnerKey { get; init; } = "userId";
 
     /// <summary>
-    /// Permite usar las herramientas sin conversación ni usuario en el contexto. Por defecto <c>false</c>: sin ámbito las
-    /// herramientas fallan, para no mezclar artifacts de distintos usuarios. Los artifacts creados así no tienen dueño y
-    /// solo los ven otros contextos sin ámbito. Solo para aplicaciones de un único usuario, scripts o pruebas.
+    /// Gets or sets whether the tools can be used without a conversation or user in the context. Defaults to
+    /// <c>false</c>: without a scope the tools fail, so that artifacts from different users are never mixed. Artifacts
+    /// created this way have no owner and are only visible to other unscoped contexts. Only for single-user
+    /// applications, scripts or tests.
     /// </summary>
     public bool AllowUnscoped { get; init; }
 
-    /// <summary>Incluye el contenido completo en el data part <c>data-artifact</c> que recibe la interfaz.</summary>
+    /// <summary>
+    /// Gets or sets whether to include the full content in the <c>data-artifact</c> data part sent to the UI.
+    /// </summary>
     public bool SendContentToUI { get; init; } = true;
 
-    /// <summary>Validación adicional antes de guardar (lanza una excepción para rechazar).</summary>
+    /// <summary>Gets or sets an additional validation that runs before saving (throw an exception to reject).</summary>
     public Action<Artifact>? Validate { get; init; }
 }
 
 /// <summary>
-/// Ámbito desde el que se accede a los artifacts: la conversación y el usuario del contexto de ejecución.
+/// Scope from which artifacts are accessed: the conversation and the user of the execution context.
 /// </summary>
-/// <param name="ConversationId">Conversación actual (aísla los artifacts entre conversaciones).</param>
-/// <param name="Owner">Usuario autenticado (aísla los artifacts entre usuarios).</param>
+/// <param name="ConversationId">Current conversation (isolates artifacts between conversations).</param>
+/// <param name="Owner">Authenticated user (isolates artifacts between users).</param>
 public sealed record ArtifactScope(string? ConversationId, string? Owner)
 {
-    /// <summary>True si no hay conversación ni usuario.</summary>
+    /// <summary>Gets whether the scope has neither a conversation nor a user.</summary>
     public bool IsEmpty => ConversationId is null && Owner is null;
 
-    /// <summary>Lee el ámbito de <see cref="ToolExecutionContext.Context"/> con las claves de <paramref name="options"/>.</summary>
+    /// <summary>Reads the scope from <see cref="ToolExecutionContext.Context"/> using the keys in <paramref name="options"/>.</summary>
     public static ArtifactScope FromContext(ToolExecutionContext? context, ArtifactToolOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -341,12 +350,12 @@ public sealed record ArtifactScope(string? ConversationId, string? Owner)
     }
 
     /// <summary>
-    /// Indica si este ámbito puede ver o editar <paramref name="artifact"/>:
+    /// Indicates whether this scope can view or edit <paramref name="artifact"/>:
     /// <list type="bullet">
-    /// <item>si el artifact o el ámbito tienen usuario, ambos deben ser el mismo;</item>
-    /// <item>si ambos tienen conversación, debe ser la misma;</item>
-    /// <item>sin usuarios, el artifact de una conversación solo se ve desde esa conversación, y uno sin conversación ni
-    /// usuario solo desde un ámbito vacío.</item>
+    /// <item>if the artifact or the scope has a user, both must be the same;</item>
+    /// <item>if both have a conversation, it must be the same;</item>
+    /// <item>without users, an artifact of a conversation is only visible from that conversation, and one with neither a
+    /// conversation nor a user only from an empty scope.</item>
     /// </list>
     /// </summary>
     public bool CanAccess(Artifact artifact)
@@ -375,18 +384,18 @@ public sealed record ArtifactScope(string? ConversationId, string? Owner)
 }
 
 /// <summary>
-/// Herramientas para que un agente cree y edite artifacts como Claude: contenido sustancial y
-/// autocontenido (páginas HTML, documentos, código, diagramas, componentes React) que se muestra
-/// aparte del chat, se versiona y se puede editar con reemplazos exactos.
+/// Tools that let an agent create and edit artifacts like Claude does: substantial, self-contained content
+/// (HTML pages, documents, code, diagrams, React components) that is shown apart from the chat, versioned,
+/// and editable with exact replacements.
 /// </summary>
 /// <remarks>
-/// Cada cambio se envía a la interfaz como data part <c>data-artifact</c> (reconciliado por id),
-/// así <c>useChat</c> puede mostrarlo en un panel lateral. Las herramientas exigen una conversación o un usuario en
-/// <see cref="ToolExecutionContext.Context"/> (ver <see cref="ArtifactScope"/>) salvo <see cref="ArtifactToolOptions.AllowUnscoped"/>.
+/// Each change is sent to the UI as a <c>data-artifact</c> data part (reconciled by id), so <c>useChat</c> can show it
+/// in a side panel. The tools require a conversation or a user in <see cref="ToolExecutionContext.Context"/> (see
+/// <see cref="ArtifactScope"/>) unless <see cref="ArtifactToolOptions.AllowUnscoped"/> is set.
 /// </remarks>
 public static class ArtifactTools
 {
-    /// <summary>Instrucciones de sistema recomendadas para agentes que crean artifacts.</summary>
+    /// <summary>Recommended system instructions for agents that create artifacts.</summary>
     public const string Instructions =
         """
         Puedes crear artifacts: contenido sustancial y autocontenido que el usuario querrá ver, reutilizar o modificar
@@ -525,9 +534,9 @@ public static class ArtifactTools
     }
 
     /// <summary>
-    /// Guarda un archivo binario generado (Word, Excel, PDF...) como artifact y lo anuncia a la interfaz.
-    /// Con <paramref name="context"/> (llamada desde una herramienta) el archivo pertenece a su conversación y usuario, y
-    /// sin ámbito falla igual que las herramientas; sin contexto (código de la aplicación) queda sin dueño.
+    /// Saves a generated binary file (Word, Excel, PDF...) as an artifact and announces it to the UI.
+    /// With <paramref name="context"/> (a call from a tool) the file belongs to that conversation and user, and
+    /// without a scope it fails just like the tools; without a context (application code) it has no owner.
     /// </summary>
     public static async Task<Artifact> SaveFileAsync(
         IArtifactStore store,
@@ -585,7 +594,7 @@ public static class ArtifactTools
             : scope;
     }
 
-    /// <summary>Id legible y seguro para URLs a partir de un título.</summary>
+    /// <summary>Creates a readable, URL-safe id from a title.</summary>
     public static string Slug(string text)
     {
         var normalized = text.Normalize(System.Text.NormalizationForm.FormD);

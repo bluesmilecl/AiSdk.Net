@@ -4,7 +4,7 @@ namespace AiSdk;
 // Conteo de tokens
 // ---------------------------------------------------------------------------
 
-/// <summary>Modelo que puede contar los tokens de entrada antes de enviar la petición.</summary>
+/// <summary>Model that can count the input tokens before sending the request.</summary>
 public interface ITokenCountingModel
 {
     Task<int> CountTokensAsync(LanguageModelRequest request, CancellationToken cancellationToken = default);
@@ -14,17 +14,17 @@ public interface ITokenCountingModel
 // Archivos
 // ---------------------------------------------------------------------------
 
-/// <summary>Archivo subido a un proveedor (Files API).</summary>
+/// <summary>File uploaded to a provider (Files API).</summary>
 public sealed record UploadedFile(string Id, string Filename, string? MediaType, long? SizeBytes, DateTimeOffset? CreatedAt);
 
-/// <summary>Cliente de archivos de un proveedor (Anthropic Files API, OpenAI Files...).</summary>
+/// <summary>A provider's file client (Anthropic Files API, OpenAI Files...).</summary>
 public interface IFileClient
 {
-    /// <param name="data">Contenido del archivo.</param>
-    /// <param name="filename">Nombre con extensión.</param>
-    /// <param name="mediaType">Tipo MIME.</param>
-    /// <param name="purpose">Propósito (solo OpenAI: <c>user_data</c>, <c>assistants</c>, <c>batch</c>...).</param>
-    /// <param name="cancellationToken">Token de cancelación.</param>
+    /// <param name="data">File content.</param>
+    /// <param name="filename">File name with extension.</param>
+    /// <param name="mediaType">MIME type.</param>
+    /// <param name="purpose">Purpose (OpenAI only: <c>user_data</c>, <c>assistants</c>, <c>batch</c>...).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     Task<UploadedFile> UploadAsync(byte[] data, string filename, string mediaType, string? purpose = null, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<UploadedFile>> ListAsync(CancellationToken cancellationToken = default);
@@ -36,7 +36,7 @@ public interface IFileClient
 // Batches
 // ---------------------------------------------------------------------------
 
-/// <summary>Petición dentro de un lote.</summary>
+/// <summary>Request within a batch.</summary>
 public sealed record BatchRequestItem(string CustomId, LanguageModelRequest Request);
 
 public enum BatchStatus
@@ -51,7 +51,7 @@ public enum BatchStatus
 
 public sealed record BatchCounts(int Total, int Succeeded, int Failed);
 
-/// <summary>Estado de un lote.</summary>
+/// <summary>Status of a batch.</summary>
 public sealed record BatchJob(string Id, BatchStatus Status, BatchCounts Counts)
 {
     public DateTimeOffset? CreatedAt { get; init; }
@@ -61,7 +61,7 @@ public sealed record BatchJob(string Id, BatchStatus Status, BatchCounts Counts)
     public bool IsFinished => Status is BatchStatus.Completed or BatchStatus.Canceled or BatchStatus.Failed or BatchStatus.Expired;
 }
 
-/// <summary>Resultado de una petición del lote.</summary>
+/// <summary>Result of a request in the batch.</summary>
 public sealed record BatchResultItem(string CustomId, LanguageModelResult? Result, string? Error)
 {
     public bool Succeeded => Result is not null;
@@ -70,8 +70,8 @@ public sealed record BatchResultItem(string CustomId, LanguageModelResult? Resul
 }
 
 /// <summary>
-/// Procesamiento por lotes asíncrono (Message Batches de Anthropic, Batch API de OpenAI):
-/// más barato que las llamadas normales a cambio de no ser inmediato.
+/// Asynchronous batch processing (Anthropic Message Batches, OpenAI Batch API):
+/// cheaper than regular calls in exchange for not being immediate.
 /// </summary>
 public interface IBatchClient
 {
@@ -86,7 +86,7 @@ public interface IBatchClient
 
 public static class BatchClientExtensions
 {
-    /// <summary>Consulta el estado periódicamente hasta que el lote termine.</summary>
+    /// <summary>Polls the status periodically until the batch finishes.</summary>
     public static async Task<BatchJob> WaitForCompletionAsync(
         this IBatchClient client,
         string batchId,
@@ -107,7 +107,7 @@ public static class BatchClientExtensions
         }
     }
 
-    /// <summary>Crea un elemento de lote a partir de opciones de generación (sin bucle de herramientas).</summary>
+    /// <summary>Creates a batch item from generation options (without the tool loop).</summary>
     public static async Task<BatchRequestItem> ToBatchItemAsync(this GenerateTextOptions options, string customId)
     {
         var plan = await GenerationEngine.PrepareAsync(options, GenerationEngine.InitialMessages(options), []).ConfigureAwait(false);

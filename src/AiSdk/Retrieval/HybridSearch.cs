@@ -1,8 +1,8 @@
 namespace AiSdk;
 
 /// <summary>
-/// Almacén que además de la búsqueda semántica ofrece búsqueda híbrida (vectores + palabras clave).
-/// La búsqueda híbrida mejora mucho con códigos, nombres propios, números o siglas.
+/// Store that, in addition to semantic search, offers hybrid search (vectors + keywords).
+/// Hybrid search greatly improves results with codes, proper names, numbers or acronyms.
 /// </summary>
 public interface IHybridVectorStore : IVectorStore
 {

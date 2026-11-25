@@ -4,12 +4,12 @@ using System.Text;
 namespace AiSdk.Skills;
 
 /// <summary>
-/// Lectura y escritura de <c>SKILL.md</c>: frontmatter YAML (el subconjunto que usa el estándar
-/// Agent Skills: textos, bloques <c>&gt;</c>/<c>|</c>, listas y un nivel de mapas) y cuerpo Markdown.
+/// Reading and writing of <c>SKILL.md</c>: YAML frontmatter (the subset used by the Agent Skills
+/// standard: strings, <c>&gt;</c>/<c>|</c> blocks, lists and one level of maps) and a Markdown body.
 /// </summary>
 public static class SkillMarkdown
 {
-    /// <summary>Separa el frontmatter del cuerpo. Devuelve frontmatter null si el archivo no lo tiene.</summary>
+    /// <summary>Separates the frontmatter from the body. Returns a null frontmatter if the file has none.</summary>
     public static (IReadOnlyDictionary<string, object?>? Frontmatter, string Body) Parse(string content)
     {
         content = content.TrimStart('﻿').Replace("\r\n", "\n", StringComparison.Ordinal);
@@ -30,7 +30,7 @@ public static class SkillMarkdown
         return (ParseYaml(yaml), body.Trim());
     }
 
-    /// <summary>Parser YAML mínimo para frontmatter (mapas de un nivel, listas, escalares y bloques).</summary>
+    /// <summary>Minimal YAML parser for frontmatter (one-level maps, lists, scalars and blocks).</summary>
     public static IReadOnlyDictionary<string, object?> ParseYaml(string yaml)
     {
         var result = new Dictionary<string, object?>(StringComparer.Ordinal);
@@ -132,7 +132,7 @@ public static class SkillMarkdown
         return value;
     }
 
-    /// <summary>Líneas siguientes más indentadas que la clave (sin la indentación común).</summary>
+    /// <summary>Following lines indented more than the key (without the common indentation).</summary>
     private static List<string> CollectIndented(string[] lines, ref int index)
     {
         var block = new List<string>();
@@ -150,7 +150,7 @@ public static class SkillMarkdown
         return block.Select(b => b.Length >= indent ? b[indent..] : b.TrimStart()).ToList();
     }
 
-    /// <summary>Plegado de YAML: las líneas se unen con espacios y las líneas vacías son saltos de párrafo.</summary>
+    /// <summary>YAML folding: lines are joined with spaces and empty lines are paragraph breaks.</summary>
     private static string Fold(List<string> block)
     {
         var builder = new StringBuilder();
@@ -189,7 +189,7 @@ public static class SkillMarkdown
         return value;
     }
 
-    /// <summary>Genera el contenido de <c>SKILL.md</c> (frontmatter + cuerpo).</summary>
+    /// <summary>Generates the content of <c>SKILL.md</c> (frontmatter + body).</summary>
     public static string Write(Skill skill)
     {
         var builder = new StringBuilder("---\n");
@@ -255,7 +255,7 @@ public static class SkillMarkdown
         }
     }
 
-    /// <summary>Entrecomilla si el valor tiene caracteres especiales de YAML.</summary>
+    /// <summary>Quotes the value if it contains YAML special characters.</summary>
     private static string Quote(string value) =>
         value.Length == 0 || value.IndexOfAny([':', '#', '\'', '"', '[', ']', '{', '}', ',', '&', '*', '!', '|', '>', '%', '@', '`']) >= 0
         || value.StartsWith(' ') || value.EndsWith(' ') || value is "true" or "false" or "null" or "yes" or "no"

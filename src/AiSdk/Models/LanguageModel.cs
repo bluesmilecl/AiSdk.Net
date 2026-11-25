@@ -5,16 +5,16 @@ using System.Text.Json.Serialization;
 namespace AiSdk;
 
 /// <summary>
-/// Contrato que implementa cada proveedor (equivalente a la especificación
-/// <c>LanguageModelV2</c> del AI SDK). Las funciones de alto nivel
-/// (<see cref="Ai.GenerateTextAsync(GenerateTextOptions)"/>, agentes, etc.) solo dependen de esta interfaz.
+/// Contract that each provider implements (equivalent to the AI SDK's
+/// <c>LanguageModelV2</c> specification). The high-level functions
+/// (<see cref="Ai.GenerateTextAsync(GenerateTextOptions)"/>, agents, etc.) depend only on this interface.
 /// </summary>
 public interface ILanguageModel
 {
-    /// <summary>Identificador del proveedor, p. ej. <c>"openai"</c> o <c>"anthropic"</c>.</summary>
+    /// <summary>Gets the provider identifier, e.g. <c>"openai"</c> or <c>"anthropic"</c>.</summary>
     string Provider { get; }
 
-    /// <summary>Identificador del modelo, p. ej. <c>"gpt-5"</c>.</summary>
+    /// <summary>Gets the model identifier, e.g. <c>"gpt-5"</c>.</summary>
     string ModelId { get; }
 
     Task<LanguageModelResult> GenerateAsync(LanguageModelRequest request, CancellationToken cancellationToken = default);
@@ -22,7 +22,7 @@ public interface ILanguageModel
     IAsyncEnumerable<StreamPart> StreamAsync(LanguageModelRequest request, CancellationToken cancellationToken = default);
 }
 
-/// <summary>Petición de bajo nivel enviada a un <see cref="ILanguageModel"/>.</summary>
+/// <summary>Low-level request sent to an <see cref="ILanguageModel"/>.</summary>
 public sealed record LanguageModelRequest
 {
     public required IReadOnlyList<ModelMessage> Messages { get; init; }
@@ -54,25 +54,25 @@ public sealed record LanguageModelRequest
     public IReadOnlyDictionary<string, string>? Headers { get; init; }
 }
 
-/// <summary>Definición de herramienta enviada al modelo (sin la función de ejecución).</summary>
+/// <summary>Tool definition sent to the model (without the execution function).</summary>
 public sealed record ToolDefinition(string Name, string? Description, JsonElement InputSchema)
 {
-    /// <summary>Solicita validación estricta del esquema cuando el proveedor lo soporta.</summary>
+    /// <summary>Gets whether strict schema validation is requested when the provider supports it.</summary>
     public bool Strict { get; init; }
 
     /// <summary>
-    /// Proveedor dueño de una herramienta de servidor (p. ej. <c>"anthropic"</c>).
-    /// Null para herramientas de función normales.
+    /// Gets the provider that owns a server-side tool (e.g. <c>"anthropic"</c>).
+    /// Null for regular function tools.
     /// </summary>
     public string? ProviderName { get; init; }
 
-    /// <summary>Definición cruda de la herramienta de servidor, que el proveedor envía tal cual.</summary>
+    /// <summary>Gets the raw definition of the server-side tool, which the provider sends as is.</summary>
     public JsonObject? ProviderDefinition { get; init; }
 
     public bool IsProviderTool => ProviderDefinition is not null;
 }
 
-/// <summary>Estrategia de selección de herramientas.</summary>
+/// <summary>Tool selection strategy.</summary>
 public sealed record ToolChoice
 {
     private ToolChoice(ToolChoiceKind kind, string? toolName = null)
@@ -102,14 +102,14 @@ public enum ToolChoiceKind
     Tool,
 }
 
-/// <summary>Formato de respuesta solicitado al modelo.</summary>
+/// <summary>Response format requested from the model.</summary>
 public sealed record ResponseFormat
 {
     public static ResponseFormat Text { get; } = new() { Type = ResponseFormatType.Text };
 
     public ResponseFormatType Type { get; init; }
 
-    /// <summary>Esquema JSON (opcional) para <see cref="ResponseFormatType.Json"/>.</summary>
+    /// <summary>Gets the (optional) JSON schema for <see cref="ResponseFormatType.Json"/>.</summary>
     public JsonElement? Schema { get; init; }
 
     public string? Name { get; init; }
@@ -127,9 +127,9 @@ public enum ResponseFormatType
 }
 
 /// <summary>
-/// Opciones específicas por proveedor. La clave es el nombre del proveedor
-/// (<c>"openai"</c>, <c>"anthropic"</c>...) y el valor un objeto JSON que se
-/// fusiona en el cuerpo de la petición HTTP.
+/// Provider-specific options. The key is the provider name
+/// (<c>"openai"</c>, <c>"anthropic"</c>...) and the value is a JSON object that is
+/// merged into the body of the HTTP request.
 /// </summary>
 public sealed class ProviderOptions : Dictionary<string, JsonObject>
 {
@@ -140,7 +140,7 @@ public sealed class ProviderOptions : Dictionary<string, JsonObject>
     public JsonObject? For(string provider) => TryGetValue(provider, out var value) ? value : null;
 }
 
-/// <summary>Resultado de una llamada no-streaming a un modelo.</summary>
+/// <summary>Result of a non-streaming call to a model.</summary>
 public sealed record LanguageModelResult
 {
     public required IReadOnlyList<ContentPart> Content { get; init; }
@@ -170,7 +170,7 @@ public enum FinishReason
     Unknown,
 }
 
-/// <summary>Consumo de tokens.</summary>
+/// <summary>Token usage.</summary>
 public sealed record Usage
 {
     public static Usage Empty { get; } = new();

@@ -2,12 +2,12 @@ using System.Text.RegularExpressions;
 
 namespace AiSdk.Skills;
 
-/// <summary>Resultado de validar una skill.</summary>
+/// <summary>Result of validating a skill.</summary>
 public sealed record SkillValidationResult(IReadOnlyList<string> Errors, IReadOnlyList<string> Warnings)
 {
     public bool IsValid => Errors.Count == 0;
 
-    /// <summary>Lanza <see cref="FormatException"/> con todos los errores si la skill no es válida.</summary>
+    /// <summary>Throws <see cref="FormatException"/> with all the errors if the skill is not valid.</summary>
     public void ThrowIfInvalid(string skillName)
     {
         if (!IsValid)
@@ -18,9 +18,9 @@ public sealed record SkillValidationResult(IReadOnlyList<string> Errors, IReadOn
 }
 
 /// <summary>
-/// Valida skills contra la especificación de <see href="https://agentskills.io/specification">agentskills.io</see>
-/// (errores) y buenas prácticas de redacción (advertencias), con los mismos umbrales que el validador
-/// de <c>dotnet/skills</c>.
+/// Validates skills against the <see href="https://agentskills.io/specification">agentskills.io</see> specification
+/// (errors) and authoring best practices (warnings), with the same thresholds as the
+/// <c>dotnet/skills</c> validator.
 /// </summary>
 public static partial class SkillValidator
 {
@@ -29,7 +29,9 @@ public static partial class SkillValidator
     public const int MinDescriptionLength = 10;
     public const int MaxCompatibilityLength = 500;
 
-    /// <summary>Tamaño recomendado de las instrucciones (tokens): por encima, mejor dividir en varias skills.</summary>
+    /// <summary>
+    /// Recommended size of the instructions (tokens): above it, it is better to split into several skills.
+    /// </summary>
     public const int RecommendedMaxTokens = 5000;
 
     public static SkillValidationResult Validate(Skill skill, string? directoryName = null)
@@ -116,7 +118,10 @@ public static partial class SkillValidator
         return new SkillValidationResult(errors, warnings);
     }
 
-    /// <summary>Reglas del campo <c>name</c>: 1-64 caracteres, minúsculas, dígitos y guiones, sin guiones al borde ni dobles.</summary>
+    /// <summary>
+    /// Rules for the <c>name</c> field: 1-64 characters, lowercase letters, digits and hyphens, no leading, trailing or
+    /// double hyphens.
+    /// </summary>
     public static void ValidateName(string name, List<string> errors)
     {
         if (string.IsNullOrWhiteSpace(name))

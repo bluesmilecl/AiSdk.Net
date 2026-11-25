@@ -6,18 +6,18 @@ namespace AiSdk;
 public static partial class Middlewares
 {
     /// <summary>
-    /// Extrae el razonamiento que algunos modelos escriben dentro del texto entre etiquetas
-    /// (p. ej. <c>&lt;think&gt;...&lt;/think&gt;</c> en DeepSeek R1, Qwen u otros modelos en Ollama)
-    /// y lo convierte en <see cref="ReasoningPart"/> (equivalente a <c>extractReasoningMiddleware</c>).
+    /// Extracts the reasoning that some models write inside the text between tags
+    /// (e.g. <c>&lt;think&gt;...&lt;/think&gt;</c> in DeepSeek R1, Qwen or other models on Ollama)
+    /// and converts it into <see cref="ReasoningPart"/> (equivalent to <c>extractReasoningMiddleware</c>).
     /// </summary>
-    /// <param name="tagName">Nombre de la etiqueta, sin corchetes.</param>
-    /// <param name="startWithReasoning">True si el modelo empieza razonando sin abrir la etiqueta.</param>
+    /// <param name="tagName">Tag name, without angle brackets.</param>
+    /// <param name="startWithReasoning">True if the model starts reasoning without opening the tag.</param>
     public static ILanguageModelMiddleware ExtractReasoning(string tagName = "think", bool startWithReasoning = false) =>
         new ExtractReasoningMiddleware(tagName, startWithReasoning);
 
     /// <summary>
-    /// Simula streaming para modelos que solo implementan respuestas completas: <c>StreamAsync</c>
-    /// llama a <c>GenerateAsync</c> y emite el resultado como stream.
+    /// Simulates streaming for models that only implement complete responses: <c>StreamAsync</c>
+    /// calls <c>GenerateAsync</c> and emits the result as a stream.
     /// </summary>
     public static ILanguageModelMiddleware SimulateStreaming() => new SimulateStreamingMiddleware();
 

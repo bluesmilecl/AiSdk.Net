@@ -4,7 +4,7 @@ namespace AiSdk.Internal;
 
 internal static class Retry
 {
-    /// <summary>Espera máxima que se acepta de un <c>Retry-After</c> si el llamador no indica otra.</summary>
+    /// <summary>Maximum <c>Retry-After</c> wait accepted when the caller does not specify another.</summary>
     public static readonly TimeSpan DefaultMaxRetryAfter = TimeSpan.FromSeconds(60);
 
     public static async Task<T> ExecuteAsync<T>(Func<CancellationToken, Task<T>> action, int maxRetries, CancellationToken cancellationToken, TimeSpan? maxRetryAfter = null)
@@ -56,8 +56,8 @@ internal static class Retry
     };
 
     /// <summary>
-    /// Espera antes del reintento: el <c>Retry-After</c> del servidor (nunca negativo) o un retroceso exponencial con
-    /// variación aleatoria. Devuelve false si el servidor pide esperar más de <paramref name="maxRetryAfter"/>.
+    /// Gets the delay before the retry: the server's <c>Retry-After</c> (never negative) or an exponential backoff with
+    /// random jitter. Returns false if the server asks to wait longer than <paramref name="maxRetryAfter"/>.
     /// </summary>
     public static bool TryGetDelay(int attempt, Exception ex, TimeSpan maxRetryAfter, out TimeSpan delay)
     {
@@ -73,7 +73,7 @@ internal static class Retry
     }
 }
 
-/// <summary>Fuente de trazas OpenTelemetry del SDK (<c>"AiSdk"</c>).</summary>
+/// <summary>OpenTelemetry trace source of the SDK (<c>"AiSdk"</c>).</summary>
 public static class AiTelemetry
 {
     public const string SourceName = "AiSdk";
