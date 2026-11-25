@@ -13,13 +13,13 @@ using W = DocumentFormat.OpenXml.Wordprocessing;
 namespace AiSdk.Documents.Converters;
 
 /// <summary>
-/// Lectura acotada de documentos Office. El SDK de Open XML carga cada parte de forma recursiva, así que antes de
-/// cargarla se recorre su XML en flujo (sin DTD) comprobando la profundidad y el tamaño: un archivo de pocos KB con
-/// miles de elementos anidados desbordaría la pila del proceso.
+/// Bounded reading of Office documents. The Open XML SDK loads each part recursively, so before loading it, its XML is
+/// streamed (without DTD) checking depth and size: a file of a few KB with thousands of nested elements would overflow
+/// the process stack.
 /// </summary>
 internal static class OfficeXml
 {
-    /// <summary>Nivel máximo de una lista en Word y PowerPoint (0 a 8).</summary>
+    /// <summary>Maximum list level in Word and PowerPoint (0 to 8).</summary>
     public const int MaxListLevel = 8;
 
     public static OpenSettings Settings(MarkdownConverterOptions options) => new() { MaxCharactersInPart = options.MaxOfficePartChars };
@@ -34,7 +34,7 @@ internal static class OfficeXml
         CloseInput = false,
     };
 
-    /// <summary>Raíz de la parte (p. ej. <c>p =&gt; p.Document</c>) después de comprobar su XML; null si no hay parte.</summary>
+    /// <summary>Root of the part (e.g. <c>p =&gt; p.Document</c>) after checking its XML; null if there is no part.</summary>
     public static TRoot? Load<TPart, TRoot>(TPart? part, Func<TPart, TRoot?> root, MarkdownConverterOptions options)
         where TPart : OpenXmlPart
     {
@@ -47,7 +47,7 @@ internal static class OfficeXml
         return root(part);
     }
 
-    /// <summary>Lanza <see cref="InvalidDataException"/> si la parte supera <see cref="MarkdownConverterOptions.MaxNestingDepth"/> o <see cref="MarkdownConverterOptions.MaxOfficePartChars"/>.</summary>
+    /// <summary>Throws <see cref="InvalidDataException"/> if the part exceeds <see cref="MarkdownConverterOptions.MaxNestingDepth"/> or <see cref="MarkdownConverterOptions.MaxOfficePartChars"/>.</summary>
     public static void Check(OpenXmlPart part, MarkdownConverterOptions options)
     {
         try
@@ -77,9 +77,9 @@ internal static class OfficeXml
         new($"La parte '{part.Uri}' no es XML válido o supera {options.MaxOfficePartChars} caracteres (MaxOfficePartChars): {ex.Message}", ex);
 
     /// <summary>
-    /// Bytes de una imagen incrustada para analizarla, o null si es más chica que <see cref="MarkdownConverterOptions.MinEmbeddedImageBytes"/>,
-    /// más grande que <see cref="MarkdownConverterOptions.MaxEmbeddedImageBytes"/> (se deja de leer al superarlo) o ya
-    /// no quedan análisis en el presupuesto del documento (<see cref="MarkdownConverterOptions.MaxOcrPages"/>).
+    /// Bytes of an embedded image to analyze, or null if it is smaller than <see cref="MarkdownConverterOptions.MinEmbeddedImageBytes"/>,
+    /// larger than <see cref="MarkdownConverterOptions.MaxEmbeddedImageBytes"/> (reading stops once exceeded) or there are
+    /// no analyses left in the document's budget (<see cref="MarkdownConverterOptions.MaxOcrPages"/>).
     /// </summary>
     public static async Task<byte[]?> ReadImageAsync(OpenXmlPart part, DocumentConversionContext context, CancellationToken cancellationToken)
     {
@@ -121,12 +121,12 @@ internal static class OfficeXml
 }
 
 /// <summary>
-/// Word (.docx) a Markdown: títulos, listas, negrita/cursiva, enlaces, tablas e imágenes
-/// incrustadas (con OCR o descripción si hay un motor configurado).
+/// Word (.docx) to Markdown: headings, lists, bold/italics, links, tables and embedded images (with OCR or a
+/// description if an engine is configured).
 /// </summary>
 public sealed partial class DocxConverter : IDocumentConverter
 {
-    /// <summary>Columnas máximas de una tabla de Word (también acota <c>gridSpan</c>).</summary>
+    /// <summary>Maximum columns in a Word table (also bounds <c>gridSpan</c>).</summary>
     public const int MaxTableColumns = 63;
 
     public bool CanConvert(string mediaType) => mediaType == MediaTypes.Docx;
@@ -163,7 +163,7 @@ public sealed partial class DocxConverter : IDocumentConverter
         };
     }
 
-    /// <summary>Estado de la conversión, con índices de estilos, numeraciones y enlaces (búsquedas O(1) por párrafo).</summary>
+    /// <summary>Conversion state, with indexes of styles, numberings and links (O(1) lookups per paragraph).</summary>
     private sealed class State
     {
         public State(MainDocumentPart main, DocumentConversionContext context)
@@ -223,7 +223,7 @@ public sealed partial class DocxConverter : IDocumentConverter
 
         public Dictionary<string, string> Hyperlinks { get; } = new(StringComparer.Ordinal);
 
-        /// <summary>Contador de cada nivel (0 a 8) por numeración.</summary>
+        /// <summary>Counter for each level (0 to 8) per numbering.</summary>
         public Dictionary<int, int[]> Counters { get; } = [];
     }
 
@@ -481,16 +481,16 @@ public sealed partial class DocxConverter : IDocumentConverter
 }
 
 /// <summary>
-/// Excel (.xlsx) a Markdown: una tabla por hoja, con fechas y fórmulas ya calculadas. Las hojas se leen en flujo y solo
-/// se guardan las primeras <see cref="MarkdownConverterOptions.MaxRowsPerSheet"/> filas, así que una hoja enorme (o una
-/// celda en la columna ZZZZZZ) no ocupa más memoria.
+/// Excel (.xlsx) to Markdown: one table per sheet, with dates and formulas already calculated. Sheets are streamed and
+/// only the first <see cref="MarkdownConverterOptions.MaxRowsPerSheet"/> rows are kept, so a huge sheet (or a cell in
+/// column ZZZZZZ) takes up no more memory.
 /// </summary>
 public sealed class XlsxConverter : IDocumentConverter
 {
-    /// <summary>Columnas de una hoja de Excel (A a XFD).</summary>
+    /// <summary>Columns of an Excel sheet (A to XFD).</summary>
     public const int MaxColumns = 16_384;
 
-    /// <summary>Filas de una hoja de Excel.</summary>
+    /// <summary>Rows of an Excel sheet.</summary>
     public const int MaxRows = 1_048_576;
 
     public bool CanConvert(string mediaType) => mediaType == MediaTypes.Xlsx;
@@ -548,12 +548,12 @@ public sealed class XlsxConverter : IDocumentConverter
         return Task.FromResult(DocumentConversionResult.FromPages(source, pages, title, warnings));
     }
 
-    /// <summary>Filas guardadas (las primeras), filas con datos contadas y si se pudo contar la hoja completa.</summary>
+    /// <summary>Rows kept (the first ones), rows with data counted, and whether the whole sheet could be counted.</summary>
     private sealed record SheetData(SortedDictionary<int, SortedDictionary<int, string>> Rows, int TotalRows, bool Complete);
 
     /// <summary>
-    /// Lee la hoja en flujo. Guarda las <see cref="MarkdownConverterOptions.MaxRowsPerSheet"/> + 1 primeras filas con
-    /// datos (encabezado incluido) y del resto solo cuenta cuántas hay, hasta <see cref="MarkdownConverterOptions.MaxOfficePartChars"/>.
+    /// Streams the sheet. Keeps the first <see cref="MarkdownConverterOptions.MaxRowsPerSheet"/> + 1 rows with data
+    /// (header included) and of the rest only counts how many there are, up to <see cref="MarkdownConverterOptions.MaxOfficePartChars"/>.
     /// </summary>
     private static SheetData ReadSheet(WorksheetPart part, string[] sharedStrings, HashSet<uint> dateStyles, MarkdownConverterOptions options)
     {
@@ -622,7 +622,7 @@ public sealed class XlsxConverter : IDocumentConverter
         return new SheetData(rows, total, Complete: true);
     }
 
-    /// <summary>Celdas con valor de la fila actual (el lector queda al final de la fila).</summary>
+    /// <summary>Cells with a value in the current row (the reader is left at the end of the row).</summary>
     private static SortedDictionary<int, string> ReadRow(XmlReader reader, OpenXmlPart part, string[] sharedStrings, HashSet<uint> dateStyles, MarkdownConverterOptions options)
     {
         var cells = new SortedDictionary<int, string>();
@@ -683,8 +683,8 @@ public sealed class XlsxConverter : IDocumentConverter
     }
 
     /// <summary>
-    /// Texto del elemento actual (el lector queda en su cierre). Con <paramref name="richText"/>, solo el de los
-    /// elementos <c>t</c>, sin las guías fonéticas (<c>rPh</c>).
+    /// Text of the current element (the reader is left on its end tag). With <paramref name="richText"/>, only that of the
+    /// <c>t</c> elements, without the phonetic guides (<c>rPh</c>).
     /// </summary>
     private static string ReadText(XmlReader reader, OpenXmlPart part, MarkdownConverterOptions options, bool richText)
     {
@@ -822,7 +822,7 @@ public sealed class XlsxConverter : IDocumentConverter
                || (withoutLiterals.Contains('m', StringComparison.OrdinalIgnoreCase) && withoutLiterals.Contains('h', StringComparison.OrdinalIgnoreCase));
     }
 
-    /// <summary>Columna (1 a 16.384) de una referencia como <c>B7</c>; 0 si no es válida (más de 3 letras, fuera de XFD o sin fila).</summary>
+    /// <summary>Column (1 to 16,384) of a reference such as <c>B7</c>; 0 if it is not valid (more than 3 letters, beyond XFD or no row).</summary>
     internal static int ParseColumn(string reference)
     {
         var column = 0;
@@ -841,7 +841,7 @@ public sealed class XlsxConverter : IDocumentConverter
     }
 }
 
-/// <summary>PowerPoint (.pptx) a Markdown: una sección por diapositiva con título, texto, tablas, imágenes y notas.</summary>
+/// <summary>PowerPoint (.pptx) to Markdown: one section per slide with title, text, tables, images and notes.</summary>
 public sealed class PptxConverter : IDocumentConverter
 {
     public bool CanConvert(string mediaType) => mediaType == MediaTypes.Pptx;

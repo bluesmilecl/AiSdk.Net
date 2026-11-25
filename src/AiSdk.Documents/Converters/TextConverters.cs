@@ -6,23 +6,23 @@ using AngleSharp.Text;
 
 namespace AiSdk.Documents.Converters;
 
-/// <summary>Construcción de tablas Markdown.</summary>
+/// <summary>Building of Markdown tables.</summary>
 public static class MarkdownTable
 {
-    /// <summary>Celdas máximas (filas × columnas) de una tabla de <see cref="Build(IReadOnlyList{IReadOnlyList{string}})"/>.</summary>
+    /// <summary>Maximum cells (rows × columns) in a table from <see cref="Build(IReadOnlyList{IReadOnlyList{string}})"/>.</summary>
     public const int DefaultMaxCells = 1_000_000;
 
     /// <summary>
-    /// Tabla con la primera fila como encabezado. Escapa barras verticales y saltos de línea. Todas las filas se rellenan
-    /// hasta la fila más ancha, así que se escriben a lo más <see cref="DefaultMaxCells"/> celdas (se omiten filas del
-    /// final y, si una sola fila es más ancha, columnas).
+    /// Table with the first row as the header. Escapes vertical bars and line breaks. All rows are padded to the widest
+    /// row, so at most <see cref="DefaultMaxCells"/> cells are written (trailing rows are omitted and, if a single row is
+    /// wider, columns as well).
     /// </summary>
     public static string Build(IReadOnlyList<IReadOnlyList<string>> rows) => Build(rows, DefaultMaxCells, out _);
 
     /// <summary>
-    /// Igual que <see cref="Build(IReadOnlyList{IReadOnlyList{string}})"/> con a lo más <paramref name="maxCells"/> celdas;
-    /// <paramref name="truncated"/> indica si se omitieron filas o columnas. Evita que una fila muy ancha (p. ej. un CSV
-    /// con una línea de miles de separadores) multiplique el tamaño de todas las demás.
+    /// Same as <see cref="Build(IReadOnlyList{IReadOnlyList{string}})"/> with at most <paramref name="maxCells"/> cells;
+    /// <paramref name="truncated"/> indicates whether rows or columns were omitted. Prevents a very wide row (e.g. a CSV
+    /// with a line of thousands of separators) from multiplying the size of all the others.
     /// </summary>
     public static string Build(IReadOnlyList<IReadOnlyList<string>> rows, int maxCells, out bool truncated)
     {
@@ -79,7 +79,7 @@ public static class MarkdownTable
         value.Trim().Replace("|", "\\|", StringComparison.Ordinal).Replace("\r\n", "<br>", StringComparison.Ordinal).Replace("\n", "<br>", StringComparison.Ordinal);
 }
 
-/// <summary>Texto plano, Markdown, CSV/TSV (a tabla), JSON, XML, YAML y código (en bloque de código).</summary>
+/// <summary>Plain text, Markdown, CSV/TSV (as a table), JSON, XML, YAML and code (in a code block).</summary>
 public sealed class PlainTextConverter : IDocumentConverter
 {
     private static readonly Dictionary<string, string> CodeLanguages = new(StringComparer.OrdinalIgnoreCase)
@@ -135,10 +135,10 @@ public sealed class PlainTextConverter : IDocumentConverter
         }
     }
 
-    /// <summary>Columnas máximas que se leen de cada línea de un CSV (como Excel); el resto se omite con un aviso.</summary>
+    /// <summary>Maximum columns read from each line of a CSV (as in Excel); the rest are skipped with a warning.</summary>
     public const int MaxCsvColumns = 16_384;
 
-    /// <summary>Parser CSV con comillas (RFC 4180) a tabla Markdown. Detecta <c>;</c> como separador.</summary>
+    /// <summary>CSV parser with quotes (RFC 4180) to a Markdown table. Detects <c>;</c> as a separator.</summary>
     public static string CsvToTable(string text, char separator, int maxRows, List<string>? warnings = null)
     {
         ArgumentNullException.ThrowIfNull(text);
@@ -255,17 +255,17 @@ public sealed class PlainTextConverter : IDocumentConverter
 }
 
 /// <summary>
-/// HTML a Markdown (ReverseMarkdown), quitando scripts, estilos y navegación. El HTML se analiza una vez con AngleSharp
-/// vigilando el anidamiento; lo que queda por debajo de la profundidad máxima se convierte a texto plano y la
-/// conversión corre en un hilo con pila amplia. Así un HTML hostil (miles de <c>&lt;div&gt;</c> anidados, cientos de
-/// <c>&lt;script&gt;</c> sin cerrar) ni desborda la pila del proceso ni dispara el tiempo de conversión.
+/// HTML to Markdown (ReverseMarkdown), removing scripts, styles and navigation. The HTML is parsed once with AngleSharp
+/// while watching the nesting; anything below the maximum depth is converted to plain text and the conversion runs on a
+/// thread with a large stack. This way a hostile HTML document (thousands of nested <c>&lt;div&gt;</c> elements,
+/// hundreds of unclosed <c>&lt;script&gt;</c> tags) neither overflows the process stack nor blows up the conversion time.
 /// </summary>
 public sealed class HtmlConverter : IDocumentConverter
 {
-    /// <summary>Profundidad máxima de <see cref="ToMarkdown(string)"/> (ver <see cref="MarkdownConverterOptions.MaxNestingDepth"/>).</summary>
+    /// <summary>Maximum depth for <see cref="ToMarkdown(string)"/> (see <see cref="MarkdownConverterOptions.MaxNestingDepth"/>).</summary>
     public const int DefaultMaxDepth = 128;
 
-    /// <summary>Elementos que no aportan contenido y se descartan con todo su interior.</summary>
+    /// <summary>Elements that contribute no content and are discarded along with everything inside them.</summary>
     private static readonly HashSet<string> Noise = new(StringComparer.OrdinalIgnoreCase)
     {
         "script", "style", "noscript", "template", "svg", "head", "nav", "footer", "iframe",
@@ -276,7 +276,7 @@ public sealed class HtmlConverter : IDocumentConverter
         "area", "base", "basefont", "bgsound", "br", "col", "embed", "frame", "hr", "img", "input", "keygen", "link", "meta", "param", "source", "track", "wbr",
     };
 
-    /// <summary>Elementos cuyo texto no se vuelve a interpretar como HTML; se escriben como <c>&lt;pre&gt;</c>.</summary>
+    /// <summary>Elements whose text is not reinterpreted as HTML; they are written as <c>&lt;pre&gt;</c>.</summary>
     private static readonly HashSet<string> LiteralText = new(StringComparer.OrdinalIgnoreCase) { "xmp", "plaintext", "noembed", "noframes" };
 
     public bool CanConvert(string mediaType) => mediaType is MediaTypes.Html or "application/xhtml+xml";
@@ -301,12 +301,12 @@ public sealed class HtmlConverter : IDocumentConverter
         return Task.FromResult(DocumentConversionResult.FromPages(source, [new DocumentPage(1, markdown)], title, warnings));
     }
 
-    /// <summary>Convierte un fragmento HTML a Markdown (con <see cref="DefaultMaxDepth"/> niveles de anidamiento).</summary>
+    /// <summary>Converts an HTML fragment to Markdown (with <see cref="DefaultMaxDepth"/> nesting levels).</summary>
     public static string ToMarkdown(string html) => ToMarkdown(html, DefaultMaxDepth);
 
     /// <summary>
-    /// Convierte un fragmento HTML a Markdown. Lo anidado a más de <paramref name="maxDepth"/> niveles se convierte a
-    /// texto plano y, con un anidamiento extremo, se extrae solo el texto; en ambos casos se agrega un aviso a
+    /// Converts an HTML fragment to Markdown. Content nested more than <paramref name="maxDepth"/> levels deep is
+    /// converted to plain text and, with extreme nesting, only the text is extracted; in both cases a warning is added to
     /// <paramref name="warnings"/>.
     /// </summary>
     public static string ToMarkdown(string html, int maxDepth, ICollection<string>? warnings = null) => Convert(html, maxDepth, warnings).Markdown;
@@ -362,9 +362,9 @@ public sealed class HtmlConverter : IDocumentConverter
     }
 
     /// <summary>
-    /// Vuelve a escribir el cuerpo como HTML sin elementos de ruido y con a lo más <paramref name="maxDepth"/> niveles:
-    /// el interior de un elemento a esa profundidad se escribe como texto. Recorre el árbol con una pila propia (sin
-    /// recursión), porque aún puede ser más profundo que <paramref name="maxDepth"/>.
+    /// Rewrites the body as HTML without noise elements and with at most <paramref name="maxDepth"/> levels: the inside
+    /// of an element at that depth is written as text. Walks the tree with its own stack (no recursion), because it may
+    /// still be deeper than <paramref name="maxDepth"/>.
     /// </summary>
     private static (string Html, bool Flattened) Serialize(IDocument document, int maxDepth)
     {
@@ -447,7 +447,7 @@ public sealed class HtmlConverter : IDocumentConverter
         }
     }
 
-    /// <summary>Texto de los descendientes (sin ruido), separado por espacios entre elementos; sin recursión.</summary>
+    /// <summary>Text of the descendants (without noise), separated by spaces between elements; no recursion.</summary>
     private static string TextOf(INode root)
     {
         var builder = new StringBuilder();
@@ -496,8 +496,8 @@ public sealed class HtmlConverter : IDocumentConverter
         name.Length > 0 && char.IsAsciiLetter(name[0]) && name.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_' or ':' or '.');
 
     /// <summary>
-    /// Texto de un HTML sin construir el árbol (para HTML con anidamiento extremo): quita etiquetas, comentarios, scripts
-    /// y estilos y decodifica las entidades. Un solo recorrido lineal.
+    /// Text of an HTML document without building the tree (for HTML with extreme nesting): removes tags, comments,
+    /// scripts and styles and decodes entities. A single linear pass.
     /// </summary>
     internal static string TextOnly(string html)
     {
@@ -559,7 +559,7 @@ public sealed class HtmlConverter : IDocumentConverter
         return CollapseBlankLines(string.Join('\n', lines)).Trim();
     }
 
-    /// <summary>Reemplaza cada grupo de líneas en blanco (o solo con espacios) por una sola línea en blanco. Lineal.</summary>
+    /// <summary>Replaces each group of blank lines (or lines with only whitespace) with a single blank line. Linear.</summary>
     internal static string CollapseBlankLines(string text)
     {
         var builder = new StringBuilder(text.Length);
@@ -584,7 +584,7 @@ public sealed class HtmlConverter : IDocumentConverter
         return builder.ToString();
     }
 
-    /// <summary>Corta el análisis si el árbol se vuelve demasiado profundo o grande.</summary>
+    /// <summary>Stops parsing if the tree becomes too deep or too large.</summary>
     private sealed class ParseGuard(int maxDepth, int maxElements)
     {
         private IElement? _last;
@@ -614,7 +614,7 @@ public sealed class HtmlConverter : IDocumentConverter
     private sealed class HtmlTooComplexException() : Exception("HTML demasiado anidado.");
 }
 
-/// <summary>Ejecuta trabajo recursivo de bibliotecas de terceros en un hilo con pila amplia (independiente de la del llamador).</summary>
+/// <summary>Runs recursive work from third-party libraries on a thread with a large stack (independent of the caller's).</summary>
 internal static class LargeStack
 {
     private const int StackSize = 16 * 1024 * 1024;

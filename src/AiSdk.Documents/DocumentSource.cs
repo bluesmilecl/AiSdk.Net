@@ -3,7 +3,7 @@ using System.Text;
 
 namespace AiSdk.Documents;
 
-/// <summary>Documento a convertir: bytes, tipo MIME y nombre de archivo.</summary>
+/// <summary>Document to convert: bytes, MIME type and file name.</summary>
 public sealed record DocumentSource
 {
     public DocumentSource(byte[] data, string? mediaType = null, string? fileName = null)
@@ -15,14 +15,14 @@ public sealed record DocumentSource
 
     public byte[] Data { get; }
 
-    /// <summary>Tipo MIME (indicado o detectado por extensión y firma del contenido).</summary>
+    /// <summary>MIME type (given, or detected from the extension and the content signature).</summary>
     public string MediaType { get; }
 
     public string? FileName { get; }
 
     /// <summary>
-    /// Ruta del archivo con el mismo contenido que <see cref="Data"/>, si existe (la fija <see cref="FromFileAsync"/>).
-    /// Las herramientas externas lo leen desde ahí en vez de escribir una copia temporal (p. ej. pdftoppm).
+    /// Path of the file with the same content as <see cref="Data"/>, if any (set by <see cref="FromFileAsync"/>).
+    /// External tools read it from there instead of writing a temporary copy (e.g. pdftoppm).
     /// </summary>
     public string? FilePath { get; init; }
 
@@ -37,8 +37,8 @@ public sealed record DocumentSource
             FilePath = Path.GetFullPath(path),
         };
 
-    /// <summary>Lee el documento de un flujo (p. ej. una subida HTTP), sin pasar de <paramref name="maxBytes"/>.</summary>
-    /// <exception cref="DocumentTooLargeException">El flujo tiene más de <paramref name="maxBytes"/> bytes (se deja de leer al superarlo).</exception>
+    /// <summary>Reads the document from a stream (e.g. an HTTP upload), without going over <paramref name="maxBytes"/>.</summary>
+    /// <exception cref="DocumentTooLargeException">The stream has more than <paramref name="maxBytes"/> bytes (reading stops once it is exceeded).</exception>
     public static async Task<DocumentSource> FromStreamAsync(Stream stream, string? mediaType = null, string? fileName = null, long maxBytes = long.MaxValue, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(stream);
@@ -58,7 +58,7 @@ public sealed record DocumentSource
         return new(buffer.ToArray(), mediaType, fileName);
     }
 
-    /// <summary>Texto decodificado (UTF-8 con detección de BOM).</summary>
+    /// <summary>Decoded text (UTF-8 with BOM detection).</summary>
     public string ReadText()
     {
         using var reader = new StreamReader(new MemoryStream(Data), Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
@@ -66,7 +66,7 @@ public sealed record DocumentSource
     }
 }
 
-/// <summary>Tipos MIME conocidos y detección por extensión o firma.</summary>
+/// <summary>Known MIME types and detection by extension or signature.</summary>
 public static class MediaTypes
 {
     public const string Pdf = "application/pdf";
@@ -136,7 +136,7 @@ public static class MediaTypes
     public static string? FromExtension(string? fileName) =>
         fileName is not null && ByExtension.TryGetValue(Path.GetExtension(fileName), out var type) ? type : null;
 
-    /// <summary>Detecta el tipo por la firma del contenido y, si no hay coincidencia, por la extensión.</summary>
+    /// <summary>Detects the type from the content signature and, if there is no match, from the extension.</summary>
     public static string Detect(ReadOnlySpan<byte> data, string? fileName = null)
     {
         var sniffed = Sniff(data);
@@ -159,7 +159,7 @@ public static class MediaTypes
 
     public static bool IsVideo(string mediaType) => mediaType.StartsWith("video/", StringComparison.Ordinal);
 
-    /// <summary>Extensión recomendada para un tipo MIME (p. ej. para archivos temporales).</summary>
+    /// <summary>Recommended extension for a MIME type (e.g. for temporary files).</summary>
     public static string ExtensionFor(string mediaType) =>
         ByExtension.FirstOrDefault(kv => kv.Value == mediaType).Key ?? ".bin";
 

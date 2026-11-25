@@ -3,36 +3,36 @@ using System.Text.Json.Serialization;
 
 namespace AiSdk.Workflows;
 
-/// <summary>Estado de una ejecución.</summary>
+/// <summary>Status of a run.</summary>
 [JsonConverter(typeof(JsonStringEnumConverter<WorkflowStatus>))]
 public enum WorkflowStatus
 {
     Pending,
     Running,
 
-    /// <summary>Durmiendo hasta <see cref="WorkflowRun.ResumeAt"/>.</summary>
+    /// <summary>Sleeping until <see cref="WorkflowRun.ResumeAt"/>.</summary>
     Sleeping,
 
-    /// <summary>Esperando un evento externo (aprobación, webhook, respuesta de un usuario...).</summary>
+    /// <summary>Waiting for an external event (approval, webhook, a user's reply...).</summary>
     WaitingForEvent,
     Completed,
     Failed,
     Cancelled,
 }
 
-/// <summary>Resultado memorizado de un paso.</summary>
+/// <summary>Memoized result of a step.</summary>
 public sealed record StepRecord(string Name, JsonElement? Output = null, int Attempts = 1, DateTimeOffset CompletedAt = default)
 {
-    /// <summary>Para esperas de eventos: true si venció el plazo sin recibir el evento.</summary>
+    /// <summary>For event waits: true if the timeout elapsed without the event being received.</summary>
     public bool TimedOut { get; init; }
 }
 
-/// <summary>Evento que espera una ejecución.</summary>
+/// <summary>Event a run is waiting for.</summary>
 public sealed record EventWait(string EventName, string? Key = null, string StepKey = "", DateTimeOffset? TimeoutAt = null);
 
 /// <summary>
-/// Una ejecución de un workflow. Se persiste tras cada paso: si el proceso se reinicia, la ejecución
-/// continúa desde el último paso completado.
+/// A run of a workflow. It is persisted after each step: if the process restarts, the run continues from the last
+/// completed step.
 /// </summary>
 public sealed class WorkflowRun
 {
@@ -48,7 +48,7 @@ public sealed class WorkflowRun
 
     public string? Error { get; set; }
 
-    /// <summary>Cuántas veces se ejecutó (o reanudó) el workflow.</summary>
+    /// <summary>How many times the workflow was executed (or resumed).</summary>
     public int Executions { get; set; }
 
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
@@ -57,12 +57,12 @@ public sealed class WorkflowRun
 
     public DateTimeOffset? CompletedAt { get; set; }
 
-    /// <summary>Cuándo reanudar (sueño o vencimiento de una espera).</summary>
+    /// <summary>When to resume (sleep or expiration of a wait).</summary>
     public DateTimeOffset? ResumeAt { get; set; }
 
     public EventWait? Waiting { get; set; }
 
-    /// <summary>Origen: <c>manual</c>, <c>cron:{id}</c>, <c>event:{nombre}</c>, <c>webhook:{id}</c>...</summary>
+    /// <summary>Origin: <c>manual</c>, <c>cron:{id}</c>, <c>event:{name}</c>, <c>webhook:{id}</c>...</summary>
     public string? TriggeredBy { get; init; }
 
     public Dictionary<string, StepRecord> Steps { get; init; } = [];
@@ -70,29 +70,29 @@ public sealed class WorkflowRun
     public List<string> Logs { get; init; } = [];
 
     /// <summary>
-    /// Versión para concurrencia optimista: 0 si aún no se guardó. <see cref="IWorkflowStore.SaveRunAsync"/> solo
-    /// guarda si coincide con la versión almacenada y la incrementa; si no, lanza <see cref="WorkflowConcurrencyException"/>.
+    /// Version for optimistic concurrency: 0 if not saved yet. <see cref="IWorkflowStore.SaveRunAsync"/> only saves if it
+    /// matches the stored version, and increments it; otherwise, it throws <see cref="WorkflowConcurrencyException"/>.
     /// </summary>
     public long Version { get; set; }
 
-    /// <summary>Instancia del motor (<see cref="WorkflowEngineOptions.InstanceId"/>) que tiene reclamada la ejecución.</summary>
+    /// <summary>Engine instance (<see cref="WorkflowEngineOptions.InstanceId"/>) that holds the claim on the run.</summary>
     public string? LeaseOwner { get; set; }
 
     /// <summary>
-    /// Hasta cuándo vale el reclamo de <see cref="LeaseOwner"/>. Mientras no venza, otras instancias no la ejecutan;
-    /// si la instancia muere, otra la retoma al vencer.
+    /// Until when the claim of <see cref="LeaseOwner"/> is valid. Until it expires, other instances do not run it; if the
+    /// instance dies, another one takes it over once it expires.
     /// </summary>
     public DateTimeOffset? LeaseExpiresAt { get; set; }
 
     public bool IsFinished => Status is WorkflowStatus.Completed or WorkflowStatus.Failed or WorkflowStatus.Cancelled;
 
-    /// <summary>Deserializa la salida.</summary>
+    /// <summary>Deserializes the output.</summary>
     public T? GetOutput<T>() => Output is { } o ? o.Deserialize<T>(JsonSchema.DefaultSerializerOptions) : default;
 
     internal WorkflowRun Clone() => JsonSerializer.Deserialize<WorkflowRun>(JsonSerializer.Serialize(this, JsonSchema.DefaultSerializerOptions), JsonSchema.DefaultSerializerOptions)!;
 }
 
-/// <summary>Definición de un workflow registrable en el <see cref="WorkflowEngine"/>.</summary>
+/// <summary>Definition of a workflow that can be registered in the <see cref="WorkflowEngine"/>.</summary>
 public interface IWorkflow
 {
     string Name { get; }
@@ -103,10 +103,10 @@ public interface IWorkflow
 }
 
 /// <summary>
-/// Workflow tipado definido como código (al estilo de Temporal, Inngest o Vercel Workflow).
-/// El código debe ser determinista: todo efecto secundario (llamadas a modelos, APIs, correos...)
-/// va dentro de <see cref="WorkflowContext.StepAsync{T}(string, Func{CancellationToken, Task{T}}, StepOptions?)"/>
-/// para que al reanudar no se repita.
+/// Typed workflow defined as code (in the style of Temporal, Inngest or Vercel Workflow).
+/// The code must be deterministic: every side effect (calls to models, APIs, emails...)
+/// goes inside <see cref="WorkflowContext.StepAsync{T}(string, Func{CancellationToken, Task{T}}, StepOptions?)"/>
+/// so that it is not repeated when the run resumes.
 /// </summary>
 public sealed class Workflow<TInput, TOutput>(string name, Func<WorkflowContext, TInput, Task<TOutput>> run, string? description = null) : IWorkflow
 {
@@ -123,14 +123,14 @@ public sealed class Workflow<TInput, TOutput>(string name, Func<WorkflowContext,
     }
 }
 
-/// <summary>Fábrica de workflows.</summary>
+/// <summary>Workflow factory.</summary>
 public static class Workflow
 {
     public static Workflow<TInput, TOutput> Create<TInput, TOutput>(string name, Func<WorkflowContext, TInput, Task<TOutput>> run, string? description = null) =>
         new(name, run, description);
 }
 
-/// <summary>Política de reintentos de un paso.</summary>
+/// <summary>Retry policy of a step.</summary>
 public sealed record StepOptions
 {
     public int MaxAttempts { get; init; } = 3;
@@ -139,10 +139,10 @@ public sealed record StepOptions
 
     public double BackoffFactor { get; init; } = 2;
 
-    /// <summary>Tiempo máximo por intento.</summary>
+    /// <summary>Maximum time per attempt.</summary>
     public TimeSpan? Timeout { get; init; }
 
-    /// <summary>Decide si una excepción se reintenta (por defecto todas salvo <see cref="NonRetryableException"/>).</summary>
+    /// <summary>Decides whether an exception is retried (by default all except <see cref="NonRetryableException"/>).</summary>
     public Func<Exception, bool>? ShouldRetry { get; init; }
 
     public static StepOptions Default { get; } = new();
@@ -151,15 +151,15 @@ public sealed record StepOptions
 }
 
 /// <summary>
-/// La ejecución o automatización cambió en el almacén desde que se leyó (otra réplica o proceso la modificó,
-/// p. ej. al cancelarla). Quien la recibe debe volver a leerla en vez de sobrescribirla.
+/// The run or automation changed in the store since it was read (another replica or process modified it, e.g. when
+/// cancelling it). Whoever receives this exception must read it again instead of overwriting it.
 /// </summary>
 public sealed class WorkflowConcurrencyException(string message) : InvalidOperationException(message);
 
-/// <summary>Error que no debe reintentarse (datos inválidos, permisos...).</summary>
+/// <summary>Error that must not be retried (invalid data, permissions...).</summary>
 public sealed class NonRetryableException(string message, Exception? inner = null) : Exception(message, inner);
 
-/// <summary>Señal interna: la ejecución se suspende (sueño o espera de evento) y se reanudará más tarde.</summary>
+/// <summary>Internal signal: the run is suspended (sleep or event wait) and will be resumed later.</summary>
 public sealed class WorkflowSuspendedException : Exception
 {
     internal WorkflowSuspendedException(WorkflowStatus status, DateTimeOffset? resumeAt)

@@ -3,8 +3,8 @@ using System.Buffers.Binary;
 namespace AiSdk.Documents;
 
 /// <summary>
-/// Ancho y alto de una imagen leídos de su cabecera, sin decodificarla (PNG, JPEG, GIF, BMP y WebP). Sirve para rechazar
-/// "bombas" de descompresión: unos pocos KB que, decodificados, ocuparían gigabytes.
+/// Width and height of an image read from its header, without decoding it (PNG, JPEG, GIF, BMP and WebP). Used to reject
+/// decompression "bombs": a few KB that, once decoded, would take up gigabytes.
 /// </summary>
 internal static class ImageHeader
 {

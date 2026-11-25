@@ -6,67 +6,67 @@ using System.Text.Json;
 
 namespace AiSdk.Workflows;
 
-/// <summary>Opciones del motor.</summary>
+/// <summary>Engine options.</summary>
 public sealed class WorkflowEngineOptions
 {
-    /// <summary>Ejecuciones simultáneas máximas.</summary>
+    /// <summary>Maximum concurrent runs.</summary>
     public int MaxConcurrency { get; init; } = 16;
 
-    /// <summary>Recibe cada cambio de estado de una ejecución (registro, notificaciones, UI).</summary>
+    /// <summary>Receives every status change of a run (logging, notifications, UI).</summary>
     public Func<WorkflowRun, Task>? OnRunChanged { get; init; }
 
-    /// <summary>Recibe los errores que el motor aísla para seguir funcionando (automatizaciones que fallan, ejecuciones en segundo plano...).</summary>
+    /// <summary>Receives the errors the engine isolates in order to keep working (failing automations, background runs...).</summary>
     public Action<Exception, string>? OnError { get; init; }
 
-    /// <summary>Reloj del motor (útil en pruebas).</summary>
+    /// <summary>Engine clock (useful in tests).</summary>
     public TimeProvider TimeProvider { get; init; } = TimeProvider.System;
 
     /// <summary>
-    /// Identificador de esta instancia del motor, dueña de los reclamos (<see cref="WorkflowRun.LeaseOwner"/>). Por defecto,
-    /// uno distinto en cada proceso. Debe ser único entre las réplicas que comparten el almacén.
+    /// Identifier of this engine instance, owner of the claims (<see cref="WorkflowRun.LeaseOwner"/>). By default, a
+    /// different one in each process. Must be unique among the replicas that share the store.
     /// </summary>
     public string InstanceId { get; init; } = $"{Environment.MachineName}-{Guid.NewGuid():N}";
 
     /// <summary>
-    /// Duración del reclamo de una ejecución. Mientras se ejecuta se renueva cada cuarto de este tiempo; si la instancia
-    /// muere, otra la retoma al vencer. Por defecto, 2 minutos.
+    /// Duration of the claim on a run. While the run executes, the claim is renewed every quarter of this time; if the
+    /// instance dies, another one takes it over once it expires. Defaults to 2 minutes.
     /// </summary>
     public TimeSpan LeaseDuration { get; init; } = TimeSpan.FromMinutes(2);
 
-    /// <summary>Diferencia máxima entre la marca de tiempo de un webhook firmado y el reloj del motor. Por defecto, 5 minutos.</summary>
+    /// <summary>Maximum difference between the timestamp of a signed webhook and the engine clock. Defaults to 5 minutes.</summary>
     public TimeSpan WebhookTolerance { get; init; } = TimeSpan.FromMinutes(5);
 
-    /// <summary>Ids de entrega de webhooks que se recuerdan para deduplicar reintentos. Por defecto, 10 000.</summary>
+    /// <summary>Webhook delivery ids remembered to deduplicate retries. Defaults to 10,000.</summary>
     public int WebhookDeliveryCacheSize { get; init; } = 10_000;
 
-    /// <summary>Fallos seguidos tras los que una automatización se desactiva. Por defecto, 5.</summary>
+    /// <summary>Consecutive failures after which an automation is disabled. Defaults to 5.</summary>
     public int MaxAutomationFailures { get; init; } = 5;
 
-    /// <summary>Espera tras el primer fallo de una automatización; se duplica en cada fallo seguido. Por defecto, 1 minuto.</summary>
+    /// <summary>Delay after an automation's first failure; it doubles with each consecutive failure. Defaults to 1 minute.</summary>
     public TimeSpan AutomationRetryDelay { get; init; } = TimeSpan.FromMinutes(1);
 
-    /// <summary>Espera máxima entre reintentos de una automatización que falla. Por defecto, 1 hora.</summary>
+    /// <summary>Maximum delay between retries of a failing automation. Defaults to 1 hour.</summary>
     public TimeSpan MaxAutomationRetryDelay { get; init; } = TimeSpan.FromHours(1);
 
-    /// <summary>Automatizaciones y ejecuciones atendidas como máximo en cada consulta del ciclo. Por defecto, 100.</summary>
+    /// <summary>Maximum automations and runs handled in each query of the cycle. Defaults to 100.</summary>
     public int BatchSize { get; init; } = 100;
 
     /// <summary>
-    /// Cuánto se conservan las ejecuciones terminadas: <see cref="WorkflowEngine.TickAsync"/> borra (como mucho una vez por hora)
-    /// las que terminaron antes. null = conservarlas siempre. Por defecto, 30 días.
+    /// How long finished runs are kept: <see cref="WorkflowEngine.TickAsync"/> deletes (at most once per hour) those that
+    /// finished earlier. null = keep them forever. Defaults to 30 days.
     /// </summary>
     public TimeSpan? RunRetention { get; init; } = TimeSpan.FromDays(30);
 }
 
 /// <summary>
-/// Motor de workflows durables y automatizaciones. Ejecuta, suspende y reanuda workflows; atiende
-/// eventos y webhooks; y dispara automatizaciones programadas en <see cref="TickAsync"/> (que llama
-/// periódicamente el servicio en segundo plano de <c>AddAiSdkWorkflows</c>).
+/// Engine for durable workflows and automations. Runs, suspends and resumes workflows; handles events and webhooks;
+/// and fires scheduled automations in <see cref="TickAsync"/> (called periodically by the background service of
+/// <c>AddAiSdkWorkflows</c>).
 /// </summary>
 /// <remarks>
-/// Varias réplicas pueden compartir un <see cref="IWorkflowStore"/>: los guardados usan concurrencia optimista
-/// (<see cref="WorkflowRun.Version"/>), cada ejecución se reclama con un lease que se renueva mientras avanza y cada
-/// ocurrencia programada crea una ejecución con id determinista, así que una misma ocurrencia no se ejecuta dos veces.
+/// Several replicas can share an <see cref="IWorkflowStore"/>: saves use optimistic concurrency
+/// (<see cref="WorkflowRun.Version"/>), each run is claimed with a lease that is renewed while it progresses, and each
+/// scheduled occurrence creates a run with a deterministic id, so the same occurrence is never executed twice.
 /// </remarks>
 public sealed class WorkflowEngine : IDisposable
 {
@@ -98,14 +98,14 @@ public sealed class WorkflowEngine : IDisposable
 
     public IWorkflowStore Store { get; }
 
-    /// <summary>Identificador de esta instancia (<see cref="WorkflowEngineOptions.InstanceId"/>).</summary>
+    /// <summary>Identifier of this instance (<see cref="WorkflowEngineOptions.InstanceId"/>).</summary>
     public string InstanceId => _options.InstanceId;
 
     internal TimeProvider TimeProvider => _options.TimeProvider;
 
     internal DateTimeOffset Now => _options.TimeProvider.GetUtcNow();
 
-    /// <summary>Semáforos por ejecución vivos (se liberan al terminar cada una).</summary>
+    /// <summary>Live per-run semaphores (released when each run finishes).</summary>
     internal int RunLockCount
     {
         get
@@ -117,7 +117,7 @@ public sealed class WorkflowEngine : IDisposable
         }
     }
 
-    /// <summary>Libera los semáforos internos (el contenedor de DI lo llama al apagar la aplicación).</summary>
+    /// <summary>Releases the internal semaphores (the DI container calls it when the application shuts down).</summary>
     public void Dispose()
     {
         _concurrency.Dispose();
@@ -153,10 +153,10 @@ public sealed class WorkflowEngine : IDisposable
     // ---------------------------------------------------------------------
 
     /// <summary>
-    /// Inicia una ejecución. Con <paramref name="wait"/> = true espera hasta que termine o se suspenda;
-    /// con false la ejecuta en segundo plano y devuelve de inmediato.
-    /// <paramref name="runId"/> sirve como clave de idempotencia: si ya existe, se devuelve esa ejecución
-    /// (también si otra réplica la crea a la vez).
+    /// Starts a run. With <paramref name="wait"/> = true, waits until it finishes or is suspended; with false, runs it in
+    /// the background and returns immediately.
+    /// <paramref name="runId"/> serves as an idempotency key: if it already exists, that run is returned (also if another
+    /// replica creates it at the same time).
     /// </summary>
     public async Task<WorkflowRun> StartAsync<TInput>(string workflowName, TInput input, string? runId = null, string? triggeredBy = null, bool wait = true, CancellationToken cancellationToken = default)
     {
@@ -196,11 +196,11 @@ public sealed class WorkflowEngine : IDisposable
         return wait ? await ExecuteAsync(run.Id, run.Version, cancellationToken).ConfigureAwait(false) : Background(run);
     }
 
-    /// <summary>Reanuda una ejecución suspendida o interrumpida (si ninguna otra instancia la tiene reclamada).</summary>
+    /// <summary>Resumes a suspended or interrupted run (if no other instance holds a claim on it).</summary>
     public Task<WorkflowRun> ResumeAsync(string runId, CancellationToken cancellationToken = default) => ExecuteAsync(runId, null, cancellationToken);
 
     /// <summary>
-    /// Reintenta una ejecución fallida: los pasos completados se conservan y continúa desde el que falló.
+    /// Retries a failed run: completed steps are kept and it continues from the one that failed.
     /// </summary>
     public async Task<WorkflowRun> RetryAsync(string runId, CancellationToken cancellationToken = default)
     {
@@ -227,9 +227,9 @@ public sealed class WorkflowEngine : IDisposable
     }
 
     /// <summary>
-    /// Cancela una ejecución. El estado <see cref="WorkflowStatus.Cancelled"/> es definitivo: si la ejecución está en curso
-    /// (en esta u otra réplica) se le avisa por su <see cref="WorkflowContext.CancellationToken"/> y sus guardados
-    /// posteriores se rechazan, así que no puede sobrescribirlo.
+    /// Cancels a run. The <see cref="WorkflowStatus.Cancelled"/> status is final: if the run is in progress (on this or
+    /// another replica), it is notified through its <see cref="WorkflowContext.CancellationToken"/> and its subsequent
+    /// saves are rejected, so it cannot overwrite that status.
     /// </summary>
     public async Task<WorkflowRun> CancelAsync(string runId, CancellationToken cancellationToken = default)
     {
@@ -275,10 +275,10 @@ public sealed class WorkflowEngine : IDisposable
 
     public Task<WorkflowRun?> GetRunAsync(string runId, CancellationToken cancellationToken = default) => Store.GetRunAsync(runId, cancellationToken);
 
-    /// <summary>Espera a que terminen las ejecuciones lanzadas en segundo plano (útil en pruebas y al apagar).</summary>
+    /// <summary>Waits for the runs launched in the background to finish (useful in tests and at shutdown).</summary>
     public Task WhenIdleAsync() => Task.WhenAll(_background.Values);
 
-    /// <summary>Borra las ejecuciones terminadas antes de <paramref name="finishedBefore"/>. Devuelve cuántas borró.</summary>
+    /// <summary>Deletes the runs finished before <paramref name="finishedBefore"/>. Returns how many were deleted.</summary>
     public async Task<int> PurgeRunsAsync(DateTimeOffset finishedBefore, CancellationToken cancellationToken = default)
     {
         var total = 0;
@@ -294,19 +294,19 @@ public sealed class WorkflowEngine : IDisposable
     }
 
     /// <summary>
-    /// Envía un evento: reanuda las ejecuciones que lo esperan y dispara las automatizaciones con
-    /// <see cref="EventTrigger"/> que coincidan. Devuelve los ids de las ejecuciones afectadas. Una automatización
-    /// que falla no impide las demás (el error queda en <see cref="Automation.LastError"/>).
+    /// Sends an event: resumes the runs waiting for it and fires the matching automations with an
+    /// <see cref="EventTrigger"/>. Returns the ids of the affected runs. A failing automation does not prevent the others
+    /// (the error is stored in <see cref="Automation.LastError"/>).
     /// </summary>
     public Task<IReadOnlyList<string>> SendEventAsync(string eventName, object? payload = null, string? key = null, CancellationToken cancellationToken = default) =>
         SendEventCoreAsync(eventName, payload, key, null, cancellationToken);
 
     /// <summary>
-    /// Como <see cref="SendEventAsync"/>, pero solo reanuda las ejecuciones de <paramref name="runIds"/> que sigan
-    /// esperando el evento con esa clave: una ejecución que empiece a esperarlo después (o que no estaba en la lista) no
-    /// se toca. Úselo cuando la decisión de enviar el evento se tomó viendo una lista concreta de ejecuciones (p. ej. quién
-    /// puede aprobar cuáles), para que no se extienda a otras. Las automatizaciones con <see cref="EventTrigger"/> que
-    /// coincidan se disparan igual que con <see cref="SendEventAsync"/>.
+    /// Like <see cref="SendEventAsync"/>, but only resumes the runs in <paramref name="runIds"/> that are still waiting for
+    /// the event with that key: a run that starts waiting for it later (or that was not in the list) is not touched. Use it
+    /// when the decision to send the event was made by looking at a specific list of runs (e.g. who can approve which
+    /// ones), so that it does not extend to others. Matching automations with an <see cref="EventTrigger"/> are fired the
+    /// same way as with <see cref="SendEventAsync"/>.
     /// </summary>
     public Task<IReadOnlyList<string>> SendEventToRunsAsync(string eventName, IEnumerable<string> runIds, object? payload = null, string? key = null, CancellationToken cancellationToken = default)
     {
@@ -405,7 +405,7 @@ public sealed class WorkflowEngine : IDisposable
     private async Task<WorkflowRun> GetRequiredAsync(string runId, CancellationToken cancellationToken) =>
         await Store.GetRunAsync(runId, cancellationToken).ConfigureAwait(false) ?? throw new KeyNotFoundException($"No existe la ejecución '{runId}'.");
 
-    /// <summary>Ejecuta en segundo plano; no duplica si ya hay una ejecución en cola para la misma versión guardada.</summary>
+    /// <summary>Runs in the background; does not duplicate if a run is already queued for the same saved version.</summary>
     private WorkflowRun Background(WorkflowRun run)
     {
         var key = $"{run.Id}@{run.Version}";
@@ -441,8 +441,8 @@ public sealed class WorkflowEngine : IDisposable
     }
 
     /// <summary>
-    /// Ejecuta (o reanuda) una ejecución. Con <paramref name="expectedVersion"/> solo actúa si la ejecución sigue en la
-    /// versión con la que se decidió ejecutarla (otra ruta pudo atenderla entretanto).
+    /// Executes (or resumes) a run. With <paramref name="expectedVersion"/>, it only acts if the run is still at the version
+    /// with which it was decided to execute it (another path may have handled it in the meantime).
     /// </summary>
     private async Task<WorkflowRun> ExecuteAsync(string runId, long? expectedVersion, CancellationToken cancellationToken)
     {
@@ -568,7 +568,7 @@ public sealed class WorkflowEngine : IDisposable
         }
     }
 
-    /// <summary>Renueva el reclamo mientras la ejecución avanza; si otra instancia la tomó (o se canceló), la detiene.</summary>
+    /// <summary>Renews the claim while the run progresses; if another instance took it over (or it was cancelled), stops it.</summary>
     private async Task RenewLeaseAsync(WorkflowContext context, CancellationTokenSource execution, CancellationToken stop)
     {
         var period = _options.LeaseDuration / 4;
@@ -651,9 +651,9 @@ public sealed class WorkflowEngine : IDisposable
     // ---------------------------------------------------------------------
 
     /// <summary>
-    /// Crea o actualiza una automatización (calcula su próxima ejecución). Valida el disparador al crearla: expresión cron y
-    /// zona horaria existentes, intervalo de al menos un segundo y secreto obligatorio en los webhooks.
-    /// Conserva <see cref="Automation.LastRunAt"/>, <see cref="Automation.LastRunId"/> y la fecha de creación de la existente.
+    /// Creates or updates an automation (computes its next run). Validates the trigger when creating it: existing cron
+    /// expression and time zone, an interval of at least one second and a required secret for webhooks.
+    /// Keeps the <see cref="Automation.LastRunAt"/>, <see cref="Automation.LastRunId"/> and creation date of the existing one.
     /// </summary>
     public async Task<Automation> AddAutomationAsync(Automation automation, CancellationToken cancellationToken = default)
     {
@@ -690,7 +690,7 @@ public sealed class WorkflowEngine : IDisposable
 
     public Task RemoveAutomationAsync(string id, CancellationToken cancellationToken = default) => Store.DeleteAutomationAsync(id, cancellationToken);
 
-    /// <summary>Activa o desactiva una automatización. Al activarla se olvidan sus fallos anteriores.</summary>
+    /// <summary>Enables or disables an automation. Enabling it clears its previous failures.</summary>
     public async Task<Automation?> SetAutomationEnabledAsync(string id, bool enabled, CancellationToken cancellationToken = default)
     {
         if (await Store.GetAutomationAsync(id, cancellationToken).ConfigureAwait(false) is not { } automation)
@@ -703,7 +703,7 @@ public sealed class WorkflowEngine : IDisposable
             cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Ejecuta una automatización ahora (manualmente), en segundo plano.</summary>
+    /// <summary>Runs an automation now (manually), in the background.</summary>
     public async Task<WorkflowRun> RunAutomationNowAsync(string id, CancellationToken cancellationToken = default)
     {
         var automation = await Store.GetAutomationAsync(id, cancellationToken).ConfigureAwait(false) ?? throw new KeyNotFoundException($"No existe la automatización '{id}'.");
@@ -711,17 +711,17 @@ public sealed class WorkflowEngine : IDisposable
     }
 
     /// <summary>
-    /// Atiende un webhook con las cabeceras <c>X-Webhook-Secret</c> o <c>X-Signature-256</c> (sin marca de tiempo).
-    /// Solo sirve para <see cref="WebhookVerification.SharedSecret"/> y <see cref="WebhookVerification.BodySignature"/>;
-    /// para la firma con marca de tiempo use <see cref="TriggerWebhookAsync(string, WebhookRequest, CancellationToken)"/>.
+    /// Handles a webhook with the <c>X-Webhook-Secret</c> or <c>X-Signature-256</c> headers (no timestamp).
+    /// Only works for <see cref="WebhookVerification.SharedSecret"/> and <see cref="WebhookVerification.BodySignature"/>;
+    /// for the timestamped signature use <see cref="TriggerWebhookAsync(string, WebhookRequest, CancellationToken)"/>.
     /// </summary>
     public Task<WorkflowRun> TriggerWebhookAsync(string automationId, ReadOnlyMemory<byte> body, string? secretHeader = null, string? signatureHeader = null, CancellationToken cancellationToken = default) =>
         TriggerWebhookAsync(automationId, new WebhookRequest(body) { Secret = secretHeader, Signature = signatureHeader }, cancellationToken);
 
     /// <summary>
-    /// Atiende un webhook: lo autentica según <see cref="WebhookTrigger.Verification"/> (lanza
-    /// <see cref="UnauthorizedAccessException"/> si no es válido) y dispara el workflow con el cuerpo como entrada. Una
-    /// petición repetida (misma firma o mismo id de entrega) devuelve la ejecución ya creada en vez de crear otra.
+    /// Handles a webhook: authenticates it according to <see cref="WebhookTrigger.Verification"/> (throws
+    /// <see cref="UnauthorizedAccessException"/> if it is not valid) and fires the workflow with the body as input. A
+    /// repeated request (same signature or same delivery id) returns the run already created instead of creating another.
     /// </summary>
     public async Task<WorkflowRun> TriggerWebhookAsync(string automationId, WebhookRequest request, CancellationToken cancellationToken = default)
     {
@@ -772,7 +772,7 @@ public sealed class WorkflowEngine : IDisposable
         return run;
     }
 
-    /// <summary>Autentica la petición. Devuelve la clave anti-repetición (la firma con marca de tiempo) o null.</summary>
+    /// <summary>Authenticates the request. Returns the anti-replay key (the timestamped signature) or null.</summary>
     private string? Authenticate(WebhookTrigger trigger, WebhookRequest request)
     {
         if (trigger.Secret is not { Length: > 0 } secret)
@@ -809,8 +809,8 @@ public sealed class WorkflowEngine : IDisposable
     }
 
     /// <summary>
-    /// Comprueba el secreto o la firma HMAC-SHA256 <b>solo del cuerpo</b> de un webhook en tiempo constante (sin protección
-    /// contra repeticiones). Para la firma con marca de tiempo use <see cref="WebhookSignature.Sign"/>.
+    /// Checks the secret or the HMAC-SHA256 signature of the <b>body only</b> of a webhook in constant time (without replay
+    /// protection). For the timestamped signature use <see cref="WebhookSignature.Sign"/>.
     /// </summary>
     public static bool VerifyWebhook(string secret, ReadOnlySpan<byte> body, string? secretHeader, string? signatureHeader)
     {
@@ -823,9 +823,9 @@ public sealed class WorkflowEngine : IDisposable
     }
 
     /// <summary>
-    /// Procesa lo pendiente: dispara automatizaciones programadas vencidas, reanuda ejecuciones dormidas, con esperas
-    /// vencidas o abandonadas por una instancia caída, y aplica la retención. Lo llama periódicamente el servicio en
-    /// segundo plano; también puede llamarse a mano. Cada automatización se aísla: si una falla, las demás se disparan igual.
+    /// Processes pending work: fires due scheduled automations, resumes runs that are sleeping, have expired waits or were
+    /// abandoned by a crashed instance, and applies retention. Called periodically by the background service; it can also
+    /// be called manually. Each automation is isolated: if one fails, the others still fire.
     /// </summary>
     public async Task TickAsync(DateTimeOffset? now = null, CancellationToken cancellationToken = default)
     {
@@ -872,8 +872,8 @@ public sealed class WorkflowEngine : IDisposable
     }
 
     /// <summary>
-    /// Reanuda las ejecuciones que quedaron a medias (pendientes o en curso sin reclamo vigente) y las vencidas. Las que
-    /// otra instancia tenía reclamadas se retoman en <see cref="TickAsync"/> cuando su reclamo vence.
+    /// Resumes runs left halfway (pending or running without a valid claim) and due runs. Those claimed by another
+    /// instance are taken over in <see cref="TickAsync"/> when their claim expires.
     /// </summary>
     public async Task RecoverAsync(CancellationToken cancellationToken = default)
     {
@@ -884,9 +884,9 @@ public sealed class WorkflowEngine : IDisposable
     }
 
     /// <summary>
-    /// Dispara una ocurrencia programada. La próxima ocurrencia se calcula antes de crear la ejecución (una zona horaria
-    /// inexistente falla aquí, sin crear nada) y la ejecución tiene un id determinista por ocurrencia, así que dos réplicas
-    /// (o un reintento tras una caída) obtienen la misma.
+    /// Fires a scheduled occurrence. The next occurrence is computed before creating the run (a nonexistent time zone
+    /// fails here, without creating anything) and the run has a deterministic id per occurrence, so two replicas (or a
+    /// retry after a crash) get the same one.
     /// </summary>
     private async Task FireScheduledAsync(Automation automation, DateTimeOffset current, CancellationToken cancellationToken)
     {
@@ -928,8 +928,8 @@ public sealed class WorkflowEngine : IDisposable
         automation.Input ?? (payload is { ValueKind: not JsonValueKind.Undefined } p ? p : JsonSerializer.SerializeToElement(new { }));
 
     /// <summary>
-    /// Registra un fallo: aplaza el siguiente intento con espera exponencial (si es programada) y la desactiva al llegar a
-    /// <see cref="WorkflowEngineOptions.MaxAutomationFailures"/>. Nunca lanza.
+    /// Records a failure: postpones the next attempt with exponential backoff (if it is scheduled) and disables the
+    /// automation when <see cref="WorkflowEngineOptions.MaxAutomationFailures"/> is reached. Never throws.
     /// </summary>
     private async Task RecordFailureAsync(Automation automation, Exception error, DateTimeOffset current, bool reschedule)
     {
@@ -1036,7 +1036,7 @@ public sealed class WorkflowEngine : IDisposable
         }
     }
 
-    /// <summary>Ids de entrega recientes (acotado): cada uno apunta a la ejecución que creó.</summary>
+    /// <summary>Recent delivery ids (bounded): each one points to the run it created.</summary>
     private sealed class WebhookDeliveryCache(int capacity)
     {
         private readonly Lock _gate = new();

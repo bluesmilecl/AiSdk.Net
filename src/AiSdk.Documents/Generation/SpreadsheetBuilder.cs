@@ -8,11 +8,11 @@ using DocumentFormat.OpenXml.Spreadsheet;
 
 namespace AiSdk.Documents.Generation;
 
-/// <summary>Tipo de una columna de hoja de cálculo.</summary>
+/// <summary>Type of a spreadsheet column.</summary>
 [System.Text.Json.Serialization.JsonConverter(typeof(ColumnTypeJsonConverter))]
 public enum ColumnType
 {
-    /// <summary>Se deduce de cada valor.</summary>
+    /// <summary>Inferred from each value.</summary>
     Auto,
     Text,
     Number,
@@ -26,35 +26,35 @@ public enum ColumnType
     Boolean,
 }
 
-/// <summary>Serializa <see cref="ColumnType"/> en camelCase (<c>"currency"</c>, <c>"dateTime"</c>).</summary>
+/// <summary>Serializes <see cref="ColumnType"/> in camelCase (<c>"currency"</c>, <c>"dateTime"</c>).</summary>
 public sealed class ColumnTypeJsonConverter() : System.Text.Json.Serialization.JsonStringEnumConverter<ColumnType>(JsonNamingPolicy.CamelCase);
 
-/// <summary>Columna: encabezado, tipo, formato Excel opcional (p. ej. <c>"#,##0.00 €"</c>) y ancho.</summary>
+/// <summary>Column: header, type, optional Excel format (e.g. <c>"#,##0.00 €"</c>) and width.</summary>
 public sealed record SheetColumn(string Header, ColumnType Type = ColumnType.Auto, string? Format = null, double? Width = null);
 
-/// <summary>Opciones de una hoja.</summary>
+/// <summary>Options for a sheet.</summary>
 public sealed record SheetOptions
 {
-    /// <summary>Agrega una fila de totales con <c>SUM</c> en las columnas numéricas.</summary>
+    /// <summary>Adds a totals row with <c>SUM</c> in the numeric columns.</summary>
     public bool Totals { get; init; }
 
     public bool AutoFilter { get; init; } = true;
 
-    /// <summary>Deja fija la fila de encabezados al desplazarse.</summary>
+    /// <summary>Keeps the header row fixed while scrolling.</summary>
     public bool FreezeHeader { get; init; } = true;
 }
 
 /// <summary>
-/// Crea archivos Excel (.xlsx) con formato profesional: encabezados con estilo, tipos y formatos por
-/// columna (moneda, porcentaje, fechas), filtros, panel fijo, anchos automáticos y fila de totales.
-/// Por defecto los textos que empiezan con <c>=</c>, <c>+</c>, <c>-</c> o <c>@</c> se escriben como texto (con prefijo
-/// de comilla, así Excel tampoco los evalúa al editarlos); con <see cref="AllowFormulas"/>, los que empiezan con
-/// <c>=</c> se escriben como fórmulas.
+/// Creates Excel files (.xlsx) with professional formatting: styled headers, types and formats per column (currency,
+/// percentage, dates), filters, frozen pane, automatic widths and a totals row.
+/// By default, text starting with <c>=</c>, <c>+</c>, <c>-</c> or <c>@</c> is written as text (with a quote prefix, so
+/// Excel does not evaluate it when editing either); with <see cref="AllowFormulas"/>, text starting with <c>=</c> is
+/// written as formulas.
 /// </summary>
 /// <example>
 /// <code>
 /// var xlsx = new SpreadsheetBuilder()
-///     .AddSheet("Ventas", ventas, new SheetOptions { Totals = true })   // lista de objetos
+///     .AddSheet("Sales", sales, new SheetOptions { Totals = true })   // list of objects
 ///     .Build();
 /// </code>
 /// </example>
@@ -62,10 +62,10 @@ public sealed class SpreadsheetBuilder
 {
     private readonly List<(string Name, IReadOnlyList<SheetColumn> Columns, List<IReadOnlyList<object?>> Rows, SheetOptions Options)> _sheets = [];
 
-    /// <summary>Color de acento del encabezado (hexadecimal).</summary>
+    /// <summary>Accent color of the header (hexadecimal).</summary>
     public string AccentColor { get; init; } = "1F4E79";
 
-    /// <summary>Formato de moneda por defecto.</summary>
+    /// <summary>Default currency format.</summary>
     public string CurrencyFormat { get; init; } = "\"$\"#,##0.00";
 
     public string DateFormat { get; init; } = "dd/mm/yyyy";
@@ -75,15 +75,15 @@ public sealed class SpreadsheetBuilder
     public string? Author { get; init; }
 
     /// <summary>
-    /// Escribe como fórmulas los textos que empiezan con <c>=</c> (por defecto false: se escriben como texto). Actívelo
-    /// solo con datos de confianza: una fórmula que viene de un usuario o de un modelo puede filtrar datos al abrir el
-    /// archivo (<c>=WEBSERVICE(...)</c>, <c>=HYPERLINK(...)</c>) o ejecutar comandos (DDE). Ver <see cref="FormulaFilter"/>.
+    /// Writes text starting with <c>=</c> as formulas (false by default: it is written as text). Enable it only with
+    /// trusted data: a formula that comes from a user or a model can leak data when the file is opened
+    /// (<c>=WEBSERVICE(...)</c>, <c>=HYPERLINK(...)</c>) or run commands (DDE). See <see cref="FormulaFilter"/>.
     /// </summary>
     public bool AllowFormulas { get; init; }
 
     /// <summary>
-    /// Con <see cref="AllowFormulas"/>, decide qué fórmulas (sin el <c>=</c>) se escriben como tales; las demás quedan
-    /// como texto. Null las permite todas. <see cref="IsSafeFormula"/> admite solo funciones de cálculo.
+    /// With <see cref="AllowFormulas"/>, decides which formulas (without the <c>=</c>) are written as such; the rest are
+    /// left as text. Null allows all of them. <see cref="IsSafeFormula"/> allows only calculation functions.
     /// </summary>
     public Func<string, bool>? FormulaFilter { get; init; }
 
@@ -93,7 +93,7 @@ public sealed class SpreadsheetBuilder
         return this;
     }
 
-    /// <summary>Hoja a partir de objetos: una columna por propiedad pública (usa <c>[DisplayName]</c> o <c>[Description]</c> como encabezado).</summary>
+    /// <summary>Sheet from objects: one column per public property (uses <c>[DisplayName]</c> or <c>[Description]</c> as the header).</summary>
     public SpreadsheetBuilder AddSheet<T>(string name, IEnumerable<T> items, SheetOptions? options = null)
     {
         var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(p => p.CanRead && p.GetIndexParameters().Length == 0).ToList();
@@ -104,7 +104,7 @@ public sealed class SpreadsheetBuilder
         return AddSheet(name, columns, rows, options);
     }
 
-    /// <summary>Una hoja por cada tabla Markdown del texto (el encabezado de la sección precedente da el nombre).</summary>
+    /// <summary>One sheet per Markdown table in the text (the heading of the preceding section provides the name).</summary>
     public SpreadsheetBuilder AddMarkdownTables(string markdown, SheetOptions? options = null)
     {
         string? lastHeading = null;
@@ -296,13 +296,13 @@ public sealed class SpreadsheetBuilder
     private bool IsFormula(string value) =>
         AllowFormulas && value.Length > 1 && value[0] == '=' && (FormulaFilter?.Invoke(value[1..]) ?? true);
 
-    /// <summary>Textos que una hoja de cálculo podría interpretar como fórmula al editarlos o importarlos.</summary>
+    /// <summary>Text that a spreadsheet could interpret as a formula when editing or importing it.</summary>
     private static bool LooksLikeFormula(string text) => text.Length > 0 && text[0] is '=' or '+' or '-' or '@' or '\t' or '\r';
 
     /// <summary>
-    /// Funciones que <see cref="IsSafeFormula"/> admite: cálculo, texto, fechas y búsqueda dentro del libro. Quedan fuera
-    /// las que acceden a la red o a otros archivos (WEBSERVICE, FILTERXML, IMAGE, RTD, CALL...), crean enlaces
-    /// (HYPERLINK), revelan el entorno (INFO, CELL) o referencias indirectas (INDIRECT, OFFSET).
+    /// Functions allowed by <see cref="IsSafeFormula"/>: calculation, text, dates and lookups within the workbook. Excluded
+    /// are those that access the network or other files (WEBSERVICE, FILTERXML, IMAGE, RTD, CALL...), create links
+    /// (HYPERLINK), reveal the environment (INFO, CELL) or use indirect references (INDIRECT, OFFSET).
     /// </summary>
     private static readonly HashSet<string> SafeFunctions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -319,10 +319,10 @@ public sealed class SpreadsheetBuilder
     };
 
     /// <summary>
-    /// True si la fórmula (sin el <c>=</c>) usa solo referencias del libro, operadores, constantes y funciones de
-    /// cálculo habituales (SUM, IF, VLOOKUP, ROUND, TEXT...): sin funciones de red ni de enlaces, sin DDE
-    /// (<c>cmd|'...'!A1</c>) y sin referencias a otros libros (<c>[1]Hoja!A1</c>, <c>'C:\ruta\[libro.xlsx]Hoja'!A1</c>).
-    /// Filtro por defecto de las fórmulas que escribe un agente con <see cref="DocumentTools"/>.
+    /// True if the formula (without the <c>=</c>) uses only workbook references, operators, constants and common
+    /// calculation functions (SUM, IF, VLOOKUP, ROUND, TEXT...): no network or link functions, no DDE
+    /// (<c>cmd|'...'!A1</c>) and no references to other workbooks (<c>[1]Sheet!A1</c>, <c>'C:\path\[book.xlsx]Sheet'!A1</c>).
+    /// Default filter for the formulas an agent writes with <see cref="DocumentTools"/>.
     /// </summary>
     public static bool IsSafeFormula(string formula)
     {
@@ -498,7 +498,7 @@ public sealed class SpreadsheetBuilder
         return clean.Length == 0 ? "Hoja" : clean[..Math.Min(31, clean.Length)];
     }
 
-    /// <summary>Registra combinaciones de formato numérico / negrita / borde y genera la hoja de estilos.</summary>
+    /// <summary>Registers combinations of number format / bold / border and generates the stylesheet.</summary>
     private sealed class StyleRegistry(string accent)
     {
         private readonly Dictionary<string, uint> _numberFormats = [];

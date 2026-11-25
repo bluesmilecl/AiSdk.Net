@@ -4,7 +4,7 @@ using Microsoft.Extensions.Hosting;
 
 namespace AiSdk.Workflows;
 
-/// <summary>Configuración de <see cref="WorkflowServiceCollectionExtensions.AddAiSdkWorkflows"/>.</summary>
+/// <summary>Configuration for <see cref="WorkflowServiceCollectionExtensions.AddAiSdkWorkflows"/>.</summary>
 public sealed class WorkflowBuilder
 {
     internal List<Func<IServiceProvider, IWorkflow>> Workflows { get; } = [];
@@ -15,7 +15,7 @@ public sealed class WorkflowBuilder
 
     internal Action<WorkflowEngine, IServiceProvider>? Configure { get; private set; }
 
-    /// <summary>Frecuencia con que se revisan automatizaciones y ejecuciones dormidas.</summary>
+    /// <summary>How often automations and sleeping runs are checked.</summary>
     public TimeSpan TickInterval { get; set; } = TimeSpan.FromSeconds(15);
 
     public WorkflowEngineOptions Options { get; set; } = new();
@@ -26,14 +26,14 @@ public sealed class WorkflowBuilder
         return this;
     }
 
-    /// <summary>Registra un workflow construido con servicios del contenedor.</summary>
+    /// <summary>Registers a workflow built with services from the container.</summary>
     public WorkflowBuilder AddWorkflow(Func<IServiceProvider, IWorkflow> factory)
     {
         Workflows.Add(factory);
         return this;
     }
 
-    /// <summary>Automatización definida en código (se crea o actualiza al arrancar).</summary>
+    /// <summary>Automation defined in code (created or updated at startup).</summary>
     public WorkflowBuilder AddAutomation(Automation automation)
     {
         Automations.Add(automation);
@@ -52,10 +52,10 @@ public sealed class WorkflowBuilder
         return this;
     }
 
-    /// <summary>Persiste ejecuciones y automatizaciones en disco.</summary>
+    /// <summary>Persists runs and automations to disk.</summary>
     public WorkflowBuilder UseFileSystemStore(string directory) => UseStore(new FileSystemWorkflowStore(directory));
 
-    /// <summary>Configuración adicional del motor (p. ej. <c>engine.AddAgentTasks(...)</c>).</summary>
+    /// <summary>Additional engine configuration (e.g. <c>engine.AddAgentTasks(...)</c>).</summary>
     public WorkflowBuilder ConfigureEngine(Action<WorkflowEngine, IServiceProvider> configure)
     {
         Configure += configure;
@@ -66,8 +66,8 @@ public sealed class WorkflowBuilder
 public static class WorkflowServiceCollectionExtensions
 {
     /// <summary>
-    /// Registra el <see cref="WorkflowEngine"/> como singleton y un servicio en segundo plano que dispara
-    /// automatizaciones programadas, reanuda ejecuciones dormidas y recupera las interrumpidas al arrancar.
+    /// Registers the <see cref="WorkflowEngine"/> as a singleton, plus a background service that fires scheduled
+    /// automations, resumes sleeping runs and recovers interrupted ones at startup.
     /// </summary>
     public static IServiceCollection AddAiSdkWorkflows(this IServiceCollection services, Action<WorkflowBuilder> configure)
     {
@@ -91,7 +91,7 @@ public static class WorkflowServiceCollectionExtensions
     }
 }
 
-/// <summary>Servicio en segundo plano del motor de workflows.</summary>
+/// <summary>Background service of the workflow engine.</summary>
 public sealed class WorkflowHostedService(WorkflowEngine engine, WorkflowBuilder builder) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

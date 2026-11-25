@@ -5,7 +5,7 @@ using System.Text;
 namespace AiSdk.Documents;
 
 /// <summary>
-/// Ejecución de herramientas de línea de comandos (tesseract, pdftoppm, ffmpeg) con el ejecutor global
+/// Execution of command-line tools (tesseract, pdftoppm, ffmpeg) with the global runner
 /// <see cref="Runner"/>.
 /// </summary>
 public static class ExternalProcess
@@ -15,10 +15,10 @@ public static class ExternalProcess
     public sealed record Result(int ExitCode, byte[] Output, string Error);
 
     /// <summary>
-    /// Ejecutor que usan el SDK y estos métodos estáticos cuando un componente no recibe uno propio. Por defecto
-    /// lanza la herramienta directamente, solo con las variables de <see cref="ExternalProcessOptions.CommonEnvironmentVariables"/>,
-    /// con 10 minutos y 64 MB de salida como máximo; asígnelo al iniciar la aplicación para usar un envoltorio o
-    /// cambiar esos límites (ver <see cref="ExternalProcessRunner"/>).
+    /// Runner used by the SDK and by these static methods when a component does not receive its own. By default it
+    /// launches the tool directly, only with the variables in <see cref="ExternalProcessOptions.CommonEnvironmentVariables"/>,
+    /// with at most 10 minutes and 64 MB of output; set it at application startup to use a wrapper or change those
+    /// limits (see <see cref="ExternalProcessRunner"/>).
     /// </summary>
     public static IExternalProcessRunner Runner
     {
@@ -26,20 +26,20 @@ public static class ExternalProcess
         set => Volatile.Write(ref _runner, value ?? throw new ArgumentNullException(nameof(value)));
     }
 
-    /// <summary>Indica si el ejecutable existe (ruta absoluta o en el PATH), según <see cref="Runner"/>.</summary>
+    /// <summary>Indicates whether the executable exists (absolute path or on the PATH), according to <see cref="Runner"/>.</summary>
     public static bool Exists(string executable) => Runner.Exists(executable);
 
     public static Task<Result> RunAsync(string executable, IEnumerable<string> arguments, byte[]? input = null, CancellationToken cancellationToken = default) =>
         Runner.RunAsync(executable, arguments.ToList(), input, cancellationToken);
 
-    /// <summary>Ejecuta y lanza una excepción con el error estándar si el código de salida no es 0.</summary>
+    /// <summary>Runs the tool and throws an exception with the standard error if the exit code is not 0.</summary>
     public static Task<byte[]> RunCheckedAsync(string executable, IEnumerable<string> arguments, byte[]? input = null, CancellationToken cancellationToken = default) =>
         Runner.RunCheckedAsync(executable, arguments.ToList(), input, cancellationToken);
 }
 
 /// <summary>
-/// Directorio temporal que se elimina al desecharse. Se crea con <see cref="Directory.CreateTempSubdirectory"/>: en
-/// Unix, con permisos 0700, así otros usuarios del equipo no leen los documentos ni las páginas rasterizadas.
+/// Temporary directory that is deleted when disposed. Created with <see cref="Directory.CreateTempSubdirectory"/>: on
+/// Unix, with 0700 permissions, so other users on the machine cannot read the documents or the rasterized pages.
 /// </summary>
 internal sealed class TempDirectory : IDisposable
 {
@@ -68,9 +68,9 @@ internal sealed class TempDirectory : IDisposable
 }
 
 /// <summary>
-/// OCR local con <see href="https://github.com/tesseract-ocr/tesseract">Tesseract</see> (sin enviar datos
-/// a terceros). Requiere el ejecutable <c>tesseract</c> y los idiomas instalados
-/// (p. ej. <c>apt install tesseract-ocr tesseract-ocr-spa</c>).
+/// Local OCR with <see href="https://github.com/tesseract-ocr/tesseract">Tesseract</see> (without sending data to
+/// third parties). Requires the <c>tesseract</c> executable and the installed languages
+/// (e.g. <c>apt install tesseract-ocr tesseract-ocr-spa</c>).
 /// </summary>
 public sealed partial class TesseractOcr : IOcrEngine
 {
@@ -86,10 +86,10 @@ public sealed partial class TesseractOcr : IOcrEngine
     private readonly int? _pageSegmentationMode;
     private HashSet<string>? _installed;
 
-    /// <param name="languages">Idiomas de Tesseract (p. ej. <c>"spa+eng"</c>). Si es null se deducen del idioma de la petición.</param>
-    /// <param name="executable">Ruta o nombre del ejecutable.</param>
-    /// <param name="pageSegmentationMode">Modo <c>--psm</c> (por defecto el de Tesseract, 3).</param>
-    /// <param name="runner">Ejecutor de procesos; null usa <see cref="ExternalProcess.Runner"/>.</param>
+    /// <param name="languages">Tesseract languages (e.g. <c>"spa+eng"</c>). If null, they are inferred from the request language.</param>
+    /// <param name="executable">Path or name of the executable.</param>
+    /// <param name="pageSegmentationMode"><c>--psm</c> mode (Tesseract's default, 3, by default).</param>
+    /// <param name="runner">Process runner; null uses <see cref="ExternalProcess.Runner"/>.</param>
     public TesseractOcr(string? languages = null, string executable = "tesseract", int? pageSegmentationMode = null, IExternalProcessRunner? runner = null)
     {
         _languages = languages;
@@ -102,7 +102,7 @@ public sealed partial class TesseractOcr : IOcrEngine
 
     public string Name => "tesseract";
 
-    /// <summary>Indica si Tesseract está instalado.</summary>
+    /// <summary>Indicates whether Tesseract is installed.</summary>
     public bool IsAvailable => Runner.Exists(_executable);
 
     public bool Supports(string mediaType) => mediaType is "image/png" or "image/jpeg" or "image/tiff" or "image/bmp" or "image/gif" or "image/webp";
@@ -152,7 +152,7 @@ public sealed partial class TesseractOcr : IOcrEngine
         return wanted.Count == 0 ? "eng" : string.Join('+', wanted);
     }
 
-    /// <summary>Conserva las líneas (importantes en boletas, formularios y tablas), une palabras cortadas con guion y elimina caracteres de control.</summary>
+    /// <summary>Keeps line breaks (important in receipts, forms and tables), rejoins hyphenated words and removes control characters.</summary>
     private static string Clean(string text)
     {
         var paragraphs = text.Replace("\f", string.Empty, StringComparison.Ordinal)
@@ -165,44 +165,44 @@ public sealed partial class TesseractOcr : IOcrEngine
     private static partial System.Text.RegularExpressions.Regex HyphenBreak();
 }
 
-/// <summary>Convierte páginas de un PDF en imágenes (para OCR de documentos escaneados).</summary>
+/// <summary>Converts the pages of a PDF into images (for OCR of scanned documents).</summary>
 public interface IPdfRasterizer
 {
-    /// <summary>Devuelve un PNG por página solicitada (números desde 1).</summary>
+    /// <summary>Returns one PNG per requested page (numbered from 1).</summary>
     Task<IReadOnlyDictionary<int, byte[]>> RenderAsync(byte[] pdf, IReadOnlyList<int> pages, int dpi = 200, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Igual que <see cref="RenderAsync"/>, leyendo el PDF desde un archivo. La implementación por defecto lo carga en
-    /// memoria; <see cref="PdftoppmRasterizer"/> lo lee directamente, sin copiarlo.
+    /// Same as <see cref="RenderAsync"/>, reading the PDF from a file. The default implementation loads it into
+    /// memory; <see cref="PdftoppmRasterizer"/> reads it directly, without copying it.
     /// </summary>
     async Task<IReadOnlyDictionary<int, byte[]>> RenderFileAsync(string path, IReadOnlyList<int> pages, int dpi = 200, CancellationToken cancellationToken = default) =>
         await RenderAsync(await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false), pages, dpi, cancellationToken).ConfigureAwait(false);
 }
 
 /// <summary>
-/// Rasterizador basado en <c>pdftoppm</c> (Poppler: <c>apt install poppler-utils</c>, <c>brew install poppler</c>).
-/// Las páginas consecutivas se rasterizan con un mismo proceso (hasta <see cref="MaxPagesPerProcess"/>) y los tramos,
-/// en paralelo. Si un tramo falla se reintenta página por página; las páginas que no se pueden rasterizar no aparecen
-/// en el resultado (si no se pudo ninguna, se lanza el error).
+/// Rasterizer based on <c>pdftoppm</c> (Poppler: <c>apt install poppler-utils</c>, <c>brew install poppler</c>).
+/// Consecutive pages are rasterized by a single process (up to <see cref="MaxPagesPerProcess"/>) and the ranges, in
+/// parallel. If a range fails, it is retried page by page; pages that cannot be rasterized are missing from the result
+/// (if none could be rasterized, the error is thrown).
 /// </summary>
-/// <param name="executable">Ruta o nombre del ejecutable.</param>
-/// <param name="runner">Ejecutor de procesos; null usa <see cref="ExternalProcess.Runner"/>.</param>
+/// <param name="executable">Path or name of the executable.</param>
+/// <param name="runner">Process runner; null uses <see cref="ExternalProcess.Runner"/>.</param>
 public sealed class PdftoppmRasterizer(string executable = "pdftoppm", IExternalProcessRunner? runner = null) : IPdfRasterizer
 {
-    /// <summary>Devuelve una instancia si <c>pdftoppm</c> está instalado; si no, null.</summary>
+    /// <summary>Returns an instance if <c>pdftoppm</c> is installed; otherwise, null.</summary>
     public static PdftoppmRasterizer? TryCreate(string executable = "pdftoppm", IExternalProcessRunner? runner = null) =>
         (runner ?? ExternalProcess.Runner).Exists(executable) ? new PdftoppmRasterizer(executable, runner) : null;
 
-    /// <summary>Procesos de <c>pdftoppm</c> simultáneos cuando se piden varias páginas.</summary>
+    /// <summary>Concurrent <c>pdftoppm</c> processes when several pages are requested.</summary>
     public int MaxParallelism { get; init; } = 2;
 
-    /// <summary>Páginas consecutivas que rasteriza un mismo proceso.</summary>
+    /// <summary>Consecutive pages rasterized by a single process.</summary>
     public int MaxPagesPerProcess { get; init; } = 8;
 
     /// <summary>
-    /// Ancho y alto máximos de cada imagen, en píxeles (por defecto 10.000; <c>-W</c>/<c>-H</c> de pdftoppm): lo que
-    /// exceda se recorta, así una página enorme no ocupa gigabytes. Para reducir la resolución de las páginas grandes,
-    /// pida un <c>dpi</c> menor (<see cref="MarkdownConverter"/> lo calcula por página con
+    /// Maximum width and height of each image, in pixels (10,000 by default; pdftoppm's <c>-W</c>/<c>-H</c>): anything
+    /// beyond that is cropped, so a huge page does not take up gigabytes. To reduce the resolution of large pages,
+    /// request a lower <c>dpi</c> (<see cref="MarkdownConverter"/> computes it per page with
     /// <see cref="MarkdownConverterOptions.MaxRasterPixels"/>).
     /// </summary>
     public int MaxPixels { get; init; } = 10_000;
@@ -266,7 +266,7 @@ public sealed class PdftoppmRasterizer(string executable = "pdftoppm", IExternal
         return images;
     }
 
-    /// <summary>Páginas ordenadas agrupadas en tramos consecutivos (p. ej. 1,2,3,7 → [1-3], [7-7]) de a lo más <paramref name="max"/> páginas.</summary>
+    /// <summary>Sorted pages grouped into consecutive ranges (e.g. 1,2,3,7 → [1-3], [7-7]) of at most <paramref name="max"/> pages.</summary>
     internal static List<(int First, int Last)> Ranges(IReadOnlyList<int> sortedPages, int max)
     {
         var ranges = new List<(int, int)>();
