@@ -17,6 +17,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
   outside the skill is indistinguishable from a regular file). Empty files and FIFOs are never opened when loading or
   reading a skill folder.
 
+- Workflows: `POST /events/{event}` only resumes the runs `CanSendEvent` approved. A run that started waiting for the
+  same event between the check and the delivery used to be resumed too; it now keeps waiting.
+
+### Added
+- `WorkflowEngine.SendEventToRunsAsync`: delivers an event only to the given runs (still re-checked under the run lock),
+  and fires matching `EventTrigger` automations like `SendEventAsync`.
+
 ### Changed
 - MCP: roots and sampling (`Roots`, `SetRootsAsync`, `SamplingModel`, `SamplingHandler`, `ApproveSampling`,
   `ReviewSamplingResult`, `MaxSamplingTokens` and their types) are marked `[Experimental("AISDKMCP001")]`: the MCP

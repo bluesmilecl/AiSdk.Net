@@ -298,13 +298,40 @@ public sealed class WorkflowEngine : IDisposable
     /// <see cref="EventTrigger"/> que coincidan. Devuelve los ids de las ejecuciones afectadas. Una automatización
     /// que falla no impide las demás (el error queda en <see cref="Automation.LastError"/>).
     /// </summary>
-    public async Task<IReadOnlyList<string>> SendEventAsync(string eventName, object? payload = null, string? key = null, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<string>> SendEventAsync(string eventName, object? payload = null, string? key = null, CancellationToken cancellationToken = default) =>
+        SendEventCoreAsync(eventName, payload, key, null, cancellationToken);
+
+    /// <summary>
+    /// Como <see cref="SendEventAsync"/>, pero solo reanuda las ejecuciones de <paramref name="runIds"/> que sigan
+    /// esperando el evento con esa clave: una ejecución que empiece a esperarlo después (o que no estaba en la lista) no
+    /// se toca. Úselo cuando la decisión de enviar el evento se tomó viendo una lista concreta de ejecuciones (p. ej. quién
+    /// puede aprobar cuáles), para que no se extienda a otras. Las automatizaciones con <see cref="EventTrigger"/> que
+    /// coincidan se disparan igual que con <see cref="SendEventAsync"/>.
+    /// </summary>
+    public Task<IReadOnlyList<string>> SendEventToRunsAsync(string eventName, IEnumerable<string> runIds, object? payload = null, string? key = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(runIds);
+        return SendEventCoreAsync(eventName, payload, key, runIds.ToHashSet(StringComparer.Ordinal), cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<string>> SendEventCoreAsync(string eventName, object? payload, string? key, HashSet<string>? onlyRuns, CancellationToken cancellationToken)
     {
         var element = payload is JsonElement e ? e.Clone() : JsonSerializer.SerializeToElement(payload, JsonSchema.DefaultSerializerOptions);
         var affected = new List<string>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
 
-        while (true)
+        // Con una lista cerrada no se consulta el almacén: cada entrega vuelve a comprobar, bajo el candado de la
+        // ejecución, que siga esperando este evento con esta clave.
+        foreach (var runId in onlyRuns ?? [])
+        {
+            if (await DeliverEventAsync(runId, eventName, key, element, cancellationToken).ConfigureAwait(false) is { } run)
+            {
+                Background(run);
+                affected.Add(run.Id);
+            }
+        }
+
+        while (onlyRuns is null)
         {
             var page = await Store.ListRunsWaitingForEventAsync(eventName, key, _options.BatchSize, cancellationToken).ConfigureAwait(false);
             var progressed = false;

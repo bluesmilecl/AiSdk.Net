@@ -83,7 +83,8 @@ Seguro por defecto:
   automatizaciones. Cada usuario solo ve, cancela y reintenta sus ejecuciones y automatizaciones (`CanAccessRun`,
   `CanAccessAutomation`; `WorkflowEndpoints.GetRunOwnerAsync` ayuda a escribir reglas propias).
 - `POST /events/{evento}` responde 403 hasta que configures `CanSendEvent`: recibe las ejecuciones que esperan el evento,
-  así decides quién puede aprobar (normalmente no quien hizo la solicitud).
+  así decides quién puede aprobar (normalmente no quien hizo la solicitud). Solo se reanudan esas ejecuciones
+  (`WorkflowEngine.SendEventToRunsAsync`): una que empiece a esperar el evento después de la autorización sigue esperando.
 - Los POST exigen `Content-Type: application/json` (415 si no, también sin cuerpo): un formulario de otro sitio no puede
   enviar un JSON válido con las cookies del usuario.
 - Las automatizaciones webhook creadas por HTTP necesitan secreto, y los secretos se ocultan al listarlas.

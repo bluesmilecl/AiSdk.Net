@@ -83,7 +83,8 @@ Secure by default:
   Each user only sees, cancels and retries their own runs and automations (`CanAccessRun`, `CanAccessAutomation`;
   `WorkflowEndpoints.GetRunOwnerAsync` helps build your own rules).
 - `POST /events/{event}` answers 403 until you configure `CanSendEvent`: it receives the runs waiting for the event,
-  so you decide who may approve (usually not the requester).
+  so you decide who may approve (usually not the requester). Only those runs are resumed
+  (`WorkflowEngine.SendEventToRunsAsync`): a run that starts waiting for the event after the check keeps waiting.
 - POST requests require `Content-Type: application/json` (415 otherwise, also without a body), so a cross-site form
   cannot post a valid JSON body with the user's cookies.
 - Webhook automations created over HTTP need a secret, and secrets are hidden when listing automations.
