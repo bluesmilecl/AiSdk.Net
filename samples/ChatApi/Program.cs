@@ -3,12 +3,17 @@
 //   dotnet run --project samples/ChatApi
 //
 // En el frontend (Next.js/Vite), con un token de demostración de appsettings.Development.json:
-//   const { messages, sendMessage } = useChat({
+//   const { messages, sendMessage, addToolApprovalResponse } = useChat({
 //     transport: new DefaultChatTransport({
 //       api: "http://localhost:5008/api/chat",
 //       headers: { Authorization: "Bearer dev-ana-4f1c2a9e7b3d4c58" },
 //     }),
+//     // Tras aprobar o denegar, reenvía la conversación para que el servidor continúe.
+//     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
 //   });
+//
+// send_weather_alert requiere aprobación: su parte "tool-send_weather_alert" llega en el estado "approval-requested";
+// muestre part.input y llame a addToolApprovalResponse({ id: part.approval.id, approved: true | false, reason }).
 
 using System.ComponentModel;
 using AiSdk;
@@ -106,16 +111,27 @@ var api = app.MapGroup("/api").RequireAuthorization();
 // Chat con streaming reanudable en el protocolo UI Message Stream.
 // La generación sigue aunque el cliente se desconecte; al volver, useChat la retoma.
 // El id de chat lo elige el cliente: el stream se guarda bajo ese id *y el usuario autenticado*, así que nadie
-// puede reemplazar ni reanudar el chat de otro usuario. get_weather se ejecuta en el servidor: sus resultados
+// puede reemplazar ni reanudar el chat de otro usuario. Las herramientas se ejecutan en el servidor: sus resultados
 // reenviados por el navegador se descartan (podrían estar falsificados).
+// send_weather_alert requiere aprobación: el stream la pide (approval-requested) con un approvalId firmado para este
+// usuario, este chat y esa entrada exacta; al reanudar solo se ejecuta si la respuesta del navegador verifica.
 api.MapPost("/chat", (UIChatRequest request, WeatherAgent agent, IResumableStreamStore store, HttpContext http) =>
 {
+    var chatId = request.Id ?? Guid.NewGuid().ToString("N");
+    var approvals = ToolApprovalProtection.ForChat(http, chatId);
+    var input = UIMessageConverter.ToModelInput(request.Messages, new UIMessageConverterOptions
+    {
+        ServerExecutedTools = WeatherAgent.ServerTools,
+        ToolApprovals = approvals,
+    });
     var stream = agent.Stream(new AgentCallOptions
     {
-        Messages = UIMessageConverter.ToModelMessages(request.Messages, new UIMessageConverterOptions { ServerExecutedTools = ["get_weather"] }),
+        Messages = input.Messages,
+        ToolApprovals = input.ToolApprovals,   // aprobaciones verificadas: se ejecutan antes de llamar al modelo
+        DeferToolApprovals = true,             // las nuevas quedan pendientes y se piden al usuario
         Services = http.RequestServices,
     });
-    return stream.ToResumableUIMessageStreamResult(store, request.Id ?? Guid.NewGuid().ToString("N"), onError: OnError);
+    return stream.ToResumableUIMessageStreamResult(store, chatId, onError: OnError, toolApprovals: approvals);
 });
 
 // Agente de trabajo: crea artifacts (HTML, React, diagramas), documentos Word/PDF/Excel descargables y tareas programadas.
