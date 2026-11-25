@@ -284,8 +284,9 @@ public sealed class InMemoryWorkflowStore(int maxFinishedRuns = 10_000) : IWorkf
 /// </summary>
 /// <remarks>
 /// Varios procesos de la <b>misma máquina</b> pueden compartir el directorio: las escrituras se serializan con un archivo
-/// de bloqueo (<c>.lock</c>) y se verifican las versiones. Para varias máquinas use un almacén de base de datos: el
-/// bloqueo de archivos no es fiable en discos de red.
+/// de bloqueo (<c>.lock</c>) y se verifican las versiones. Para varias máquinas use un almacén de base de datos, como
+/// <c>PostgresWorkflowStore</c> (paquete <c>AiSdk.Net.Workflows.Postgres</c>): el bloqueo de archivos no es fiable en
+/// discos de red.
 /// </remarks>
 public sealed class FileSystemWorkflowStore : IWorkflowStore, IDisposable
 {
@@ -419,6 +420,11 @@ public sealed class FileSystemWorkflowStore : IWorkflowStore, IDisposable
     /// <summary>Filtra con el índice de activas y confirma cada candidata con la ejecución guardada.</summary>
     private async Task<IReadOnlyList<WorkflowRun>> FromIndexAsync(Func<WorkflowRun, bool> predicate, Func<WorkflowRun, long> order, int limit, CancellationToken cancellationToken)
     {
+        if (limit <= 0)
+        {
+            return []; // Como en memoria: el límite se comprueba después de añadir cada resultado.
+        }
+
         var candidates = new List<WorkflowRun>();
         foreach (var file in Directory.EnumerateFiles(_active, "*.json"))
         {
@@ -462,6 +468,11 @@ public sealed class FileSystemWorkflowStore : IWorkflowStore, IDisposable
 
     public async Task<int> DeleteFinishedRunsAsync(DateTimeOffset finishedBefore, int limit = 1000, CancellationToken cancellationToken = default)
     {
+        if (limit <= 0)
+        {
+            return 0;
+        }
+
         var deleted = 0;
         foreach (var file in Directory.EnumerateFiles(_runs, "*.json"))
         {

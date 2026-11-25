@@ -16,7 +16,7 @@
 | Word/PDF/Excel | `DocumentGenerator.ToDocx/ToPdf(markdown)`, `new SpreadsheetBuilder().AddSheet(...)`, `DocumentTools.Create(...)` |
 | Artifacts | `ArtifactTools.Create(store)`, `app.MapArtifacts()` |
 | Multi-agent | `Orchestrations.Parallel([...], aggregator)`, `.Router(...)`, `.Supervisor(...)`, `.Handoffs(...)`, `.EvaluatorOptimizer(...)` |
-| Workflows | `Workflow.Create<TIn, TOut>(name, async (ctx, input) => ...)`, `services.AddAiSdkWorkflows(...)`, `app.MapWorkflows()` |
+| Workflows | `Workflow.Create<TIn, TOut>(name, async (ctx, input) => ...)`, `services.AddAiSdkWorkflows(...)`, `app.MapWorkflows()`; stores: `InMemoryWorkflowStore`, `FileSystemWorkflowStore`, `PostgresWorkflowStore` (`w.UsePostgresStore(...)`, several machines) |
 | Skills | `new SkillLibrary().LoadDirectory("skills")`, `AgentSettings.Skills`, `SkillAuthoringTools.Create(...)` |
 | Anthropic Skills | `AnthropicSkills.Options([AnthropicSkill.Excel])` + `AnthropicTools.CodeExecution()` |
 | ASP.NET + useChat | `stream.ToUIMessageStreamResult()`, `UIMessageConverter.ToModelMessages(request.Messages)` |

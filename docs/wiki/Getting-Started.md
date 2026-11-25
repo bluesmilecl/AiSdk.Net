@@ -25,6 +25,7 @@ dotnet add package AiSdk.Net.Mcp --prerelease           # MCP client
 dotnet add package AiSdk.Net.AspNetCore --prerelease    # backend for useChat
 dotnet add package AiSdk.Net.Documents --prerelease     # read (PDF/Office/images/audio/video → Markdown + OCR) and generate Word/PDF/Excel
 dotnet add package AiSdk.Net.Workflows --prerelease     # durable workflows, triggers and automations
+dotnet add package AiSdk.Net.Workflows.Postgres --prerelease  # PostgreSQL workflow store (several machines)
 dotnet add package AiSdk.Net.PgVector --prerelease      # PostgreSQL + pgvector store
 dotnet add package AiSdk.Net.VectorData --prerelease    # Qdrant, Pinecone, Azure AI Search… via Microsoft.Extensions.VectorData
 ```
@@ -48,6 +49,7 @@ dotnet add package AiSdk.Net.VectorData --prerelease    # Qdrant, Pinecone, Azur
 | `AiSdk.Net.AspNetCore` | `ToUIMessageStreamResult()` / `ToTextStreamResult()`, `MapArtifacts()` and `MapWorkflows()` for Minimal APIs |
 | `AiSdk.Net.Documents` | `MarkdownConverter` (PDF, Word, Excel, PowerPoint, HTML, CSV/JSON, images, audio, video), OCR with Tesseract, `ConvertAttachments` middleware for models without vision; Word, PDF and Excel generation (`DocxWriter`, `PdfWriter`, `SpreadsheetBuilder`, `DocumentTools`) |
 | `AiSdk.Net.Workflows` | `WorkflowEngine`: durable steps, `SleepAsync`, `WaitForEventAsync`, retries; automations by cron, interval, date, event or webhook; `AgentTasks` so agents can schedule tasks; `AddAiSdkWorkflows()` |
+| `AiSdk.Net.Workflows.Postgres` | `PostgresWorkflowStore` and `UsePostgresStore()`: runs and automations in PostgreSQL, shared by several replicas (optimistic concurrency, partial indexes for the engine queries) |
 | `AiSdk.Net.PgVector` | PostgreSQL + pgvector store: HNSW, `jsonb` filters, hybrid search (vectors + full text with RRF) |
 | `AiSdk.Net.VectorData` | `VectorDataStore`: any Microsoft.Extensions.VectorData connector (Qdrant, Pinecone, Azure AI Search, Redis, Weaviate, MongoDB, Cosmos DB, SQL Server, Elasticsearch…) |
 

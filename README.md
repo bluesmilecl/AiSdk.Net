@@ -132,7 +132,7 @@ approval for sensitive tools and stream everything to the UI.
 </div>
 
 <details>
-<summary><b>📦 All 15 packages</b></summary>
+<summary><b>📦 All 16 packages</b></summary>
 
 | Package | What it does |
 |---|---|
@@ -144,6 +144,7 @@ approval for sensitive tools and stream everything to the UI.
 | `AiSdk.Net.AspNetCore` | `ToUIMessageStreamResult()`, `MapArtifacts()`, `MapWorkflows()`, `MapSkills()` |
 | `AiSdk.Net.Documents` | Documents → Markdown with page-by-page OCR; Word, PDF and Excel generation; external tools through a configurable runner (sandbox, clean environment) |
 | `AiSdk.Net.Workflows` | Durable workflows, triggers and automations |
+| `AiSdk.Net.Workflows.Postgres` | PostgreSQL workflow store: several replicas on different machines share runs and automations |
 | `AiSdk.Net.PgVector` | PostgreSQL + pgvector store with hybrid search and metadata filters served by the index |
 | `AiSdk.Net.VectorData` | Any Microsoft.Extensions.VectorData connector |
 

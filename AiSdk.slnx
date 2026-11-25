@@ -18,6 +18,7 @@
     <Project Path="src/AiSdk.PgVector/AiSdk.PgVector.csproj" />
     <Project Path="src/AiSdk.VectorData/AiSdk.VectorData.csproj" />
     <Project Path="src/AiSdk.Workflows/AiSdk.Workflows.csproj" />
+    <Project Path="src/AiSdk.Workflows.Postgres/AiSdk.Workflows.Postgres.csproj" />
     <Project Path="src/AiSdk/AiSdk.csproj" />
   </Folder>
   <Folder Name="/tests/">

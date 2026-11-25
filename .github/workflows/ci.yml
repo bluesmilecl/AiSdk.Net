@@ -40,6 +40,9 @@ jobs:
       - run: dotnet build --no-restore -c Release
       - name: Unit tests
         run: dotnet test tests/AiSdk.Tests --no-build -c Release --verbosity normal
+        env:
+          # Contrato de los almacenes de workflows también contra PostgreSQL (el servicio del job).
+          AISDK_TEST_PG: Host=localhost;Port=5432;Username=postgres;Password=postgres;Database=postgres
       # Las claves de los proveedores solo llegan a las pruebas en la rama principal (push, programadas o manuales):
       # un push a cualquier otra rama no puede leerlas modificando las pruebas. Sin clave, las pruebas en vivo se omiten.
       - name: Integration tests (live tests only on the default branch)

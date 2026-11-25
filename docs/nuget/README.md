@@ -47,7 +47,7 @@ await foreach (var token in agent.Stream("Should I take an umbrella in Santiago?
 | `AiSdk.Net.Extensions.DependencyInjection` | `services.AddAiSdk(...)` |
 | `AiSdk.Net.AspNetCore` | Backend for AI SDK UI `useChat`, artifacts, workflows and skills endpoints |
 | `AiSdk.Net.Documents` | Documents to Markdown with page-by-page OCR; Word, PDF and Excel generation |
-| `AiSdk.Net.Workflows` | Durable workflows, triggers and automations |
+| `AiSdk.Net.Workflows` · `AiSdk.Net.Workflows.Postgres` | Durable workflows, triggers and automations; PostgreSQL store for several replicas |
 | `AiSdk.Net.PgVector` · `AiSdk.Net.VectorData` | Vector stores (pgvector, Qdrant, Pinecone, Azure AI Search…) |
 
 ## Learn more

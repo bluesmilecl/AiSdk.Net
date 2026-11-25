@@ -23,8 +23,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 ### Added
 - `WorkflowEngine.SendEventToRunsAsync`: delivers an event only to the given runs (still re-checked under the run lock),
   and fires matching `EventTrigger` automations like `SendEventAsync`.
+- New package `AiSdk.Net.Workflows.Postgres`: `PostgresWorkflowStore`, an `IWorkflowStore` on PostgreSQL so durable
+  workflows run on several machines against one database. Optimistic concurrency in SQL (`UPDATE ... WHERE version`,
+  `INSERT ... ON CONFLICT DO NOTHING`), partial indexes for the engine queries, batched retention with `SKIP LOCKED`,
+  idempotent schema creation safe across replicas (`EnsureSchemaAsync`, configurable schema and table prefix) and
+  `UsePostgresStore()` for `AddAiSdkWorkflows`.
 
 ### Changed
+- Workflows: `FileSystemWorkflowStore` honors a `limit` of 0 or less like the other stores (no runs listed, none
+  deleted); it used to return or delete one run.
 - MCP: roots and sampling (`Roots`, `SetRootsAsync`, `SamplingModel`, `SamplingHandler`, `ApproveSampling`,
   `ReviewSamplingResult`, `MaxSamplingTokens` and their types) are marked `[Experimental("AISDKMCP001")]`: the MCP
   specification 2026-07-28 deprecates them. Suppress the diagnostic to keep using them.

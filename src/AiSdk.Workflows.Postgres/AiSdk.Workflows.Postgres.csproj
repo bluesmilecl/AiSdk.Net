@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>PostgreSQL store for AiSdk.Net durable workflows: several replicas on different machines share runs and automations with optimistic concurrency and indexed engine queries.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../AiSdk.Workflows/AiSdk.Workflows.csproj" />
+    <PackageReference Include="Npgsql" />
+    <InternalsVisibleTo Include="AiSdk.Tests" />
+  </ItemGroup>
+</Project>

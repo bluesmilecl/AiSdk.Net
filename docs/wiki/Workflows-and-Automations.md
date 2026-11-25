@@ -52,7 +52,7 @@ var refund = Workflow.Create<RefundRequest, string>("refund", async (ctx, r) =>
 
 builder.Services.AddAiSdkWorkflows(w =>
 {
-    w.UseFileSystemStore("data/workflows");                     // or UseStore(your IWorkflowStore: SQL, Redis...)
+    w.UseFileSystemStore("data/workflows");                     // or UsePostgresStore(...) for several machines, or UseStore(your IWorkflowStore)
     w.AddWorkflow(refund);
     w.AddAutomation(Automation.Create("Daily report", new CronTrigger("0 9 * * 1-5", "America/Santiago"), "daily-report", new { }));
     w.AddAutomation(new Automation { Id = "crm", Name = "Leads", Trigger = new WebhookTrigger(secret), Workflow = "lead" });   // secret = WebhookSignature.CreateSecret()
@@ -138,7 +138,7 @@ replica) and, after the tolerance window, it is rejected. Senders that cannot si
   (`LeaseOwner`, `LeaseExpiresAt`, `LeaseDuration` = 2 min) that is renewed while it progresses: another replica only
   resumes it if the lease expires (the replica died). Each scheduled occurrence creates a run with a deterministic id,
   so it fires once even if two replicas tick at the same time. `FileSystemWorkflowStore` supports several processes on
-  the same machine (lock file); across machines use a database store.
+  the same machine (lock file); across machines use `PostgresWorkflowStore` (next section) or another database store.
 - **Bounded growth.** The engine no longer lists every run on each tick: it uses indexed queries
   (`ListDueRunsAsync`, `ListRunsWaitingForEventAsync`, `ListDueAutomationsAsync`). Finished runs are deleted after
   `RunRetention` (30 days; `null` keeps them) or on demand with `engine.PurgeRunsAsync(before)`, and
@@ -148,6 +148,60 @@ replica) and, after the tolerance window, it is rejected. Senders that cannot si
 > Custom `IWorkflowStore` implementations must check the version on save (`UPDATE ... WHERE id = @id AND version = @version`,
 > and an insert that fails if the id exists when the version is 0) and implement the indexed queries using the
 > criteria in `WorkflowRunQueries`.
+
+## 🐘 Several machines: the PostgreSQL store
+
+`FileSystemWorkflowStore` only coordinates processes on one machine (file locks are not reliable on network disks). To run
+several replicas (pods, VMs, regions behind a load balancer) against one database, use `AiSdk.Net.Workflows.Postgres`:
+
+```bash
+dotnet add package AiSdk.Net.Workflows.Postgres --prerelease
+```
+
+```csharp
+using AiSdk.Workflows.Postgres;
+
+builder.Services.AddAiSdkWorkflows(w =>
+{
+    w.UsePostgresStore(builder.Configuration.GetConnectionString("workflows")!);
+    // or w.UsePostgresStore(dataSource), or w.UsePostgresStore() with the NpgsqlDataSource registered in the container
+    // (AddNpgsqlDataSource, Aspire); options: new PostgresWorkflowStoreOptions { Schema = "workflows" }
+    w.AddWorkflow(refund);
+});
+```
+
+Every replica runs the same code against the same database; there is nothing else to coordinate (each process gets its
+own `InstanceId`):
+
+- A run started on one replica can be resumed by an event, webhook or HTTP request that lands on another one.
+- A sleeping or due run is claimed by exactly one replica (optimistic concurrency + lease); if a replica dies, another one
+  takes over its runs when the lease expires. Each scheduled occurrence fires once.
+- Saves are `UPDATE ... WHERE id = $1 AND version = $n` and `INSERT ... ON CONFLICT (id) DO NOTHING` (0 rows =
+  `WorkflowConcurrencyException`).
+- Engine ticks only read the active runs through partial indexes, never the history. Retention deletes the oldest finished
+  runs in batches with `FOR UPDATE SKIP LOCKED`, so replicas purging at the same time do not wait for each other.
+
+| Object | Contents |
+|---|---|
+| `{prefix}runs` | One row per run: `data` (the whole run as `json`) plus `status`, `workflow_name`, `version`, `created_at`, `updated_at`, `finished_at`, `resume_at`, `lease_expires_at`, `wait_event`, `wait_key` |
+| `{prefix}automations` | One row per automation: `data` plus `enabled`, `next_run_at`, `created_at`, `version` |
+| `runs_resume_idx`, `runs_lease_idx` | Partial indexes (sleeping/waiting and pending/running runs) for `ListDueRunsAsync` |
+| `runs_waiting_idx` | Partial index (event name and key) for `ListRunsWaitingForEventAsync` |
+| `runs_finished_idx` | Partial index for retention (`DeleteFinishedRunsAsync`) |
+| `runs_created_idx`, `runs_status_idx`, `runs_workflow_idx` | Listings, newest first (`ListRunsAsync`) |
+| `automations_due_idx` | Partial index (enabled automations) for `ListDueAutomationsAsync` |
+
+`PostgresWorkflowStoreOptions`: `Schema` (`public`), `TablePrefix` (`aisdk_workflow_`) and `CreateIfNotExists` (`true`).
+Schema, tables and indexes are created on first use if any is missing, idempotently and safely when several replicas
+start at once (advisory lock); once everything exists no DDL runs. If the app connects with a user without DDL rights,
+set `CreateIfNotExists = false` and call `EnsureSchemaAsync()` from your deployment with a user that has them. Schema
+and prefix are validated (letters, digits and `_`, at most 63 characters per name) and quoted.
+
+> [!NOTE]
+> The run is stored as `json`, not `jsonb`: `jsonb` reorders properties, and System.Text.Json needs the discriminator of
+> a polymorphic type (`kind` of a trigger, `type` of a message part saved by a step) to come first; it also rejects
+> `\u0000`. Queries use the extracted columns, whose dates have PostgreSQL's microsecond precision (the JSON keeps the
+> exact value).
 
 ## 🗓️ Tasks scheduled by agents
 

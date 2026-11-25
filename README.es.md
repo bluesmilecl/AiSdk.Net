@@ -133,7 +133,7 @@ humana para herramientas sensibles y enviar todo en streaming a la interfaz.
 </div>
 
 <details>
-<summary><b>📦 Los 15 paquetes</b></summary>
+<summary><b>📦 Los 16 paquetes</b></summary>
 
 | Paquete | Qué hace |
 |---|---|
@@ -145,6 +145,7 @@ humana para herramientas sensibles y enviar todo en streaming a la interfaz.
 | `AiSdk.Net.AspNetCore` | `ToUIMessageStreamResult()`, `MapArtifacts()`, `MapWorkflows()`, `MapSkills()` |
 | `AiSdk.Net.Documents` | Documentos → Markdown con OCR página por página; generación de Word, PDF y Excel; herramientas externas con un ejecutor configurable (sandbox, entorno limpio) |
 | `AiSdk.Net.Workflows` | Workflows durables, triggers y automatizaciones |
+| `AiSdk.Net.Workflows.Postgres` | Almacén de workflows en PostgreSQL: varias réplicas en distintas máquinas comparten ejecuciones y automatizaciones |
 | `AiSdk.Net.PgVector` | Almacén PostgreSQL + pgvector con búsqueda híbrida y filtros de metadatos que usan el índice |
 | `AiSdk.Net.VectorData` | Cualquier conector de Microsoft.Extensions.VectorData |
 

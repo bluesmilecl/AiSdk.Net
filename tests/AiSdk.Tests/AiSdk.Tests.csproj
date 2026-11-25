@@ -22,6 +22,7 @@
     <ProjectReference Include="../../src/AiSdk.VectorData/AiSdk.VectorData.csproj" />
     <ProjectReference Include="../../src/AiSdk.Documents/AiSdk.Documents.csproj" />
     <ProjectReference Include="../../src/AiSdk.Workflows/AiSdk.Workflows.csproj" />
+    <ProjectReference Include="../../src/AiSdk.Workflows.Postgres/AiSdk.Workflows.Postgres.csproj" />
   </ItemGroup>
 
   <ItemGroup>

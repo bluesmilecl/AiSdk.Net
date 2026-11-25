@@ -276,13 +276,15 @@ public class WorkflowSecurityTests
         Assert.Equal(0, after);
     }
 
-    [Fact]
-    public async Task ReplicasSharingAStoreFireEachOccurrenceOnce()
+    [Theory]
+    [ClassData(typeof(AllWorkflowStores))]
+    public async Task ReplicasSharingAStoreFireEachOccurrenceOnce(WorkflowStoreKind kind)
     {
         var calls = new List<string>();
-        var store = new InMemoryWorkflowStore();
+        await using var stores = TestWorkflowStores.Create(kind);
+        var store = stores.Store;
         var a = new WorkflowEngine(store).Register(Echo("report", calls));
-        var b = new WorkflowEngine(store).Register(Echo("report", calls));
+        var b = new WorkflowEngine(stores.Peer).Register(Echo("report", calls));
         var automation = await a.AddAutomationAsync(Automation.Create("Informe", new IntervalTrigger(TimeSpan.FromHours(1)), "report", new { }), Ct);
 
         var due = automation.NextRunAt!.Value;
@@ -294,10 +296,12 @@ public class WorkflowSecurityTests
         Assert.Equal(due + TimeSpan.FromHours(1), (await store.GetAutomationAsync(automation.Id, Ct))!.NextRunAt);
     }
 
-    [Fact]
-    public async Task ReplicasDoNotStealLeasedRunsButTakeOverAbandonedOnes()
+    [Theory]
+    [ClassData(typeof(AllWorkflowStores))]
+    public async Task ReplicasDoNotStealLeasedRunsButTakeOverAbandonedOnes(WorkflowStoreKind kind)
     {
-        var store = new InMemoryWorkflowStore();
+        await using var stores = TestWorkflowStores.Create(kind);
+        var store = stores.Store;
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var stepsOnA = 0;
@@ -314,7 +318,7 @@ public class WorkflowSecurityTests
         }));
         var clockB = new ManualTimeProvider(DateTimeOffset.UtcNow);
         var stepsOnB = 0;
-        var b = new WorkflowEngine(store, options: new WorkflowEngineOptions { TimeProvider = clockB }).Register(Workflow.Create<int, string>("job", async (ctx, _) =>
+        var b = new WorkflowEngine(stores.Peer, options: new WorkflowEngineOptions { TimeProvider = clockB }).Register(Workflow.Create<int, string>("job", async (ctx, _) =>
         {
             await ctx.StepAsync("work", _ => Task.FromResult("b"));
             Interlocked.Increment(ref stepsOnB);
@@ -343,62 +347,66 @@ public class WorkflowSecurityTests
         Assert.Equal(0, stepsOnA);
     }
 
-    [Fact]
-    public async Task StoresRejectStaleWritesAcrossInstances()
+    [Theory]
+    [ClassData(typeof(AllWorkflowStores))]
+    public async Task StoresRejectStaleWritesAcrossInstances(WorkflowStoreKind kind)
     {
-        var dir = Path.Combine(Path.GetTempPath(), "aisdk-wf-cas-" + Guid.NewGuid().ToString("N"));
-        try
-        {
-            using var first = new FileSystemWorkflowStore(dir);
-            using var second = new FileSystemWorkflowStore(dir); // otro proceso sobre el mismo directorio
-            foreach (var store in new IWorkflowStore[] { new InMemoryWorkflowStore(), first })
-            {
-                var other = store == first ? second : store;
-                await store.SaveRunAsync(new WorkflowRun { Id = "r1", WorkflowName = "w", Input = JsonSerializer.SerializeToElement(new { }) }, Ct);
-                var copyA = (await store.GetRunAsync("r1", Ct))!;
-                var copyB = (await other.GetRunAsync("r1", Ct))!;
-                copyA.Status = WorkflowStatus.Cancelled;
-                await store.SaveRunAsync(copyA, Ct);
-                copyB.Status = WorkflowStatus.Running;
-                await Assert.ThrowsAsync<WorkflowConcurrencyException>(() => other.SaveRunAsync(copyB, Ct));
-                await Assert.ThrowsAsync<WorkflowConcurrencyException>(() => other.SaveRunAsync(new WorkflowRun { Id = "r1", WorkflowName = "w", Input = copyA.Input }, Ct));
-                Assert.Equal(WorkflowStatus.Cancelled, (await other.GetRunAsync("r1", Ct))!.Status);
-            }
+        await using var stores = TestWorkflowStores.Create(kind);
+        var (store, other) = (stores.Store, stores.Peer); // en disco y PostgreSQL, otra instancia (otro proceso o réplica)
+        var created = new WorkflowRun { Id = "r1", WorkflowName = "w", Input = JsonSerializer.SerializeToElement(new { }) };
+        await store.SaveRunAsync(created, Ct);
+        Assert.Equal(1, created.Version);
+        var copyA = (await store.GetRunAsync("r1", Ct))!;
+        var copyB = (await other.GetRunAsync("r1", Ct))!;
+        copyA.Status = WorkflowStatus.Cancelled;
+        await store.SaveRunAsync(copyA, Ct);
+        Assert.Equal(2, copyA.Version);
+        copyB.Status = WorkflowStatus.Running;
+        await Assert.ThrowsAsync<WorkflowConcurrencyException>(() => other.SaveRunAsync(copyB, Ct));
+        Assert.Equal(1, copyB.Version); // el guardado rechazado no cambia la versión
+        var duplicate = new WorkflowRun { Id = "r1", WorkflowName = "w", Input = copyA.Input };
+        await Assert.ThrowsAsync<WorkflowConcurrencyException>(() => other.SaveRunAsync(duplicate, Ct));
+        Assert.Equal(0, duplicate.Version);
+        await Assert.ThrowsAsync<WorkflowConcurrencyException>(() => other.SaveRunAsync(new WorkflowRun { Id = "missing", WorkflowName = "w", Input = copyA.Input, Version = 3 }, Ct));
+        Assert.Null(await store.GetRunAsync("missing", Ct));
+        var stored = (await other.GetRunAsync("r1", Ct))!;
+        Assert.Equal(WorkflowStatus.Cancelled, stored.Status);
+        stored.Logs.Add("solo en esta copia");
+        Assert.Empty((await other.GetRunAsync("r1", Ct))!.Logs); // lo leído es una copia
 
-            // Escrituras en paralelo desde dos instancias: ninguna actualización se pierde.
-            await Task.WhenAll(Enumerable.Range(0, 20).Select(i => Task.Run(async () =>
-            {
-                var store = i % 2 == 0 ? first : second;
-                while (true)
-                {
-                    var run = (await store.GetRunAsync("r1", Ct))!;
-                    run.Logs.Add($"línea {i}");
-                    try
-                    {
-                        await store.SaveRunAsync(run, Ct);
-                        return;
-                    }
-                    catch (WorkflowConcurrencyException)
-                    {
-                    }
-                }
-            }, Ct)));
-            Assert.Equal(20, (await first.GetRunAsync("r1", Ct))!.Logs.Count);
-        }
-        finally
+        // Escrituras en paralelo desde dos instancias: ninguna actualización se pierde.
+        await Task.WhenAll(Enumerable.Range(0, 20).Select(i => Task.Run(async () =>
         {
-            Directory.Delete(dir, true);
-        }
+            var target = i % 2 == 0 ? store : other;
+            while (true)
+            {
+                var run = (await target.GetRunAsync("r1", Ct))!;
+                run.Logs.Add($"línea {i}");
+                try
+                {
+                    await target.SaveRunAsync(run, Ct);
+                    return;
+                }
+                catch (WorkflowConcurrencyException)
+                {
+                }
+            }
+        }, Ct)));
+        var final = (await store.GetRunAsync("r1", Ct))!;
+        Assert.Equal(20, final.Logs.Count);
+        Assert.Equal(22, final.Version);
     }
 
     // ------------------------------------------------------------------
     // Hallazgo 9: crecimiento sin límite
     // ------------------------------------------------------------------
 
-    [Fact]
-    public async Task TicksAndEventsUseIndexedQueriesInsteadOfListingEverything()
+    [Theory]
+    [ClassData(typeof(AllWorkflowStores))]
+    public async Task TicksAndEventsUseIndexedQueriesInsteadOfListingEverything(WorkflowStoreKind kind)
     {
-        var store = new CountingStore(new InMemoryWorkflowStore());
+        await using var stores = TestWorkflowStores.Create(kind);
+        var store = new CountingStore(stores.Store);
         var engine = new WorkflowEngine(store).Register(Workflow.Create<string, string>("approval", async (ctx, id) =>
             (await ctx.WaitForEventAsync<JsonElement?>("approved", key: id))?.GetProperty("by").GetString() ?? "vencido"));
         for (var i = 0; i < 5; i++)
@@ -415,33 +423,28 @@ public class WorkflowSecurityTests
         Assert.Equal(0, engine.RunLockCount);
     }
 
-    [Fact]
-    public async Task FinishedRunsArePurgedAndTheInMemoryStoreIsBounded()
+    [Theory]
+    [ClassData(typeof(AllWorkflowStores))]
+    public async Task FinishedRunsArePurged(WorkflowStoreKind kind)
     {
+        await using var stores = TestWorkflowStores.Create(kind);
+        var store = stores.Store;
         var clock = new ManualTimeProvider(DateTimeOffset.UtcNow);
-        var dir = Path.Combine(Path.GetTempPath(), "aisdk-wf-purge-" + Guid.NewGuid().ToString("N"));
-        try
-        {
-            using var disk = new FileSystemWorkflowStore(dir);
-            foreach (IWorkflowStore store in new IWorkflowStore[] { new InMemoryWorkflowStore(), disk })
-            {
-                var engine = new WorkflowEngine(store, options: new WorkflowEngineOptions { TimeProvider = clock, RunRetention = TimeSpan.FromDays(30) })
-                    .Register(Echo("quick"), Workflow.Create<int, string>("waits", async (ctx, _) => await ctx.WaitForEventAsync<string>("never") ?? "x"));
-                var done = await engine.StartAsync("quick", new { }, cancellationToken: Ct);
-                var waiting = await engine.StartAsync("waits", 1, cancellationToken: Ct);
+        var engine = new WorkflowEngine(store, options: new WorkflowEngineOptions { TimeProvider = clock, RunRetention = TimeSpan.FromDays(30) })
+            .Register(Echo("quick"), Workflow.Create<int, string>("waits", async (ctx, _) => await ctx.WaitForEventAsync<string>("never") ?? "x"));
+        var done = await engine.StartAsync("quick", new { }, cancellationToken: Ct);
+        var waiting = await engine.StartAsync("waits", 1, cancellationToken: Ct);
 
-                clock.Now += TimeSpan.FromDays(31);
-                await engine.TickAsync(cancellationToken: Ct); // la retención se aplica en el ciclo
-                Assert.Null(await store.GetRunAsync(done.Id, Ct));
-                Assert.NotNull(await store.GetRunAsync(waiting.Id, Ct)); // las activas no se borran
-                Assert.Equal(0, await engine.PurgeRunsAsync(clock.Now, Ct));
-            }
-        }
-        finally
-        {
-            Directory.Delete(dir, true);
-        }
+        clock.Now += TimeSpan.FromDays(31);
+        await engine.TickAsync(cancellationToken: Ct); // la retención se aplica en el ciclo
+        Assert.Null(await store.GetRunAsync(done.Id, Ct));
+        Assert.NotNull(await store.GetRunAsync(waiting.Id, Ct)); // las activas no se borran
+        Assert.Equal(0, await engine.PurgeRunsAsync(clock.Now, Ct));
+    }
 
+    [Fact]
+    public async Task TheInMemoryStoreIsBounded()
+    {
         var bounded = new InMemoryWorkflowStore(maxFinishedRuns: 10);
         var small = new WorkflowEngine(bounded).Register(Echo("quick"));
         string? last = null;

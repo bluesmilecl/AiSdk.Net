@@ -25,6 +25,7 @@ dotnet add package AiSdk.Net.Mcp --prerelease           # cliente MCP
 dotnet add package AiSdk.Net.AspNetCore --prerelease    # backend para useChat
 dotnet add package AiSdk.Net.Documents --prerelease     # leer (PDF/Office/imágenes/audio/video → Markdown + OCR) y generar Word/PDF/Excel
 dotnet add package AiSdk.Net.Workflows --prerelease     # workflows durables, triggers y automatizaciones
+dotnet add package AiSdk.Net.Workflows.Postgres --prerelease  # almacén de workflows en PostgreSQL (varias máquinas)
 dotnet add package AiSdk.Net.PgVector --prerelease      # almacén PostgreSQL + pgvector
 dotnet add package AiSdk.Net.VectorData --prerelease    # Qdrant, Pinecone, Azure AI Search… vía Microsoft.Extensions.VectorData
 ```
@@ -48,6 +49,7 @@ dotnet add package AiSdk.Net.VectorData --prerelease    # Qdrant, Pinecone, Azur
 | `AiSdk.Net.AspNetCore` | `ToUIMessageStreamResult()` / `ToTextStreamResult()`, `MapArtifacts()` y `MapWorkflows()` para Minimal APIs |
 | `AiSdk.Net.Documents` | `MarkdownConverter` (PDF, Word, Excel, PowerPoint, HTML, CSV/JSON, imágenes, audio, video), OCR con Tesseract, middleware `ConvertAttachments` para modelos sin visión; generación de Word, PDF y Excel (`DocxWriter`, `PdfWriter`, `SpreadsheetBuilder`, `DocumentTools`) |
 | `AiSdk.Net.Workflows` | `WorkflowEngine`: pasos durables, `SleepAsync`, `WaitForEventAsync`, reintentos; automatizaciones por cron, intervalo, fecha, evento o webhook; `AgentTasks` para que los agentes programen tareas; `AddAiSdkWorkflows()` |
+| `AiSdk.Net.Workflows.Postgres` | `PostgresWorkflowStore` y `UsePostgresStore()`: ejecuciones y automatizaciones en PostgreSQL, compartidas por varias réplicas (concurrencia optimista, índices parciales para las consultas del motor) |
 | `AiSdk.Net.PgVector` | Almacén PostgreSQL + pgvector: HNSW, filtros en `jsonb`, búsqueda híbrida (vectores + texto completo con RRF) |
 | `AiSdk.Net.VectorData` | `VectorDataStore`: cualquier conector de Microsoft.Extensions.VectorData (Qdrant, Pinecone, Azure AI Search, Redis, Weaviate, MongoDB, Cosmos DB, SQL Server, Elasticsearch…) |
 
