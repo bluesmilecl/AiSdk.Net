@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using AiSdk.Internal;
 
 namespace AiSdk;
@@ -240,6 +241,8 @@ internal static class GenerationEngine
     /// <summary>Resultado que recibe el modelo cuando el usuario deniega una llamada.</summary>
     internal const string DeniedMessage = "El usuario denegó la ejecución de la herramienta.";
 
+    private const string AmbiguousCallMessage = "Hay más de una llamada distinta con este id en el historial; no se ejecutó ninguna.";
+
     private const string NoDecisionMessage = "La llamada requería aprobación y no hubo una decisión válida al reanudar; no se ejecutó.";
 
     /// <summary>Resultado de error de una llamada denegada, con el motivo opcional del usuario.</summary>
@@ -275,7 +278,17 @@ internal static class GenerationEngine
             .Select(r => r.ToolCallId)
             .ToHashSet(StringComparer.Ordinal);
         var tools = ActiveTools(o, o.ActiveTools);
-        var pending = conversation[index].Content.OfType<ToolCallPart>()
+        var calls = conversation[index].Content.OfType<ToolCallPart>().ToList();
+
+        // Una decisión se asocia a la llamada por su id. Si el mensaje trae dos llamadas distintas con el mismo id (un
+        // historial alterado que reutiliza el id de una llamada aprobada para colar otra herramienta u otra entrada), no
+        // se sabe cuál se aprobó: ninguna se ejecuta.
+        var ambiguous = calls
+            .GroupBy(c => c.ToolCallId, StringComparer.Ordinal)
+            .Where(g => g.Skip(1).Any(c => c.ToolName != g.First().ToolName || !JsonElement.DeepEquals(c.Input, g.First().Input)))
+            .Select(g => g.Key)
+            .ToHashSet(StringComparer.Ordinal);
+        var pending = calls
             .Where(c => !c.ProviderExecuted && !answered.Contains(c.ToolCallId))
             // Las de cliente (sin Execute) las resuelve el llamador. Las de herramientas que ya no existen se cierran con
             // un error en vez de quedar sin resultado (lo que haría fallar la petición al proveedor).
@@ -292,7 +305,9 @@ internal static class GenerationEngine
         var processed = await RunLimitedAsync(
             pending,
             o.MaxParallelToolCalls,
-            call => decisions.TryGetValue(call.ToolCallId, out var decision)
+            call => ambiguous.Contains(call.ToolCallId)
+                ? Task.FromResult(new ProcessedCall(call, Error(call, AmbiguousCallMessage)))
+                : decisions.TryGetValue(call.ToolCallId, out var decision)
                 ? decision.Approved
                     ? ProcessCallAsync(call, plan, o, stepNumber: 0, emit, preApproved: true, cancellationToken)
                     : Task.FromResult(new ProcessedCall(call, Denied(call, decision.Reason)))
@@ -306,7 +321,7 @@ internal static class GenerationEngine
         }
 
         var parts = results
-            .Select(r => decisions.TryGetValue(r.ToolCallId, out var d) && !d.Approved
+            .Select(r => !ambiguous.Contains(r.ToolCallId) && decisions.TryGetValue(r.ToolCallId, out var d) && !d.Approved
                 ? (StreamPart)new ToolOutputDeniedStreamPart(r)
                 : new ToolResultStreamPart(r))
             .ToList();

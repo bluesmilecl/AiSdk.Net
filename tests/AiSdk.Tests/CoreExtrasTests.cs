@@ -88,6 +88,8 @@ public class StreamExtrasTests
         await foreach (var chunk in UIMessageStream.Create(writer =>
         {
             writer.WriteData("status", new { step = "buscando" });
+            writer.WriteSource("https://example.com/a");
+            writer.WriteSource("https://example.com/b", "Docs");
             writer.Merge(Ai.StreamText(model, "x"));
             return Task.CompletedTask;
         }, messageId: "m1", cancellationToken: TestContext.Current.CancellationToken))
@@ -96,6 +98,9 @@ public class StreamExtrasTests
         }
 
         var types = chunks.Select(c => (string?)c["type"]).ToList();
+        var sources = chunks.Where(c => (string?)c["type"] == "source-url").ToList();
+        Assert.False(sources[0].ContainsKey("title")); // ai 6.0.x rechaza "title": null
+        Assert.Equal("Docs", (string?)sources[1]["title"]);
         Assert.Equal("start", types[0]);
         Assert.Equal("finish", types[^1]);
         Assert.Single(types, t => t == "start");

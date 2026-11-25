@@ -37,8 +37,17 @@ public sealed class UIMessageStreamWriter
             transient));
 
     /// <summary>Envía una fuente (<c>source-url</c>).</summary>
-    public void WriteSource(string url, string? title = null) =>
-        Write(new JsonObject { ["type"] = "source-url", ["sourceId"] = Guid.NewGuid().ToString("N"), ["url"] = url, ["title"] = title });
+    public void WriteSource(string url, string? title = null)
+    {
+        // Sin título no se envía "title": null (ai 6.0.x valida el chunk con title opcional de tipo string y rechaza null).
+        var chunk = new JsonObject { ["type"] = "source-url", ["sourceId"] = Guid.NewGuid().ToString("N"), ["url"] = url };
+        if (title is not null)
+        {
+            chunk["title"] = title;
+        }
+
+        Write(chunk);
+    }
 
     /// <summary>
     /// Mezcla un stream de texto en este stream (sin sus chunks <c>start</c>/<c>finish</c>, que

@@ -38,6 +38,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
   approved, so an approved call with invalid input fails instead.
 - Without a `ToolApprovalProtector`, a call waiting for approval is streamed as `tool-output-error` and approval answers
   are ignored (fails closed); `ToModelMessages` drops `approval-responded` parts.
+- When resuming approvals, two different calls with the same tool call id in the last assistant message (a tampered
+  history reusing an approved call's id for another tool or input) are both closed with an error: an approval is never
+  applied to a call other than the one it was granted for.
+- `UIMessageStreamWriter.WriteSource` no longer writes `"title": null` without a title (ai 6.0.x rejects it).
 
 ## [0.2.0-preview.1] - 2026-11-25
 
