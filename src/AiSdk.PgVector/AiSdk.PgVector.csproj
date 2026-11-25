@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <Description>PostgreSQL + pgvector vector store for AiSdk.Net: semantic and hybrid (vector + full-text) search with metadata filters in the database.</Description>
+    <!-- Los formatos de los mensajes salen de recursos localizados (cambian con CurrentUICulture): un CompositeFormat cacheado fijaría el idioma. -->
+    <NoWarn>$(NoWarn);CA1863</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../AiSdk/AiSdk.csproj" />

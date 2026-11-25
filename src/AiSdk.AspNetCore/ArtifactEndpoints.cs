@@ -78,7 +78,7 @@ public static class ArtifactEndpoints
             var user = options.ResolveUser(http);
             if (string.IsNullOrEmpty(conversationId) && user is null)
             {
-                return Results.Problem(detail: "Indique conversationId.", statusCode: StatusCodes.Status400BadRequest);
+                return Results.Problem(detail: Resources.Strings.Artifact_ConversationIdRequired, statusCode: StatusCodes.Status400BadRequest);
             }
 
             var items = await Store(http).ListAsync(string.IsNullOrEmpty(conversationId) ? null : conversationId, http.RequestAborted).ConfigureAwait(false);

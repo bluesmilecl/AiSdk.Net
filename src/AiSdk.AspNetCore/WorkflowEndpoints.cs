@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using AiSdk.Workflows;
 using Microsoft.AspNetCore.Builder;
@@ -106,7 +107,7 @@ public static class WorkflowEndpoints
 
             if (!await CanStartAsync(http, workflow).ConfigureAwait(false))
             {
-                return EndpointSecurity.Forbidden($"No puede iniciar el workflow '{workflow}'.");
+                return EndpointSecurity.Forbidden(string.Format(CultureInfo.CurrentCulture, Resources.Strings.Workflow_StartForbidden, workflow));
             }
 
             // runId es una clave de idempotencia: si ya existe una ejecución con ese id, solo se devuelve a quien puede verla.
@@ -174,7 +175,7 @@ public static class WorkflowEndpoints
         {
             if (options.CanSendEvent is null)
             {
-                return EndpointSecurity.Forbidden("Los eventos por HTTP están deshabilitados: configure WorkflowEndpointOptions.CanSendEvent para decidir quién puede enviarlos.");
+                return EndpointSecurity.Forbidden(Resources.Strings.Workflow_EventsDisabled);
             }
 
             var payload = await ReadJsonAsync(http).ConfigureAwait(false);
@@ -182,7 +183,7 @@ public static class WorkflowEndpoints
             var waiting = await engine.Store.ListRunsWaitingForEventAsync(eventName, key, int.MaxValue, http.RequestAborted).ConfigureAwait(false);
             if (!await options.CanSendEvent(http, new WorkflowEventRequest(eventName, key, payload, waiting)).ConfigureAwait(false))
             {
-                return EndpointSecurity.Forbidden($"No puede enviar el evento '{eventName}'.");
+                return EndpointSecurity.Forbidden(string.Format(CultureInfo.CurrentCulture, Resources.Strings.Workflow_EventForbidden, eventName));
             }
 
             // Solo se reanudan las ejecuciones que vio CanSendEvent: una que empiece a esperar el evento entre la
@@ -211,12 +212,12 @@ public static class WorkflowEndpoints
             var engine = Engine(http);
             if (!await CanStartAsync(http, automation.Workflow).ConfigureAwait(false))
             {
-                return EndpointSecurity.Forbidden($"No puede iniciar el workflow '{automation.Workflow}'.");
+                return EndpointSecurity.Forbidden(string.Format(CultureInfo.CurrentCulture, Resources.Strings.Workflow_StartForbidden, automation.Workflow));
             }
 
             if (automation.Trigger is WebhookTrigger { Secret: null or "" })
             {
-                return Results.Problem(detail: "Un webhook creado por HTTP necesita un secreto.", statusCode: StatusCodes.Status400BadRequest);
+                return Results.Problem(detail: Resources.Strings.Workflow_WebhookRequiresSecret, statusCode: StatusCodes.Status400BadRequest);
             }
 
             Automation? existing;
@@ -421,7 +422,7 @@ public static class WorkflowEndpoints
     private static async Task<JsonElement> ReadJsonAsync(HttpContext http)
     {
         using var buffer = await ReadBodyAsync(http).ConfigureAwait(false)
-                           ?? throw new BadHttpRequestException("El cuerpo supera el tamaño máximo permitido.", StatusCodes.Status413PayloadTooLarge);
+                           ?? throw new BadHttpRequestException(Resources.Strings.Request_BodyTooLarge, StatusCodes.Status413PayloadTooLarge);
         if (buffer.Length == 0)
         {
             return JsonSerializer.SerializeToElement(new { });
@@ -434,7 +435,7 @@ public static class WorkflowEndpoints
         }
         catch (JsonException ex)
         {
-            throw new BadHttpRequestException("El cuerpo debe ser JSON válido.", ex);
+            throw new BadHttpRequestException(Resources.Strings.Request_InvalidJson, ex);
         }
     }
 

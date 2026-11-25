@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -107,7 +108,7 @@ public sealed partial class PgVectorStore : IHybridVectorStore, IAsyncDisposable
         _table = $"{Identifier(options.Schema)}.{Identifier(options.Table)}";
         if (!IdentifierRegex().IsMatch(options.TextSearchConfig))
         {
-            throw new ArgumentException("TextSearchConfig inválido.", nameof(options));
+            throw new ArgumentException(Resources.Strings.InvalidTextSearchConfig, nameof(options));
         }
     }
 
@@ -196,7 +197,7 @@ public sealed partial class PgVectorStore : IHybridVectorStore, IAsyncDisposable
             var embedding = doc.Embedding ?? computed[next++];
             if (embedding.Length != _options.Dimensions)
             {
-                throw new ArgumentException($"El embedding de '{doc.Id}' tiene {embedding.Length} dimensiones; la tabla espera {_options.Dimensions}.");
+                throw new ArgumentException(string.Format(CultureInfo.CurrentCulture, Resources.Strings.EmbeddingDimensionsMismatch, doc.Id, embedding.Length, _options.Dimensions));
             }
 
             var command = new NpgsqlBatchCommand($"""
@@ -390,7 +391,7 @@ public sealed partial class PgVectorStore : IHybridVectorStore, IAsyncDisposable
     }
 
     private static string Identifier(string name) =>
-        IdentifierRegex().IsMatch(name) ? $"\"{name}\"" : throw new ArgumentException($"Identificador SQL inválido: '{name}'.");
+        IdentifierRegex().IsMatch(name) ? $"\"{name}\"" : throw new ArgumentException(string.Format(CultureInfo.CurrentCulture, Resources.Strings.InvalidSqlIdentifier, name));
 
     [GeneratedRegex("^[A-Za-z_][A-Za-z0-9_]{0,62}$")]
     private static partial Regex IdentifierRegex();
@@ -436,7 +437,7 @@ public static class PgVectorFilterTranslator
         AndFilter and => And(and, parameters),
         OrFilter or => Join(Flatten<OrFilter>(or, o => o.Filters).Select(f => Visit(f, parameters)).ToList(), " OR ", "FALSE"),
         NotFilter not => $"NOT ({Visit(not.Inner, parameters)})",
-        _ => throw new NotSupportedException($"Filtro no soportado: {filter.GetType().Name}"),
+        _ => throw new NotSupportedException(string.Format(CultureInfo.CurrentCulture, Resources.Strings.FilterNotSupported, filter.GetType().Name)),
     };
 
     /// <summary>The And equalities (including nested ones) go into a single <c>@&gt;</c>: one index lookup.</summary>

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
@@ -124,7 +125,7 @@ public sealed class StdioMcpTransport : IMcpTransport
         if (_startInfo is not null)
         {
             ApplyEnvironment(_startInfo);
-            _process = Process.Start(_startInfo) ?? throw new AiSdkException($"No se pudo iniciar el servidor MCP '{_startInfo.FileName}'.");
+            _process = Process.Start(_startInfo) ?? throw new AiSdkException(string.Format(CultureInfo.CurrentCulture, Resources.Strings.Mcp_ServerStartFailed, _startInfo.FileName));
             _input = _process.StandardInput.BaseStream;
             _output = _process.StandardOutput.BaseStream;
             var stderr = new BoundedLineReader(_process.StandardError.BaseStream, MaxStderrLineBytes);
@@ -199,7 +200,7 @@ public sealed class StdioMcpTransport : IMcpTransport
                 if (read.Truncated)
                 {
                     // Un mensaje más grande que el límite no se acumula en memoria: se descarta y se informa.
-                    OnStderr?.Invoke($"Mensaje del servidor MCP descartado: supera el límite de {MaxMessageBytes} bytes.");
+                    OnStderr?.Invoke(string.Format(CultureInfo.CurrentCulture, Resources.Strings.Mcp_MessageDiscarded, MaxMessageBytes));
                     continue;
                 }
 
@@ -358,7 +359,7 @@ public sealed class HttpMcpTransport : IMcpTransport
             {
                 var status = (int)response.StatusCode;
                 var body = await ReadErrorBodyAsync(response.Content, cancellationToken).ConfigureAwait(false);
-                throw new ApiCallException($"El servidor MCP respondió {status}: {body}", status, body, _endpoint);
+                throw new ApiCallException(string.Format(CultureInfo.CurrentCulture, Resources.Strings.Mcp_HttpError, status, body), status, body, _endpoint);
             }
 
             if (response.Content.Headers.ContentType?.MediaType == "text/event-stream")
@@ -402,7 +403,7 @@ public sealed class HttpMcpTransport : IMcpTransport
             {
                 if (Encoding.UTF8.GetByteCount(sse.Data) > MaxMessageBytes)
                 {
-                    throw new McpException($"Un evento SSE del servidor MCP supera el límite de {MaxMessageBytes} bytes.");
+                    throw new McpException(string.Format(CultureInfo.CurrentCulture, Resources.Strings.Mcp_SseEventTooLarge, MaxMessageBytes));
                 }
 
                 foreach (var item in Parse(sse.Data))
@@ -435,7 +436,7 @@ public sealed class HttpMcpTransport : IMcpTransport
         if (!responded && requestId is not null && !_cts.IsCancellationRequested)
         {
             // La petición pendiente falla de inmediato en vez de esperar al plazo.
-            var reason = failure is McpException ? failure.Message : "El stream SSE del servidor MCP terminó sin respuesta.";
+            var reason = failure is McpException ? failure.Message : Resources.Strings.Mcp_SseEndedWithoutResponse;
             _messages.Writer.TryWrite(new JsonObject
             {
                 ["jsonrpc"] = "2.0",
@@ -459,7 +460,7 @@ public sealed class HttpMcpTransport : IMcpTransport
         }
         catch (System.Text.Json.JsonException ex)
         {
-            throw new McpException($"El servidor MCP envió JSON inválido: {ex.Message}");
+            throw new McpException(string.Format(CultureInfo.CurrentCulture, Resources.Strings.Mcp_InvalidJson, ex.Message));
         }
 
         return node switch
@@ -475,7 +476,7 @@ public sealed class HttpMcpTransport : IMcpTransport
     {
         if (content.Headers.ContentLength > maxBytes)
         {
-            throw new McpException($"La respuesta del servidor MCP supera el límite de {maxBytes} bytes.");
+            throw new McpException(string.Format(CultureInfo.CurrentCulture, Resources.Strings.Mcp_ResponseTooLarge, maxBytes));
         }
 
         await using var stream = await content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
@@ -486,7 +487,7 @@ public sealed class HttpMcpTransport : IMcpTransport
         {
             if (buffer.Length + read > maxBytes)
             {
-                throw new McpException($"La respuesta del servidor MCP supera el límite de {maxBytes} bytes.");
+                throw new McpException(string.Format(CultureInfo.CurrentCulture, Resources.Strings.Mcp_ResponseTooLarge, maxBytes));
             }
 
             buffer.Write(chunk, 0, read);

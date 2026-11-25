@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="Approval_DataProtectionRequired" xml:space="preserve"><value>Las aprobaciones de herramientas usan ASP.NET Core Data Protection: registre services.AddDataProtection().</value></data>
+  <data name="Approval_RequiresOwner" xml:space="preserve"><value>Las aprobaciones de herramientas necesitan un dueño: autentique al usuario o indique 'owner' (p. ej. un id de sesión emitido por el servidor).</value></data>
+  <data name="Artifact_ConversationIdRequired" xml:space="preserve"><value>Indique conversationId.</value></data>
+  <data name="Endpoint_JsonContentTypeRequired" xml:space="preserve"><value>Content-Type debe ser application/json (también en peticiones sin cuerpo).</value></data>
+  <data name="Request_BodyTooLarge" xml:space="preserve"><value>El cuerpo supera el tamaño máximo permitido.</value></data>
+  <data name="Request_InvalidJson" xml:space="preserve"><value>El cuerpo debe ser JSON válido.</value></data>
+  <data name="Stream_ResumableRequiresOwner" xml:space="preserve"><value>Los streams reanudables necesitan un dueño: autentique al usuario o indique 'owner' (p. ej. un id de sesión emitido por el servidor).</value></data>
+  <data name="Workflow_EventForbidden" xml:space="preserve"><value>No puede enviar el evento '{0}'.</value></data>
+  <data name="Workflow_EventsDisabled" xml:space="preserve"><value>Los eventos por HTTP están deshabilitados: configure WorkflowEndpointOptions.CanSendEvent para decidir quién puede enviarlos.</value></data>
+  <data name="Workflow_StartForbidden" xml:space="preserve"><value>No puede iniciar el workflow '{0}'.</value></data>
+  <data name="Workflow_WebhookRequiresSecret" xml:space="preserve"><value>Un webhook creado por HTTP necesita un secreto.</value></data>
+</root>

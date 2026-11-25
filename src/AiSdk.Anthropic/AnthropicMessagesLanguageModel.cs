@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
@@ -385,7 +386,7 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel, ITokenCount
                     }
                     else
                     {
-                        warnings.Add($"La herramienta '{t.Name}' es de '{t.ProviderName}' y se omitió en Anthropic.");
+                        warnings.Add(string.Format(CultureInfo.CurrentCulture, Resources.Strings.ToolFromOtherProviderSkipped, t.Name, t.ProviderName));
                     }
 
                     continue;

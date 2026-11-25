@@ -87,7 +87,7 @@ public sealed class GoogleImageModel : IImageModel
 
         if (request.Size is not null)
         {
-            warnings.Add("Imagen no admite Size; usa AspectRatio (p. ej. \"16:9\").");
+            warnings.Add(Resources.Strings.Imagen_SizeNotSupported);
         }
 
         if (request.Seed is { } seed)

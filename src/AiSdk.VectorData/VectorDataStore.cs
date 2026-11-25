@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text.Json;
@@ -71,7 +72,7 @@ public sealed class VectorDataStore : IHybridVectorStore, IDisposable
         {
             if (field is KeyField or TextField or MetadataField or EmbeddingField)
             {
-                throw new ArgumentException($"'{field}' es un nombre reservado.", nameof(options));
+                throw new ArgumentException(string.Format(CultureInfo.CurrentCulture, Resources.Strings.ReservedFieldName, field), nameof(options));
             }
         }
 
@@ -241,7 +242,7 @@ public sealed class VectorDataStore : IHybridVectorStore, IDisposable
         {
             if (!_options.FilterableFields.Contains(key))
             {
-                throw new NotSupportedException($"El metadato '{key}' no está en FilterableFields; declárelo para poder filtrar por él.");
+                throw new NotSupportedException(string.Format(CultureInfo.CurrentCulture, Resources.Strings.MetadataNotFilterable, key));
             }
 
             return Expression.Convert(Expression.Call(record, IndexerGetter, Expression.Constant(key)), typeof(string));
@@ -255,7 +256,7 @@ public sealed class VectorDataStore : IHybridVectorStore, IDisposable
             OrFilter or => or.Filters.Select(f => Build(f, record)).Aggregate(Expression.OrElse),
             NotFilter not => Expression.Not(Build(not.Inner, record)),
             ExistsFilter ex => Expression.NotEqual(Field(ex.Key), Expression.Constant(null, typeof(string))),
-            _ => throw new NotSupportedException($"Filtro no soportado: {filter.GetType().Name}"),
+            _ => throw new NotSupportedException(string.Format(CultureInfo.CurrentCulture, Resources.Strings.FilterNotSupported, filter.GetType().Name)),
         };
     }
 }

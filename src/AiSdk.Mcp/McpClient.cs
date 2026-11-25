@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -217,15 +218,12 @@ public sealed class McpClient : IAsyncDisposable
     {
         if (options.SamplingModel is not null && options.SamplingHandler is null && options.ApproveSampling is null)
         {
-            throw new ArgumentException(
-                "SamplingModel requiere ApproveSampling (consentimiento del usuario para cada petición del servidor) o un SamplingHandler propio. " +
-                "Un servidor MCP no puede usar su modelo sin aprobación.",
-                nameof(options));
+            throw new ArgumentException(Resources.Strings.Mcp_SamplingRequiresApproval, nameof(options));
         }
 
         if (options.MaxSamplingTokens <= 0 || options.MaxConcurrentServerRequests <= 0 || options.MaxListPages <= 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(options), "MaxSamplingTokens, MaxConcurrentServerRequests y MaxListPages deben ser mayores que cero.");
+            throw new ArgumentOutOfRangeException(nameof(options), Resources.Strings.Mcp_LimitsMustBePositive);
         }
     }
 
@@ -343,7 +341,7 @@ public sealed class McpClient : IAsyncDisposable
     {
         if (_changedTools.ContainsKey(name))
         {
-            throw new McpException($"La definición de la herramienta MCP '{name}' cambió desde que se fijó; la llamada se rechaza. Revise el servidor y vuelva a conectar si confía en la nueva definición.");
+            throw new McpException(string.Format(CultureInfo.CurrentCulture, Resources.Strings.Mcp_ToolDefinitionChanged, name));
         }
 
         var result = await SendRequestAsync("tools/call", new JsonObject
@@ -383,12 +381,12 @@ public sealed class McpClient : IAsyncDisposable
             var name = effectivePrefix + info.Name;
             if (reserved.Contains(name))
             {
-                throw new McpException($"La herramienta MCP '{name}' del servidor '{ServerInfo.Name}' tiene el mismo nombre que otra herramienta. Use un prefijo (prefix o McpClientOptions.ToolNamePrefix).");
+                throw new McpException(string.Format(CultureInfo.CurrentCulture, Resources.Strings.Mcp_ToolNameCollision, name, ServerInfo.Name));
             }
 
             if (!names.Add(name))
             {
-                throw new McpException($"El servidor MCP '{ServerInfo.Name}' publicó dos herramientas con el nombre '{info.Name}'.");
+                throw new McpException(string.Format(CultureInfo.CurrentCulture, Resources.Strings.Mcp_DuplicateToolName, ServerInfo.Name, info.Name));
             }
 
             var tool = Tool.FromSchema(
@@ -400,7 +398,7 @@ public sealed class McpClient : IAsyncDisposable
                     var result = await CallToolAsync(info.Name, input, ct).ConfigureAwait(false);
                     if (result.IsError)
                     {
-                        throw new McpException(result.Text.Length > 0 ? result.Text : $"La herramienta MCP '{info.Name}' devolvió un error.");
+                        throw new McpException(result.Text.Length > 0 ? result.Text : string.Format(CultureInfo.CurrentCulture, Resources.Strings.Mcp_ToolReturnedError, info.Name));
                     }
 
                     return ToOutput(result);
@@ -537,12 +535,12 @@ public sealed class McpClient : IAsyncDisposable
 
             if (!seen.Add(cursor))
             {
-                throw new McpException($"El servidor MCP repitió el cursor de paginación de '{method}' (bucle).");
+                throw new McpException(string.Format(CultureInfo.CurrentCulture, Resources.Strings.Mcp_RepeatedCursor, method));
             }
 
             if (page >= _options.MaxListPages)
             {
-                throw new McpException($"'{method}' superó el máximo de {_options.MaxListPages} páginas (McpClientOptions.MaxListPages).");
+                throw new McpException(string.Format(CultureInfo.CurrentCulture, Resources.Strings.Mcp_TooManyPages, method, _options.MaxListPages));
             }
         }
     }
@@ -571,7 +569,7 @@ public sealed class McpClient : IAsyncDisposable
         }
         catch (OperationCanceledException) when (timeout.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
-            throw new McpException($"El servidor MCP no respondió a '{method}' en {_options.RequestTimeout.TotalSeconds:0.###} s.");
+            throw new McpException(string.Format(CultureInfo.CurrentCulture, Resources.Strings.Mcp_RequestTimedOut, method, _options.RequestTimeout.TotalSeconds));
         }
         finally
         {
@@ -609,7 +607,7 @@ public sealed class McpClient : IAsyncDisposable
                     {
                         // Un servidor no puede acumular trabajo sin límite en el cliente.
                         Interlocked.Decrement(ref _activeServerRequests);
-                        await SendErrorAsync(idNode, -32000, "Demasiadas peticiones simultáneas del servidor.").ConfigureAwait(false);
+                        await SendErrorAsync(idNode, -32000, Resources.Strings.Mcp_TooManyServerRequests).ConfigureAwait(false);
                         continue;
                     }
 
@@ -647,7 +645,7 @@ public sealed class McpClient : IAsyncDisposable
         // El transporte se cerró: las peticiones pendientes fallan.
         foreach (var (_, pending) in _pending)
         {
-            pending.TrySetException(new McpException("La conexión con el servidor MCP se cerró." + (failure is null ? string.Empty : $" {failure.Message}")));
+            pending.TrySetException(new McpException(Resources.Strings.Mcp_ConnectionClosed + (failure is null ? string.Empty : $" {failure.Message}")));
         }
     }
 
@@ -670,7 +668,7 @@ public sealed class McpClient : IAsyncDisposable
 
         if (message["error"] is JsonObject error)
         {
-            tcs.TrySetException(new McpException((string?)error["message"] ?? "Error MCP", (int?)error["code"] ?? 0));
+            tcs.TrySetException(new McpException((string?)error["message"] ?? Resources.Strings.Mcp_GenericError, (int?)error["code"] ?? 0));
         }
         else
         {
@@ -708,7 +706,7 @@ public sealed class McpClient : IAsyncDisposable
 
             if (result is null)
             {
-                response["error"] = new JsonObject { ["code"] = -32601, ["message"] = $"Método no soportado: {method}" };
+                response["error"] = new JsonObject { ["code"] = -32601, ["message"] = string.Format(CultureInfo.CurrentCulture, Resources.Strings.Mcp_MethodNotSupported, method) };
             }
             else
             {
@@ -717,13 +715,13 @@ public sealed class McpClient : IAsyncDisposable
         }
         catch (McpRequestRejectedException)
         {
-            response["error"] = new JsonObject { ["code"] = -1, ["message"] = "El usuario rechazó la petición." };
+            response["error"] = new JsonObject { ["code"] = -1, ["message"] = Resources.Strings.Mcp_RequestRejected };
         }
         catch (Exception ex)
         {
             // Nunca se envía ex.Message al servidor: puede contener texto del proveedor del modelo, rutas o secretos.
             ServerRequestFailed?.Invoke(method ?? string.Empty, ex);
-            response["error"] = new JsonObject { ["code"] = -32603, ["message"] = "Error interno del cliente MCP." };
+            response["error"] = new JsonObject { ["code"] = -32603, ["message"] = Resources.Strings.Mcp_InternalClientError };
         }
 
         return response;

@@ -39,12 +39,12 @@ public sealed class OpenAIImageModel : IImageModel
 
         if (request.AspectRatio is not null)
         {
-            warnings.Add("OpenAI no admite AspectRatio; usa Size (p. ej. \"1536x1024\").");
+            warnings.Add(Resources.Strings.Image_AspectRatioNotSupported);
         }
 
         if (request.Seed is not null)
         {
-            warnings.Add("OpenAI no admite Seed en imágenes; se ignoró.");
+            warnings.Add(Resources.Strings.Image_SeedIgnored);
         }
 
         // Los modelos DALL·E devuelven URL por defecto; se piden en base64. gpt-image-* siempre devuelve base64.
@@ -117,7 +117,7 @@ public sealed class OpenAISpeechModel : ISpeechModel
 
         if (request.Language is not null)
         {
-            warnings.Add("OpenAI detecta el idioma del texto automáticamente; Language se ignoró.");
+            warnings.Add(Resources.Strings.Speech_LanguageIgnored);
         }
 
         JsonUtil.DeepMerge(body, request.ProviderOptions?.For("openai"));

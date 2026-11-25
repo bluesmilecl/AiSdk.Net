@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -49,17 +50,17 @@ public static class AwsEventStream
             var preludeCrc = BinaryPrimitives.ReadUInt32BigEndian(prelude.AsSpan(8, 4));
             if (Crc32(prelude.AsSpan(0, 8)) != preludeCrc)
             {
-                throw new AiSdkException("event-stream: CRC del preludio inválido.");
+                throw new AiSdkException(Resources.Strings.EventStream_InvalidPreludeCrc);
             }
 
             if (totalLength < 16 || headersLength < 0 || headersLength > totalLength - 16)
             {
-                throw new AiSdkException("event-stream: longitudes inválidas.");
+                throw new AiSdkException(Resources.Strings.EventStream_InvalidLengths);
             }
 
             if (totalLength > maxMessageBytes)
             {
-                throw new AiSdkException($"event-stream: el mensaje declara {totalLength} bytes, más que el máximo de {maxMessageBytes}.");
+                throw new AiSdkException(string.Format(CultureInfo.CurrentCulture, Resources.Strings.EventStream_MessageTooLarge, totalLength, maxMessageBytes));
             }
 
             var message = new byte[totalLength];
@@ -69,7 +70,7 @@ public static class AwsEventStream
             var messageCrc = BinaryPrimitives.ReadUInt32BigEndian(message.AsSpan(totalLength - 4));
             if (Crc32(message.AsSpan(0, totalLength - 4)) != messageCrc)
             {
-                throw new AiSdkException("event-stream: CRC del mensaje inválido.");
+                throw new AiSdkException(Resources.Strings.EventStream_InvalidMessageCrc);
             }
 
             var headers = ParseHeaders(message.AsSpan(12, headersLength));
@@ -159,7 +160,7 @@ public static class AwsEventStream
                     i += 16;
                     break;
                 default:
-                    throw new AiSdkException($"event-stream: tipo de cabecera desconocido {type}.");
+                    throw new AiSdkException(string.Format(CultureInfo.CurrentCulture, Resources.Strings.EventStream_UnknownHeaderType, type));
             }
 
             headers[name] = value;
@@ -176,7 +177,7 @@ public static class AwsEventStream
             var n = await stream.ReadAsync(buffer.AsMemory(read), cancellationToken).ConfigureAwait(false);
             if (n == 0)
             {
-                return read == 0 ? false : throw new AiSdkException("event-stream: el stream terminó a mitad de un mensaje.");
+                return read == 0 ? false : throw new AiSdkException(Resources.Strings.EventStream_Truncated);
             }
 
             read += n;

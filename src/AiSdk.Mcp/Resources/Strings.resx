@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="Mcp_ConnectionClosed" xml:space="preserve"><value>The connection to the MCP server was closed.</value></data>
+  <data name="Mcp_DuplicateToolName" xml:space="preserve"><value>The MCP server '{0}' published two tools named '{1}'.</value></data>
+  <data name="Mcp_GenericError" xml:space="preserve"><value>MCP error</value></data>
+  <data name="Mcp_HttpError" xml:space="preserve"><value>The MCP server responded {0}: {1}</value></data>
+  <data name="Mcp_InternalClientError" xml:space="preserve"><value>Internal MCP client error.</value></data>
+  <data name="Mcp_InvalidJson" xml:space="preserve"><value>The MCP server sent invalid JSON: {0}</value></data>
+  <data name="Mcp_LimitsMustBePositive" xml:space="preserve"><value>MaxSamplingTokens, MaxConcurrentServerRequests and MaxListPages must be greater than zero.</value></data>
+  <data name="Mcp_MessageDiscarded" xml:space="preserve"><value>MCP server message discarded: it exceeds the limit of {0} bytes.</value></data>
+  <data name="Mcp_MethodNotSupported" xml:space="preserve"><value>Method not supported: {0}</value></data>
+  <data name="Mcp_RepeatedCursor" xml:space="preserve"><value>The MCP server repeated the pagination cursor of '{0}' (loop).</value></data>
+  <data name="Mcp_RequestRejected" xml:space="preserve"><value>The user rejected the request.</value></data>
+  <data name="Mcp_RequestTimedOut" xml:space="preserve"><value>The MCP server did not respond to '{0}' within {1:0.###} s.</value></data>
+  <data name="Mcp_ResponseTooLarge" xml:space="preserve"><value>The MCP server's response exceeds the limit of {0} bytes.</value></data>
+  <data name="Mcp_SamplingRequiresApproval" xml:space="preserve"><value>SamplingModel requires ApproveSampling (user consent for each server request) or your own SamplingHandler. An MCP server cannot use your model without approval.</value></data>
+  <data name="Mcp_ServerStartFailed" xml:space="preserve"><value>Could not start the MCP server '{0}'.</value></data>
+  <data name="Mcp_SseEndedWithoutResponse" xml:space="preserve"><value>The MCP server's SSE stream ended without a response.</value></data>
+  <data name="Mcp_SseEventTooLarge" xml:space="preserve"><value>An SSE event from the MCP server exceeds the limit of {0} bytes.</value></data>
+  <data name="Mcp_TooManyPages" xml:space="preserve"><value>'{0}' exceeded the maximum of {1} pages (McpClientOptions.MaxListPages).</value></data>
+  <data name="Mcp_TooManyServerRequests" xml:space="preserve"><value>Too many concurrent requests from the server.</value></data>
+  <data name="Mcp_ToolDefinitionChanged" xml:space="preserve"><value>The definition of the MCP tool '{0}' changed since it was pinned; the call is rejected. Review the server and reconnect if you trust the new definition.</value></data>
+  <data name="Mcp_ToolNameCollision" xml:space="preserve"><value>The MCP tool '{0}' from server '{1}' has the same name as another tool. Use a prefix (prefix or McpClientOptions.ToolNamePrefix).</value></data>
+  <data name="Mcp_ToolReturnedError" xml:space="preserve"><value>The MCP tool '{0}' returned an error.</value></data>
+</root>

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
@@ -163,8 +164,8 @@ public sealed class BedrockConverseLanguageModel : ILanguageModel
         if (request.ResponseFormat is { Type: ResponseFormatType.Json } format)
         {
             var instruction = format.Schema is { } schema
-                ? $"Responde únicamente con un objeto JSON válido (sin texto adicional ni bloques de código) que cumpla este JSON Schema:\n{schema.GetRawText()}"
-                : "Responde únicamente con JSON válido, sin texto adicional.";
+                ? string.Format(CultureInfo.CurrentCulture, Resources.Strings.Converse_JsonSchemaInstruction, schema.GetRawText())
+                : Resources.Strings.Converse_JsonInstruction;
             system.Add(new JsonObject { ["text"] = instruction });
         }
 
@@ -201,13 +202,13 @@ public sealed class BedrockConverseLanguageModel : ILanguageModel
 
         if (request.TopK is not null || request.Seed is not null || request.PresencePenalty is not null || request.FrequencyPenalty is not null)
         {
-            warnings.Add("Converse no admite TopK, Seed ni penalizaciones de forma genérica; usa ProviderOptions[\"bedrock\"].additionalModelRequestFields.");
+            warnings.Add(Resources.Strings.Converse_SamplingOptionsNotSupported);
         }
 
         var functionTools = request.Tools?.Where(t => !t.IsProviderTool).ToList() ?? [];
         if (request.Tools?.Any(t => t.IsProviderTool) == true)
         {
-            warnings.Add("Bedrock Converse no admite herramientas de servidor de otros proveedores; se omitieron.");
+            warnings.Add(Resources.Strings.Converse_ProviderToolsSkipped);
         }
 
         if (functionTools.Count > 0)
@@ -236,7 +237,7 @@ public sealed class BedrockConverseLanguageModel : ILanguageModel
                     break;
                 case ToolChoiceKind.None:
                     // Bedrock exige toolConfig si el historial tiene llamadas a herramientas: se mantiene en modo auto.
-                    warnings.Add("Bedrock Converse no admite ToolChoice.None; se usó auto.");
+                    warnings.Add(Resources.Strings.Converse_ToolChoiceNoneNotSupported);
                     break;
             }
 
@@ -297,7 +298,7 @@ public sealed class BedrockConverseLanguageModel : ILanguageModel
                 };
 
             case ImagePart:
-                throw new NotSupportedException("Bedrock Converse solo admite imágenes en bytes.");
+                throw new NotSupportedException(Resources.Strings.Converse_ImagesAsBytesOnly);
 
             case FilePart { Data: not null } f:
                 return new JsonObject
@@ -311,7 +312,7 @@ public sealed class BedrockConverseLanguageModel : ILanguageModel
                 };
 
             case FilePart:
-                throw new NotSupportedException("Bedrock Converse solo admite documentos en bytes.");
+                throw new NotSupportedException(Resources.Strings.Converse_DocumentsAsBytesOnly);
 
             case ReasoningPart r when Meta(r, RedactedContentKey) is { } redactedContent:
                 return new JsonObject { ["reasoningContent"] = new JsonObject { ["redactedContent"] = redactedContent } };

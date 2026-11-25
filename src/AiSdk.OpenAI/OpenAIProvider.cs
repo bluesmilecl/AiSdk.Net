@@ -1,3 +1,4 @@
+using System.Globalization;
 using AiSdk.Http;
 
 namespace AiSdk.OpenAI;
@@ -162,8 +163,8 @@ public sealed class OpenAIProvider : IProvider
         if (string.IsNullOrEmpty(key) && _options.RequireApiKey)
         {
             throw new AiSdkException(variable is null
-                ? $"Falta la API key de '{_options.Name}': pásala en ApiKey o indica ApiKeyEnvironmentVariable (OPENAI_API_KEY solo se lee con https://api.openai.com)."
-                : $"Falta la API key de '{_options.Name}'. Pásala en las opciones o define la variable de entorno {variable}.");
+                ? string.Format(CultureInfo.CurrentCulture, Resources.Strings.ApiKeyMissingForCustomBaseUrl, _options.Name)
+                : string.Format(CultureInfo.CurrentCulture, Resources.Strings.ApiKeyMissing, _options.Name, variable));
         }
 
         if (!string.IsNullOrEmpty(key))

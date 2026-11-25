@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="ApiKeyMissing" xml:space="preserve"><value>Falta la API key de '{0}'. Pásala en las opciones o define la variable de entorno {1}.</value></data>
+  <data name="ApiKeyMissingForCustomBaseUrl" xml:space="preserve"><value>Falta la API key de '{0}': pásala en ApiKey o indica ApiKeyEnvironmentVariable (OPENAI_API_KEY solo se lee con https://api.openai.com).</value></data>
+  <data name="Chat_ImageFileIdNotSupported" xml:space="preserve"><value>Chat Completions no admite imágenes por file_id; usa openai.Responses(...) o envía la imagen como bytes/URL.</value></data>
+  <data name="Chat_NoChoices" xml:space="preserve"><value>La respuesta de OpenAI no contiene 'choices'.</value></data>
+  <data name="Image_AspectRatioNotSupported" xml:space="preserve"><value>OpenAI no admite AspectRatio; usa Size (p. ej. "1536x1024").</value></data>
+  <data name="Image_SeedIgnored" xml:space="preserve"><value>OpenAI no admite Seed en imágenes; se ignoró.</value></data>
+  <data name="Responses_Failed" xml:space="preserve"><value>La respuesta de OpenAI falló.</value></data>
+  <data name="Responses_SamplingOptionsIgnored" xml:space="preserve"><value>La API Responses no admite Seed, TopK ni penalizaciones; se ignoraron.</value></data>
+  <data name="Responses_StopSequencesIgnored" xml:space="preserve"><value>La API Responses no admite StopSequences; se ignoraron.</value></data>
+  <data name="Speech_LanguageIgnored" xml:space="preserve"><value>OpenAI detecta el idioma del texto automáticamente; Language se ignoró.</value></data>
+  <data name="StreamError" xml:space="preserve"><value>Error en el stream de OpenAI.</value></data>
+  <data name="ToolFromOtherProviderSkipped" xml:space="preserve"><value>La herramienta '{0}' es de '{1}' y se omitió en OpenAI.</value></data>
+</root>

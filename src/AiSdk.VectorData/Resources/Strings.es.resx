@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="FilterNotSupported" xml:space="preserve"><value>Filtro no soportado: {0}</value></data>
+  <data name="MetadataNotFilterable" xml:space="preserve"><value>El metadato '{0}' no está en FilterableFields; declárelo para poder filtrar por él.</value></data>
+  <data name="ReservedFieldName" xml:space="preserve"><value>'{0}' es un nombre reservado.</value></data>
+</root>
