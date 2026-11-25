@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Globalization;
 using System.Text.Json;
+using AiSdk.Workflows.Resources;
 
 namespace AiSdk.Workflows;
 
@@ -44,15 +45,8 @@ public static class AgentTasks
 {
     public const string WorkflowName = "agent-task";
 
-    /// <summary>Recommended system instructions.</summary>
-    public const string Instructions =
-        """
-        Puedes programar tareas que se ejecutarán más tarde sin el usuario presente: schedule_task con una expresión
-        cron de 5 campos (minuto hora día mes día-semana), una fecha única (runAt) o un intervalo en minutos.
-        El prompt de la tarea debe ser autocontenido: incluye todo el contexto necesario, porque se ejecutará sin esta conversación.
-        Confirma con el usuario la frecuencia y la zona horaria antes de programar. Usa list_scheduled_tasks y
-        cancel_scheduled_task para gestionarlas.
-        """;
+    /// <summary>Recommended system instructions, in the language of <see cref="System.Globalization.CultureInfo.CurrentUICulture"/> (English, or Spanish for "es*").</summary>
+    public static string Instructions => Strings.AgentTasks_Instructions;
 
     /// <summary>Registers the workflow that runs the tasks.</summary>
     public static WorkflowEngine AddAgentTasks(this WorkflowEngine engine, AgentTaskOptions options) =>
@@ -68,7 +62,7 @@ public static class AgentTasks
             }
 
             return text;
-        }, "Ejecuta un agente con un prompt programado."));
+        }, Strings.AgentTasks_WorkflowDescription));
 
     /// <summary>Tools that let the agent manage scheduled tasks.</summary>
     public static IReadOnlyList<Tool> CreateTools(WorkflowEngine engine, AgentTaskOptions options)
@@ -77,7 +71,7 @@ public static class AgentTasks
         string Owner(ToolExecutionContext ctx) =>
             ctx.Context is not null && ctx.Context.TryGetValue(options.OwnerKey, out var value) && value?.ToString() is { } owner && !string.IsNullOrWhiteSpace(owner)
                 ? owner
-                : throw new UnauthorizedAccessException($"No hay un usuario dueño en el contexto ('{options.OwnerKey}'): las tareas programadas necesitan saber de quién son.");
+                : throw new UnauthorizedAccessException(string.Format(CultureInfo.CurrentCulture, Strings.AgentTasks_NoOwner, options.OwnerKey));
 
         async Task<IReadOnlyList<Automation>> MineAsync(ToolExecutionContext ctx, CancellationToken ct)
         {
@@ -102,14 +96,14 @@ public static class AgentTasks
         [
             Tool.Create<ScheduleInput, object>(
                 "schedule_task",
-                "Programa una tarea para ejecutarse más tarde (una vez o de forma recurrente). Indica exactamente uno de: cron, runAt o everyMinutes.",
+                Strings.AgentTasks_ScheduleTaskDescription,
                 async (input, ctx, ct) =>
                 {
                     var owner = Owner(ctx);
                     var active = (await MineAsync(ctx, ct).ConfigureAwait(false)).Count(a => a.Enabled);
                     if (active >= options.MaxTasksPerOwner)
                     {
-                        throw new InvalidOperationException($"Se alcanzó el máximo de {options.MaxTasksPerOwner} tareas activas.");
+                        throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, Strings.AgentTasks_MaxTasksReached, options.MaxTasksPerOwner));
                     }
 
                     AutomationTrigger trigger = (input.Cron, input.RunAt, input.EveryMinutes) switch
@@ -117,12 +111,12 @@ public static class AgentTasks
                         ({ Length: > 0 } cron, null, null) => new CronTrigger(cron, input.TimeZone ?? options.DefaultTimeZone),
                         (null, { Length: > 0 } runAt, null) => new OnceTrigger(DateTimeOffset.Parse(runAt, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal)),
                         (null, null, { } minutes) => new IntervalTrigger(TimeSpan.FromMinutes(minutes)),
-                        _ => throw new ArgumentException("Indica exactamente uno de: cron, runAt o everyMinutes."),
+                        _ => throw new ArgumentException(Strings.AgentTasks_ExactlyOneSchedule),
                     };
                     ValidateFrequency(trigger, options.MinimumInterval);
                     if (trigger is OnceTrigger once && once.At <= DateTimeOffset.UtcNow)
                     {
-                        throw new ArgumentException("runAt debe ser una fecha futura.");
+                        throw new ArgumentException(Strings.AgentTasks_RunAtNotInFuture);
                     }
 
                     var automation = Automation.Create(input.Name, trigger, WorkflowName, new AgentTaskInput(input.Name, input.Prompt, owner)) with { Owner = owner };
@@ -130,38 +124,38 @@ public static class AgentTasks
                 }),
             Tool.Create<EmptyInput, object>(
                 "list_scheduled_tasks",
-                "Lista las tareas programadas del usuario.",
+                Strings.AgentTasks_ListTasksDescription,
                 async (_, ctx, ct) => (await MineAsync(ctx, ct).ConfigureAwait(false)).Select(Describe).ToList()),
             Tool.Create<TaskIdInput, object>(
                 "cancel_scheduled_task",
-                "Cancela (elimina) una tarea programada.",
+                Strings.AgentTasks_CancelTaskDescription,
                 async (input, ctx, ct) =>
                 {
                     var automation = (await MineAsync(ctx, ct).ConfigureAwait(false)).FirstOrDefault(a => a.Id == input.Id)
-                                     ?? throw new ArgumentException($"No existe la tarea '{input.Id}'.");
+                                     ?? throw new ArgumentException(string.Format(CultureInfo.CurrentCulture, Strings.AgentTasks_TaskNotFound, input.Id));
                     await engine.RemoveAutomationAsync(automation.Id, ct).ConfigureAwait(false);
                     return new { id = automation.Id, cancelled = true };
                 }),
             Tool.Create<TaskIdInput, object>(
                 "run_scheduled_task_now",
-                "Ejecuta ahora una tarea programada (sin cambiar su programación).",
+                Strings.AgentTasks_RunTaskNowDescription,
                 async (input, ctx, ct) =>
                 {
                     var automation = (await MineAsync(ctx, ct).ConfigureAwait(false)).FirstOrDefault(a => a.Id == input.Id)
-                                     ?? throw new ArgumentException($"No existe la tarea '{input.Id}'.");
+                                     ?? throw new ArgumentException(string.Format(CultureInfo.CurrentCulture, Strings.AgentTasks_TaskNotFound, input.Id));
                     var run = await engine.RunAutomationNowAsync(automation.Id, ct).ConfigureAwait(false);
                     return new { runId = run.Id, status = run.Status.ToString() };
                 }),
             Tool.Create<TaskIdInput, object>(
                 "get_task_result",
-                "Devuelve el resultado de la última ejecución de una tarea programada.",
+                Strings.AgentTasks_GetTaskResultDescription,
                 async (input, ctx, ct) =>
                 {
                     var automation = (await MineAsync(ctx, ct).ConfigureAwait(false)).FirstOrDefault(a => a.Id == input.Id)
-                                     ?? throw new ArgumentException($"No existe la tarea '{input.Id}'.");
+                                     ?? throw new ArgumentException(string.Format(CultureInfo.CurrentCulture, Strings.AgentTasks_TaskNotFound, input.Id));
                     if (automation.LastRunId is null)
                     {
-                        return new { status = "nunca ejecutada", nextRunAt = automation.NextRunAt };
+                        return new { status = Strings.AgentTasks_NeverRun, nextRunAt = automation.NextRunAt };
                     }
 
                     var run = await engine.GetRunAsync(automation.LastRunId, ct).ConfigureAwait(false);
@@ -180,7 +174,7 @@ public static class AgentTasks
         switch (trigger)
         {
             case IntervalTrigger interval when interval.Every < minimum:
-                throw new ArgumentException($"El intervalo mínimo es {minimum.TotalMinutes} minutos.");
+                throw new ArgumentException(string.Format(CultureInfo.CurrentCulture, Strings.AgentTasks_MinimumInterval, minimum.TotalMinutes));
             case CronTrigger cron:
                 trigger.Validate();
                 if (cron.NextOccurrence(DateTimeOffset.UtcNow, null) is not { } first)
@@ -189,7 +183,7 @@ public static class AgentTasks
                 }
 
                 var horizon = first + TimeSpan.FromDays(8);
-                var tooFrequent = new ArgumentException($"La expresión cron se ejecuta más seguido que el mínimo permitido ({minimum.TotalMinutes} minutos).");
+                var tooFrequent = new ArgumentException(string.Format(CultureInfo.CurrentCulture, Strings.AgentTasks_CronTooFrequent, minimum.TotalMinutes));
                 // Con ocurrencias separadas al menos por el mínimo, en 8 días caben como mucho 8 días / mínimo.
                 var maxOccurrences = minimum > TimeSpan.Zero ? (long)(TimeSpan.FromDays(8) / minimum) + 2 : long.MaxValue;
                 var previous = first;

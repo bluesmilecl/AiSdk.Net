@@ -166,7 +166,7 @@ public class PdfOcrPipelineTests
 
         Assert.Equal("pagina 1", result.Pages[0].Markdown);
         Assert.Equal("incrustada", result.Pages[2].Markdown);
-        Assert.Contains(result.Warnings, w => w.StartsWith("1 página(s) no se pudieron rasterizar", StringComparison.Ordinal));
+        Assert.Contains(result.Warnings, w => w.StartsWith("1 page(s) could not be rasterized", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -317,6 +317,6 @@ public class ExternalProcessRunnerTests
         Assert.Equal("hola|1|vacio", Encoding.UTF8.GetString(output).Trim());
         var failure = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             runner.RunCheckedAsync("sh", ["-c", "echo malo >&2; exit 3"], cancellationToken: TestContext.Current.CancellationToken));
-        Assert.Contains("código 3: malo", failure.Message, StringComparison.Ordinal);
+        Assert.Contains("code 3: malo", failure.Message, StringComparison.Ordinal);
     }
 }

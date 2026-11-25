@@ -1,6 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <Description>PostgreSQL store for AiSdk.Net durable workflows: several replicas on different machines share runs and automations with optimistic concurrency and indexed engine queries.</Description>
+    <!-- Mensajes localizados: el formato sale de Resources/Strings según CurrentUICulture en cada llamada; un
+         CompositeFormat en caché fijaría el idioma del primer uso. -->
+    <NoWarn>$(NoWarn);CA1863</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../AiSdk.Workflows/AiSdk.Workflows.csproj" />

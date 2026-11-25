@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Text.Json;
+using AiSdk.Workflows.Resources;
 
 namespace AiSdk.Workflows;
 
@@ -90,8 +92,11 @@ public static class WorkflowRunQueries
     /// <summary>When it finished (for retention).</summary>
     public static DateTimeOffset FinishedAt(WorkflowRun run) => run.CompletedAt ?? run.UpdatedAt;
 
-    internal static WorkflowConcurrencyException Conflict(string kind, string id, long expected, long stored) =>
-        new($"La {kind} '{id}' cambió en el almacén (versión {stored}, se esperaba {expected}).");
+    internal static WorkflowConcurrencyException RunConflict(string id, long expected, long stored) =>
+        new(string.Format(CultureInfo.CurrentCulture, Strings.Store_RunChanged, id, stored, expected));
+
+    internal static WorkflowConcurrencyException AutomationConflict(string id, long expected, long stored) =>
+        new(string.Format(CultureInfo.CurrentCulture, Strings.Store_AutomationChanged, id, stored, expected));
 
     /// <summary>Lightweight copy for indexes: without steps, log, input or output.</summary>
     internal static WorkflowRun Projection(WorkflowRun run) => new()
@@ -138,7 +143,7 @@ public sealed class InMemoryWorkflowStore(int maxFinishedRuns = 10_000) : IWorkf
             var stored = current?.Index.Version ?? 0;
             if (stored != run.Version)
             {
-                throw WorkflowRunQueries.Conflict("ejecución", run.Id, run.Version, stored);
+                throw WorkflowRunQueries.RunConflict(run.Id, run.Version, stored);
             }
 
             run.Version = stored + 1;
@@ -225,7 +230,7 @@ public sealed class InMemoryWorkflowStore(int maxFinishedRuns = 10_000) : IWorkf
             var stored = _automations.TryGetValue(automation.Id, out var current) ? current.Version : 0;
             if (stored != automation.Version)
             {
-                throw WorkflowRunQueries.Conflict("automatización", automation.Id, automation.Version, stored);
+                throw WorkflowRunQueries.AutomationConflict(automation.Id, automation.Version, stored);
             }
 
             var saved = Copy(automation with { Version = stored + 1 });
@@ -312,7 +317,7 @@ public sealed class FileSystemWorkflowStore : IWorkflowStore, IDisposable
     private static string SafeName(string id) =>
         id.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_' or '.') && !id.Contains("..", StringComparison.Ordinal)
             ? id + ".json"
-            : throw new ArgumentException($"Id inválido: '{id}'.");
+            : throw new ArgumentException(string.Format(CultureInfo.CurrentCulture, Strings.Store_InvalidId, id));
 
     private string RunPath(string id) => Path.Combine(_runs, SafeName(id));
 
@@ -355,7 +360,7 @@ public sealed class FileSystemWorkflowStore : IWorkflowStore, IDisposable
             var stored = (await ReadAsync<WorkflowRun>(path, cancellationToken).ConfigureAwait(false))?.Version ?? 0;
             if (stored != run.Version)
             {
-                throw WorkflowRunQueries.Conflict("ejecución", run.Id, run.Version, stored);
+                throw WorkflowRunQueries.RunConflict(run.Id, run.Version, stored);
             }
 
             run.Version = stored + 1;
@@ -510,7 +515,7 @@ public sealed class FileSystemWorkflowStore : IWorkflowStore, IDisposable
             var stored = (await ReadAsync<Automation>(path, cancellationToken).ConfigureAwait(false))?.Version ?? 0;
             if (stored != automation.Version)
             {
-                throw WorkflowRunQueries.Conflict("automatización", automation.Id, automation.Version, stored);
+                throw WorkflowRunQueries.AutomationConflict(automation.Id, automation.Version, stored);
             }
 
             var saved = automation with { Version = stored + 1 };

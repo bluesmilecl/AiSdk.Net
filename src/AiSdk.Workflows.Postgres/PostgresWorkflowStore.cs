@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using AiSdk.Workflows.Postgres.Resources;
 using Npgsql;
 using NpgsqlTypes;
 
@@ -309,7 +311,7 @@ public sealed partial class PostgresWorkflowStore : IWorkflowStore, IAsyncDispos
 
             if (await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false) == 0)
             {
-                throw await ConflictAsync("ejecución", _runs, run.Id, expected, cancellationToken).ConfigureAwait(false);
+                throw await ConflictAsync(Strings.Store_RunChanged, _runs, run.Id, expected, cancellationToken).ConfigureAwait(false);
             }
         }
         catch
@@ -410,7 +412,7 @@ public sealed partial class PostgresWorkflowStore : IWorkflowStore, IAsyncDispos
 
         if (await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false) == 0)
         {
-            throw await ConflictAsync("automatización", _automations, automation.Id, expected, cancellationToken).ConfigureAwait(false);
+            throw await ConflictAsync(Strings.Store_AutomationChanged, _automations, automation.Id, expected, cancellationToken).ConfigureAwait(false);
         }
 
         // Copia de lo guardado: quien la recibe no comparte referencias con el original.
@@ -466,12 +468,12 @@ public sealed partial class PostgresWorkflowStore : IWorkflowStore, IAsyncDispos
     }
 
     /// <summary>Concurrency error with the saved version (0 if it no longer exists), with the same text as the other stores.</summary>
-    private async Task<WorkflowConcurrencyException> ConflictAsync(string kind, string table, string id, long expected, CancellationToken cancellationToken)
+    private async Task<WorkflowConcurrencyException> ConflictAsync(string format, string table, string id, long expected, CancellationToken cancellationToken)
     {
         await using var command = _dataSource.CreateCommand($"SELECT version FROM {table} WHERE id = $1");
         command.Parameters.Add(Text(id));
         var stored = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false) is long version ? version : 0;
-        return new WorkflowConcurrencyException($"La {kind} '{id}' cambió en el almacén (versión {stored}, se esperaba {expected}).");
+        return new WorkflowConcurrencyException(string.Format(CultureInfo.CurrentCulture, format, id, stored, expected));
     }
 
     private static NpgsqlParameter Text(string? value) => new() { Value = (object?)value ?? DBNull.Value, NpgsqlDbType = NpgsqlDbType.Text };
@@ -541,7 +543,7 @@ public sealed partial class PostgresWorkflowStore : IWorkflowStore, IAsyncDispos
         {
             if (name is null || !IdentifierRegex().IsMatch(name))
             {
-                throw new ArgumentException($"Identificador SQL inválido en {option}: '{name}' (solo letras, dígitos y _, sin empezar por dígito y con 63 caracteres como máximo).", option);
+                throw new ArgumentException(string.Format(CultureInfo.CurrentCulture, Strings.Store_InvalidIdentifier, option, name), option);
             }
         }
     }

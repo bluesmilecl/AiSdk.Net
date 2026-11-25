@@ -53,14 +53,14 @@ public class DocumentConverterTests
         var result = await new MarkdownConverter().ConvertFileAsync(Fixture("sample.xlsx"), TestContext.Current.CancellationToken);
 
         Assert.Equal(2, result.Pages.Count);
-        Assert.Equal("Hoja: Ventas", result.Pages[0].Label);
+        Assert.Equal("Sheet: Ventas", result.Pages[0].Label);
         Assert.Contains("| Café | 2026-03-15 | 1500.5 |", result.Markdown);
         Assert.Contains("| Total |  | 2480.5 |", result.Markdown); // valor calculado de la fórmula
         Assert.DoesNotContain("secreto", result.Markdown); // hoja oculta
 
         var limited = await new MarkdownConverter(new() { MaxRowsPerSheet = 1, IncludeHiddenSheets = true }).ConvertFileAsync(Fixture("sample.xlsx"), TestContext.Current.CancellationToken);
         Assert.Contains("secreto", limited.Markdown);
-        Assert.Contains("filas más omitidas", limited.Markdown);
+        Assert.Contains("more rows omitted", limited.Markdown);
         Assert.NotEmpty(limited.Warnings);
     }
 
@@ -70,9 +70,9 @@ public class DocumentConverterTests
         var result = await new MarkdownConverter().ConvertFileAsync(Fixture("sample.pptx"), TestContext.Current.CancellationToken);
 
         Assert.Equal(3, result.Pages.Count);
-        Assert.StartsWith("## Diapositiva 1: Plan 2027", result.Markdown);
+        Assert.StartsWith("## Slide 1: Plan 2027", result.Markdown);
         Assert.Contains("- Reducir costos 10%\n  - Proveedores", result.Markdown);
-        Assert.Contains("**Notas del orador:** Mencionar el presupuesto aprobado.", result.Markdown);
+        Assert.Contains("**Speaker notes:** Mencionar el presupuesto aprobado.", result.Markdown);
         Assert.Contains("| TI | 50.000 |", result.Markdown);
     }
 
@@ -102,7 +102,7 @@ public class DocumentConverterTests
         var result = await new MarkdownConverter(new() { PdfRasterizer = null }).ConvertFileAsync(Fixture("scanned.pdf"), TestContext.Current.CancellationToken);
 
         Assert.Equal(string.Empty, result.Markdown);
-        Assert.Contains(result.Warnings, w => w.Contains("escaneadas", StringComparison.Ordinal));
+        Assert.Contains(result.Warnings, w => w.Contains("scanned", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -148,9 +148,9 @@ public class DocumentConverterTests
         var ocr = new FakeOcr("TOTAL: $12.345");
         var result = await new MarkdownConverter(new() { VisionModel = vision, Ocr = ocr }).ConvertFileAsync(Fixture("receipt.png"), TestContext.Current.CancellationToken);
 
-        Assert.Contains("## Imagen: receipt.png", result.Markdown);
+        Assert.Contains("## Image: receipt.png", result.Markdown);
         Assert.Contains("Una boleta impresa", result.Markdown);
-        Assert.Contains("**Texto detectado (OCR):**\n\nTOTAL: $12.345", result.Markdown);
+        Assert.Contains("**Detected text (OCR):**\n\nTOTAL: $12.345", result.Markdown);
 
         var none = await new MarkdownConverter().ConvertFileAsync(Fixture("receipt.png"), TestContext.Current.CancellationToken);
         Assert.NotEmpty(none.Warnings);
@@ -204,7 +204,7 @@ public class DocumentConverterTests
         var result = await store.IngestAsync(new MarkdownConverter(), await DocumentSource.FromFileAsync(Fixture("sample.pptx"), cancellationToken: TestContext.Current.CancellationToken), id: "plan", cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(3, result.Pages.Count);
-        var hits = await store.SearchAsync("presupuesto", topK: 10, filter: VectorFilter.Eq("section", "Diapositiva 3"), cancellationToken: TestContext.Current.CancellationToken);
+        var hits = await store.SearchAsync("presupuesto", topK: 10, filter: VectorFilter.Eq("section", "Slide 3"), cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal("plan:p3:c0", Assert.Single(hits).Document.Id);
     }
 
@@ -267,9 +267,9 @@ public class DocumentConverterTests
         var result = await converter.ConvertFileAsync(Fixture("clip.mp4"), TestContext.Current.CancellationToken);
 
         Assert.Equal("audio/mpeg", transcription.MediaType);
-        Assert.Contains("Duración: 00:06", result.Markdown);
-        Assert.Contains("### [00:00]\n**Escena:** Bienvenidos al curso\n**Audio:** Hola a todos.", result.Markdown);
-        Assert.Contains("**Escena:** Modulo 2: Facturas", result.Markdown);
+        Assert.Contains("Duration: 00:06", result.Markdown);
+        Assert.Contains("### [00:00]\n**Scene:** Bienvenidos al curso\n**Audio:** Hola a todos.", result.Markdown);
+        Assert.Contains("**Scene:** Modulo 2: Facturas", result.Markdown);
         Assert.Contains("**Audio:** Ahora veremos facturas.", result.Markdown);
         // Fotogramas iguales consecutivos no se repiten.
         Assert.Equal(1, CountOccurrences(result.Markdown, "Bienvenidos al curso"));
@@ -325,7 +325,7 @@ public class AttachmentMiddlewareTests
 
         var sent = inner.Requests[0].Messages[0].Content;
         Assert.All(sent, p => Assert.IsType<TextPart>(p));
-        Assert.StartsWith("<document name=\"adjunto\" type=\"image/png\">", ((TextPart)sent[1]).Text);
+        Assert.StartsWith("<document name=\"attachment\" type=\"image/png\">", ((TextPart)sent[1]).Text);
         Assert.Contains("TOTAL: $12.345", ((TextPart)sent[1]).Text);
         Assert.Contains("<document name=\"informe.docx\" type=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document\">", ((TextPart)sent[2]).Text);
         Assert.Contains("# Informe Trimestral", ((TextPart)sent[2]).Text);
@@ -359,7 +359,7 @@ public class AttachmentMiddlewareTests
         var sent = inner.Requests[0].Messages[0].Content;
         Assert.IsType<ImagePart>(sent[0]);
         var text = Assert.IsType<TextPart>(sent[1]).Text;
-        Assert.Contains("[… contenido recortado por longitud]", text);
+        Assert.Contains("[… content truncated for length]", text);
         Assert.True(text.Length < 250);
     }
 

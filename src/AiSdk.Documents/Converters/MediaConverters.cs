@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using AiSdk.Documents.Resources;
 
 namespace AiSdk.Documents.Converters;
 
@@ -13,14 +14,14 @@ public sealed class ImageConverter : IDocumentConverter
 
     public async Task<DocumentConversionResult> ConvertAsync(DocumentSource source, DocumentConversionContext context, CancellationToken cancellationToken = default)
     {
-        var name = source.FileName ?? "imagen";
+        var name = source.FileName ?? Strings.Image_DefaultName;
         var warnings = new List<string>();
         var ocrTask = context.OcrAsync(source.Data, source.MediaType, cancellationToken);
         var descriptionTask = context.DescribeImageAsync(source.Data, source.MediaType, null, cancellationToken);
         var ocr = await ocrTask.ConfigureAwait(false);
         var description = await descriptionTask.ConfigureAwait(false);
 
-        var builder = new StringBuilder($"## Imagen: {name}\n\n");
+        var builder = new StringBuilder($"## {Strings.Image_Label}: {name}\n\n");
         var kind = PageTextSource.Text;
         if (description is { Length: > 0 })
         {
@@ -30,7 +31,7 @@ public sealed class ImageConverter : IDocumentConverter
 
         if (ocr is { Markdown.Length: > 0 } && (description is null || !Contains(description, ocr.Markdown)))
         {
-            builder.Append(description is null ? string.Empty : "**Texto detectado (OCR):**\n\n").Append(ocr.Markdown).Append("\n\n");
+            builder.Append(description is null ? string.Empty : $"**{Strings.Image_DetectedText}:**\n\n").Append(ocr.Markdown).Append("\n\n");
             kind = kind == PageTextSource.Text ? PageTextSource.Ocr : kind;
         }
 
@@ -40,7 +41,7 @@ public sealed class ImageConverter : IDocumentConverter
         }
         else if (ocr is null && description is null)
         {
-            warnings.Add("No hay Ocr ni VisionModel configurado: la imagen no se pudo analizar.");
+            warnings.Add(Strings.Image_NotAnalyzed);
         }
 
         var markdown = builder.ToString().Trim();
@@ -76,7 +77,7 @@ public sealed class AudioConverter : IDocumentConverter
                 Markdown = $"[Audio: {source.FileName ?? "audio"}]",
                 MediaType = source.MediaType,
                 FileName = source.FileName,
-                Warnings = ["No hay modelo de transcripción configurado (Transcription)."],
+                Warnings = [Strings.Audio_NoTranscriptionModel],
             };
         }
 
@@ -103,16 +104,16 @@ public sealed class AudioConverter : IDocumentConverter
                     cancellationToken: cancellationToken).ConfigureAwait(false);
                 if (cut.ExitCode != 0 || !File.Exists(clip))
                 {
-                    throw new InvalidDataException($"El audio dura {MediaHelpers.Timestamp(duration)} (más que MaxMediaDuration) y no se pudo recortar: {cut.Error.Trim()}");
+                    throw new InvalidDataException(string.Format(CultureInfo.CurrentCulture, Strings.Audio_CouldNotTrim, MediaHelpers.Timestamp(duration), cut.Error.Trim()));
                 }
 
                 (audio, mediaType, fileName) = (await File.ReadAllBytesAsync(clip, cancellationToken).ConfigureAwait(false), "audio/mpeg", "audio.mp3");
-                warnings.Add($"El audio dura {MediaHelpers.Timestamp(duration)}: solo se transcribieron los primeros {MediaHelpers.Timestamp(maxSeconds)} (MaxMediaDuration).");
+                warnings.Add(string.Format(CultureInfo.CurrentCulture, Strings.Audio_Trimmed, MediaHelpers.Timestamp(duration), MediaHelpers.Timestamp(maxSeconds)));
             }
         }
 
         var transcript = await MediaHelpers.TranscribeAsync(context, audio, mediaType, fileName, cancellationToken).ConfigureAwait(false);
-        var markdown = $"## Transcripción: {source.FileName ?? "audio"}\n\n{MediaHelpers.FormatTranscript(transcript)}";
+        var markdown = $"## {Strings.Media_Transcription}: {source.FileName ?? "audio"}\n\n{MediaHelpers.FormatTranscript(transcript)}";
         return new DocumentConversionResult
         {
             Markdown = markdown,
@@ -136,9 +137,8 @@ public sealed class VideoConverter : IDocumentConverter
     /// <summary>Demuxers ffmpeg can use with an attached video.</summary>
     public const string AllowedFormats = "mov,mp4,m4a,3gp,3g2,mj2,matroska,webm,avi,asf,flv,mpegts,mpeg,ogg,mp3,wav,aac,flac,m4v,h264,hevc";
 
-    public const string FramePrompt =
-        "Este es un fotograma de un video. Describe en una o dos frases la escena, personas, acciones y cualquier texto visible " +
-        "(diapositivas, subtítulos, pantallas). En el idioma del texto visible o en español.";
+    /// <summary>Instruction used to describe each frame with the vision model, in the language of <see cref="CultureInfo.CurrentUICulture"/>.</summary>
+    public static string FramePrompt => Strings.Video_FramePrompt;
 
     public bool CanConvert(string mediaType) => MediaTypes.IsVideo(mediaType);
 
@@ -154,7 +154,7 @@ public sealed class VideoConverter : IDocumentConverter
                 Markdown = $"[Video: {source.FileName ?? "video"}]",
                 MediaType = source.MediaType,
                 FileName = source.FileName,
-                Warnings = ["ffmpeg no está instalado: no se puede analizar el video."],
+                Warnings = [Strings.Video_NoFfmpeg],
             };
         }
 
@@ -165,7 +165,7 @@ public sealed class VideoConverter : IDocumentConverter
         var maxSeconds = Math.Max(1, options.MaxMediaDuration.TotalSeconds);
         if (duration > maxSeconds)
         {
-            warnings.Add($"El video dura {MediaHelpers.Timestamp(duration.Value)}: solo se analizaron los primeros {MediaHelpers.Timestamp(maxSeconds)} (MaxMediaDuration).");
+            warnings.Add(string.Format(CultureInfo.CurrentCulture, Strings.Video_Trimmed, MediaHelpers.Timestamp(duration.Value), MediaHelpers.Timestamp(maxSeconds)));
         }
 
         // Opciones de entrada: solo el archivo local, formatos de video y, como máximo, MaxMediaDuration.
@@ -180,7 +180,7 @@ public sealed class VideoConverter : IDocumentConverter
         TranscriptionModelResult? transcript = null;
         if (options.Transcription is null)
         {
-            warnings.Add("Sin Transcription: no se transcribe el audio del video.");
+            warnings.Add(Strings.Video_NoTranscriptionModel);
         }
         else
         {
@@ -196,7 +196,7 @@ public sealed class VideoConverter : IDocumentConverter
             }
             else
             {
-                warnings.Add("El video no tiene pista de audio o no se pudo extraer.");
+                warnings.Add(Strings.Video_NoAudioTrack);
             }
         }
 
@@ -245,14 +245,14 @@ public sealed class VideoConverter : IDocumentConverter
         }
         else
         {
-            warnings.Add("Sin Ocr ni VisionModel: solo se transcribe el audio.");
+            warnings.Add(Strings.Video_NoImageAnalysis);
         }
 
         var pages = BuildTimeline(frames, transcript, interval, options.VisionModel is not null ? PageTextSource.Vision : PageTextSource.Ocr);
         var header = new StringBuilder($"## Video: {source.FileName ?? "video"}\n\n");
         if (duration is { } total)
         {
-            header.Append("Duración: ").Append(MediaHelpers.Timestamp(total)).Append("\n\n");
+            header.Append(Strings.Video_Duration).Append(": ").Append(MediaHelpers.Timestamp(total)).Append("\n\n");
         }
 
         var markdown = header + string.Join("\n\n", pages.Select(p => p.Markdown));
@@ -274,7 +274,7 @@ public sealed class VideoConverter : IDocumentConverter
         {
             if (transcript is { Text.Length: > 0 })
             {
-                pages.Add(new DocumentPage(1, $"**Transcripción:** {transcript.Text.Trim()}", PageTextSource.Transcript));
+                pages.Add(new DocumentPage(1, $"**{Strings.Media_Transcription}:** {transcript.Text.Trim()}", PageTextSource.Transcript));
             }
 
             return pages;
@@ -293,7 +293,7 @@ public sealed class VideoConverter : IDocumentConverter
             var frame = frames.FirstOrDefault(f => f.Time == start);
             if (frame.Text is not null)
             {
-                builder.Append("**Escena:** ").Append(frame.Text.Replace("\n", " ", StringComparison.Ordinal)).Append('\n');
+                builder.Append("**").Append(Strings.Video_Scene).Append(":** ").Append(frame.Text.Replace("\n", " ", StringComparison.Ordinal)).Append('\n');
             }
 
             var speech = string.Join(' ', segments.Where(s => s.StartSeconds >= start && s.StartSeconds < end).Select(s => s.Text.Trim()));
@@ -310,7 +310,7 @@ public sealed class VideoConverter : IDocumentConverter
 
         if (segments.Count == 0 && transcript is { Text.Length: > 0 })
         {
-            pages.Add(new DocumentPage(pages.Count + 1, $"**Transcripción completa:** {transcript.Text.Trim()}", PageTextSource.Transcript));
+            pages.Add(new DocumentPage(pages.Count + 1, $"**{Strings.Media_FullTranscription}:** {transcript.Text.Trim()}", PageTextSource.Transcript));
         }
 
         return pages;

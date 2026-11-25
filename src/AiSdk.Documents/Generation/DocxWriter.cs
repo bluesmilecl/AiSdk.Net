@@ -1,4 +1,5 @@
 using System.Globalization;
+using AiSdk.Documents.Resources;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
@@ -81,7 +82,7 @@ public static class DocxWriter
             {
                 body.Append(StyledParagraph("Title", options.Title));
                 if (options.Subtitle is not null) body.Append(StyledParagraph("Subtitle", options.Subtitle));
-                var byline = string.Join(" · ", new[] { options.Author, DateTime.Now.ToString("d 'de' MMMM 'de' yyyy", new System.Globalization.CultureInfo("es-ES")) }.Where(s => s is not null));
+                var byline = string.Join(" · ", new[] { options.Author, GeneratedText.Today() }.Where(s => s is not null));
                 body.Append(StyledParagraph("Subtitle", byline));
             }
 
@@ -436,12 +437,7 @@ public static class DocxWriter
         if (options.PageNumbers)
         {
             var footer = main.AddNewPart<FooterPart>();
-            footer.Footer = new Footer(new Paragraph(
-                new ParagraphProperties(new ParagraphStyleId { Val = "Footer" }, new Justification { Val = JustificationValues.Center }),
-                new Run(new Text("Página ") { Space = SpaceProcessingModeValues.Preserve }),
-                new SimpleField(new Run(new Text("1"))) { Instruction = " PAGE " },
-                new Run(new Text(" de ") { Space = SpaceProcessingModeValues.Preserve }),
-                new SimpleField(new Run(new Text("1"))) { Instruction = " NUMPAGES " }));
+            footer.Footer = new Footer(new Paragraph(PageNumberFooter()));
             section.Append(new FooterReference { Type = HeaderFooterValues.Default, Id = main.GetIdOfPart(footer) });
         }
 
@@ -449,6 +445,29 @@ public static class DocxWriter
             new PageSize { Width = width, Height = height, Orient = options.Landscape ? PageOrientationValues.Landscape : PageOrientationValues.Portrait },
             new PageMargin { Top = margin, Bottom = margin, Left = (uint)margin, Right = (uint)margin, Header = 567, Footer = 567 });
         return section;
+    }
+
+    /// <summary>
+    /// Footer "Page n of N" in the current UI language: the text of the resource, with the PAGE and NUMPAGES fields in
+    /// place of <c>{0}</c> and <c>{1}</c>.
+    /// </summary>
+    private static List<OpenXmlElement> PageNumberFooter()
+    {
+        List<OpenXmlElement> elements = [new ParagraphProperties(new ParagraphStyleId { Val = "Footer" }, new Justification { Val = JustificationValues.Center })];
+        foreach (var part in System.Text.RegularExpressions.Regex.Split(Strings.Generation_PageNumber, @"(\{[01]\})"))
+        {
+            if (part.Length > 0)
+            {
+                elements.Add(part switch
+                {
+                    "{0}" => new SimpleField(new Run(new Text("1"))) { Instruction = " PAGE " },
+                    "{1}" => new SimpleField(new Run(new Text("1"))) { Instruction = " NUMPAGES " },
+                    _ => new Run(new Text(part) { Space = SpaceProcessingModeValues.Preserve }),
+                });
+            }
+        }
+
+        return elements;
     }
 }
 

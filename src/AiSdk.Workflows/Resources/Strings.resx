@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="Engine_InvalidOptions" xml:space="preserve"><value>LeaseDuration must be at least 1 s and BatchSize and MaxAutomationFailures must be greater than zero.</value></data>
+  <data name="Engine_BackgroundRunFailed" xml:space="preserve"><value>Error running '{0}' in the background</value></data>
+  <data name="Engine_LeaseRenewalFailed" xml:space="preserve"><value>Could not renew the claim on '{0}'</value></data>
+  <data name="Engine_PurgeFailed" xml:space="preserve"><value>Error deleting old runs</value></data>
+  <data name="Workflow_NotRegistered" xml:space="preserve"><value>The workflow '{0}' is not registered.</value></data>
+  <data name="Workflow_Suspended" xml:space="preserve"><value>The workflow run was suspended.</value></data>
+  <data name="Run_NotFound" xml:space="preserve"><value>The run '{0}' does not exist.</value></data>
+  <data name="Run_CancelledLog" xml:space="preserve"><value>Run cancelled.</value></data>
+  <data name="Run_EventReceivedLog" xml:space="preserve"><value>Event received: {0}</value></data>
+  <data name="Step_FailedLog" xml:space="preserve"><value>Step '{0}' failed (attempt {1}/{2}): {3}</value></data>
+  <data name="Automation_NotFound" xml:space="preserve"><value>The automation '{0}' does not exist.</value></data>
+  <data name="Automation_WorkflowNotRegistered" xml:space="preserve"><value>The workflow '{0}' of the automation '{1}' is not registered.</value></data>
+  <data name="Automation_Failed" xml:space="preserve"><value>The automation '{0}' failed</value></data>
+  <data name="Automation_FailureNotRecorded" xml:space="preserve"><value>Could not record the failure of the automation '{0}'</value></data>
+  <data name="Webhook_NotFound" xml:space="preserve"><value>There is no active webhook '{0}'.</value></data>
+  <data name="Webhook_NoSecret" xml:space="preserve"><value>The webhook has no secret configured.</value></data>
+  <data name="Webhook_TimestampOutOfTolerance" xml:space="preserve"><value>The {0} header is missing or outside the tolerance.</value></data>
+  <data name="Webhook_InvalidSignature" xml:space="preserve"><value>Invalid webhook signature.</value></data>
+  <data name="Webhook_InvalidSecret" xml:space="preserve"><value>Invalid webhook secret.</value></data>
+  <data name="Webhook_SecretRequired" xml:space="preserve"><value>A WebhookTrigger needs a secret (Secret). To accept unauthenticated webhooks, explicitly set AllowUnauthenticated = true.</value></data>
+  <data name="Webhook_SecretTooShort" xml:space="preserve"><value>The webhook secret must be at least {0} characters long (generate one with WebhookSignature.CreateSecret()).</value></data>
+  <data name="Trigger_InvalidCron" xml:space="preserve"><value>Invalid cron expression '{0}': {1}</value></data>
+  <data name="Trigger_TimeZoneNotFound" xml:space="preserve"><value>The time zone '{0}' does not exist on this system.</value></data>
+  <data name="Trigger_IntervalTooShort" xml:space="preserve"><value>The interval must be at least one second.</value></data>
+  <data name="Trigger_EveryDescription" xml:space="preserve"><value>every {0}</value></data>
+  <data name="Trigger_OnceDescription" xml:space="preserve"><value>once on {0:yyyy-MM-dd HH:mm} UTC</value></data>
+  <data name="Trigger_EventDescription" xml:space="preserve"><value>event "{0}"</value></data>
+  <data name="Trigger_UnauthenticatedWebhookDescription" xml:space="preserve"><value>webhook (unauthenticated)</value></data>
+  <data name="Store_RunChanged" xml:space="preserve"><value>The run '{0}' changed in the store (version {1}, expected {2}).</value></data>
+  <data name="Store_AutomationChanged" xml:space="preserve"><value>The automation '{0}' changed in the store (version {1}, expected {2}).</value></data>
+  <data name="Store_InvalidId" xml:space="preserve"><value>Invalid id: '{0}'.</value></data>
+  <data name="Hosting_LoopError" xml:space="preserve"><value>Error in the automation loop: {0}</value></data>
+  <data name="AgentTasks_Instructions" xml:space="preserve"><value>You can schedule tasks that will run later without the user present: schedule_task with a 5-field cron
+expression (minute hour day month day-of-week), a single date (runAt) or an interval in minutes.
+The task prompt must be self-contained: include all the necessary context, because it will run without this conversation.
+Confirm the frequency and time zone with the user before scheduling. Use list_scheduled_tasks and
+cancel_scheduled_task to manage them.</value></data>
+  <data name="AgentTasks_WorkflowDescription" xml:space="preserve"><value>Runs an agent with a scheduled prompt.</value></data>
+  <data name="AgentTasks_NoOwner" xml:space="preserve"><value>There is no owning user in the context ('{0}'): scheduled tasks need to know who they belong to.</value></data>
+  <data name="AgentTasks_ScheduleTaskDescription" xml:space="preserve"><value>Schedules a task to run later (once or on a recurring basis). Specify exactly one of: cron, runAt or everyMinutes.</value></data>
+  <data name="AgentTasks_ListTasksDescription" xml:space="preserve"><value>Lists the user's scheduled tasks.</value></data>
+  <data name="AgentTasks_CancelTaskDescription" xml:space="preserve"><value>Cancels (deletes) a scheduled task.</value></data>
+  <data name="AgentTasks_RunTaskNowDescription" xml:space="preserve"><value>Runs a scheduled task now (without changing its schedule).</value></data>
+  <data name="AgentTasks_GetTaskResultDescription" xml:space="preserve"><value>Returns the result of the last run of a scheduled task.</value></data>
+  <data name="AgentTasks_MaxTasksReached" xml:space="preserve"><value>The maximum of {0} active tasks has been reached.</value></data>
+  <data name="AgentTasks_ExactlyOneSchedule" xml:space="preserve"><value>Specify exactly one of: cron, runAt or everyMinutes.</value></data>
+  <data name="AgentTasks_RunAtNotInFuture" xml:space="preserve"><value>runAt must be a future date.</value></data>
+  <data name="AgentTasks_TaskNotFound" xml:space="preserve"><value>The task '{0}' does not exist.</value></data>
+  <data name="AgentTasks_NeverRun" xml:space="preserve"><value>never run</value></data>
+  <data name="AgentTasks_MinimumInterval" xml:space="preserve"><value>The minimum interval is {0} minutes.</value></data>
+  <data name="AgentTasks_CronTooFrequent" xml:space="preserve"><value>The cron expression runs more often than the minimum allowed ({0} minutes).</value></data>
+</root>

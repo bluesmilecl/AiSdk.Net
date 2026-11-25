@@ -1,4 +1,6 @@
+using System.Globalization;
 using AiSdk.Documents.Converters;
+using AiSdk.Documents.Resources;
 
 namespace AiSdk.Documents;
 
@@ -57,7 +59,7 @@ public sealed class MarkdownConverter
         }
 
         var converter = _converters.FirstOrDefault(c => c.CanConvert(source.MediaType))
-                        ?? throw new NotSupportedException($"No hay un convertidor para '{source.MediaType}' ({source.FileName}).");
+                        ?? throw new NotSupportedException(string.Format(CultureInfo.CurrentCulture, Strings.Conversion_NoConverter, source.MediaType, source.FileName));
         return await converter.ConvertAsync(source, new DocumentConversionContext(Options, this), cancellationToken).ConfigureAwait(false);
     }
 
@@ -91,14 +93,14 @@ public sealed class MarkdownConverter
         {
             ImagePart image => (image.Data, image.Url, image.MediaType, (string?)null),
             FilePart file => (file.Data, file.Url, file.MediaType, file.Filename),
-            _ => throw new NotSupportedException($"No se puede convertir una parte {part.GetType().Name}."),
+            _ => throw new NotSupportedException(string.Format(CultureInfo.CurrentCulture, Strings.Conversion_UnsupportedPart, part.GetType().Name)),
         };
 
         if (data is null && url is not null)
         {
             if (!downloadUrls)
             {
-                throw new NotSupportedException("El adjunto es una URL; habilite la descarga de URLs para convertirlo.");
+                throw new NotSupportedException(Strings.Conversion_AttachmentIsUrl);
             }
 
             var maxBytes = Math.Min(Options.UrlDownload.MaxBytes, Options.MaxInputBytes);
@@ -111,7 +113,7 @@ public sealed class MarkdownConverter
         }
 
         return data is null
-            ? throw new NotSupportedException("El adjunto no tiene datos (los archivos por FileId no se pueden convertir localmente).")
+            ? throw new NotSupportedException(Strings.Conversion_AttachmentWithoutData)
             : await ConvertAsync(new DocumentSource(data, mediaType, fileName), cancellationToken).ConfigureAwait(false);
     }
 }

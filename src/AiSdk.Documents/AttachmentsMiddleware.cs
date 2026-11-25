@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
+using AiSdk.Documents.Resources;
 
 namespace AiSdk.Documents;
 
@@ -57,10 +58,10 @@ public sealed partial class AttachmentConversionOptions
     public static string DefaultFormat(DocumentConversionResult result)
     {
         ArgumentNullException.ThrowIfNull(result);
-        var name = EscapeAttribute(result.FileName ?? result.Title ?? "adjunto");
+        var name = EscapeAttribute(result.FileName ?? result.Title ?? Strings.Attachment_DefaultName);
         var warnings = result.Warnings.Count == 0
             ? string.Empty
-            : $"\n<!-- avisos: {NeutralizeTags(string.Join(" | ", result.Warnings)).Replace("--", "- -", StringComparison.Ordinal)} -->";
+            : $"\n<!-- {Strings.Attachment_Warnings}: {NeutralizeTags(string.Join(" | ", result.Warnings)).Replace("--", "- -", StringComparison.Ordinal)} -->";
         return $"<document name=\"{name}\" type=\"{EscapeAttribute(result.MediaType)}\">\n{NeutralizeTags(result.Markdown)}{warnings}\n</document>";
     }
 
@@ -190,7 +191,7 @@ internal sealed class AttachmentConversionMiddleware(MarkdownConverter converter
             }
             else
             {
-                markdown = markdown[..Math.Min(markdown.Length, max * 4)] + "\n\n[… contenido recortado por longitud]";
+                markdown = markdown[..Math.Min(markdown.Length, max * 4)] + "\n\n" + Strings.Attachment_Truncated;
             }
         }
 

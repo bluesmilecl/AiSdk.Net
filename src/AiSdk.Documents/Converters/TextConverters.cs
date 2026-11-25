@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using AiSdk.Documents.Resources;
 using AngleSharp.Dom;
 using AngleSharp.Html.Parser;
 using AngleSharp.Text;
@@ -234,19 +236,19 @@ public sealed class PlainTextConverter : IDocumentConverter
 
         if (droppedColumns)
         {
-            warnings?.Add($"Se omitieron columnas más allá de la {MaxCsvColumns}.");
+            warnings?.Add(string.Format(CultureInfo.CurrentCulture, Strings.Csv_ColumnsOmitted, MaxCsvColumns));
         }
 
         var table = MarkdownTable.Build(rows, MarkdownTable.DefaultMaxCells, out var truncated);
         if (truncated)
         {
-            warnings?.Add($"La tabla se recortó a {MarkdownTable.DefaultMaxCells} celdas.");
+            warnings?.Add(string.Format(CultureInfo.CurrentCulture, Strings.Csv_TableTruncated, MarkdownTable.DefaultMaxCells));
         }
 
         if (total > rows.Count)
         {
-            var note = $"_… {total - rows.Count} filas más omitidas (de {total - 1})._";
-            warnings?.Add($"Se omitieron {total - rows.Count} filas.");
+            var note = string.Format(CultureInfo.CurrentCulture, Strings.Csv_RowsOmittedNote, total - rows.Count, total - 1);
+            warnings?.Add(string.Format(CultureInfo.CurrentCulture, Strings.Csv_RowsOmitted, total - rows.Count));
             return table + "\n\n" + note;
         }
 
@@ -294,7 +296,7 @@ public sealed class HtmlConverter : IDocumentConverter
 
         if (length < source.Data.Length)
         {
-            warnings.Add($"El HTML mide {source.Data.Length} bytes: solo se convirtieron los primeros {length} (MaxHtmlBytes).");
+            warnings.Add(string.Format(CultureInfo.CurrentCulture, Strings.Html_Truncated, source.Data.Length, length));
         }
 
         var (markdown, title) = Convert(html, options.MaxNestingDepth, warnings);
@@ -339,7 +341,7 @@ public sealed class HtmlConverter : IDocumentConverter
         }
         catch (HtmlTooComplexException)
         {
-            notes.Add($"El HTML supera {parseLimit} niveles de anidamiento o tiene demasiados elementos: se extrajo solo el texto.");
+            notes.Add(string.Format(CultureInfo.CurrentCulture, Strings.Html_TooComplex, parseLimit));
             return (TextOnly(html), null, notes);
         }
 
@@ -349,7 +351,7 @@ public sealed class HtmlConverter : IDocumentConverter
             var (body, flattened) = Serialize(document, maxDepth);
             if (flattened)
             {
-                notes.Add($"El HTML tiene más de {maxDepth} niveles de anidamiento: lo más profundo se convirtió a texto plano.");
+                notes.Add(string.Format(CultureInfo.CurrentCulture, Strings.Html_Flattened, maxDepth));
             }
 
             var config = new ReverseMarkdown.Config { GithubFlavored = true };
@@ -611,7 +613,7 @@ public sealed class HtmlConverter : IDocumentConverter
         }
     }
 
-    private sealed class HtmlTooComplexException() : Exception("HTML demasiado anidado.");
+    private sealed class HtmlTooComplexException() : Exception(Strings.Html_TooNested);
 }
 
 /// <summary>Runs recursive work from third-party libraries on a thread with a large stack (independent of the caller's).</summary>

@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using AiSdk.Workflows.Resources;
 using Cronos;
 
 namespace AiSdk.Workflows;
@@ -48,7 +49,7 @@ public sealed record CronTrigger(string Expression, string? TimeZone = null) : A
         }
         catch (CronFormatException ex)
         {
-            throw new ArgumentException($"Expresión cron inválida '{Expression}': {ex.Message}", nameof(Expression), ex);
+            throw new ArgumentException(string.Format(CultureInfo.CurrentCulture, Strings.Trigger_InvalidCron, Expression, ex.Message), nameof(Expression), ex);
         }
 
         try
@@ -57,7 +58,7 @@ public sealed record CronTrigger(string Expression, string? TimeZone = null) : A
         }
         catch (Exception ex) when (ex is TimeZoneNotFoundException or InvalidTimeZoneException)
         {
-            throw new ArgumentException($"La zona horaria '{TimeZone}' no existe en este sistema.", nameof(TimeZone), ex);
+            throw new ArgumentException(string.Format(CultureInfo.CurrentCulture, Strings.Trigger_TimeZoneNotFound, TimeZone), nameof(TimeZone), ex);
         }
     }
 
@@ -74,13 +75,13 @@ public sealed record IntervalTrigger(TimeSpan Every) : AutomationTrigger
     public override DateTimeOffset? NextOccurrence(DateTimeOffset after, DateTimeOffset? lastRun) =>
         lastRun is { } last && last + Every > after ? last + Every : after + Every;
 
-    public override string Describe() => $"cada {Every}";
+    public override string Describe() => string.Format(CultureInfo.CurrentCulture, Strings.Trigger_EveryDescription, Every);
 
     public override void Validate()
     {
         if (Every < TimeSpan.FromSeconds(1))
         {
-            throw new ArgumentException("El intervalo debe ser de al menos un segundo.", nameof(Every));
+            throw new ArgumentException(Strings.Trigger_IntervalTooShort, nameof(Every));
         }
     }
 }
@@ -90,7 +91,7 @@ public sealed record OnceTrigger(DateTimeOffset At) : AutomationTrigger
 {
     public override DateTimeOffset? NextOccurrence(DateTimeOffset after, DateTimeOffset? lastRun) => lastRun is null ? At : null;
 
-    public override string Describe() => $"una vez el {At:yyyy-MM-dd HH:mm} UTC";
+    public override string Describe() => string.Format(CultureInfo.CurrentCulture, Strings.Trigger_OnceDescription, At);
 }
 
 /// <summary>
@@ -106,7 +107,7 @@ public sealed record EventTrigger(string EventName, IReadOnlyDictionary<string, 
             && payload.TryGetProperty(kv.Key, out var value)
             && (value.ValueKind == JsonValueKind.String ? value.GetString() : value.GetRawText()) == kv.Value));
 
-    public override string Describe() => $"evento \"{EventName}\"";
+    public override string Describe() => string.Format(CultureInfo.CurrentCulture, Strings.Trigger_EventDescription, EventName);
 }
 
 /// <summary>How a <see cref="WebhookTrigger"/> authenticates incoming requests.</summary>
@@ -155,7 +156,7 @@ public sealed record WebhookTrigger(string? Secret = null) : AutomationTrigger
     /// </summary>
     public bool AllowUnauthenticated { get; init; }
 
-    public override string Describe() => Secret is null ? "webhook (sin autenticar)" : $"webhook ({Verification})";
+    public override string Describe() => Secret is null ? Strings.Trigger_UnauthenticatedWebhookDescription : $"webhook ({Verification})";
 
     public override void Validate()
     {
@@ -163,9 +164,7 @@ public sealed record WebhookTrigger(string? Secret = null) : AutomationTrigger
         {
             if (!AllowUnauthenticated)
             {
-                throw new ArgumentException(
-                    "Un WebhookTrigger necesita un secreto (Secret). Para aceptar webhooks sin autenticar indique AllowUnauthenticated = true de forma explícita.",
-                    nameof(Secret));
+                throw new ArgumentException(Strings.Webhook_SecretRequired, nameof(Secret));
             }
 
             return;
@@ -173,7 +172,7 @@ public sealed record WebhookTrigger(string? Secret = null) : AutomationTrigger
 
         if (Secret.Length < MinimumSecretLength)
         {
-            throw new ArgumentException($"El secreto del webhook debe tener al menos {MinimumSecretLength} caracteres (genere uno con WebhookSignature.CreateSecret()).", nameof(Secret));
+            throw new ArgumentException(string.Format(CultureInfo.CurrentCulture, Strings.Webhook_SecretTooShort, MinimumSecretLength), nameof(Secret));
         }
     }
 }

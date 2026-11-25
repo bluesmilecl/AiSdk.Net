@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Text;
+using AiSdk.Documents.Resources;
 using Markdig;
 using Markdig.Extensions.Tables;
 using Markdig.Extensions.TaskLists;
@@ -246,4 +248,12 @@ public static class MarkdownModel
             }
         }
     }
+}
+
+/// <summary>Texts the generators add to the document (title page, page numbers), in the current UI language.</summary>
+internal static class GeneratedText
+{
+    /// <summary>Today's date for the title page (e.g. "November 25, 2026" or "25 de noviembre de 2026").</summary>
+    public static string Today() =>
+        DateTime.Now.ToString(Strings.Generation_DateFormat, CultureInfo.GetCultureInfo(Strings.Generation_DateCulture));
 }

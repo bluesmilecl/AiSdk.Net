@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
+using AiSdk.Documents.Resources;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
@@ -120,7 +121,7 @@ public sealed class SpreadsheetBuilder
                 index++;
                 var header = table.Rows[0].Select(c => string.Concat(c.Select(r => r.Text))).ToList();
                 var rows = table.Rows.Skip(1).Select(r => (IReadOnlyList<object?>)r.Select(c => (object?)string.Concat(c.Select(x => x.Text))).ToList());
-                AddSheet(lastHeading ?? $"Tabla {index}", header.Select(h => new SheetColumn(h)).ToList(), rows, options);
+                AddSheet(lastHeading ?? string.Format(CultureInfo.CurrentCulture, Strings.Spreadsheet_TableName, index), header.Select(h => new SheetColumn(h)).ToList(), rows, options);
             }
         }
 
@@ -131,7 +132,7 @@ public sealed class SpreadsheetBuilder
     {
         if (_sheets.Count == 0)
         {
-            throw new InvalidOperationException("Agregue al menos una hoja.");
+            throw new InvalidOperationException(Strings.Spreadsheet_NoSheets);
         }
 
         using var stream = new MemoryStream();
@@ -164,7 +165,7 @@ public sealed class SpreadsheetBuilder
     private Worksheet BuildSheet(IReadOnlyList<SheetColumn> columns, List<IReadOnlyList<object?>> rows, SheetOptions options, StyleRegistry styles)
     {
         var count = Math.Max(columns.Count, rows.Count == 0 ? 0 : rows.Max(r => r.Count));
-        var cols = Enumerable.Range(0, count).Select(i => i < columns.Count ? columns[i] : new SheetColumn($"Columna {i + 1}")).ToList();
+        var cols = Enumerable.Range(0, count).Select(i => i < columns.Count ? columns[i] : new SheetColumn(string.Format(CultureInfo.CurrentCulture, Strings.Spreadsheet_ColumnName, i + 1))).ToList();
         var types = cols.Select((c, i) => c.Type != ColumnType.Auto ? c.Type : Infer(rows.Select(r => i < r.Count ? Normalize(r[i]) : null))).ToList();
         var formats = cols.Select((c, i) => c.Format ?? DefaultFormat(types[i])).ToList();
 
@@ -495,7 +496,7 @@ public sealed class SpreadsheetBuilder
     private static string SafeSheetName(string name)
     {
         var clean = new string(name.Where(c => c is not ('\\' or '/' or '?' or '*' or '[' or ']' or ':')).ToArray()).Trim('\'').Trim();
-        return clean.Length == 0 ? "Hoja" : clean[..Math.Min(31, clean.Length)];
+        return clean.Length == 0 ? Strings.Spreadsheet_SheetName : clean[..Math.Min(31, clean.Length)];
     }
 
     /// <summary>Registers combinations of number format / bold / border and generates the stylesheet.</summary>

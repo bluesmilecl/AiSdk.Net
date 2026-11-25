@@ -1,6 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <Description>Durable workflows for AI agents: memoized steps with retries, sleeps, events and human approvals; cron, interval, event and webhook triggers; automations that agents can schedule.</Description>
+    <!-- Mensajes localizados: el formato sale de Resources/Strings según CurrentUICulture en cada llamada; un
+         CompositeFormat en caché fijaría el idioma del primer uso. -->
+    <NoWarn>$(NoWarn);CA1863</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../AiSdk/AiSdk.csproj" />
