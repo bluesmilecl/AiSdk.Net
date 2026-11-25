@@ -43,7 +43,7 @@ await foreach (var token in agent.Stream("Should I take an umbrella in Santiago?
 | `AiSdk.Net` | Core: `Ai.*` API, tools, agents, orchestration, artifacts, skills, middleware, embeddings, `MockLanguageModel` |
 | `AiSdk.Net.OpenAI` · `.Anthropic` · `.Google` · `.Mistral` · `.Bedrock` · `.Cohere` | Native providers |
 | `AiSdk.Net.Mcp` | Model Context Protocol client |
-| `AiSdk.Net.Extensions.AI` | Microsoft.Extensions.AI adapter |
+| `AiSdk.Net.Extensions.AI` | Microsoft.Extensions.AI adapter in both directions: `IChatClient` as an AiSdk model and AiSdk models as `IChatClient` / `IEmbeddingGenerator` |
 | `AiSdk.Net.Extensions.DependencyInjection` | `services.AddAiSdk(...)` |
 | `AiSdk.Net.AspNetCore` | Backend for AI SDK UI `useChat`, artifacts, workflows and skills endpoints |
 | `AiSdk.Net.Documents` | Documents to Markdown with page-by-page OCR; Word, PDF and Excel generation |

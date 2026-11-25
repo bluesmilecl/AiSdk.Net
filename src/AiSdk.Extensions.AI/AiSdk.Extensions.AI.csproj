@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Microsoft.Extensions.AI adapter (IChatClient / IEmbeddingGenerator) for AiSdk.Net.</Description>
+    <Description>Microsoft.Extensions.AI interop for AiSdk.Net in both directions: use any IChatClient / IEmbeddingGenerator as an AiSdk model, and expose any AiSdk model as an IChatClient / IEmbeddingGenerator (Semantic Kernel, Microsoft Agent Framework, FunctionInvokingChatClient).</Description>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../AiSdk/AiSdk.csproj" />

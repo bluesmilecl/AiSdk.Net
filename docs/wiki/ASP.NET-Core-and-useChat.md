@@ -177,12 +177,71 @@ The browser is not trusted: everything in a `UIChatRequest` (messages, chat id, 
 
 ## Microsoft.Extensions.AI
 
+`AiSdk.Net.Extensions.AI` connects AiSdk.Net and Microsoft.Extensions.AI (MEAI) in both directions.
+
+### Use an MEAI client in AiSdk.Net
+
 ```csharp
 using AiSdk.Extensions.AI;
 
 IChatClient azure = /* AzureOpenAIClient, OllamaApiClient, ... */;
 ILanguageModel model = azure.AsLanguageModel();   // now usable with Ai.*, agents and middleware
+IEmbeddingModel embeddings = generator.AsEmbeddingModel();   // from an IEmbeddingGenerator<string, Embedding<float>>
 ```
+
+### Use an AiSdk.Net provider from MEAI code
+
+`AsChatClient()` exposes any `ILanguageModel` as an `IChatClient`, and `AsEmbeddingGenerator()` exposes any
+`IEmbeddingModel` as an `IEmbeddingGenerator<string, Embedding<float>>`. Semantic Kernel, Microsoft Agent Framework,
+MEAI middleware (`FunctionInvokingChatClient`, OpenTelemetry, caching), Aspire and evaluation libraries can then use
+any AiSdk.Net provider:
+
+```csharp
+using AiSdk.Anthropic;
+using AiSdk.Extensions.AI;
+using AiSdk.OpenAI;
+using Microsoft.Extensions.AI;
+
+IChatClient client = AnthropicProvider.Default.Messages("claude-opus-5-5")
+    .AsChatClient()
+    .AsBuilder()
+    .UseFunctionInvocation()   // MEAI runs the tools
+    .Build();
+
+var response = await client.GetResponseAsync("What's the weather in Santiago?", new ChatOptions
+{
+    Tools = [AIFunctionFactory.Create((string city) => $"Sunny in {city}", "get_weather", "Gets the weather")],
+});
+
+IEmbeddingGenerator<string, Embedding<float>> generator =
+    OpenAIProvider.Default.Embedding("text-embedding-3-small").AsEmbeddingGenerator();
+```
+
+How the adapter maps things:
+
+| MEAI | AiSdk.Net |
+|---|---|
+| `ChatMessage` with `TextContent`, `TextReasoningContent`, `DataContent`/`UriContent`/`HostedFileContent`, `FunctionCallContent`, `FunctionResultContent` | `ModelMessage` with `TextPart`, `ReasoningPart`, `ImagePart`/`FilePart`, `ToolCallPart`, `ToolResultPart` (tool results go in a tool message) |
+| `ChatOptions.Instructions` | A system message before the conversation |
+| `Temperature`, `TopP`, `TopK`, `MaxOutputTokens`, penalties, `StopSequences`, `Seed` | The same request settings |
+| `ResponseFormat` (JSON / JSON schema), so `GetResponseAsync<T>()` works | `ResponseFormat.Json(schema, name, description)` |
+| `Tools` (`AIFunctionDeclaration`: name, description, schema) and `ToolMode` | Tool declarations and `ToolChoice`; hosted tools are ignored |
+| `RawRepresentationFactory` returning `ProviderOptions` or a `LanguageModelRequest` | Provider options, headers and provider-defined tools |
+| `ChatResponse`: `Usage`, `FinishReason`, `ResponseId`, `ModelId`, `CreatedAt` | `Usage` (including reasoning and cached tokens), finish reason, response metadata |
+| `GetService<ChatClientMetadata>()` | Provider name, model id and the optional endpoint passed to `AsChatClient(uri)` |
+
+> [!IMPORTANT]
+> The `IChatClient` never executes tools: each call makes one model call and returns `FunctionCallContent`, so
+> `FunctionInvokingChatClient` (or your code) runs them. Tools the provider executed itself (web search, code
+> execution) come back with `InformationalOnly = true` and are not run again.
+
+- Reasoning signatures and other provider metadata travel in `TextReasoningContent.ProtectedData` and
+  `AdditionalProperties`, so they survive streaming and a conversation history saved as JSON.
+- `ChatOptions.ModelId`, `ConversationId`, `AllowMultipleToolCalls` and `Reasoning` are not mapped: the model is fixed
+  and AiSdk.Net models are stateless. Use `ProviderOptions` for provider-specific settings such as reasoning effort.
+- Converting back unwraps instead of wrapping twice: `model.AsChatClient().AsLanguageModel()` returns `model`. Through
+  an MEAI pipeline (for example `.UseOpenTelemetry()`), provider options, headers and provider-defined tools still
+  reach the AiSdk.Net model.
 
 ---
 

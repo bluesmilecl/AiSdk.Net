@@ -179,12 +179,72 @@ se puede falsificar.
 
 ## Microsoft.Extensions.AI
 
+`AiSdk.Net.Extensions.AI` conecta AiSdk.Net y Microsoft.Extensions.AI (MEAI) en ambas direcciones.
+
+### Usar un cliente de MEAI en AiSdk.Net
+
 ```csharp
 using AiSdk.Extensions.AI;
 
 IChatClient azure = /* AzureOpenAIClient, OllamaApiClient, ... */;
 ILanguageModel model = azure.AsLanguageModel();   // ahora sirve para Ai.*, agentes y middleware
+IEmbeddingModel embeddings = generator.AsEmbeddingModel();   // desde un IEmbeddingGenerator<string, Embedding<float>>
 ```
+
+### Usar un proveedor de AiSdk.Net desde código MEAI
+
+`AsChatClient()` expone cualquier `ILanguageModel` como `IChatClient`, y `AsEmbeddingGenerator()` expone cualquier
+`IEmbeddingModel` como `IEmbeddingGenerator<string, Embedding<float>>`. Así Semantic Kernel, Microsoft Agent Framework,
+el middleware de MEAI (`FunctionInvokingChatClient`, OpenTelemetry, caché), Aspire y las librerías de evaluación pueden
+usar cualquier proveedor de AiSdk.Net:
+
+```csharp
+using AiSdk.Anthropic;
+using AiSdk.Extensions.AI;
+using AiSdk.OpenAI;
+using Microsoft.Extensions.AI;
+
+IChatClient client = AnthropicProvider.Default.Messages("claude-opus-5-5")
+    .AsChatClient()
+    .AsBuilder()
+    .UseFunctionInvocation()   // MEAI ejecuta las herramientas
+    .Build();
+
+var response = await client.GetResponseAsync("¿Qué tiempo hace en Santiago?", new ChatOptions
+{
+    Tools = [AIFunctionFactory.Create((string city) => $"Soleado en {city}", "get_weather", "Obtiene el clima")],
+});
+
+IEmbeddingGenerator<string, Embedding<float>> generator =
+    OpenAIProvider.Default.Embedding("text-embedding-3-small").AsEmbeddingGenerator();
+```
+
+Cómo traduce el adaptador:
+
+| MEAI | AiSdk.Net |
+|---|---|
+| `ChatMessage` con `TextContent`, `TextReasoningContent`, `DataContent`/`UriContent`/`HostedFileContent`, `FunctionCallContent`, `FunctionResultContent` | `ModelMessage` con `TextPart`, `ReasoningPart`, `ImagePart`/`FilePart`, `ToolCallPart`, `ToolResultPart` (los resultados van en un mensaje de herramienta) |
+| `ChatOptions.Instructions` | Un mensaje de sistema antes de la conversación |
+| `Temperature`, `TopP`, `TopK`, `MaxOutputTokens`, penalizaciones, `StopSequences`, `Seed` | Los mismos ajustes de la petición |
+| `ResponseFormat` (JSON / esquema JSON), así que `GetResponseAsync<T>()` funciona | `ResponseFormat.Json(schema, name, description)` |
+| `Tools` (`AIFunctionDeclaration`: nombre, descripción, esquema) y `ToolMode` | Declaraciones de herramientas y `ToolChoice`; las herramientas hospedadas se ignoran |
+| `RawRepresentationFactory` que devuelve `ProviderOptions` o un `LanguageModelRequest` | Opciones del proveedor, cabeceras y herramientas definidas por el proveedor |
+| `ChatResponse`: `Usage`, `FinishReason`, `ResponseId`, `ModelId`, `CreatedAt` | `Usage` (incluidos tokens de razonamiento y en caché), motivo de fin, metadatos de la respuesta |
+| `GetService<ChatClientMetadata>()` | Nombre del proveedor, id del modelo y el endpoint opcional pasado a `AsChatClient(uri)` |
+
+> [!IMPORTANT]
+> El `IChatClient` nunca ejecuta herramientas: cada llamada hace una sola llamada al modelo y devuelve
+> `FunctionCallContent`, para que las ejecute `FunctionInvokingChatClient` (o tu código). Las herramientas que ejecutó
+> el propio proveedor (búsqueda web, ejecución de código) llegan con `InformationalOnly = true` y no se vuelven a ejecutar.
+
+- Las firmas de razonamiento y demás metadatos del proveedor viajan en `TextReasoningContent.ProtectedData` y en
+  `AdditionalProperties`, así que sobreviven al streaming y a un historial guardado como JSON.
+- `ChatOptions.ModelId`, `ConversationId`, `AllowMultipleToolCalls` y `Reasoning` no se traducen: el modelo es fijo y
+  los modelos de AiSdk.Net no guardan estado. Usa `ProviderOptions` para ajustes propios del proveedor, como el esfuerzo
+  de razonamiento.
+- Convertir de vuelta desenvuelve en lugar de envolver dos veces: `model.AsChatClient().AsLanguageModel()` devuelve
+  `model`. A través de un pipeline de MEAI (por ejemplo `.UseOpenTelemetry()`), las opciones del proveedor, las
+  cabeceras y las herramientas definidas por el proveedor siguen llegando al modelo de AiSdk.Net.
 
 ---
 

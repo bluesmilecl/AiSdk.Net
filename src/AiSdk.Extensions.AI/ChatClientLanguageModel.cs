@@ -1,41 +1,67 @@
 using System.Runtime.CompilerServices;
-using System.Text.Json;
-using AiSdk.Internal;
 using Microsoft.Extensions.AI;
 using MEAI = Microsoft.Extensions.AI;
 
 namespace AiSdk.Extensions.AI;
 
 /// <summary>
-/// Adapta cualquier <see cref="IChatClient"/> de Microsoft.Extensions.AI (Azure OpenAI,
-/// Ollama, Gemini, Bedrock...) a <see cref="ILanguageModel"/>, para usarlo con
-/// <see cref="Ai"/>, agentes y middleware de este SDK.
+/// Adapts any Microsoft.Extensions.AI <see cref="IChatClient"/> (Azure OpenAI, Ollama, Gemini, Bedrock...) to
+/// <see cref="ILanguageModel"/>, so it can be used with <see cref="Ai"/>, agents and middleware of this SDK. Usually
+/// created with <see cref="MicrosoftExtensionsAIExtensions.AsLanguageModel(IChatClient, string?, string?)"/>.
 /// </summary>
+/// <remarks>
+/// Tools are sent as declarations only: AiSdk runs them in its own loop. Provider-defined tools, provider options and
+/// headers have no Microsoft.Extensions.AI equivalent; they only reach the model when the client pipeline ends in a
+/// <see cref="LanguageModelChatClient"/> (an AiSdk model exposed with
+/// <see cref="MicrosoftExtensionsAIExtensions.AsChatClient(ILanguageModel, Uri?)"/>).
+/// </remarks>
+/// <param name="client">The Microsoft.Extensions.AI chat client to adapt.</param>
+/// <param name="provider">Provider name reported by <see cref="Provider"/>.</param>
+/// <param name="modelId">Model id reported by <see cref="ModelId"/>.</param>
 public sealed class ChatClientLanguageModel(IChatClient client, string provider, string modelId) : ILanguageModel
 {
+    /// <inheritdoc />
     public string Provider { get; } = provider;
 
+    /// <inheritdoc />
     public string ModelId { get; } = modelId;
 
+    internal IChatClient Client => client;
+
+    /// <inheritdoc />
     public async Task<LanguageModelResult> GenerateAsync(LanguageModelRequest request, CancellationToken cancellationToken = default)
     {
         var response = await client.GetResponseAsync(ToChatMessages(request.Messages), ToChatOptions(request), cancellationToken).ConfigureAwait(false);
-        var content = response.Messages.SelectMany(m => m.Contents).Select(FromAIContent).OfType<ContentPart>().ToList();
+        var contents = response.Messages.SelectMany(m => m.Contents).ToList();
+        var toolNames = MeaiMapper.CollectToolNames(contents);
+
+        // A call whose result is already in the response was executed by the provider or the client pipeline: AiSdk must not run it again.
+        var executed = contents.OfType<FunctionResultContent>().Select(r => r.CallId).ToHashSet(StringComparer.Ordinal);
+        var content = contents
+            .Select(c => MeaiMapper.ToContentPart(c, inAssistantMessage: true, toolNames))
+            .OfType<ContentPart>()
+            .Select(p => p is ToolCallPart { ProviderExecuted: false } call && executed.Contains(call.ToolCallId) ? call with { ProviderExecuted = true } : p)
+            .ToList();
+
         return new LanguageModelResult
         {
             Content = content,
-            FinishReason = MapFinish(response.FinishReason, content),
-            Usage = FromUsage(response.Usage),
+            FinishReason = MeaiMapper.FromChatFinishReason(response.FinishReason, content.OfType<ToolCallPart>().Any(c => !c.ProviderExecuted)),
+            Usage = MeaiMapper.FromUsageDetails(response.Usage),
             Response = new ResponseMetadata(response.ResponseId, response.ModelId, response.CreatedAt ?? DateTimeOffset.UtcNow),
         };
     }
 
+    /// <inheritdoc />
     public async IAsyncEnumerable<StreamPart> StreamAsync(LanguageModelRequest request, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         ChatFinishReason? finish = null;
         var usage = Usage.Empty;
         var hasToolCalls = false;
         var sentMetadata = false;
+        var reasoningIndex = 0;
+        var toolNames = new Dictionary<string, string>(StringComparer.Ordinal);
+        var providerExecuted = new HashSet<string>(StringComparer.Ordinal);
         await foreach (var update in client.GetStreamingResponseAsync(ToChatMessages(request.Messages), ToChatOptions(request), cancellationToken).ConfigureAwait(false))
         {
             if (!sentMetadata && update.ResponseId is not null)
@@ -49,31 +75,76 @@ public sealed class ChatClientLanguageModel(IChatClient client, string provider,
             {
                 switch (c)
                 {
-                    case TextContent t when !string.IsNullOrEmpty(t.Text):
-                        yield return new TextDeltaPart("text-0", t.Text);
+                    case TextContent t:
+                        if (!string.IsNullOrEmpty(t.Text))
+                        {
+                            yield return new TextDeltaPart("text-0", t.Text);
+                        }
+
                         break;
-                    case TextReasoningContent r when !string.IsNullOrEmpty(r.Text):
-                        yield return new ReasoningDeltaPart("reasoning-0", r.Text);
+                    case TextReasoningContent r:
+                        var reasoningId = $"reasoning-{reasoningIndex}";
+                        if (!string.IsNullOrEmpty(r.Text))
+                        {
+                            yield return new ReasoningDeltaPart(reasoningId, r.Text);
+                        }
+
+                        // The protected data (signature, encrypted reasoning...) closes the block and is replayed on the next turn.
+                        if (r.ProtectedData is not null)
+                        {
+                            yield return new ReasoningEndPart(reasoningId) { ProviderMetadata = MeaiMapper.DecodeProtectedData(r.ProtectedData) };
+                            reasoningIndex++;
+                        }
+
                         break;
                     case FunctionCallContent f:
-                        hasToolCalls = true;
-                        var call = (ToolCallPart)FromAIContent(f)!;
+                        toolNames[f.CallId] = f.Name;
+                        var call = (ToolCallPart)MeaiMapper.ToContentPart(f, inAssistantMessage: true, toolNames)!;
+                        if (call.ProviderExecuted)
+                        {
+                            providerExecuted.Add(call.ToolCallId);
+                        }
+                        else
+                        {
+                            hasToolCalls = true;
+                        }
+
                         yield return new ToolInputStartPart(call.ToolCallId, call.ToolName);
                         yield return new ToolCallStreamPart(call);
                         break;
+                    case FunctionResultContent result:
+                        // Only results of provider-executed calls belong to the model output.
+                        if (providerExecuted.Contains(result.CallId))
+                        {
+                            yield return new ToolResultStreamPart((ToolResultPart)MeaiMapper.ToContentPart(result, inAssistantMessage: true, toolNames)!);
+                        }
+
+                        break;
                     case UsageContent u:
-                        usage = FromUsage(u.Details);
+                        usage = MeaiMapper.FromUsageDetails(u.Details);
+                        break;
+                    default:
+                        switch (MeaiMapper.ToContentPart(c, inAssistantMessage: true, toolNames))
+                        {
+                            case SourcePart source:
+                                yield return new SourceStreamPart(source);
+                                break;
+                            case { } part:
+                                yield return new ContentStreamPart(part);
+                                break;
+                        }
+
                         break;
                 }
             }
         }
 
-        yield return new ModelFinishPart(finish is null && hasToolCalls ? FinishReason.ToolCalls : MapFinish(finish, []), usage);
+        yield return new ModelFinishPart(MeaiMapper.FromChatFinishReason(finish, hasToolCalls), usage);
     }
 
     private static List<ChatMessage> ToChatMessages(IReadOnlyList<ModelMessage> messages)
     {
-        var result = new List<ChatMessage>();
+        var result = new List<ChatMessage>(messages.Count);
         foreach (var m in messages)
         {
             var role = m.Role switch
@@ -83,36 +154,17 @@ public sealed class ChatClientLanguageModel(IChatClient client, string provider,
                 ChatRole.Assistant => MEAI.ChatRole.Assistant,
                 _ => MEAI.ChatRole.Tool,
             };
-            var parts = m.Content.Where(p => p is not ToolCallPart { ProviderExecuted: true } and not ToolResultPart { ProviderExecuted: true });
-            result.Add(new ChatMessage(role, parts.Select(ToAIContent).OfType<AIContent>().ToList()));
+
+            // Provider-executed tools, citations and raw provider blocks mean nothing to another client.
+            var parts = m.Content.Where(p => p is not ToolCallPart { ProviderExecuted: true }
+                and not ToolResultPart { ProviderExecuted: true }
+                and not SourcePart
+                and not RawProviderPart);
+            result.Add(new ChatMessage(role, [.. parts.Select(MeaiMapper.ToAIContent)]));
         }
 
         return result;
     }
-
-    private static AIContent? ToAIContent(ContentPart part) => part switch
-    {
-        TextPart t => new TextContent(t.Text),
-        ReasoningPart r => new TextReasoningContent(r.Text),
-        ImagePart { Data: not null } i => new DataContent(i.Data, i.MediaType),
-        ImagePart { Url: not null } i => new UriContent(i.Url, i.MediaType),
-        FilePart { Data: not null } f => new DataContent(f.Data, f.MediaType) { Name = f.Filename },
-        FilePart { Url: not null } f => new UriContent(f.Url, f.MediaType),
-        ToolCallPart c => new FunctionCallContent(c.ToolCallId, c.ToolName, c.Input.Deserialize<Dictionary<string, object?>>()),
-        ToolResultPart r => new FunctionResultContent(r.ToolCallId, r.Output),
-        _ => null,
-    };
-
-    private static ContentPart? FromAIContent(AIContent content) => content switch
-    {
-        TextContent t when !string.IsNullOrEmpty(t.Text) => new TextPart(t.Text),
-        TextReasoningContent r => new ReasoningPart(r.Text),
-        FunctionCallContent f => new ToolCallPart(
-            f.CallId,
-            f.Name,
-            f.Arguments is null ? JsonUtil.EmptyObject : JsonSerializer.SerializeToElement(f.Arguments, AIJsonUtilities.DefaultOptions)),
-        _ => null,
-    };
 
     private static ChatOptions ToChatOptions(LanguageModelRequest request)
     {
@@ -130,9 +182,7 @@ public sealed class ChatClientLanguageModel(IChatClient client, string provider,
 
         if (request.Tools?.Where(t => !t.IsProviderTool).ToList() is { Count: > 0 } tools)
         {
-            options.Tools = tools
-                .Select(t => (AITool)AIFunctionFactory.CreateDeclaration(t.Name, t.Description, t.InputSchema))
-                .ToList();
+            options.Tools = [.. tools.Select(t => (AITool)AIFunctionFactory.CreateDeclaration(t.Name, t.Description, t.InputSchema))];
             options.ToolMode = request.ToolChoice?.Kind switch
             {
                 ToolChoiceKind.None => ChatToolMode.None,
@@ -149,80 +199,22 @@ public sealed class ChatClientLanguageModel(IChatClient client, string provider,
                 : ChatResponseFormat.Json;
         }
 
+        // What ChatOptions cannot express (provider options, headers, provider-defined tools) reaches an AiSdk model at
+        // the end of the pipeline as its raw representation; any other client ignores it.
+        var providerTools = request.Tools?.Where(t => t.IsProviderTool).ToList();
+        if (request.ProviderOptions is not null || request.Headers is not null || providerTools is { Count: > 0 })
+        {
+            options.RawRepresentationFactory = c => c is LanguageModelChatClient
+                ? new LanguageModelRequest
+                {
+                    Messages = [],
+                    ProviderOptions = request.ProviderOptions,
+                    Headers = request.Headers,
+                    Tools = providerTools is { Count: > 0 } ? providerTools : null,
+                }
+                : null;
+        }
+
         return options;
-    }
-
-    private static Usage FromUsage(UsageDetails? usage) => usage is null
-        ? Usage.Empty
-        : new Usage
-        {
-            InputTokens = (int?)usage.InputTokenCount,
-            OutputTokens = (int?)usage.OutputTokenCount,
-        };
-
-    private static FinishReason MapFinish(ChatFinishReason? reason, IReadOnlyList<ContentPart> content)
-    {
-        if (reason == ChatFinishReason.Stop)
-        {
-            return content.OfType<ToolCallPart>().Any() ? FinishReason.ToolCalls : FinishReason.Stop;
-        }
-
-        if (reason == ChatFinishReason.Length)
-        {
-            return FinishReason.Length;
-        }
-
-        if (reason == ChatFinishReason.ToolCalls)
-        {
-            return FinishReason.ToolCalls;
-        }
-
-        if (reason == ChatFinishReason.ContentFilter)
-        {
-            return FinishReason.ContentFilter;
-        }
-
-        return content.OfType<ToolCallPart>().Any() ? FinishReason.ToolCalls : reason is null ? FinishReason.Unknown : FinishReason.Other;
-    }
-}
-
-/// <summary>Adapta un <see cref="IEmbeddingGenerator{TInput,TEmbedding}"/> a <see cref="IEmbeddingModel"/>.</summary>
-public sealed class EmbeddingGeneratorModel(IEmbeddingGenerator<string, Embedding<float>> generator, string provider, string modelId) : IEmbeddingModel
-{
-    public string Provider { get; } = provider;
-
-    public string ModelId { get; } = modelId;
-
-    public int? MaxEmbeddingsPerCall => null;
-
-    public async Task<EmbeddingModelResult> EmbedAsync(IReadOnlyList<string> values, CancellationToken cancellationToken = default)
-    {
-        var result = await generator.GenerateAsync(values, cancellationToken: cancellationToken).ConfigureAwait(false);
-        return new EmbeddingModelResult(
-            result.Select(e => e.Vector.ToArray()).ToList(),
-            result.Usage?.InputTokenCount is { } tokens ? new EmbeddingUsage((int)tokens) : null);
-    }
-}
-
-public static class MicrosoftExtensionsAIExtensions
-{
-    /// <summary>Convierte un <see cref="IChatClient"/> en <see cref="ILanguageModel"/>.</summary>
-    public static ILanguageModel AsLanguageModel(this IChatClient client, string? provider = null, string? modelId = null)
-    {
-        var metadata = client.GetService<ChatClientMetadata>();
-        return new ChatClientLanguageModel(
-            client,
-            provider ?? metadata?.ProviderName ?? "meai",
-            modelId ?? metadata?.DefaultModelId ?? "default");
-    }
-
-    /// <summary>Convierte un <see cref="IEmbeddingGenerator{TInput,TEmbedding}"/> en <see cref="IEmbeddingModel"/>.</summary>
-    public static IEmbeddingModel AsEmbeddingModel(this IEmbeddingGenerator<string, Embedding<float>> generator, string? provider = null, string? modelId = null)
-    {
-        var metadata = generator.GetService<EmbeddingGeneratorMetadata>();
-        return new EmbeddingGeneratorModel(
-            generator,
-            provider ?? metadata?.ProviderName ?? "meai",
-            modelId ?? metadata?.DefaultModelId ?? "default");
     }
 }

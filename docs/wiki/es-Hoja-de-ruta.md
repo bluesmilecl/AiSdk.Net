@@ -23,7 +23,7 @@
 - [ ] Documentación XML en inglés
 - [ ] Analizadores de API pública (`PublicAPI.Shipped.txt`) para que la API no cambie por accidente
 - [ ] Convenciones semánticas `gen_ai` de OpenTelemetry
-- [ ] Interoperabilidad inversa con Microsoft.Extensions.AI (exponer los modelos de AiSdk como `IChatClient`)
+- [x] Interoperabilidad inversa con Microsoft.Extensions.AI (exponer los modelos de AiSdk como `IChatClient` e `IEmbeddingGenerator`)
 
 ## 🚧 Pendiente / ideas
 

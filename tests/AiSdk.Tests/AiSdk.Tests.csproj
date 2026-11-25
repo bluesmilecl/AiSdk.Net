@@ -4,6 +4,7 @@
     <PackageReference Include="coverlet.collector" />
     <PackageReference Include="CommunityToolkit.VectorData.InMemory" />
     <PackageReference Include="Microsoft.AspNetCore.TestHost" />
+    <PackageReference Include="Microsoft.Extensions.AI" />
   </ItemGroup>
 
   <ItemGroup>

@@ -6,6 +6,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+### Added
+- **Reverse interop with Microsoft.Extensions.AI** in `AiSdk.Net.Extensions.AI`: `model.AsChatClient()` exposes any
+  `ILanguageModel` as an `IChatClient` (`LanguageModelChatClient`) and `embeddingModel.AsEmbeddingGenerator()` exposes
+  any `IEmbeddingModel` as an `IEmbeddingGenerator<string, Embedding<float>>` (`EmbeddingModelGenerator`, batched by
+  `MaxEmbeddingsPerCall`, with usage). Semantic Kernel, Microsoft Agent Framework, `FunctionInvokingChatClient`,
+  OpenTelemetry and caching middleware, Aspire and evaluation libraries can now use any AiSdk.Net provider.
+  `GetResponseAsync` and `GetStreamingResponseAsync` map text, reasoning, images, files, function calls and results;
+  `ChatOptions` (instructions, temperature, top-p/top-k, max output tokens, penalties, stop sequences, seed, JSON and
+  JSON schema response formats, so `GetResponseAsync<T>()` works, function declarations and `ToolMode`); usage
+  (including reasoning and cached tokens), finish reason, response id and model id. The client never executes tools:
+  calls come back as `FunctionCallContent` (provider-executed ones as `InformationalOnly`). `RawRepresentationFactory`
+  can return `ProviderOptions` or a `LanguageModelRequest`; `GetService` returns `ChatClientMetadata` /
+  `EmbeddingGeneratorMetadata` (with an optional endpoint) and the underlying model. Reasoning signatures and provider
+  metadata survive streaming and conversation histories saved as JSON.
+- Converting back unwraps instead of wrapping twice (`model.AsChatClient().AsLanguageModel()` returns `model`, and the
+  same for embeddings). Through an MEAI pipeline (`.UseOpenTelemetry()`, ...) provider options, headers and
+  provider-defined tools still reach the AiSdk.Net model.
+
+### Fixed
+- `IChatClient.AsLanguageModel()`: the `ProtectedData` of reasoning content (signatures, encrypted reasoning) is sent
+  back on the next turn; reasoning and cached token counts, image and file outputs and the `"error"` finish reason are
+  mapped; calls marked `InformationalOnly` (and, without streaming, calls whose result is already in the response) are
+  not run again by the AiSdk.Net tool loop; tool calls whose input is not a JSON object no longer throw.
+
 ## [0.3.0-preview.1] - 2026-11-25
 
 Tool approval in `useChat` with the AI SDK's own protocol and signed approvals, a PostgreSQL workflow store for several
