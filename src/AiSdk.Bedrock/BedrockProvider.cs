@@ -4,41 +4,41 @@ using AiSdk.Http;
 
 namespace AiSdk.Bedrock;
 
-/// <summary>Opciones del proveedor Amazon Bedrock.</summary>
+/// <summary>Amazon Bedrock provider options.</summary>
 public sealed class BedrockProviderOptions
 {
-    /// <summary>Región, p. ej. <c>us-east-1</c>. Si es null se usa <c>AWS_REGION</c> o <c>AWS_DEFAULT_REGION</c>.</summary>
+    /// <summary>Region, e.g. <c>us-east-1</c>. If null, <c>AWS_REGION</c> or <c>AWS_DEFAULT_REGION</c> is used.</summary>
     public string? Region { get; set; }
 
     /// <summary>
-    /// API key de Bedrock (token Bearer). Si es null se usa <c>AWS_BEARER_TOKEN_BEDROCK</c>;
-    /// si tampoco existe, se firma con SigV4 usando <see cref="Credentials"/>.
+    /// Bedrock API key (Bearer token). If null, <c>AWS_BEARER_TOKEN_BEDROCK</c> is used;
+    /// if that does not exist either, requests are signed with SigV4 using <see cref="Credentials"/>.
     /// </summary>
     public string? ApiKey { get; set; }
 
-    /// <summary>Credenciales fijas (si es null se leen de las variables de entorno de AWS).</summary>
+    /// <summary>Fixed credentials (if null, they are read from the AWS environment variables).</summary>
     public AwsCredentials? Credentials { get; set; }
 
     /// <summary>
-    /// Proveedor de credenciales dinámicas (roles de IAM, SSO, el SDK de AWS...). Tiene prioridad sobre
+    /// Dynamic credentials provider (IAM roles, SSO, the AWS SDK...). Takes precedence over
     /// <see cref="Credentials"/>.
     /// </summary>
     public Func<CancellationToken, ValueTask<AwsCredentials>>? CredentialsProvider { get; set; }
 
-    /// <summary>URL base (por defecto <c>https://bedrock-runtime.{region}.amazonaws.com</c>).</summary>
+    /// <summary>Base URL (defaults to <c>https://bedrock-runtime.{region}.amazonaws.com</c>).</summary>
     public string? BaseUrl { get; set; }
 
     public string Name { get; set; } = "bedrock";
 
     public HttpClient? HttpClient { get; set; }
 
-    /// <summary>Reloj usado para firmar (para pruebas).</summary>
+    /// <summary>Clock used for signing (for tests).</summary>
     public Func<DateTimeOffset> Clock { get; set; } = () => DateTimeOffset.UtcNow;
 }
 
 /// <summary>
-/// Proveedor Amazon Bedrock sobre la API Converse: un mismo formato para Claude, Llama,
-/// Mistral, Amazon Nova, Cohere y otros modelos de Bedrock.
+/// Amazon Bedrock provider over the Converse API: a single format for Claude, Llama,
+/// Mistral, Amazon Nova, Cohere and other Bedrock models.
 /// </summary>
 public sealed class BedrockProvider : IProvider
 {
@@ -57,8 +57,8 @@ public sealed class BedrockProvider : IProvider
     public string Name => _options.Name;
 
     /// <summary>
-    /// Modelo de Bedrock por su id o perfil de inferencia, p. ej.
-    /// <c>"us.anthropic.claude-sonnet-4-5-20250929-v1:0"</c> o <c>"amazon.nova-pro-v1:0"</c>.
+    /// Bedrock model by its id or inference profile, e.g.
+    /// <c>"us.anthropic.claude-sonnet-4-5-20250929-v1:0"</c> or <c>"amazon.nova-pro-v1:0"</c>.
     /// </summary>
     public ILanguageModel Converse(string modelId) => new BedrockConverseLanguageModel(modelId, this);
 
@@ -66,7 +66,7 @@ public sealed class BedrockProvider : IProvider
 
     public ILanguageModel this[string modelId] => Converse(modelId);
 
-    /// <summary>Embeddings: <c>amazon.titan-embed-text-v2:0</c> o <c>cohere.embed-multilingual-v3</c>.</summary>
+    /// <summary>Embeddings: <c>amazon.titan-embed-text-v2:0</c> or <c>cohere.embed-multilingual-v3</c>.</summary>
     public IEmbeddingModel Embedding(string modelId = "amazon.titan-embed-text-v2:0", int? dimensions = null) =>
         new BedrockEmbeddingModel(modelId, dimensions, this);
 
@@ -83,7 +83,7 @@ public sealed class BedrockProvider : IProvider
     internal Uri ModelUrl(string modelId, string action) =>
         new($"{(_options.BaseUrl ?? $"https://bedrock-runtime.{Region}.amazonaws.com").TrimEnd('/')}/model/{Uri.EscapeDataString(modelId)}/{action}");
 
-    /// <summary>Crea la petición POST con el cuerpo JSON y la autentica (API key o SigV4).</summary>
+    /// <summary>Creates the POST request with the JSON body and authenticates it (API key or SigV4).</summary>
     internal async Task<HttpRequestMessage> CreateRequestAsync(Uri url, JsonObject body, bool stream, CancellationToken cancellationToken)
     {
         var bytes = Encoding.UTF8.GetBytes(body.ToJsonString());

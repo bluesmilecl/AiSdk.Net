@@ -4,10 +4,10 @@ using System.Text;
 
 namespace AiSdk.Bedrock;
 
-/// <summary>Credenciales de AWS.</summary>
+/// <summary>AWS credentials.</summary>
 public sealed record AwsCredentials(string AccessKeyId, string SecretAccessKey, string? SessionToken = null)
 {
-    /// <summary>Lee <c>AWS_ACCESS_KEY_ID</c>, <c>AWS_SECRET_ACCESS_KEY</c> y <c>AWS_SESSION_TOKEN</c>.</summary>
+    /// <summary>Reads <c>AWS_ACCESS_KEY_ID</c>, <c>AWS_SECRET_ACCESS_KEY</c> and <c>AWS_SESSION_TOKEN</c>.</summary>
     public static AwsCredentials? FromEnvironment()
     {
         var id = Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID");
@@ -18,14 +18,14 @@ public sealed record AwsCredentials(string AccessKeyId, string SecretAccessKey, 
     }
 }
 
-/// <summary>Firma de peticiones con AWS Signature Version 4.</summary>
+/// <summary>Request signing with AWS Signature Version 4.</summary>
 public static class AwsSigV4
 {
     private const string Algorithm = "AWS4-HMAC-SHA256";
 
     /// <summary>
-    /// Firma la petición añadiendo <c>x-amz-date</c>, <c>x-amz-security-token</c> (si hay) y
-    /// <c>Authorization</c>. <paramref name="body"/> debe ser exactamente el cuerpo que se enviará.
+    /// Signs the request by adding <c>x-amz-date</c>, <c>x-amz-security-token</c> (if any) and
+    /// <c>Authorization</c>. <paramref name="body"/> must be exactly the body that will be sent.
     /// </summary>
     public static void Sign(HttpRequestMessage request, ReadOnlySpan<byte> body, string region, string service, AwsCredentials credentials, DateTimeOffset now)
     {
@@ -77,8 +77,8 @@ public static class AwsSigV4
     }
 
     /// <summary>
-    /// Ruta canónica: en servicios distintos de S3 cada segmento se codifica dos veces
-    /// (la ruta ya viene codificada una vez, p. ej. <c>%3A</c> → <c>%253A</c>).
+    /// Canonical path: for services other than S3, each segment is encoded twice
+    /// (the path already arrives encoded once, e.g. <c>%3A</c> → <c>%253A</c>).
     /// </summary>
     private static string CanonicalUri(Uri uri)
     {
@@ -113,7 +113,7 @@ public static class AwsSigV4
             .Select(p => $"{p.Key}={p.Value}"));
     }
 
-    /// <summary>Codificación RFC 3986 (solo caracteres no reservados sin codificar).</summary>
+    /// <summary>RFC 3986 encoding (only unreserved characters are left unencoded).</summary>
     private static string Encode(string value)
     {
         var sb = new StringBuilder();

@@ -4,10 +4,10 @@ using AiSdk.Internal;
 
 namespace AiSdk.Cohere;
 
-/// <summary>Opciones del proveedor Cohere.</summary>
+/// <summary>Cohere provider options.</summary>
 public sealed class CohereProviderOptions
 {
-    /// <summary>API key. Si es null se usa <c>COHERE_API_KEY</c>.</summary>
+    /// <summary>API key. If null, <c>COHERE_API_KEY</c> is used.</summary>
     public string? ApiKey { get; set; }
 
     public string BaseUrl { get; set; } = "https://api.cohere.com/v2";
@@ -17,7 +17,7 @@ public sealed class CohereProviderOptions
     public HttpClient? HttpClient { get; set; }
 }
 
-/// <summary>Proveedor Cohere: reranking y embeddings.</summary>
+/// <summary>Cohere provider: reranking and embeddings.</summary>
 public sealed class CohereProvider : IProvider
 {
     private readonly CohereProviderOptions _options;
@@ -31,15 +31,15 @@ public sealed class CohereProvider : IProvider
     public ILanguageModel LanguageModel(string modelId) =>
         throw new NotSupportedException("El proveedor Cohere de AiSdk solo ofrece reranking y embeddings.");
 
-    /// <summary>Modelo de reranking, p. ej. <c>"rerank-v3.5"</c>.</summary>
+    /// <summary>Reranking model, e.g. <c>"rerank-v3.5"</c>.</summary>
     public IRerankingModel Reranking(string modelId = "rerank-v3.5") => new CohereRerankingModel(modelId, this);
 
     public IRerankingModel RerankingModel(string modelId) => Reranking(modelId);
 
-    /// <summary>Embeddings, p. ej. <c>"embed-v4.0"</c>.</summary>
-    /// <param name="modelId">Id del modelo.</param>
-    /// <param name="inputType"><c>search_document</c>, <c>search_query</c>, <c>classification</c> o <c>clustering</c>.</param>
-    /// <param name="dimensions">Dimensiones de salida (modelos que lo admiten).</param>
+    /// <summary>Embeddings, e.g. <c>"embed-v4.0"</c>.</summary>
+    /// <param name="modelId">Model id.</param>
+    /// <param name="inputType"><c>search_document</c>, <c>search_query</c>, <c>classification</c> or <c>clustering</c>.</param>
+    /// <param name="dimensions">Output dimensions (models that support it).</param>
     public IEmbeddingModel Embedding(string modelId = "embed-v4.0", string inputType = "search_document", int? dimensions = null) =>
         new CohereEmbeddingModel(modelId, inputType, dimensions, this);
 
@@ -53,7 +53,7 @@ public sealed class CohereProvider : IProvider
     }
 }
 
-/// <summary>Reranking con Cohere Rerank (<c>/v2/rerank</c>).</summary>
+/// <summary>Reranking with Cohere Rerank (<c>/v2/rerank</c>).</summary>
 public sealed class CohereRerankingModel : IRerankingModel
 {
     private readonly CohereProvider _provider;
@@ -90,7 +90,7 @@ public sealed class CohereRerankingModel : IRerankingModel
     }
 }
 
-/// <summary>Embeddings con Cohere Embed (<c>/v2/embed</c>).</summary>
+/// <summary>Embeddings with Cohere Embed (<c>/v2/embed</c>).</summary>
 public sealed class CohereEmbeddingModel : IEmbeddingModel
 {
     private readonly CohereProvider _provider;

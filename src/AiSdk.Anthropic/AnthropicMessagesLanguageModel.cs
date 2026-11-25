@@ -7,19 +7,19 @@ using AiSdk.Internal;
 
 namespace AiSdk.Anthropic;
 
-/// <summary>Modelo de lenguaje sobre la Messages API de Anthropic (<c>POST /v1/messages</c>).</summary>
+/// <summary>Language model over the Anthropic Messages API (<c>POST /v1/messages</c>).</summary>
 public sealed class AnthropicMessagesLanguageModel : ILanguageModel, ITokenCountingModel
 {
     public const string SignatureKey = "anthropic.signature";
     public const string RedactedDataKey = "anthropic.redactedData";
 
-    /// <summary>Bloque original de la API, reenviado tal cual en turnos siguientes (herramientas de servidor).</summary>
+    /// <summary>Original API block, forwarded as is in subsequent turns (server tools).</summary>
     public const string RawBlockKey = "anthropic.rawBlock";
 
-    /// <summary><c>stop_reason</c> original de la API.</summary>
+    /// <summary>Original <c>stop_reason</c> from the API.</summary>
     public const string StopReasonKey = "anthropic.stopReason";
 
-    /// <summary>Máximo de reanudaciones automáticas tras <c>pause_turn</c>.</summary>
+    /// <summary>Maximum number of automatic continuations after <c>pause_turn</c>.</summary>
     private const int MaxPauseTurnContinuations = 10;
 
     private readonly AnthropicProvider _provider;
@@ -65,7 +65,7 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel, ITokenCount
         }
     }
 
-    /// <summary>Cuenta los tokens de entrada con <c>/v1/messages/count_tokens</c> (no consume la cuota de generación).</summary>
+    /// <summary>Counts the input tokens with <c>/v1/messages/count_tokens</c> (does not consume generation quota).</summary>
     public async Task<int> CountTokensAsync(LanguageModelRequest request, CancellationToken cancellationToken = default)
     {
         var (body, betas, _) = BuildBody(request, stream: false);
@@ -470,7 +470,7 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel, ITokenCount
     internal static RawProviderPart ContainerMarker(string id, string? expiresAt) =>
         new("anthropic", JsonSerializer.SerializeToElement(new Dictionary<string, string?> { ["type"] = ContainerMarkerType, ["id"] = id, ["expires_at"] = expiresAt }));
 
-    /// <summary>Último contenedor usado en la conversación (si no venció).</summary>
+    /// <summary>Last container used in the conversation (if it has not expired).</summary>
     internal static string? FindContainerId(IEnumerable<ModelMessage> messages)
     {
         foreach (var part in messages.Reverse().SelectMany(m => m.Content.Reverse()))
@@ -824,7 +824,7 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel, ITokenCount
 
         public HashSet<string> SeenSources { get; } = new(StringComparer.Ordinal);
 
-        /// <summary>Contenedor ya informado (se emite un solo marcador por respuesta).</summary>
+        /// <summary>Container already reported (only one marker is emitted per response).</summary>
         public string? ContainerId { get; set; }
 
         public StreamAccumulator RoundContent { get; private set; } = new();
@@ -836,7 +836,7 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel, ITokenCount
             RoundContent = new StreamAccumulator();
         }
 
-        /// <summary>Id único por ronda y bloque, para no mezclar bloques de distintas reanudaciones.</summary>
+        /// <summary>Unique id per round and block, so blocks from different continuations are not mixed.</summary>
         public string Id(string kind, int index) => Round == 0 ? $"{kind}-{index}" : $"{kind}-{Round}-{index}";
     }
 }

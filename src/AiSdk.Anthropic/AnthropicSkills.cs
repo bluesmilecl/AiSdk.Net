@@ -7,41 +7,41 @@ using AiSdk.Skills;
 
 namespace AiSdk.Anthropic;
 
-/// <summary>Skill que se carga en el contenedor de ejecución de código de Claude.</summary>
-/// <param name="Type"><c>anthropic</c> (pptx, xlsx, docx, pdf) o <c>custom</c> (subida con <see cref="AnthropicSkillsClient"/>).</param>
-/// <param name="SkillId">Id: <c>pptx</c>, <c>xlsx</c>... o <c>skill_01...</c>.</param>
-/// <param name="Version"><c>latest</c> o un número de versión concreto.</param>
+/// <summary>Skill loaded into Claude's code execution container.</summary>
+/// <param name="Type"><c>anthropic</c> (pptx, xlsx, docx, pdf) or <c>custom</c> (uploaded with <see cref="AnthropicSkillsClient"/>).</param>
+/// <param name="SkillId">Id: <c>pptx</c>, <c>xlsx</c>... or <c>skill_01...</c>.</param>
+/// <param name="Version"><c>latest</c> or a specific version number.</param>
 public sealed record AnthropicSkill(string Type, string SkillId, string Version = "latest")
 {
-    /// <summary>Presentaciones PowerPoint.</summary>
+    /// <summary>PowerPoint presentations.</summary>
     public static AnthropicSkill PowerPoint { get; } = new("anthropic", "pptx");
 
-    /// <summary>Hojas de cálculo Excel (con fórmulas y gráficos).</summary>
+    /// <summary>Excel spreadsheets (with formulas and charts).</summary>
     public static AnthropicSkill Excel { get; } = new("anthropic", "xlsx");
 
-    /// <summary>Documentos Word.</summary>
+    /// <summary>Word documents.</summary>
     public static AnthropicSkill Word { get; } = new("anthropic", "docx");
 
-    /// <summary>Lectura, llenado y creación de PDF.</summary>
+    /// <summary>Reading, filling and creating PDFs.</summary>
     public static AnthropicSkill Pdf { get; } = new("anthropic", "pdf");
 
-    /// <summary>Skill propia subida a la API.</summary>
+    /// <summary>Custom skill uploaded to the API.</summary>
     public static AnthropicSkill Custom(string skillId, string version = "latest") => new("custom", skillId, version);
 
     internal JsonObject ToJson() => new() { ["type"] = Type, ["skill_id"] = SkillId, ["version"] = Version };
 }
 
 /// <summary>
-/// Skills ejecutadas por Claude en su contenedor (Agent Skills de la API de Anthropic). A diferencia de las
-/// skills locales (<see cref="SkillLibrary"/>), corren en la nube de Anthropic con acceso a código y archivos,
-/// y producen archivos descargables (por ejemplo, un .pptx).
+/// Skills executed by Claude in its container (Anthropic API Agent Skills). Unlike
+/// local skills (<see cref="SkillLibrary"/>), they run in Anthropic's cloud with access to code and files,
+/// and produce downloadable files (for example, a .pptx).
 /// </summary>
 /// <example>
 /// <code>
 /// var result = await Ai.GenerateTextAsync(new()
 /// {
 ///     Model = anthropic.Messages("claude-opus-5-5"),
-///     Prompt = "Crea una presentación de 5 diapositivas sobre nuestros resultados",
+///     Prompt = "Create a 5-slide presentation about our results",
 ///     Tools = [AnthropicTools.CodeExecution()],
 ///     ProviderOptions = AnthropicSkills.Options([AnthropicSkill.PowerPoint]),
 /// });
@@ -55,13 +55,13 @@ public static class AnthropicSkills
     public const string CodeExecutionBeta = "code-execution-2025-08-25";
 
     /// <summary>
-    /// Opciones del proveedor que cargan las skills en el contenedor (agregue también
-    /// <see cref="AnthropicTools.CodeExecution"/> a las herramientas). El contenedor se reutiliza
-    /// automáticamente en los turnos siguientes de la misma conversación.
+    /// Provider options that load the skills into the container (also add
+    /// <see cref="AnthropicTools.CodeExecution"/> to the tools). The container is reused
+    /// automatically in subsequent turns of the same conversation.
     /// </summary>
-    /// <param name="skills">Hasta 8 skills por petición.</param>
-    /// <param name="containerId">Contenedor existente a reutilizar (opcional).</param>
-    /// <param name="baseOptions">Opciones que se combinan (p. ej. <c>AnthropicOptions.Create(effort: "high")</c>).</param>
+    /// <param name="skills">Up to 8 skills per request.</param>
+    /// <param name="containerId">Existing container to reuse (optional).</param>
+    /// <param name="baseOptions">Options to merge with (e.g. <c>AnthropicOptions.Create(effort: "high")</c>).</param>
     public static ProviderOptions Options(IEnumerable<AnthropicSkill> skills, string? containerId = null, ProviderOptions? baseOptions = null)
     {
         var list = skills.ToList();
@@ -98,7 +98,7 @@ public static class AnthropicSkills
         return options;
     }
 
-    /// <summary>Ids de los archivos generados en el contenedor durante la respuesta (descárguelos con <see cref="AnthropicFileClient.DownloadAsync"/>).</summary>
+    /// <summary>Ids of the files generated in the container during the response (download them with <see cref="AnthropicFileClient.DownloadAsync"/>).</summary>
     public static IReadOnlyList<string> GetGeneratedFileIds(GenerateTextResult result) =>
         result.Steps.SelectMany(s => s.Content).OfType<ToolResultPart>()
             .Where(r => r.ProviderExecuted)
@@ -106,7 +106,7 @@ public static class AnthropicSkills
             .Distinct(StringComparer.Ordinal)
             .ToList();
 
-    /// <summary>Id del contenedor usado en la conversación (para reutilizarlo explícitamente).</summary>
+    /// <summary>Id of the container used in the conversation (to reuse it explicitly).</summary>
     public static string? GetContainerId(IEnumerable<ModelMessage> messages) =>
         AnthropicMessagesLanguageModel.FindContainerId(messages);
 
@@ -139,15 +139,15 @@ public static class AnthropicSkills
     }
 }
 
-/// <summary>Skill registrada en la API de Anthropic.</summary>
+/// <summary>Skill registered in the Anthropic API.</summary>
 public sealed record AnthropicSkillInfo(string Id, string? DisplayTitle, string Source, string? LatestVersion, DateTimeOffset? CreatedAt, DateTimeOffset? UpdatedAt);
 
-/// <summary>Versión de una skill en la API de Anthropic.</summary>
+/// <summary>Version of a skill in the Anthropic API.</summary>
 public sealed record AnthropicSkillVersion(string SkillId, string Version, string? Name, string? Description, DateTimeOffset? CreatedAt);
 
 /// <summary>
-/// API de Skills de Anthropic (<c>/v1/skills</c>): sube skills propias (creadas con <see cref="SkillBuilder"/>,
-/// cargadas de una carpeta o generadas por un agente) para usarlas con <see cref="AnthropicSkill.Custom"/>.
+/// Anthropic Skills API (<c>/v1/skills</c>): uploads custom skills (created with <see cref="SkillBuilder"/>,
+/// loaded from a folder or generated by an agent) for use with <see cref="AnthropicSkill.Custom"/>.
 /// </summary>
 public sealed class AnthropicSkillsClient
 {
@@ -157,7 +157,7 @@ public sealed class AnthropicSkillsClient
 
     private IEnumerable<KeyValuePair<string, string>> Headers => _provider.Headers(null, [AnthropicSkills.SkillsBeta]);
 
-    /// <summary>Sube una skill nueva (todos sus archivos) y devuelve su id.</summary>
+    /// <summary>Uploads a new skill (all its files) and returns its id.</summary>
     public async Task<AnthropicSkillInfo> CreateAsync(Skill skill, string? displayTitle = null, CancellationToken cancellationToken = default)
     {
         var request = ProviderHttp.CreateRequest(HttpMethod.Post, _provider.Url("skills"), Headers);
@@ -165,7 +165,7 @@ public sealed class AnthropicSkillsClient
         return ParseSkill(await ProviderHttp.SendJsonAsync(_provider.Http, request, cancellationToken).ConfigureAwait(false));
     }
 
-    /// <summary>Publica una versión nueva de una skill existente.</summary>
+    /// <summary>Publishes a new version of an existing skill.</summary>
     public async Task<AnthropicSkillVersion> CreateVersionAsync(string skillId, Skill skill, CancellationToken cancellationToken = default)
     {
         var request = ProviderHttp.CreateRequest(HttpMethod.Post, _provider.Url($"skills/{Uri.EscapeDataString(skillId)}/versions"), Headers);
@@ -173,7 +173,7 @@ public sealed class AnthropicSkillsClient
         return ParseVersion(await ProviderHttp.SendJsonAsync(_provider.Http, request, cancellationToken).ConfigureAwait(false));
     }
 
-    /// <summary>Lista skills (<paramref name="source"/>: <c>custom</c>, <c>anthropic</c> o null para todas).</summary>
+    /// <summary>Lists skills (<paramref name="source"/>: <c>custom</c>, <c>anthropic</c> or null for all).</summary>
     public async Task<IReadOnlyList<AnthropicSkillInfo>> ListAsync(string? source = null, CancellationToken cancellationToken = default)
     {
         var query = source is null ? string.Empty : $"?source={Uri.EscapeDataString(source)}";
@@ -190,7 +190,7 @@ public sealed class AnthropicSkillsClient
         return (json["data"] as JsonArray ?? []).OfType<JsonObject>().Select(ParseVersion).ToList();
     }
 
-    /// <summary>Elimina una skill (primero elimina todas sus versiones, como exige la API).</summary>
+    /// <summary>Deletes a skill (first deleting all its versions, as the API requires).</summary>
     public async Task DeleteAsync(string skillId, CancellationToken cancellationToken = default)
     {
         foreach (var version in await ListVersionsAsync(skillId, cancellationToken).ConfigureAwait(false))

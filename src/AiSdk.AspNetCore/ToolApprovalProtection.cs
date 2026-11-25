@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace AiSdk.AspNetCore;
 
 /// <summary>
-/// Aprobación de herramientas con <c>useChat</c> (<c>addToolApprovalResponse</c>) en un endpoint de ASP.NET Core.
+/// Tool approval with <c>useChat</c> (<c>addToolApprovalResponse</c>) in an ASP.NET Core endpoint.
 /// </summary>
 /// <example>
 /// <code>
@@ -31,14 +31,14 @@ public static class ToolApprovalProtection
     private const string Purpose = "AiSdk.UI.ToolApproval.v1";
 
     /// <summary>
-    /// Protector de approvalIds para un chat de un usuario, con ASP.NET Core Data Protection (claves rotadas por el
-    /// framework; en varias instancias, comparta el anillo de claves como para las cookies). Los ids solo verifican para
-    /// el mismo dueño (<paramref name="owner"/> o, si es null, el usuario autenticado) y el mismo
-    /// <paramref name="chatId"/>, y caducan tras <paramref name="lifetime"/> (por defecto
+    /// approvalId protector for one user's chat, backed by ASP.NET Core Data Protection (keys rotated by the
+    /// framework; across multiple instances, share the key ring as you would for cookies). The ids only verify for
+    /// the same owner (<paramref name="owner"/> or, if null, the authenticated user) and the same
+    /// <paramref name="chatId"/>, and they expire after <paramref name="lifetime"/> (defaults to
     /// <see cref="ToolApprovalProtector.DefaultLifetime"/>).
     /// </summary>
     /// <exception cref="InvalidOperationException">
-    /// Si la petición no tiene dueño (anónima y sin <paramref name="owner"/>) o Data Protection no está registrado.
+    /// If the request has no owner (anonymous and no <paramref name="owner"/>) or Data Protection is not registered.
     /// </exception>
     public static ToolApprovalProtector ForChat(HttpContext http, string chatId, string? owner = null, TimeSpan? lifetime = null)
     {

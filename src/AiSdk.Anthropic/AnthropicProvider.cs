@@ -3,10 +3,10 @@ using AiSdk.Http;
 
 namespace AiSdk.Anthropic;
 
-/// <summary>Opciones del proveedor Anthropic.</summary>
+/// <summary>Anthropic provider options.</summary>
 public sealed class AnthropicProviderOptions
 {
-    /// <summary>API key. Si es null se usa <c>ANTHROPIC_API_KEY</c>.</summary>
+    /// <summary>API key. If null, <c>ANTHROPIC_API_KEY</c> is used.</summary>
     public string? ApiKey { get; set; }
 
     public string ApiKeyEnvironmentVariable { get; set; } = "ANTHROPIC_API_KEY";
@@ -15,7 +15,7 @@ public sealed class AnthropicProviderOptions
 
     public string ApiVersion { get; set; } = "2023-06-01";
 
-    /// <summary>Cabeceras <c>anthropic-beta</c> que se envían en todas las peticiones.</summary>
+    /// <summary><c>anthropic-beta</c> headers sent with every request.</summary>
     public List<string> Betas { get; set; } = [];
 
     public Dictionary<string, string> Headers { get; set; } = [];
@@ -24,21 +24,21 @@ public sealed class AnthropicProviderOptions
 
     public string Name { get; set; } = "anthropic";
 
-    /// <summary><c>max_tokens</c> por defecto en peticiones sin streaming.</summary>
+    /// <summary>Default <c>max_tokens</c> for non-streaming requests.</summary>
     public int DefaultMaxTokens { get; set; } = 16000;
 
-    /// <summary><c>max_tokens</c> por defecto en peticiones con streaming.</summary>
+    /// <summary>Default <c>max_tokens</c> for streaming requests.</summary>
     public int DefaultStreamingMaxTokens { get; set; } = 64000;
 
     /// <summary>
-    /// Envía <c>eager_input_streaming: true</c> en las herramientas cuando se usa streaming,
-    /// para que las entradas grandes lleguen a medida que se generan. Desactívalo si usas
-    /// un proxy o plataforma que no acepte el campo.
+    /// Sends <c>eager_input_streaming: true</c> on tools when streaming is used,
+    /// so that large inputs arrive as they are generated. Disable it if you use
+    /// a proxy or platform that does not accept the field.
     /// </summary>
     public bool EagerInputStreaming { get; set; } = true;
 }
 
-/// <summary>Proveedor Anthropic (Claude) sobre la Messages API.</summary>
+/// <summary>Anthropic (Claude) provider over the Messages API.</summary>
 public sealed class AnthropicProvider : IProvider
 {
     private readonly AnthropicProviderOptions _options;
@@ -54,26 +54,26 @@ public sealed class AnthropicProvider : IProvider
         configure(_options);
     }
 
-    /// <summary>Instancia por defecto (API key desde <c>ANTHROPIC_API_KEY</c>).</summary>
+    /// <summary>Default instance (API key from <c>ANTHROPIC_API_KEY</c>).</summary>
     public static AnthropicProvider Default { get; } = new();
 
     public string Name => _options.Name;
 
-    /// <summary>Modelo de mensajes, p. ej. <c>"claude-opus-5-5"</c>.</summary>
+    /// <summary>Messages model, e.g. <c>"claude-opus-5-5"</c>.</summary>
     public ILanguageModel Messages(string modelId) => new AnthropicMessagesLanguageModel(modelId, this);
 
     public ILanguageModel LanguageModel(string modelId) => Messages(modelId);
 
-    /// <summary>Atajo: <c>anthropic["claude-opus-5-5"]</c>.</summary>
+    /// <summary>Shortcut: <c>anthropic["claude-opus-5-5"]</c>.</summary>
     public ILanguageModel this[string modelId] => Messages(modelId);
 
-    /// <summary>Message Batches para el modelo indicado.</summary>
+    /// <summary>Message Batches for the specified model.</summary>
     public AnthropicBatchClient Batches(string modelId) => new(this, modelId);
 
     /// <summary>Files API.</summary>
     public AnthropicFileClient Files => new(this);
 
-    /// <summary>API de Skills (<c>/v1/skills</c>): sube skills propias para usarlas en el contenedor de Claude.</summary>
+    /// <summary>Skills API (<c>/v1/skills</c>): uploads custom skills for use in Claude's container.</summary>
     public AnthropicSkillsClient Skills => new(this);
 
     internal AnthropicProviderOptions Options => _options;
@@ -104,22 +104,22 @@ public sealed class AnthropicProvider : IProvider
     }
 }
 
-/// <summary>Constructor tipado de <see cref="ProviderOptions"/> para Anthropic.</summary>
+/// <summary>Typed builder of <see cref="ProviderOptions"/> for Anthropic.</summary>
 public static class AnthropicOptions
 {
     /// <summary>
-    /// Crea opciones de proveedor para Claude.
+    /// Creates provider options for Claude.
     /// </summary>
-    /// <param name="effort"><c>low</c>, <c>medium</c>, <c>high</c>, <c>xhigh</c> o <c>max</c> (<c>output_config.effort</c>).</param>
+    /// <param name="effort"><c>low</c>, <c>medium</c>, <c>high</c>, <c>xhigh</c> or <c>max</c> (<c>output_config.effort</c>).</param>
     /// <param name="thinkingDisplay">
-    /// <c>summarized</c> para recibir un resumen legible del razonamiento (envía <c>thinking: {type: "adaptive", display}</c>).
+    /// <c>summarized</c> to receive a readable summary of the reasoning (sends <c>thinking: {type: "adaptive", display}</c>).
     /// </param>
-    /// <param name="cacheControl">Activa el caché automático de prompts (<c>cache_control</c> de nivel superior).</param>
-    /// <param name="betas">Cabeceras beta adicionales.</param>
+    /// <param name="cacheControl">Enables automatic prompt caching (top-level <c>cache_control</c>).</param>
+    /// <param name="betas">Additional beta headers.</param>
     /// <param name="refusalFallback">
-    /// Activa el fallback del lado del servidor (<c>fallbacks: "default"</c>, beta
-    /// <c>server-side-fallback-2026-07-01</c>): si un clasificador de seguridad rechaza la
-    /// petición, la API la reintenta con un modelo alternativo. Solo en la API de Claude.
+    /// Enables the server-side fallback (<c>fallbacks: "default"</c>, beta
+    /// <c>server-side-fallback-2026-07-01</c>): if a safety classifier rejects the
+    /// request, the API retries it with an alternative model. Claude API only.
     /// </param>
     public static ProviderOptions Create(
         string? effort = null,

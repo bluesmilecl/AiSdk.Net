@@ -4,8 +4,8 @@ using AiSdk.Http;
 namespace AiSdk.Mistral;
 
 /// <summary>
-/// OCR de Mistral (<c>POST /v1/ocr</c>). Acepta imágenes y PDF (incluidos escaneados) y devuelve
-/// Markdown por página conservando tablas y estructura.
+/// Mistral OCR (<c>POST /v1/ocr</c>). Accepts images and PDFs (including scanned ones) and returns
+/// Markdown per page, preserving tables and structure.
 /// </summary>
 public sealed class MistralOcr(MistralProviderOptions options, string modelId = "mistral-ocr-latest") : IOcrEngine
 {

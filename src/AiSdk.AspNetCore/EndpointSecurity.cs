@@ -6,41 +6,41 @@ using Microsoft.AspNetCore.Routing;
 namespace AiSdk.AspNetCore;
 
 /// <summary>
-/// Opciones de seguridad comunes de los endpoints de AiSdk (<see cref="ArtifactEndpoints"/>,
-/// <see cref="WorkflowEndpoints"/> y <see cref="SkillEndpoints"/>).
+/// Common security options for the AiSdk endpoints (<see cref="ArtifactEndpoints"/>,
+/// <see cref="WorkflowEndpoints"/> and <see cref="SkillEndpoints"/>).
 /// </summary>
 /// <remarks>
-/// Los endpoints exigen autorización por defecto: se aplica <c>RequireAuthorization()</c> al grupo (con
-/// <see cref="AuthorizationPolicies"/> si se indican). Si la aplicación no configuró autenticación ni autorización,
-/// las peticiones fallan en lugar de quedar abiertas. Publicarlos sin autenticación exige pedirlo con
+/// The endpoints require authorization by default: <c>RequireAuthorization()</c> is applied to the group (with the
+/// <see cref="AuthorizationPolicies"/>, if any). If the application has not configured authentication or authorization,
+/// requests fail instead of being left open. Exposing them without authentication must be requested explicitly with
 /// <see cref="AllowAnonymous"/>.
 /// </remarks>
 public abstract class EndpointSecurityOptions
 {
     /// <summary>
-    /// No exige autorización en el grupo (no llama a <c>RequireAuthorization()</c>). Por defecto <c>false</c>.
-    /// Úselo solo en demos, pruebas o redes de confianza: la política de respaldo (<c>FallbackPolicy</c>) y la
-    /// autorización que agregue sobre el grupo devuelto siguen aplicando.
+    /// Does not require authorization on the group (does not call <c>RequireAuthorization()</c>). Defaults to <c>false</c>.
+    /// Use it only for demos, tests or trusted networks: the fallback policy (<c>FallbackPolicy</c>) and any
+    /// authorization you add on the returned group still apply.
     /// </summary>
     public bool AllowAnonymous { get; init; }
 
-    /// <summary>Políticas de autorización exigidas al grupo. Vacía: la política por defecto (usuario autenticado).</summary>
+    /// <summary>Authorization policies required on the group. Empty: the default policy (authenticated user).</summary>
     public IReadOnlyList<string> AuthorizationPolicies { get; init; } = [];
 
     /// <summary>
-    /// Obtiene el id del usuario de la petición, que se usa como dueño de artifacts, ejecuciones y automatizaciones.
-    /// Por defecto <see cref="EndpointSecurity.GetUserId"/>. Debe salir de la autenticación del servidor, nunca del
-    /// cuerpo, la consulta o una cabecera que controle el cliente.
+    /// Gets the id of the request's user, used as the owner of artifacts, runs and automations.
+    /// Defaults to <see cref="EndpointSecurity.GetUserId"/>. It must come from the server's authentication, never from
+    /// the body, the query string or a header the client controls.
     /// </summary>
     public Func<HttpContext, string?> ResolveUser { get; init; } = EndpointSecurity.GetUserId;
 }
 
-/// <summary>Utilidades de seguridad compartidas por los endpoints de AiSdk.</summary>
+/// <summary>Security helpers shared by the AiSdk endpoints.</summary>
 public static class EndpointSecurity
 {
     /// <summary>
-    /// Id del usuario autenticado: claim <see cref="ClaimTypes.NameIdentifier"/>, luego <c>sub</c> y por último
-    /// <c>Identity.Name</c>. Devuelve <c>null</c> si la petición es anónima.
+    /// Id of the authenticated user: the <see cref="ClaimTypes.NameIdentifier"/> claim, then <c>sub</c> and finally
+    /// <c>Identity.Name</c>. Returns <c>null</c> if the request is anonymous.
     /// </summary>
     public static string? GetUserId(HttpContext http)
     {
@@ -55,7 +55,7 @@ public static class EndpointSecurity
         return string.IsNullOrEmpty(id) ? null : id;
     }
 
-    /// <summary>Aplica la autorización por defecto al grupo, salvo que se haya pedido acceso anónimo.</summary>
+    /// <summary>Applies the default authorization to the group, unless anonymous access was requested.</summary>
     internal static void ApplyAuthorization(RouteGroupBuilder group, EndpointSecurityOptions options)
     {
         if (options.AllowAnonymous)
@@ -74,9 +74,9 @@ public static class EndpointSecurity
     }
 
     /// <summary>
-    /// Exige <c>Content-Type: application/json</c> (o <c>*/*+json</c>) en los POST/PUT/PATCH del grupo; si no, 415.
-    /// Un formulario o un <c>fetch</c> "simple" de otro sitio no puede enviar ese tipo sin una petición previa CORS,
-    /// así que esto evita CSRF con cookies aunque el cuerpo sea JSON válido.
+    /// Requires <c>Content-Type: application/json</c> (or <c>*/*+json</c>) on the group's POST/PUT/PATCH requests; otherwise, 415.
+    /// A form or a "simple" <c>fetch</c> from another site cannot send that type without a CORS preflight request,
+    /// so this prevents cookie-based CSRF even when the body is valid JSON.
     /// </summary>
     internal static void RequireJsonRequests(RouteGroupBuilder group) =>
         group.AddEndpointFilter(async (context, next) =>
@@ -93,6 +93,6 @@ public static class EndpointSecurity
             return await next(context).ConfigureAwait(false);
         });
 
-    /// <summary>403 con un detalle legible para quien integra la API.</summary>
+    /// <summary>403 with a readable detail for the API integrator.</summary>
     internal static IResult Forbidden(string detail) => Results.Problem(detail: detail, statusCode: StatusCodes.Status403Forbidden);
 }

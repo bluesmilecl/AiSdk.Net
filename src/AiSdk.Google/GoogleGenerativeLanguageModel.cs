@@ -6,13 +6,13 @@ using AiSdk.Internal;
 
 namespace AiSdk.Google;
 
-/// <summary>Modelo Gemini sobre <c>generateContent</c> / <c>streamGenerateContent</c>.</summary>
+/// <summary>Gemini model over <c>generateContent</c> / <c>streamGenerateContent</c>.</summary>
 public sealed class GoogleGenerativeLanguageModel : ILanguageModel, ITokenCountingModel
 {
-    /// <summary>Firma de razonamiento que Gemini exige reenviar junto a las llamadas a funciones.</summary>
+    /// <summary>Thought signature that Gemini requires to be sent back along with function calls.</summary>
     public const string ThoughtSignatureKey = "google.thoughtSignature";
 
-    /// <summary>Parte original (ejecución de código), reenviada tal cual.</summary>
+    /// <summary>Original part (code execution), forwarded as is.</summary>
     public const string RawPartKey = "google.rawPart";
 
     private readonly GoogleProvider _provider;
@@ -155,7 +155,7 @@ public sealed class GoogleGenerativeLanguageModel : ILanguageModel, ITokenCounti
         yield return new ModelFinishPart(finish, usage);
     }
 
-    /// <summary>Cuenta tokens con <c>countTokens</c>.</summary>
+    /// <summary>Counts tokens with <c>countTokens</c>.</summary>
     public async Task<int> CountTokensAsync(LanguageModelRequest request, CancellationToken cancellationToken = default)
     {
         var (body, _) = BuildBody(request);

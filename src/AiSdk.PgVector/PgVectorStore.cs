@@ -8,51 +8,51 @@ using Pgvector.Npgsql;
 
 namespace AiSdk.PgVector;
 
-/// <summary>Métrica de distancia de pgvector.</summary>
+/// <summary>pgvector distance metric.</summary>
 public enum PgVectorDistance
 {
-    /// <summary>Distancia coseno (<c>&lt;=&gt;</c>), la habitual con embeddings de texto.</summary>
+    /// <summary>Cosine distance (<c>&lt;=&gt;</c>), the usual choice for text embeddings.</summary>
     Cosine,
 
-    /// <summary>Distancia euclidiana (<c>&lt;-&gt;</c>).</summary>
+    /// <summary>Euclidean distance (<c>&lt;-&gt;</c>).</summary>
     Euclidean,
 
-    /// <summary>Producto interno negativo (<c>&lt;#&gt;</c>), para embeddings normalizados.</summary>
+    /// <summary>Negative inner product (<c>&lt;#&gt;</c>), for normalized embeddings.</summary>
     InnerProduct,
 }
 
-/// <summary>Cómo se resuelve una búsqueda semántica con <see cref="VectorFilter"/>.</summary>
+/// <summary>How a semantic search with a <see cref="VectorFilter"/> is resolved.</summary>
 /// <remarks>
-/// El índice HNSW entrega a lo más <c>hnsw.ef_search</c> candidatos (40 por defecto) y el filtro se aplica después:
-/// un filtro selectivo (un usuario, un cliente) puede dejar la búsqueda con menos resultados de los pedidos, o sin
-/// ninguno, aunque haya filas que lo cumplan.
+/// The HNSW index returns at most <c>hnsw.ef_search</c> candidates (40 by default) and the filter is applied afterwards:
+/// a selective filter (one user, one customer) can leave the search with fewer results than requested, or with
+/// none, even when there are rows that match it.
 /// </remarks>
 public enum PgVectorFilteredSearch
 {
     /// <summary>
-    /// Índice HNSW y, si el filtro deja menos de <c>topK</c> resultados (o menos de <c>hnsw.ef_search</c> cuando
-    /// <c>topK</c> es mayor), búsqueda exacta sobre las filas que cumplen el filtro, que se ubican con el índice GIN de
-    /// metadatos. Es una sola consulta: la parte exacta no se ejecuta si no hace falta. Su costo crece con las filas que
-    /// cumplen la parte indexable del filtro (igualdades e <c>In</c>; no <c>Not</c> ni <c>Exists</c>): en tablas muy
-    /// grandes con filtros poco selectivos en esa parte, considere <see cref="Approximate"/> y subir
+    /// HNSW index and, if the filter leaves fewer than <c>topK</c> results (or fewer than <c>hnsw.ef_search</c> when
+    /// <c>topK</c> is larger), an exact search over the rows that match the filter, located with the metadata GIN
+    /// index. It is a single query: the exact part is not executed unless needed. Its cost grows with the rows that
+    /// match the indexable part of the filter (equalities and <c>In</c>; not <c>Not</c> or <c>Exists</c>): on very
+    /// large tables with filters that are not very selective in that part, consider <see cref="Approximate"/> and raising
     /// <c>hnsw.ef_search</c>.
     /// </summary>
     Auto,
 
-    /// <summary>Solo el índice HNSW con el filtro aplicado después (lo más rápido; puede devolver menos resultados).</summary>
+    /// <summary>Only the HNSW index with the filter applied afterwards (fastest; may return fewer results).</summary>
     Approximate,
 
     /// <summary>
-    /// Siempre búsqueda exacta sobre las filas que cumplen el filtro (resultados completos; el costo crece con la
-    /// cantidad de filas que lo cumplen). Sin filtro se usa el índice HNSW.
+    /// Always an exact search over the rows that match the filter (complete results; the cost grows with the
+    /// number of matching rows). Without a filter, the HNSW index is used.
     /// </summary>
     Exact,
 }
 
-/// <summary>Opciones de <see cref="PgVectorStore"/>.</summary>
+/// <summary>Options for <see cref="PgVectorStore"/>.</summary>
 public sealed class PgVectorStoreOptions
 {
-    /// <summary>Dimensiones de los embeddings (p. ej. 1536 para text-embedding-3-small).</summary>
+    /// <summary>Embedding dimensions (e.g. 1536 for text-embedding-3-small).</summary>
     public required int Dimensions { get; init; }
 
     public string Schema { get; init; } = "public";
@@ -61,23 +61,23 @@ public sealed class PgVectorStoreOptions
 
     public PgVectorDistance Distance { get; init; } = PgVectorDistance.Cosine;
 
-    /// <summary>Configuración de texto completo para la búsqueda híbrida (<c>simple</c>, <c>spanish</c>, <c>english</c>...).</summary>
+    /// <summary>Full-text search configuration for hybrid search (<c>simple</c>, <c>spanish</c>, <c>english</c>...).</summary>
     public string TextSearchConfig { get; init; } = "simple";
 
-    /// <summary>Crea la extensión, la tabla y los índices (HNSW, GIN) si no existen.</summary>
+    /// <summary>Creates the extension, the table and the indexes (HNSW, GIN) if they do not exist.</summary>
     public bool CreateIfNotExists { get; init; } = true;
 
-    /// <summary>Constante de Reciprocal Rank Fusion para combinar rankings en la búsqueda híbrida.</summary>
+    /// <summary>Reciprocal Rank Fusion constant used to combine rankings in hybrid search.</summary>
     public int RrfK { get; init; } = 60;
 
-    /// <summary>Estrategia de las búsquedas semánticas con filtro (también la parte semántica de la híbrida).</summary>
+    /// <summary>Strategy for filtered semantic searches (also the semantic part of hybrid search).</summary>
     public PgVectorFilteredSearch FilteredSearch { get; init; } = PgVectorFilteredSearch.Auto;
 }
 
 /// <summary>
-/// Almacén vectorial sobre PostgreSQL + pgvector. Guarda texto, metadatos (jsonb) y embedding,
-/// filtra en SQL y ofrece búsqueda híbrida con Reciprocal Rank Fusion. Los filtros de igualdad se
-/// traducen a contención jsonb (<c>@&gt;</c>), que usa el índice GIN de metadatos; ver
+/// Vector store on PostgreSQL + pgvector. Stores text, metadata (jsonb) and the embedding,
+/// filters in SQL and offers hybrid search with Reciprocal Rank Fusion. Equality filters are
+/// translated to jsonb containment (<c>@&gt;</c>), which uses the metadata GIN index; see
 /// <see cref="PgVectorStoreOptions.FilteredSearch"/>.
 /// </summary>
 public sealed partial class PgVectorStore : IHybridVectorStore, IAsyncDisposable
@@ -90,9 +90,9 @@ public sealed partial class PgVectorStore : IHybridVectorStore, IAsyncDisposable
     private readonly SemaphoreSlim _initLock = new(1, 1);
     private bool _initialized;
 
-    /// <param name="dataSource">Fuente de datos creada con <c>NpgsqlDataSourceBuilder.UseVector()</c>.</param>
-    /// <param name="embeddings">Modelo de embeddings usado para indexar y consultar.</param>
-    /// <param name="options">Opciones del almacén.</param>
+    /// <param name="dataSource">Data source created with <c>NpgsqlDataSourceBuilder.UseVector()</c>.</param>
+    /// <param name="embeddings">Embedding model used for indexing and querying.</param>
+    /// <param name="options">Store options.</param>
     public PgVectorStore(NpgsqlDataSource dataSource, IEmbeddingModel embeddings, PgVectorStoreOptions options)
         : this(dataSource, embeddings, options, ownsDataSource: false)
     {
@@ -111,7 +111,7 @@ public sealed partial class PgVectorStore : IHybridVectorStore, IAsyncDisposable
         }
     }
 
-    /// <summary>Crea el almacén a partir de una cadena de conexión (registra el tipo <c>vector</c>).</summary>
+    /// <summary>Creates the store from a connection string (registers the <c>vector</c> type).</summary>
     public static PgVectorStore Create(string connectionString, IEmbeddingModel embeddings, PgVectorStoreOptions options)
     {
         var builder = new NpgsqlDataSourceBuilder(connectionString);
@@ -119,7 +119,7 @@ public sealed partial class PgVectorStore : IHybridVectorStore, IAsyncDisposable
         return new PgVectorStore(builder.Build(), embeddings, options, ownsDataSource: true);
     }
 
-    /// <summary>Crea extensión, tabla e índices si no existen (se llama automáticamente en el primer uso).</summary>
+    /// <summary>Creates the extension, table and indexes if they do not exist (called automatically on first use).</summary>
     public async Task EnsureCreatedAsync(CancellationToken cancellationToken = default)
     {
         if (_initialized || !_options.CreateIfNotExists)
@@ -236,8 +236,8 @@ public sealed partial class PgVectorStore : IHybridVectorStore, IAsyncDisposable
     }
 
     /// <summary>
-    /// CTEs que terminan en <c>hits(id, distance)</c>: los <paramref name="limit"/> documentos más cercanos a
-    /// <c>$1</c> que cumplen el filtro, según <see cref="PgVectorStoreOptions.FilteredSearch"/>.
+    /// CTEs ending in <c>hits(id, distance)</c>: the <paramref name="limit"/> documents closest to
+    /// <c>$1</c> that match the filter, according to <see cref="PgVectorStoreOptions.FilteredSearch"/>.
     /// </summary>
     private string SemanticHits(string? filterSql, string limit)
     {
@@ -282,8 +282,8 @@ public sealed partial class PgVectorStore : IHybridVectorStore, IAsyncDisposable
     }
 
     /// <summary>
-    /// Búsqueda híbrida: combina el ranking semántico (pgvector) y el de texto completo
-    /// (<c>websearch_to_tsquery</c>) con Reciprocal Rank Fusion.
+    /// Hybrid search: combines the semantic ranking (pgvector) and the full-text ranking
+    /// (<c>websearch_to_tsquery</c>) with Reciprocal Rank Fusion.
     /// </summary>
     public async Task<IReadOnlyList<VectorSearchResult>> HybridSearchAsync(
         string query,
@@ -330,7 +330,7 @@ public sealed partial class PgVectorStore : IHybridVectorStore, IAsyncDisposable
         await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Elimina todos los documentos que cumplen el filtro (p. ej. al reindexar una fuente).</summary>
+    /// <summary>Deletes all documents that match the filter (e.g. when reindexing a source).</summary>
     public async Task<int> DeleteWhereAsync(VectorFilter filter, CancellationToken cancellationToken = default)
     {
         await EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
@@ -345,7 +345,7 @@ public sealed partial class PgVectorStore : IHybridVectorStore, IAsyncDisposable
         return await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Cantidad de documentos indexados.</summary>
+    /// <summary>Number of indexed documents.</summary>
     public async Task<long> CountAsync(CancellationToken cancellationToken = default)
     {
         await EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
@@ -360,7 +360,7 @@ public sealed partial class PgVectorStore : IHybridVectorStore, IAsyncDisposable
         _ => "<=>",
     };
 
-    /// <summary>Puntuación (más alto = más parecido) a partir de la distancia del operador de <see cref="PgVectorStoreOptions.Distance"/>.</summary>
+    /// <summary>Score (higher = more similar) derived from the distance of the <see cref="PgVectorStoreOptions.Distance"/> operator.</summary>
     private string ScoreExpression(string distance) => _options.Distance switch
     {
         PgVectorDistance.Euclidean => $"(1.0 / (1.0 + {distance}))::float8",
@@ -406,19 +406,19 @@ public sealed partial class PgVectorStore : IHybridVectorStore, IAsyncDisposable
 }
 
 /// <summary>
-/// Traduce <see cref="VectorFilter"/> a SQL sobre la columna <c>metadata</c> (jsonb), con parámetros posicionales.
+/// Translates a <see cref="VectorFilter"/> into SQL over the <c>metadata</c> (jsonb) column, with positional parameters.
 /// </summary>
 /// <remarks>
-/// Las igualdades se escriben como contención jsonb (<c>metadata @&gt; '{"clave":"valor"}'</c>), que usa el índice GIN
-/// <c>jsonb_path_ops</c> que crea <see cref="PgVectorStore"/>; las de un mismo <c>And</c> se combinan en un solo objeto.
-/// <see cref="VectorFilter.In"/> usa <c>@&gt; ANY(...)</c> (también indexable) y <see cref="VectorFilter.Exists"/> el
-/// operador <c>?</c> (indexable con un GIN <c>jsonb_ops</c>). Los metadatos se comparan como texto JSON: es lo que guarda
-/// <see cref="PgVectorStore.UpsertAsync"/>; un valor numérico o booleano escrito por otra herramienta no coincide con
+/// Equalities are written as jsonb containment (<c>metadata @&gt; '{"key":"value"}'</c>), which uses the
+/// <c>jsonb_path_ops</c> GIN index created by <see cref="PgVectorStore"/>; those in the same <c>And</c> are merged into one object.
+/// <see cref="VectorFilter.In"/> uses <c>@&gt; ANY(...)</c> (also indexable) and <see cref="VectorFilter.Exists"/> the
+/// <c>?</c> operator (indexable with a <c>jsonb_ops</c> GIN index). Metadata is compared as JSON text: that is what
+/// <see cref="PgVectorStore.UpsertAsync"/> stores; a numeric or boolean value written by another tool does not match
 /// <see cref="VectorFilter.Eq"/>.
 /// </remarks>
 public static class PgVectorFilterTranslator
 {
-    /// <summary>Devuelve la condición SQL y añade sus valores a <paramref name="parameters"/> (los índices continúan la numeración).</summary>
+    /// <summary>Returns the SQL condition and adds its values to <paramref name="parameters"/> (indexes continue the numbering).</summary>
     public static string Translate(VectorFilter filter, List<object> parameters)
     {
         ArgumentNullException.ThrowIfNull(filter);
@@ -439,7 +439,7 @@ public static class PgVectorFilterTranslator
         _ => throw new NotSupportedException($"Filtro no soportado: {filter.GetType().Name}"),
     };
 
-    /// <summary>Las igualdades del And (también las anidadas) van en un solo <c>@&gt;</c>: una búsqueda en el índice.</summary>
+    /// <summary>The And equalities (including nested ones) go into a single <c>@&gt;</c>: one index lookup.</summary>
     private static string And(AndFilter and, List<object> parameters)
     {
         var pairs = new List<KeyValuePair<string, string>>();

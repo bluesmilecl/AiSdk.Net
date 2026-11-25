@@ -7,7 +7,7 @@ using AiSdk.Internal;
 
 namespace AiSdk.OpenAI;
 
-/// <summary>Modelo de lenguaje sobre la API Chat Completions de OpenAI.</summary>
+/// <summary>Language model over the OpenAI Chat Completions API.</summary>
 public sealed class OpenAIChatLanguageModel : ILanguageModel
 {
     private readonly OpenAIProvider _provider;
@@ -374,8 +374,8 @@ public sealed class OpenAIChatLanguageModel : ILanguageModel
     }
 
     /// <summary>
-    /// Extrae texto y razonamiento de <c>content</c>, que puede ser un string o (en Mistral y otros)
-    /// un array de bloques <c>{type: "text"}</c> / <c>{type: "thinking"}</c>.
+    /// Extracts text and reasoning from <c>content</c>, which may be a string or (in Mistral and others)
+    /// an array of <c>{type: "text"}</c> / <c>{type: "thinking"}</c> blocks.
     /// </summary>
     private static (string? Text, string? Thinking) ContentText(JsonNode? content)
     {

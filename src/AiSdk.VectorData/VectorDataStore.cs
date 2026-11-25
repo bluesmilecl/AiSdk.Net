@@ -6,43 +6,43 @@ using VectorSearchResultMevd = Microsoft.Extensions.VectorData.VectorSearchResul
 
 namespace AiSdk.VectorData;
 
-/// <summary>Opciones de <see cref="VectorDataStore"/>.</summary>
+/// <summary>Options for <see cref="VectorDataStore"/>.</summary>
 public sealed class VectorDataStoreOptions
 {
-    /// <summary>Nombre de la colección (tabla, índice, colección de Qdrant...).</summary>
+    /// <summary>Collection name (table, index, Qdrant collection...).</summary>
     public required string CollectionName { get; init; }
 
-    /// <summary>Dimensiones de los embeddings.</summary>
+    /// <summary>Embedding dimensions.</summary>
     public required int Dimensions { get; init; }
 
     /// <summary>
-    /// Metadatos que se guardan como campos indexados para poder filtrar en la base de datos.
-    /// Solo estas claves pueden usarse en <see cref="VectorFilter"/>; el resto de metadatos se guarda igual
-    /// pero sin indexar.
+    /// Metadata stored as indexed fields so it can be filtered in the database.
+    /// Only these keys can be used in a <see cref="VectorFilter"/>; the rest of the metadata is still stored
+    /// but not indexed.
     /// </summary>
     public IReadOnlyList<string> FilterableFields { get; init; } = [];
 
-    /// <summary>Función de distancia (por defecto coseno).</summary>
+    /// <summary>Distance function (cosine by default).</summary>
     public string DistanceFunction { get; init; } = Microsoft.Extensions.VectorData.DistanceFunction.CosineSimilarity;
 
-    /// <summary>Tipo de índice (por defecto HNSW). Algunos conectores solo admiten ciertos tipos.</summary>
+    /// <summary>Index kind (HNSW by default). Some connectors only support certain kinds.</summary>
     public string? IndexKind { get; init; } = Microsoft.Extensions.VectorData.IndexKind.Hnsw;
 
-    /// <summary>Indexa el texto para búsqueda híbrida en los conectores que la soportan.</summary>
+    /// <summary>Indexes the text for hybrid search in the connectors that support it.</summary>
     public bool FullTextSearch { get; init; } = true;
 
-    /// <summary>Crea la colección si no existe en el primer uso.</summary>
+    /// <summary>Creates the collection on first use if it does not exist.</summary>
     public bool CreateIfNotExists { get; init; } = true;
 }
 
 /// <summary>
-/// <see cref="IVectorStore"/> sobre cualquier <see cref="VectorStore"/> de Microsoft.Extensions.VectorData.
-/// Con un solo adaptador, AiSdk funciona con todos los conectores de ese ecosistema.
+/// <see cref="IVectorStore"/> over any Microsoft.Extensions.VectorData <see cref="VectorStore"/>.
+/// With a single adapter, AiSdk works with every connector in that ecosystem.
 /// </summary>
 /// <example>
 /// <code>
 /// var qdrant = new QdrantVectorStore(new QdrantClient("localhost"), ownsClient: true);
-/// var store = new VectorDataStore(qdrant, embeddings, new() { CollectionName = "docs", Dimensions = 1536, FilterableFields = ["tipo"] });
+/// var store = new VectorDataStore(qdrant, embeddings, new() { CollectionName = "docs", Dimensions = 1536, FilterableFields = ["type"] });
 /// </code>
 /// </example>
 public sealed class VectorDataStore : IHybridVectorStore, IDisposable
@@ -80,10 +80,10 @@ public sealed class VectorDataStore : IHybridVectorStore, IDisposable
 
     public void Dispose() => _initLock.Dispose();
 
-    /// <summary>Colección subyacente de Microsoft.Extensions.VectorData (para operaciones avanzadas).</summary>
+    /// <summary>Underlying Microsoft.Extensions.VectorData collection (for advanced operations).</summary>
     public VectorStoreCollection<object, Dictionary<string, object?>> Collection => _collection;
 
-    /// <summary>Definición de la colección que usa este adaptador.</summary>
+    /// <summary>Collection definition used by this adapter.</summary>
     public static VectorStoreCollectionDefinition BuildDefinition(VectorDataStoreOptions options)
     {
         var properties = new List<VectorStoreProperty>
@@ -178,8 +178,8 @@ public sealed class VectorDataStore : IHybridVectorStore, IDisposable
     }
 
     /// <summary>
-    /// Búsqueda híbrida si el conector la implementa (<see cref="IKeywordHybridSearchable{TRecord}"/>);
-    /// si no, cae a la búsqueda semántica.
+    /// Hybrid search if the connector implements it (<see cref="IKeywordHybridSearchable{TRecord}"/>);
+    /// otherwise, falls back to semantic search.
     /// </summary>
     public async Task<IReadOnlyList<VectorSearchResult>> HybridSearchAsync(
         string query,
@@ -226,8 +226,8 @@ public sealed class VectorDataStore : IHybridVectorStore, IDisposable
     }
 
     /// <summary>
-    /// Traduce el filtro a una expresión LINQ sobre el registro dinámico, que cada conector convierte
-    /// a su lenguaje nativo. Solo admite campos declarados en <see cref="VectorDataStoreOptions.FilterableFields"/>.
+    /// Translates the filter into a LINQ expression over the dynamic record, which each connector converts
+    /// into its native query language. Only supports fields declared in <see cref="VectorDataStoreOptions.FilterableFields"/>.
     /// </summary>
     public Expression<Func<Dictionary<string, object?>, bool>> ToExpression(VectorFilter filter)
     {

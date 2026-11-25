@@ -8,129 +8,129 @@ using AiSdk.Internal;
 
 namespace AiSdk.Mcp;
 
-/// <summary>Opciones del cliente MCP.</summary>
+/// <summary>MCP client options.</summary>
 public sealed class McpClientOptions
 {
     public string ClientName { get; init; } = "AiSdk.NET";
 
     public string ClientVersion { get; init; } = "0.1.0";
 
-    /// <summary>Versión de protocolo solicitada al servidor.</summary>
+    /// <summary>Protocol version requested from the server.</summary>
     public string ProtocolVersion { get; init; } = McpClient.LatestProtocolVersion;
 
     /// <summary>
-    /// Tiempo máximo de cada petición, de principio a fin: envío, lectura del cuerpo de la respuesta
-    /// (también en Streamable HTTP) y espera de la respuesta.
+    /// Maximum time for each request, end to end: sending, reading the response body
+    /// (also with Streamable HTTP) and waiting for the response.
     /// </summary>
     public TimeSpan RequestTimeout { get; init; } = TimeSpan.FromSeconds(60);
 
-    /// <summary>Raíces que el servidor puede consultar con <c>roots/list</c> (declara la capacidad <c>roots</c>).</summary>
+    /// <summary>Roots the server can query with <c>roots/list</c> (declares the <c>roots</c> capability).</summary>
     [Experimental(McpDiagnostics.DeprecatedInSpec, UrlFormat = McpDiagnostics.UrlFormat)]
     public IReadOnlyList<McpRoot>? Roots { get; init; }
 
     /// <summary>
-    /// Modelo con el que se atienden las peticiones <c>sampling/createMessage</c> del servidor
-    /// (declara la capacidad <c>sampling</c>). Exige <see cref="ApproveSampling"/>: el servidor nunca puede
-    /// usar el modelo sin el consentimiento del usuario. Alternativa: <see cref="SamplingHandler"/>.
+    /// Model used to serve the server's <c>sampling/createMessage</c> requests
+    /// (declares the <c>sampling</c> capability). Requires <see cref="ApproveSampling"/>: the server can never
+    /// use the model without the user's consent. Alternative: <see cref="SamplingHandler"/>.
     /// </summary>
     [Experimental(McpDiagnostics.DeprecatedInSpec, UrlFormat = McpDiagnostics.UrlFormat)]
     public ILanguageModel? SamplingModel { get; init; }
 
     /// <summary>
-    /// Consentimiento para cada petición de sampling atendida con <see cref="SamplingModel"/> (human-in-the-loop,
-    /// como exige la especificación de MCP): muestre al usuario el prompt de sistema y los mensajes del servidor y
-    /// devuelva la petición que se ejecutará (puede editarla) o <c>null</c> para rechazarla.
+    /// Consent for each sampling request served with <see cref="SamplingModel"/> (human-in-the-loop,
+    /// as required by the MCP specification): show the user the system prompt and the server's messages and
+    /// return the request to execute (you may edit it) or <c>null</c> to reject it.
     /// </summary>
     [Experimental(McpDiagnostics.DeprecatedInSpec, UrlFormat = McpDiagnostics.UrlFormat)]
     public Func<McpSamplingRequest, CancellationToken, Task<McpSamplingRequest?>>? ApproveSampling { get; init; }
 
     /// <summary>
-    /// Revisión opcional de la respuesta generada antes de enviarla al servidor: devuelva la respuesta
-    /// (puede editarla) o <c>null</c> para no enviarla (el servidor recibe un rechazo).
+    /// Optional review of the generated response before it is sent to the server: return the response
+    /// (you may edit it) or <c>null</c> to withhold it (the server receives a rejection).
     /// </summary>
     [Experimental(McpDiagnostics.DeprecatedInSpec, UrlFormat = McpDiagnostics.UrlFormat)]
     public Func<McpSamplingRequest, McpSamplingResult, CancellationToken, Task<McpSamplingResult?>>? ReviewSamplingResult { get; init; }
 
     /// <summary>
-    /// Atiende <c>sampling/createMessage</c> con lógica propia. Quien lo implemente es responsable del consentimiento
-    /// del usuario; para rechazar, lance <see cref="McpRequestRejectedException"/>.
+    /// Serves <c>sampling/createMessage</c> with custom logic. The implementer is responsible for obtaining the user's
+    /// consent; to reject, throw <see cref="McpRequestRejectedException"/>.
     /// </summary>
     [Experimental(McpDiagnostics.DeprecatedInSpec, UrlFormat = McpDiagnostics.UrlFormat)]
     public Func<McpSamplingRequest, CancellationToken, Task<McpSamplingResult>>? SamplingHandler { get; init; }
 
     /// <summary>
-    /// Máximo de tokens que puede pedir el servidor en cada sampling: un <c>maxTokens</c> mayor (o ausente) se recorta
-    /// a este valor antes de pedir aprobación. Por defecto, 4096.
+    /// Maximum tokens the server may request in each sampling call: a larger (or missing) <c>maxTokens</c> is clamped
+    /// to this value before asking for approval. Defaults to 4096.
     /// </summary>
     [Experimental(McpDiagnostics.DeprecatedInSpec, UrlFormat = McpDiagnostics.UrlFormat)]
     public int MaxSamplingTokens { get; init; } = 4096;
 
     /// <summary>
-    /// Peticiones del servidor (sampling, elicitation, roots, ping) atendidas a la vez. Las que lleguen por encima
-    /// del límite se rechazan con un error en vez de acumularse. Por defecto, 4.
+    /// Server requests (sampling, elicitation, roots, ping) served concurrently. Requests arriving above
+    /// the limit are rejected with an error instead of being queued. Defaults to 4.
     /// </summary>
     public int MaxConcurrentServerRequests { get; init; } = 4;
 
-    /// <summary>Atiende <c>elicitation/create</c>: el servidor pide datos al usuario (declara la capacidad <c>elicitation</c>).</summary>
+    /// <summary>Serves <c>elicitation/create</c>: the server asks the user for data (declares the <c>elicitation</c> capability).</summary>
     public Func<McpElicitationRequest, CancellationToken, Task<McpElicitationResult>>? ElicitationHandler { get; init; }
 
     /// <summary>
-    /// Si es true, cada herramienta devuelta por <see cref="McpClient.GetToolsAsync"/> requiere aprobación humana
-    /// (<see cref="Tool.NeedsApproval"/>, que se resuelve con <c>OnToolApproval</c>).
+    /// If true, every tool returned by <see cref="McpClient.GetToolsAsync"/> requires human approval
+    /// (<see cref="Tool.NeedsApproval"/>, which is resolved with <c>OnToolApproval</c>).
     /// </summary>
     public bool RequireToolApproval { get; init; }
 
     /// <summary>
-    /// Prefijo para los nombres de las herramientas de este servidor en <see cref="McpClient.GetToolsAsync"/>
-    /// (p. ej. <c>"github_"</c>) cuando no se pasa uno explícito. Evita colisiones entre servidores.
+    /// Prefix for this server's tool names in <see cref="McpClient.GetToolsAsync"/>
+    /// (e.g. <c>"github_"</c>) when no explicit one is passed. Avoids collisions between servers.
     /// </summary>
     public string? ToolNamePrefix { get; init; }
 
-    /// <summary>Qué hacer si la definición de una herramienta cambia después de fijarla. Por defecto, <see cref="McpToolChangePolicy.Reject"/>.</summary>
+    /// <summary>What to do if a tool's definition changes after it was pinned. Defaults to <see cref="McpToolChangePolicy.Reject"/>.</summary>
     public McpToolChangePolicy ToolChangePolicy { get; init; } = McpToolChangePolicy.Reject;
 
     /// <summary>
-    /// Hashes de definiciones aprobadas en sesiones anteriores (nombre → hash, ver <see cref="McpClient.ToolHashes"/>).
-    /// Permiten detectar cambios entre conexiones, no solo dentro de una.
+    /// Hashes of definitions approved in previous sessions (name → hash, see <see cref="McpClient.ToolHashes"/>).
+    /// They allow detecting changes across connections, not just within one.
     /// </summary>
     public IReadOnlyDictionary<string, string>? PinnedToolHashes { get; init; }
 
-    /// <summary>Páginas máximas que se recorren en los listados paginados (<c>tools/list</c>, <c>resources/list</c>...). Por defecto, 100.</summary>
+    /// <summary>Maximum number of pages traversed in paginated listings (<c>tools/list</c>, <c>resources/list</c>...). Defaults to 100.</summary>
     public int MaxListPages { get; init; } = 100;
 }
 
-/// <summary>Información del servidor devuelta en <c>initialize</c>.</summary>
+/// <summary>Server information returned by <c>initialize</c>.</summary>
 public sealed record McpServerInfo(string Name, string? Version);
 
-/// <summary>Herramienta publicada por un servidor MCP.</summary>
+/// <summary>Tool published by an MCP server.</summary>
 public sealed record McpToolInfo(string Name, string? Description, JsonElement InputSchema)
 {
     public string? Title { get; init; }
 
-    /// <summary>SHA-256 (hex) de la definición canónica: nombre, título, descripción, esquema de entrada y anotaciones.</summary>
+    /// <summary>SHA-256 (hex) of the canonical definition: name, title, description, input schema and annotations.</summary>
     public string DefinitionHash { get; init; } = string.Empty;
 
-    /// <summary>True si la definición difiere de la fijada y <see cref="McpClientOptions.ToolChangePolicy"/> es <see cref="McpToolChangePolicy.Reject"/>.</summary>
+    /// <summary>True if the definition differs from the pinned one and <see cref="McpClientOptions.ToolChangePolicy"/> is <see cref="McpToolChangePolicy.Reject"/>.</summary>
     public bool DefinitionChanged { get; init; }
 }
 
-/// <summary>Resultado de <c>tools/call</c>.</summary>
+/// <summary>Result of <c>tools/call</c>.</summary>
 public sealed record McpCallToolResult(JsonArray Content, bool IsError, JsonNode? StructuredContent)
 {
-    /// <summary>Texto concatenado de los bloques <c>text</c>.</summary>
+    /// <summary>Concatenated text of the <c>text</c> blocks.</summary>
     public string Text => string.Join("\n", Content.OfType<JsonObject>().Where(c => (string?)c["type"] == "text").Select(c => (string?)c["text"]));
 }
 
-/// <summary>Error JSON-RPC devuelto por el servidor MCP.</summary>
+/// <summary>JSON-RPC error returned by the MCP server.</summary>
 public class McpException(string message, int code = 0) : AiSdkException(message)
 {
     public int Code { get; } = code;
 }
 
 /// <summary>
-/// Cliente MCP (equivalente a <c>experimental_createMCPClient</c> del AI SDK).
-/// Se conecta a un servidor, lista sus herramientas y las expone como <see cref="Tool"/>
-/// para usarlas en <see cref="Ai.GenerateTextAsync(GenerateTextOptions)"/> o en agentes.
+/// MCP client (equivalent to the AI SDK's <c>experimental_createMCPClient</c>).
+/// Connects to a server, lists its tools and exposes them as <see cref="Tool"/>
+/// for use in <see cref="Ai.GenerateTextAsync(GenerateTextOptions)"/> or in agents.
 /// </summary>
 /// <example>
 /// <code>
@@ -172,30 +172,30 @@ public sealed class McpClient : IAsyncDisposable
 
     public JsonObject ServerCapabilities { get; private set; } = [];
 
-    /// <summary>Instrucciones opcionales del servidor (pueden añadirse al prompt de sistema).</summary>
+    /// <summary>Optional server instructions (they can be appended to the system prompt).</summary>
     public string? Instructions { get; private set; }
 
     public string ProtocolVersion { get; private set; } = LatestProtocolVersion;
 
     /// <summary>
-    /// Hashes fijados de las definiciones de herramientas (nombre → SHA-256). Guárdelos y páselos en
-    /// <see cref="McpClientOptions.PinnedToolHashes"/> para detectar cambios entre sesiones.
+    /// Pinned hashes of the tool definitions (name → SHA-256). Store them and pass them in
+    /// <see cref="McpClientOptions.PinnedToolHashes"/> to detect changes across sessions.
     /// </summary>
     public IReadOnlyDictionary<string, string> ToolHashes => new Dictionary<string, string>(_toolHashes, StringComparer.Ordinal);
 
-    /// <summary>Se invoca con cada notificación del servidor (método y parámetros).</summary>
+    /// <summary>Invoked with each server notification (method and parameters).</summary>
     public event Action<string, JsonNode?>? NotificationReceived;
 
-    /// <summary>Se invoca cuando una herramienta ya fijada aparece con otra definición (posible "rug pull").</summary>
+    /// <summary>Invoked when an already pinned tool shows up with a different definition (possible "rug pull").</summary>
     public event Action<McpToolDefinitionChange>? ToolDefinitionChanged;
 
     /// <summary>
-    /// Se invoca cuando falla la atención de una petición del servidor (método y excepción). Al servidor solo se le
-    /// envía un mensaje genérico: aquí está el detalle para el registro del host.
+    /// Invoked when serving a server request fails (method and exception). The server only receives a
+    /// generic message: the details are provided here for the host's log.
     /// </summary>
     public event Action<string, Exception>? ServerRequestFailed;
 
-    /// <summary>Conecta e inicializa la sesión MCP.</summary>
+    /// <summary>Connects and initializes the MCP session.</summary>
     public static async Task<McpClient> ConnectAsync(IMcpTransport transport, McpClientOptions? options = null, CancellationToken cancellationToken = default)
     {
         options ??= new McpClientOptions();
@@ -270,8 +270,8 @@ public sealed class McpClient : IAsyncDisposable
     }
 
     /// <summary>
-    /// Lista todas las herramientas del servidor (recorre la paginación). Cada definición se fija por su hash la
-    /// primera vez que aparece; si cambia en un listado posterior se aplica <see cref="McpClientOptions.ToolChangePolicy"/>.
+    /// Lists all the server's tools (traversing pagination). Each definition is pinned by its hash the
+    /// first time it appears; if it changes in a later listing, <see cref="McpClientOptions.ToolChangePolicy"/> is applied.
     /// </summary>
     public async Task<IReadOnlyList<McpToolInfo>> ListToolsAsync(CancellationToken cancellationToken = default)
     {
@@ -290,7 +290,7 @@ public sealed class McpClient : IAsyncDisposable
         return tools;
     }
 
-    /// <summary>Fija la definición o la compara con la fijada. Devuelve true si la herramienta queda bloqueada.</summary>
+    /// <summary>Pins the definition or compares it with the pinned one. Returns true if the tool is blocked.</summary>
     private bool Pin(McpToolInfo info)
     {
         var pinned = _toolHashes.GetOrAdd(info.Name, info.DefinitionHash);
@@ -313,7 +313,7 @@ public sealed class McpClient : IAsyncDisposable
         return _options.ToolChangePolicy == McpToolChangePolicy.Reject;
     }
 
-    /// <summary>SHA-256 de la forma canónica (claves ordenadas) de lo que ve el modelo y las anotaciones.</summary>
+    /// <summary>SHA-256 of the canonical form (sorted keys) of what the model sees plus the annotations.</summary>
     private static string HashDefinition(JsonObject tool)
     {
         var definition = new JsonObject();
@@ -336,7 +336,7 @@ public sealed class McpClient : IAsyncDisposable
     };
 
     /// <summary>
-    /// Invoca una herramienta del servidor. Se rechaza si su definición cambió después de fijarla y la política es
+    /// Invokes a server tool. The call is rejected if its definition changed after it was pinned and the policy is
     /// <see cref="McpToolChangePolicy.Reject"/>.
     /// </summary>
     public async Task<McpCallToolResult> CallToolAsync(string name, JsonElement arguments, CancellationToken cancellationToken = default)
@@ -359,13 +359,13 @@ public sealed class McpClient : IAsyncDisposable
     }
 
     /// <summary>
-    /// Devuelve las herramientas del servidor como <see cref="Tool"/> de AiSdk. Omite las bloqueadas por un cambio de
-    /// definición y, con <see cref="McpClientOptions.RequireToolApproval"/>, todas requieren aprobación humana.
+    /// Returns the server's tools as AiSdk <see cref="Tool"/> instances. Omits tools blocked by a definition
+    /// change and, with <see cref="McpClientOptions.RequireToolApproval"/>, all of them require human approval.
     /// </summary>
-    /// <param name="include">Si se indica, solo se incluyen estas herramientas.</param>
-    /// <param name="prefix">Prefijo para evitar colisiones de nombre entre servidores (p. ej. <c>"github_"</c>); por defecto, <see cref="McpClientOptions.ToolNamePrefix"/>.</param>
-    /// <param name="existingTools">Herramientas con las que se combinarán (locales u otros servidores): si un nombre coincide se lanza <see cref="McpException"/>.</param>
-    /// <param name="cancellationToken">Token de cancelación.</param>
+    /// <param name="include">If specified, only these tools are included.</param>
+    /// <param name="prefix">Prefix to avoid name collisions between servers (e.g. <c>"github_"</c>); defaults to <see cref="McpClientOptions.ToolNamePrefix"/>.</param>
+    /// <param name="existingTools">Tools they will be combined with (local or from other servers): if a name matches, <see cref="McpException"/> is thrown.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     public async Task<IReadOnlyList<Tool>> GetToolsAsync(IEnumerable<string>? include = null, string? prefix = null, IEnumerable<Tool>? existingTools = null, CancellationToken cancellationToken = default)
     {
         var filter = include?.ToHashSet(StringComparer.Ordinal);
@@ -426,7 +426,7 @@ public sealed class McpClient : IAsyncDisposable
     // Recursos
     // ------------------------------------------------------------------
 
-    /// <summary>Lista los recursos del servidor (recorre la paginación).</summary>
+    /// <summary>Lists the server's resources (traversing pagination).</summary>
     public async Task<IReadOnlyList<McpResource>> ListResourcesAsync(CancellationToken cancellationToken = default) =>
         (await ListAllAsync("resources/list", "resources", cancellationToken).ConfigureAwait(false))
             .Select(r => new McpResource((string?)r["uri"] ?? string.Empty, (string?)r["name"] ?? string.Empty)
@@ -437,7 +437,7 @@ public sealed class McpClient : IAsyncDisposable
             })
             .ToList();
 
-    /// <summary>Lista las plantillas de recursos del servidor.</summary>
+    /// <summary>Lists the server's resource templates.</summary>
     public async Task<IReadOnlyList<McpResourceTemplate>> ListResourceTemplatesAsync(CancellationToken cancellationToken = default) =>
         (await ListAllAsync("resources/templates/list", "resourceTemplates", cancellationToken).ConfigureAwait(false))
             .Select(r => new McpResourceTemplate((string?)r["uriTemplate"] ?? string.Empty, (string?)r["name"] ?? string.Empty)
@@ -447,7 +447,7 @@ public sealed class McpClient : IAsyncDisposable
             })
             .ToList();
 
-    /// <summary>Lee un recurso por su URI.</summary>
+    /// <summary>Reads a resource by its URI.</summary>
     public async Task<IReadOnlyList<McpResourceContent>> ReadResourceAsync(string uri, CancellationToken cancellationToken = default)
     {
         var result = await SendRequestAsync("resources/read", new JsonObject { ["uri"] = uri }, cancellationToken).ConfigureAwait(false);
@@ -462,7 +462,7 @@ public sealed class McpClient : IAsyncDisposable
     }
 
     /// <summary>
-    /// Lee un recurso y lo devuelve como partes de contenido (texto o archivo) para añadirlo a un mensaje.
+    /// Reads a resource and returns it as content parts (text or file) to add to a message.
     /// </summary>
     public async Task<IReadOnlyList<ContentPart>> ReadResourceAsPartsAsync(string uri, CancellationToken cancellationToken = default) =>
         (await ReadResourceAsync(uri, cancellationToken).ConfigureAwait(false))
@@ -477,7 +477,7 @@ public sealed class McpClient : IAsyncDisposable
     // Prompts
     // ------------------------------------------------------------------
 
-    /// <summary>Lista los prompts del servidor.</summary>
+    /// <summary>Lists the server's prompts.</summary>
     public async Task<IReadOnlyList<McpPrompt>> ListPromptsAsync(CancellationToken cancellationToken = default) =>
         (await ListAllAsync("prompts/list", "prompts", cancellationToken).ConfigureAwait(false))
             .Select(p => new McpPrompt(
@@ -492,7 +492,7 @@ public sealed class McpClient : IAsyncDisposable
             })
             .ToList();
 
-    /// <summary>Obtiene un prompt con sus argumentos y lo convierte en mensajes del modelo.</summary>
+    /// <summary>Gets a prompt with its arguments and converts it into model messages.</summary>
     public async Task<McpPromptResult> GetPromptAsync(string name, IReadOnlyDictionary<string, string>? arguments = null, CancellationToken cancellationToken = default)
     {
         var args = new JsonObject();
@@ -507,7 +507,7 @@ public sealed class McpClient : IAsyncDisposable
             (result?["messages"] as JsonArray ?? []).OfType<JsonObject>().Select(McpConvert.ToModelMessage).ToList());
     }
 
-    /// <summary>Cambia las raíces expuestas y avisa al servidor (<c>notifications/roots/list_changed</c>).</summary>
+    /// <summary>Changes the exposed roots and notifies the server (<c>notifications/roots/list_changed</c>).</summary>
     [Experimental(McpDiagnostics.DeprecatedInSpec, UrlFormat = McpDiagnostics.UrlFormat)]
     public Task SetRootsAsync(IReadOnlyList<McpRoot> roots, CancellationToken cancellationToken = default)
     {
@@ -516,8 +516,8 @@ public sealed class McpClient : IAsyncDisposable
     }
 
     /// <summary>
-    /// Recorre un listado paginado. Falla si el servidor repite un cursor (bucle) o si se supera
-    /// <see cref="McpClientOptions.MaxListPages"/>.
+    /// Traverses a paginated listing. Fails if the server repeats a cursor (loop) or if
+    /// <see cref="McpClientOptions.MaxListPages"/> is exceeded.
     /// </summary>
     private async Task<List<JsonObject>> ListAllAsync(string method, string property, CancellationToken cancellationToken)
     {
@@ -548,8 +548,8 @@ public sealed class McpClient : IAsyncDisposable
     }
 
     /// <summary>
-    /// Envía una petición JSON-RPC arbitraria y devuelve su <c>result</c>. <see cref="McpClientOptions.RequestTimeout"/>
-    /// cubre el envío, la lectura del cuerpo y la espera de la respuesta.
+    /// Sends an arbitrary JSON-RPC request and returns its <c>result</c>. <see cref="McpClientOptions.RequestTimeout"/>
+    /// covers sending, reading the body and waiting for the response.
     /// </summary>
     public async Task<JsonNode?> SendRequestAsync(string method, JsonObject? parameters, CancellationToken cancellationToken = default)
     {
@@ -815,7 +815,7 @@ public sealed class McpClient : IAsyncDisposable
         return node;
     }
 
-    /// <summary>Cierra la conexión. Nunca lanza excepciones (también cierra la sesión HTTP aunque un stream haya fallado).</summary>
+    /// <summary>Closes the connection. Never throws (it also closes the HTTP session even if a stream failed).</summary>
     public async ValueTask DisposeAsync()
     {
         if (Interlocked.Exchange(ref _disposed, 1) == 1)

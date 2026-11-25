@@ -6,20 +6,20 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace AiSdk.AspNetCore;
 
-/// <summary>Opciones de <see cref="SkillEndpoints.MapSkills"/> (autorización exigida por defecto).</summary>
+/// <summary>Options for <see cref="SkillEndpoints.MapSkills"/> (authorization required by default).</summary>
 public sealed class SkillEndpointOptions : EndpointSecurityOptions;
 
-/// <summary>Endpoints de solo lectura para explorar las skills (p. ej. un menú de comandos <c>/skill</c> en la UI).</summary>
+/// <summary>Read-only endpoints for browsing skills (e.g. a <c>/skill</c> command menu in the UI).</summary>
 public static class SkillEndpoints
 {
     /// <summary>
     /// <list type="bullet">
-    /// <item><c>GET {prefix}</c>: nombre, descripción y si el usuario/modelo puede invocarla</item>
-    /// <item><c>GET {prefix}/{name}</c>: SKILL.md completo y lista de archivos</item>
-    /// <item><c>GET {prefix}/{name}/files/{**path}</c>: un archivo de la skill (como descarga)</item>
+    /// <item><c>GET {prefix}</c>: name, description and whether the user/model can invoke it</item>
+    /// <item><c>GET {prefix}/{name}</c>: full SKILL.md and list of files</item>
+    /// <item><c>GET {prefix}/{name}/files/{**path}</c>: a skill file (as a download)</item>
     /// </list>
-    /// Exigen autorización por defecto: las skills pueden incluir instrucciones, scripts y datos internos.
-    /// Para publicarlas sin autenticación use <see cref="EndpointSecurityOptions.AllowAnonymous"/>.
+    /// They require authorization by default: skills may include internal instructions, scripts and data.
+    /// To expose them without authentication, use <see cref="EndpointSecurityOptions.AllowAnonymous"/>.
     /// </summary>
     public static RouteGroupBuilder MapSkills(this IEndpointRouteBuilder endpoints, string prefix = "/skills", SkillLibrary? library = null, SkillEndpointOptions? options = null)
     {

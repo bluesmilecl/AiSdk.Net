@@ -3,21 +3,21 @@ using System.Text.Json.Nodes;
 namespace AiSdk.Anthropic;
 
 /// <summary>
-/// Herramientas de servidor de Anthropic: las ejecuta la API de Claude y sus resultados
-/// llegan en la misma respuesta (equivalente a <c>anthropic.tools.*</c> del AI SDK).
+/// Anthropic server tools: executed by the Claude API, with their results
+/// arriving in the same response (equivalent to the AI SDK's <c>anthropic.tools.*</c>).
 /// </summary>
 public static class AnthropicTools
 {
     /// <summary>
-    /// Búsqueda web (<c>web_search_20260209</c>, con filtrado dinámico). Los resultados
-    /// aparecen como <see cref="SourcePart"/> en <c>result.Sources</c>.
-    /// No combinar con <see cref="CodeExecution"/>: el filtrado dinámico ya ejecuta código internamente.
+    /// Web search (<c>web_search_20260209</c>, with dynamic filtering). The results
+    /// appear as <see cref="SourcePart"/> in <c>result.Sources</c>.
+    /// Do not combine with <see cref="CodeExecution"/>: dynamic filtering already executes code internally.
     /// </summary>
-    /// <param name="maxUses">Máximo de búsquedas por petición.</param>
-    /// <param name="allowedDomains">Solo buscar en estos dominios (no combinar con <paramref name="blockedDomains"/>).</param>
-    /// <param name="blockedDomains">Excluir estos dominios.</param>
-    /// <param name="userLocation">Ubicación aproximada para resultados locales, p. ej. <c>("Santiago", "CL")</c>.</param>
-    /// <param name="version">Tipo de la herramienta. Usa <c>"web_search_20250305"</c> en modelos anteriores a Claude 4.6 o en Vertex AI.</param>
+    /// <param name="maxUses">Maximum number of searches per request.</param>
+    /// <param name="allowedDomains">Only search these domains (do not combine with <paramref name="blockedDomains"/>).</param>
+    /// <param name="blockedDomains">Exclude these domains.</param>
+    /// <param name="userLocation">Approximate location for local results, e.g. <c>("Santiago", "CL")</c>.</param>
+    /// <param name="version">Tool type. Use <c>"web_search_20250305"</c> for models earlier than Claude 4.6 or on Vertex AI.</param>
     public static Tool WebSearch(
         int? maxUses = null,
         IEnumerable<string>? allowedDomains = null,
@@ -35,13 +35,13 @@ public static class AnthropicTools
         return Tool.ProviderDefined("anthropic", "web_search", definition);
     }
 
-    /// <summary>Lectura de páginas web cuyas URL ya aparecen en la conversación (<c>web_fetch_20260209</c>).</summary>
-    /// <param name="maxUses">Máximo de lecturas por petición.</param>
-    /// <param name="allowedDomains">Solo leer estos dominios.</param>
-    /// <param name="blockedDomains">No leer estos dominios.</param>
-    /// <param name="citations">Habilita citas sobre el contenido leído.</param>
-    /// <param name="maxContentTokens">Límite de tokens del contenido leído.</param>
-    /// <param name="version">Tipo de la herramienta (<c>"web_fetch_20250910"</c> para modelos anteriores).</param>
+    /// <summary>Fetches web pages whose URLs already appear in the conversation (<c>web_fetch_20260209</c>).</summary>
+    /// <param name="maxUses">Maximum number of fetches per request.</param>
+    /// <param name="allowedDomains">Only fetch these domains.</param>
+    /// <param name="blockedDomains">Do not fetch these domains.</param>
+    /// <param name="citations">Enables citations on the fetched content.</param>
+    /// <param name="maxContentTokens">Token limit for the fetched content.</param>
+    /// <param name="version">Tool type (<c>"web_fetch_20250910"</c> for earlier models).</param>
     public static Tool WebFetch(
         int? maxUses = null,
         IEnumerable<string>? allowedDomains = null,
@@ -65,11 +65,11 @@ public static class AnthropicTools
         return Tool.ProviderDefined("anthropic", "web_fetch", definition);
     }
 
-    /// <summary>Ejecución de código en un contenedor de Anthropic (<c>code_execution_20260521</c>).</summary>
+    /// <summary>Code execution in an Anthropic container (<c>code_execution_20260521</c>).</summary>
     public static Tool CodeExecution(string version = "code_execution_20260521") =>
         Tool.ProviderDefined("anthropic", "code_execution", new JsonObject { ["type"] = version, ["name"] = "code_execution" });
 
-    /// <summary>Cualquier otra herramienta de servidor por su tipo (para versiones nuevas o betas).</summary>
+    /// <summary>Any other server tool by its type (for new or beta versions).</summary>
     public static Tool ServerTool(string type, string name, JsonObject? extra = null)
     {
         var definition = new JsonObject { ["type"] = type, ["name"] = name };

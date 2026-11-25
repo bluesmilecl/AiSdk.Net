@@ -2,10 +2,10 @@ using AiSdk.OpenAI;
 
 namespace AiSdk.Mistral;
 
-/// <summary>Opciones del proveedor Mistral.</summary>
+/// <summary>Mistral provider options.</summary>
 public sealed class MistralProviderOptions
 {
-    /// <summary>API key. Si es null se usa <c>MISTRAL_API_KEY</c>.</summary>
+    /// <summary>API key. If null, <c>MISTRAL_API_KEY</c> is used.</summary>
     public string? ApiKey { get; set; }
 
     public string BaseUrl { get; set; } = "https://api.mistral.ai/v1";
@@ -18,9 +18,9 @@ public sealed class MistralProviderOptions
 }
 
 /// <summary>
-/// Proveedor Mistral AI. La API de Mistral sigue el formato de Chat Completions con algunas
-/// diferencias (<c>max_tokens</c>, <c>random_seed</c>, <c>tool_choice: "any"</c>, razonamiento en
-/// bloques <c>thinking</c>), que este proveedor configura sobre el cliente de OpenAI.
+/// Mistral AI provider. The Mistral API follows the Chat Completions format with a few
+/// differences (<c>max_tokens</c>, <c>random_seed</c>, <c>tool_choice: "any"</c>, reasoning in
+/// <c>thinking</c> blocks), which this provider configures on top of the OpenAI client.
 /// </summary>
 public sealed class MistralProvider : IProvider
 {
@@ -52,24 +52,24 @@ public sealed class MistralProvider : IProvider
     {
     }
 
-    /// <summary>Instancia por defecto (API key desde <c>MISTRAL_API_KEY</c>).</summary>
+    /// <summary>Default instance (API key from <c>MISTRAL_API_KEY</c>).</summary>
     public static MistralProvider Default { get; } = new();
 
     public string Name => _inner.Name;
 
-    /// <summary>Modelo de chat, p. ej. <c>"mistral-large-latest"</c>, <c>"magistral-medium-latest"</c>.</summary>
+    /// <summary>Chat model, e.g. <c>"mistral-large-latest"</c>, <c>"magistral-medium-latest"</c>.</summary>
     public ILanguageModel Chat(string modelId) => _inner.Chat(modelId);
 
     public ILanguageModel LanguageModel(string modelId) => Chat(modelId);
 
     public ILanguageModel this[string modelId] => Chat(modelId);
 
-    /// <summary>Modelo de embeddings, p. ej. <c>"mistral-embed"</c>.</summary>
+    /// <summary>Embedding model, e.g. <c>"mistral-embed"</c>.</summary>
     public IEmbeddingModel Embedding(string modelId = "mistral-embed") => _inner.Embedding(modelId);
 
     public IEmbeddingModel EmbeddingModel(string modelId) => Embedding(modelId);
 
-    /// <summary>Motor OCR de Mistral (<c>mistral-ocr-latest</c>): imágenes y PDF completos a Markdown.</summary>
+    /// <summary>Mistral OCR engine (<c>mistral-ocr-latest</c>): images and full PDFs to Markdown.</summary>
     public IOcrEngine Ocr(string modelId = "mistral-ocr-latest") => new MistralOcr(_options, modelId);
 
     private static MistralProviderOptions Configure(Action<MistralProviderOptions> configure)

@@ -7,7 +7,7 @@ using AiSdk.Internal;
 
 namespace AiSdk.Bedrock;
 
-/// <summary>Modelo sobre la API Converse de Bedrock (<c>/converse</c> y <c>/converse-stream</c>).</summary>
+/// <summary>Model over the Bedrock Converse API (<c>/converse</c> and <c>/converse-stream</c>).</summary>
 public sealed class BedrockConverseLanguageModel : ILanguageModel
 {
     public const string SignatureKey = "bedrock.signature";
@@ -363,7 +363,7 @@ public sealed class BedrockConverseLanguageModel : ILanguageModel
         _ => mediaType.Split('/').Last(),
     };
 
-    /// <summary>Bedrock solo admite letras, números, espacios, guiones, paréntesis y corchetes en el nombre.</summary>
+    /// <summary>Bedrock only allows letters, numbers, spaces, hyphens, parentheses and square brackets in the name.</summary>
     private static string DocumentName(string? filename)
     {
         var name = Path.GetFileNameWithoutExtension(filename ?? "documento");
@@ -445,7 +445,7 @@ public sealed class BedrockConverseLanguageModel : ILanguageModel
     };
 }
 
-/// <summary>Embeddings en Bedrock (<c>/invoke</c>): Amazon Titan Text Embeddings y Cohere Embed.</summary>
+/// <summary>Embeddings on Bedrock (<c>/invoke</c>): Amazon Titan Text Embeddings and Cohere Embed.</summary>
 public sealed class BedrockEmbeddingModel : IEmbeddingModel
 {
     private readonly BedrockProvider _provider;
@@ -464,7 +464,7 @@ public sealed class BedrockEmbeddingModel : IEmbeddingModel
 
     private bool IsCohere => ModelId.Contains("cohere.embed", StringComparison.Ordinal);
 
-    /// <summary>Titan: un texto por llamada; Cohere: hasta 96.</summary>
+    /// <summary>Titan: one text per call; Cohere: up to 96.</summary>
     public int? MaxEmbeddingsPerCall => IsCohere ? 96 : 1;
 
     public async Task<EmbeddingModelResult> EmbedAsync(IReadOnlyList<string> values, CancellationToken cancellationToken = default)

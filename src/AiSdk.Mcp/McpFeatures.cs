@@ -4,11 +4,11 @@ using System.Text.Json.Nodes;
 
 namespace AiSdk.Mcp;
 
-/// <summary>Raíz (directorio o URI) que el cliente expone al servidor.</summary>
+/// <summary>Root (directory or URI) that the client exposes to the server.</summary>
 [Experimental(McpDiagnostics.DeprecatedInSpec, UrlFormat = McpDiagnostics.UrlFormat)]
 public sealed record McpRoot(string Uri, string? Name = null);
 
-/// <summary>Recurso publicado por un servidor MCP.</summary>
+/// <summary>Resource published by an MCP server.</summary>
 public sealed record McpResource(string Uri, string Name)
 {
     public string? Title { get; init; }
@@ -18,7 +18,7 @@ public sealed record McpResource(string Uri, string Name)
     public string? MimeType { get; init; }
 }
 
-/// <summary>Plantilla de recurso (URI con parámetros, p. ej. <c>file:///{path}</c>).</summary>
+/// <summary>Resource template (URI with parameters, e.g. <c>file:///{path}</c>).</summary>
 public sealed record McpResourceTemplate(string UriTemplate, string Name)
 {
     public string? Description { get; init; }
@@ -26,21 +26,21 @@ public sealed record McpResourceTemplate(string UriTemplate, string Name)
     public string? MimeType { get; init; }
 }
 
-/// <summary>Contenido de un recurso leído (texto o binario).</summary>
+/// <summary>Contents of a read resource (text or binary).</summary>
 public sealed record McpResourceContent(string Uri, string? MimeType, string? Text, byte[]? Blob);
 
 public sealed record McpPromptArgument(string Name, string? Description, bool Required);
 
-/// <summary>Prompt publicado por un servidor MCP.</summary>
+/// <summary>Prompt published by an MCP server.</summary>
 public sealed record McpPrompt(string Name, string? Description, IReadOnlyList<McpPromptArgument> Arguments)
 {
     public string? Title { get; init; }
 }
 
-/// <summary>Prompt resuelto, listo para usar como mensajes del modelo.</summary>
+/// <summary>Resolved prompt, ready to use as model messages.</summary>
 public sealed record McpPromptResult(string? Description, IReadOnlyList<ModelMessage> Messages);
 
-/// <summary>Petición de <c>sampling/createMessage</c>: el servidor pide al cliente que genere con un modelo.</summary>
+/// <summary><c>sampling/createMessage</c> request: the server asks the client to generate with a model.</summary>
 [Experimental(McpDiagnostics.DeprecatedInSpec, UrlFormat = McpDiagnostics.UrlFormat)]
 public sealed record McpSamplingRequest(
     IReadOnlyList<ModelMessage> Messages,
@@ -54,35 +54,35 @@ public sealed record McpSamplingRequest(
 public sealed record McpSamplingResult(string Text, string Model, string StopReason = "endTurn");
 
 /// <summary>
-/// Lánzala desde <see cref="McpClientOptions.SamplingHandler"/> o <see cref="McpClientOptions.ElicitationHandler"/>
-/// para rechazar una petición del servidor: el cliente responde con el código <c>-1</c> ("rechazada por el usuario").
+/// Throw it from <see cref="McpClientOptions.SamplingHandler"/> or <see cref="McpClientOptions.ElicitationHandler"/>
+/// to reject a server request: the client responds with code <c>-1</c> ("rejected by the user").
 /// </summary>
 public sealed class McpRequestRejectedException(string message = "El usuario rechazó la petición.") : McpException(message, -1);
 
-/// <summary>Qué hacer cuando la definición de una herramienta MCP cambia respecto de la fijada (posible "rug pull").</summary>
+/// <summary>What to do when an MCP tool's definition changes from the pinned one (possible "rug pull").</summary>
 public enum McpToolChangePolicy
 {
     /// <summary>
-    /// La herramienta queda bloqueada en este cliente: <see cref="McpClient.GetToolsAsync"/> la omite y
-    /// <see cref="McpClient.CallToolAsync"/> rechaza las llamadas. Es el valor por defecto.
+    /// The tool is blocked in this client: <see cref="McpClient.GetToolsAsync"/> omits it and
+    /// <see cref="McpClient.CallToolAsync"/> rejects calls to it. This is the default.
     /// </summary>
     Reject,
 
-    /// <summary>Se acepta la nueva definición y se fija en su lugar (solo se notifica con <see cref="McpClient.ToolDefinitionChanged"/>).</summary>
+    /// <summary>The new definition is accepted and pinned in its place (only notified via <see cref="McpClient.ToolDefinitionChanged"/>).</summary>
     Accept,
 }
 
-/// <summary>Cambio detectado en la definición de una herramienta MCP ya fijada.</summary>
-/// <param name="Name">Nombre de la herramienta en el servidor.</param>
-/// <param name="PinnedHash">Hash fijado la primera vez que se listó (o el de <see cref="McpClientOptions.PinnedToolHashes"/>).</param>
-/// <param name="NewHash">Hash de la definición recién listada.</param>
-/// <param name="Tool">Definición nueva.</param>
+/// <summary>Change detected in the definition of an already pinned MCP tool.</summary>
+/// <param name="Name">Name of the tool on the server.</param>
+/// <param name="PinnedHash">Hash pinned the first time it was listed (or the one from <see cref="McpClientOptions.PinnedToolHashes"/>).</param>
+/// <param name="NewHash">Hash of the newly listed definition.</param>
+/// <param name="Tool">New definition.</param>
 public sealed record McpToolDefinitionChange(string Name, string PinnedHash, string NewHash, McpToolInfo Tool);
 
-/// <summary>Petición de <c>elicitation/create</c>: el servidor pide datos al usuario.</summary>
+/// <summary><c>elicitation/create</c> request: the server asks the user for data.</summary>
 public sealed record McpElicitationRequest(string Message, JsonElement RequestedSchema);
 
-/// <summary>Respuesta a una elicitación: <c>accept</c> (con datos), <c>decline</c> o <c>cancel</c>.</summary>
+/// <summary>Response to an elicitation: <c>accept</c> (with data), <c>decline</c> or <c>cancel</c>.</summary>
 public sealed record McpElicitationResult(string Action, JsonObject? Content = null)
 {
     public static McpElicitationResult Accept(JsonObject content) => new("accept", content);
@@ -123,13 +123,13 @@ internal static class McpConvert
     }
 }
 
-/// <summary>Identificadores de diagnóstico del cliente MCP.</summary>
+/// <summary>Diagnostic identifiers of the MCP client.</summary>
 public static class McpDiagnostics
 {
     /// <summary>
-    /// Funciones que la especificación MCP 2026-07-28 deja obsoletas (roots, sampling y logging; se mantienen al menos
-    /// 12 meses): el SDK las conserva para servidores 2025-11-25, pero pueden cambiar o desaparecer antes de la 1.0.
-    /// Para usarlas, suprima el diagnóstico (<c>&lt;NoWarn&gt;$(NoWarn);AISDKMCP001&lt;/NoWarn&gt;</c>).
+    /// Features that the MCP 2026-07-28 specification deprecates (roots, sampling and logging; they are kept for at least
+    /// 12 months): the SDK keeps them for 2025-11-25 servers, but they may change or be removed before 1.0.
+    /// To use them, suppress the diagnostic (<c>&lt;NoWarn&gt;$(NoWarn);AISDKMCP001&lt;/NoWarn&gt;</c>).
     /// </summary>
     public const string DeprecatedInSpec = "AISDKMCP001";
 
