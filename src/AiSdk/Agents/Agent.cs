@@ -49,6 +49,9 @@ public sealed class AgentCallOptions
 
     public CancellationToken CancellationToken { get; init; }
 
+    /// <summary>Conversation id reported as <c>gen_ai.conversation.id</c> (set by <see cref="AgentSession"/>).</summary>
+    internal string? ConversationId { get; init; }
+
     public static implicit operator AgentCallOptions(string prompt) => new() { Prompt = prompt };
 }
 
@@ -215,6 +218,9 @@ public abstract class Agent : IAgent, IOrchestrationNode
             Services = call.Services ?? s.Services,
             Context = call.Context ?? s.Context,
             CancellationToken = call.CancellationToken,
+            // "agent" es el nombre por defecto de ToolLoopAgent: no identifica al agente, así que no se informa.
+            TelemetryAgent = new(this is ToolLoopAgent { AgentSettings.Name: null } && Name == "agent" ? null : Name, Description),
+            ConversationId = call.ConversationId,
         };
     }
 

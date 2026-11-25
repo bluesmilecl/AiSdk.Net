@@ -22,7 +22,7 @@
 - [ ] Naming decision for packages and namespaces (`AiSdk.*` namespaces with `AiSdk.Net.*` packages, or `AiSdk.Net.*` everywhere)
 - [ ] XML documentation in English
 - [ ] Public API analyzers (`PublicAPI.Shipped.txt`) so the API cannot change by accident
-- [ ] OpenTelemetry `gen_ai` semantic conventions
+- [x] OpenTelemetry `gen_ai` semantic conventions
 - [x] Reverse interop with Microsoft.Extensions.AI (expose AiSdk models as `IChatClient` and `IEmbeddingGenerator`)
 
 ## 🚧 Pending / ideas

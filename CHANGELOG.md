@@ -23,6 +23,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Converting back unwraps instead of wrapping twice (`model.AsIChatClient().AsLanguageModel()` returns `model`, and the
   same for embeddings). Through an MEAI pipeline (`.UseOpenTelemetry()`, ...) provider options, headers and
   provider-defined tools still reach the AiSdk.Net model.
+- **OpenTelemetry GenAI metrics** on a `Meter` named `"AiSdk"` (`AiTelemetry.MeterName`, register it with
+  `AddMeter(AiTelemetry.MeterName)`): `gen_ai.client.operation.duration` (histogram, `s`) and `gen_ai.client.token.usage`
+  (histogram, `{token}`, `gen_ai.token.type` = `input`/`output`) for every `chat` and `embeddings` call, with
+  `gen_ai.operation.name`, `gen_ai.provider.name`, `gen_ai.request.model`, `gen_ai.response.model`, `error.type` on
+  failures and the bucket boundaries the conventions recommend.
+- New spans: `embeddings {model}` for every embeddings call (also batches and vector stores), `invoke_agent {agent}` for
+  agent runs (with `gen_ai.agent.name`, `gen_ai.agent.description` and, in `AgentSession`, `gen_ai.conversation.id`), and
+  `chat {model}` spans in streaming too (with `gen_ai.request.stream` and `gen_ai.response.time_to_first_chunk`).
+
+### Changed
+- **Breaking: telemetry follows the OpenTelemetry semantic conventions for generative AI** (span names and attributes of
+  semantic-conventions v1.41.0 and semantic-conventions-genai v0.1.0). The `ai.*` spans and attributes are gone:
+
+  | Before (0.x) | Now |
+  | --- | --- |
+  | span `ai.generateText` / `ai.streamText` | `invoke_agent {gen_ai.agent.name}` when an agent runs the loop, otherwise `invoke_generate_text` / `invoke_stream_text` (`invoke_generate_object` / `invoke_stream_object` for objects) |
+  | span `ai.generateText.step` | `chat {gen_ai.request.model}`, kind `Client`, one per model call (retries included), now also in streaming |
+  | span `ai.toolCall` | `execute_tool {gen_ai.tool.name}` |
+  | `ai.model.provider` | `gen_ai.provider.name`, with the well-known values (`google` → `gcp.gemini`, `bedrock` → `aws.bedrock`; other ids unchanged) |
+  | `ai.model.id` | `gen_ai.request.model` |
+  | `ai.response.finishReason` (`Stop`) | `gen_ai.response.finish_reasons` (`["stop"]`) |
+  | `ai.usage.inputTokens` / `ai.usage.outputTokens` | `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens` |
+  | `ai.toolCall.name` / `ai.toolCall.id` | `gen_ai.tool.name` / `gen_ai.tool.call.id` |
+
+  Failed spans now also carry `error.type` (HTTP status code of provider errors, otherwise the exception type), and a
+  cancelled run is reported as failed. Message content is still never recorded. **Migration:** keep
+  `AddSource(AiTelemetry.SourceName)` and update the queries, dashboards and alerts that use the old names with the table
+  above.
+- The `ActivitySource` version is the package version instead of a fixed `0.1.0`.
 
 ### Fixed
 - `IChatClient.AsLanguageModel()`: the `ProtectedData` of reasoning content (signatures, encrypted reasoning) is sent

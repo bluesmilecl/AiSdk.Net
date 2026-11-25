@@ -72,11 +72,3 @@ internal static class Retry
         return true;
     }
 }
-
-/// <summary>OpenTelemetry trace source of the SDK (<c>"AiSdk"</c>).</summary>
-public static class AiTelemetry
-{
-    public const string SourceName = "AiSdk";
-
-    public static ActivitySource ActivitySource { get; } = new(SourceName, "0.1.0");
-}

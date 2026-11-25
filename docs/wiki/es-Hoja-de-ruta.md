@@ -22,7 +22,7 @@
 - [ ] Decidir el nombre de paquetes y namespaces (namespaces `AiSdk.*` con paquetes `AiSdk.Net.*`, o `AiSdk.Net.*` en todo)
 - [ ] Documentación XML en inglés
 - [ ] Analizadores de API pública (`PublicAPI.Shipped.txt`) para que la API no cambie por accidente
-- [ ] Convenciones semánticas `gen_ai` de OpenTelemetry
+- [x] Convenciones semánticas `gen_ai` de OpenTelemetry
 - [x] Interoperabilidad inversa con Microsoft.Extensions.AI (exponer los modelos de AiSdk como `IChatClient` e `IEmbeddingGenerator`)
 
 ## 🚧 Pendiente / ideas

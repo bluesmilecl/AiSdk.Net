@@ -152,6 +152,7 @@ public sealed class AgentSession
             Messages = [.. history, .. leading],
             ToolApprovals = approvals,
             CancellationToken = cancellationToken,
+            ConversationId = ConversationId,
             OnStepFinish = async step =>
             {
                 IReadOnlyList<ModelMessage> toSave = first ? [.. leading, .. step.ResponseMessages] : step.ResponseMessages;
