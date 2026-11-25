@@ -50,6 +50,7 @@ var reviewed = Orchestrations.EvaluatorOptimizer(writer, evaluator, "Formal tone
 var result = await router.RunAsync("Should we open in Lima?", new OrchestrationOptions
 {
     OnEvent = e => { Console.WriteLine(e); return ValueTask.CompletedTask; },   // agent start/end, routes, handoffs...
+    OnToolApproval = req => AskOperatorAsync(req.ToolCall),                    // for agents without their own handler
 });
 Console.WriteLine($"{result.Text} — {result.TotalUsage.TotalTokens} tokens, {result.Runs.Count} calls");
 
@@ -60,6 +61,10 @@ var agent = new ToolLoopAgent(new() { Model = claude, Tools = [team.AsTool("comm
 // Handoffs inside an existing chat (continues with the appropriate agent)
 var turn = await chat.RunAsync(history, startAgent: "triage");
 ```
+
+Tools that require approval inside an orchestration ask `OrchestrationOptions.OnToolApproval` (or the handler of the
+agent that delegates, when the orchestration is a tool); without any handler they are denied with an explicit error. An
+orchestration cannot be resumed, so an agent that stops waiting for a deferred approval fails instead of returning empty text.
 
 > [!TIP]
 > Orchestrations are nodes too, so you can run them as durable steps of a workflow: see [Workflows and automations](Workflows-and-Automations).

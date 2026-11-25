@@ -76,7 +76,11 @@ public sealed class SkillBuilder(string name)
     }
 
     /// <summary>Crea la skill (lanza <see cref="FormatException"/> si no cumple el estándar).</summary>
-    public Skill Build(bool trusted = true)
+    /// <param name="trusted">
+    /// Si la skill es de confianza (sus scripts podrán ejecutarse). Por defecto no: pase <c>true</c> solo para skills
+    /// escritas por usted, nunca para contenido que provenga de un modelo, de un usuario o de terceros.
+    /// </param>
+    public Skill Build(bool trusted = false)
     {
         var skill = new Skill
         {
@@ -171,14 +175,28 @@ public static class SkillGenerator
 /// <summary>Opciones de <see cref="SkillAuthoringTools"/>.</summary>
 public sealed class SkillAuthoringOptions
 {
-    /// <summary>Carpeta donde se guardan las skills creadas (si es null, solo se agregan a la librería en memoria).</summary>
+    /// <summary>
+    /// Carpeta donde se guardan las skills creadas (si es null, solo se agregan a la librería en memoria). Las skills
+    /// se guardan siempre con el marcador <see cref="SkillLibrary.ProvenanceFileName"/>: al volver a cargarlas son
+    /// no confiables aunque la carpeta se cargue como de confianza (p. ej. con <c>AddSkills(dir)</c>).
+    /// </summary>
     public string? Directory { get; init; }
 
-    /// <summary>Permite sobrescribir skills existentes.</summary>
+    /// <summary>Permite sobrescribir skills existentes (en la librería o en <see cref="Directory"/>).</summary>
     public bool AllowOverwrite { get; init; }
 
-    /// <summary>Si las skills creadas por el agente se marcan de confianza (sus scripts podrían ejecutarse). Por defecto no.</summary>
+    /// <summary>
+    /// Si la copia en memoria de las skills creadas por el agente se marca de confianza (sus scripts podrían
+    /// ejecutarse). Por defecto no. No afecta a la copia en disco, que siempre queda marcada como no confiable.
+    /// </summary>
     public bool TrustCreatedSkills { get; init; }
+
+    /// <summary>
+    /// Permite que <c>create_skill</c> incluya scripts (archivos en <c>scripts/</c> o con extensiones ejecutables como
+    /// <c>.py</c>, <c>.sh</c> o <c>.js</c>). Por defecto no: un agente manipulado por una inyección de prompt no
+    /// debería poder dejar código guardado. Aun permitiéndolos, la skill guardada queda marcada como no confiable.
+    /// </summary>
+    public bool AllowScripts { get; init; }
 }
 
 /// <summary>
@@ -207,6 +225,12 @@ public static class SkillAuthoringTools
                         throw new InvalidOperationException($"Ya existe la skill '{input.Name}'.");
                     }
 
+                    var fileErrors = CheckFiles(input.Files ?? [], o);
+                    if (fileErrors.Count > 0)
+                    {
+                        return new { created = false, errors = (IReadOnlyList<string>)fileErrors, warnings = (IReadOnlyList<string>)[] };
+                    }
+
                     var skill = new Skill
                     {
                         Name = input.Name,
@@ -224,7 +248,14 @@ public static class SkillAuthoringTools
                     string? location = null;
                     if (o.Directory is { } directory)
                     {
-                        location = await SkillLibrary.SaveAsync(skill, directory, ct).ConfigureAwait(false);
+                        if (!o.AllowOverwrite && System.IO.Directory.Exists(Path.Combine(directory, skill.Name)))
+                        {
+                            throw new InvalidOperationException($"Ya existe la carpeta de la skill '{skill.Name}' en '{directory}'.");
+                        }
+
+                        // En disco queda siempre como no confiable (marcador de procedencia), con independencia de
+                        // TrustCreatedSkills: una skill escrita por el modelo no se vuelve de confianza al recargarla.
+                        location = await SkillLibrary.SaveAsync(skill, directory, "create_skill", ct).ConfigureAwait(false);
                     }
 
                     library.Add(skill with { Location = location });
@@ -248,8 +279,45 @@ public static class SkillAuthoringTools
         ];
     }
 
+    /// <summary>Extensiones que se consideran código ejecutable (además de todo lo que esté en <c>scripts/</c>).</summary>
+    private static readonly HashSet<string> ExecutableExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".py", ".pyw", ".sh", ".bash", ".zsh", ".fish", ".js", ".mjs", ".cjs", ".ts", ".mts", ".cts", ".ps1", ".psm1", ".psd1",
+        ".bat", ".cmd", ".com", ".exe", ".dll", ".so", ".dylib", ".rb", ".pl", ".php", ".lua", ".jar", ".vbs", ".wsf", ".msi", ".csx", ".cs",
+    };
+
+    /// <summary>Valida las rutas de los archivos: sin archivos ocultos ni SKILL.md, y sin scripts salvo que se permitan.</summary>
+    private static List<string> CheckFiles(IReadOnlyList<FileInput> files, SkillAuthoringOptions options)
+    {
+        var errors = new List<string>();
+        foreach (var file in files)
+        {
+            string path;
+            try
+            {
+                path = SkillFiles.NormalizePath(file.Path);
+            }
+            catch (ArgumentException ex)
+            {
+                errors.Add(ex.Message);
+                continue;
+            }
+
+            if (path.Split('/').Any(s => s.StartsWith('.')) || string.Equals(path, "SKILL.md", StringComparison.OrdinalIgnoreCase))
+            {
+                errors.Add($"Ruta no permitida: '{path}' (archivos ocultos o SKILL.md).");
+            }
+            else if (!options.AllowScripts && (path.StartsWith("scripts/", StringComparison.OrdinalIgnoreCase) || ExecutableExtensions.Contains(Path.GetExtension(path))))
+            {
+                errors.Add($"No se permite crear scripts ('{path}'): las skills creadas por el agente solo pueden tener instrucciones y archivos de referencia.");
+            }
+        }
+
+        return errors;
+    }
+
     private sealed record FileInput(
-        [property: Description("Ruta relativa, p. ej. references/guia.md o scripts/procesar.py.")] string Path,
+        [property: Description("Ruta relativa, p. ej. references/guia.md o assets/plantilla.html.")] string Path,
         [property: Description("Contenido del archivo.")] string Content);
 
     private sealed record CreateInput(

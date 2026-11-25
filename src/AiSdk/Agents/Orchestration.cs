@@ -49,6 +49,12 @@ public sealed class OrchestrationOptions
     /// <summary>Recibe cada evento (inicio/fin de agentes, enrutamientos, traspasos, evaluaciones).</summary>
     public Func<OrchestrationEvent, ValueTask>? OnEvent { get; init; }
 
+    /// <summary>
+    /// Manejador de aprobación para los agentes de la orquestación que no tienen uno propio. Sin él, las herramientas
+    /// que requieren aprobación se deniegan con un error explícito.
+    /// </summary>
+    public Func<ToolApprovalRequest, ValueTask<bool>>? OnToolApproval { get; init; }
+
     public CancellationToken CancellationToken { get; init; }
 }
 
@@ -95,8 +101,12 @@ public sealed class OrchestrationContext
             Services = call.Services ?? Options.Services,
             Context = call.Context ?? Options.Context,
             OnStepFinish = call.OnStepFinish,
+            OnToolApproval = call.OnToolApproval ?? Options.OnToolApproval,
             CancellationToken = CancellationToken,
         }).ConfigureAwait(false);
+
+        // Una orquestación no puede reanudarse: un agente detenido esperando aprobaciones es un error, no un texto vacío.
+        Agent.EnsureCompleted(agent.Name, result, includeClientTools: false);
         Record(agent.Name, inputLabel, result.Text, result.TotalUsage, watch.Elapsed);
         await EmitAsync(new NodeCompletedEvent(agent.Name, result.Text, result.TotalUsage, watch.Elapsed)).ConfigureAwait(false);
         return result;
@@ -163,6 +173,7 @@ public static class OrchestrationNodes
             {
                 Services = ctx.Services,
                 Context = ctx.Context,
+                OnToolApproval = ctx.OnToolApproval, // las aprobaciones llegan al manejador del agente que delega
                 CancellationToken = ct,
             })));
 
@@ -439,6 +450,7 @@ public sealed class HandoffOrchestration : Orchestration
                     Messages = conversation,
                     Services = context.Options.Services,
                     Context = context.Options.Context,
+                    OnToolApproval = context.Options.OnToolApproval,
                     CancellationToken = context.CancellationToken,
                 },
                 transferTools,

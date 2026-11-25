@@ -78,7 +78,7 @@ public sealed class UIMessageStreamWriter
         }
         catch (Exception ex)
         {
-            Write(new JsonObject { ["type"] = "error", ["errorText"] = _onError?.Invoke(ex) ?? "Se produjo un error." });
+            Write(new JsonObject { ["type"] = "error", ["errorText"] = UIMessageStream.ErrorText(ex, _onError) });
         }
         finally
         {
@@ -246,8 +246,22 @@ public sealed class InMemoryResumableStreamStore(TimeSpan? ttl = null) : IResuma
 public static class ResumableUIMessageStream
 {
     /// <summary>
+    /// Clave del chat dentro del ámbito de su dueño. El id de chat lo elige el cliente, así que por sí solo no sirve
+    /// para autorizar: combinándolo con el usuario (o una sesión que emitió el servidor) nadie puede reemplazar ni
+    /// reanudar el stream de otro usuario aunque conozca o adivine su id de chat.
+    /// </summary>
+    public static string ScopedChatId(string owner, string chatId)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(owner);
+        ArgumentException.ThrowIfNullOrEmpty(chatId);
+        return $"{owner.Length}:{owner}:{chatId}";
+    }
+
+    /// <summary>
     /// Empieza a volcar el stream en el almacén en segundo plano (sigue aunque el cliente se
     /// desconecte) y lo marca como el stream activo del chat. Devuelve el id del stream.
+    /// <paramref name="chatId"/> es la clave del almacén: en un servidor con varios usuarios use
+    /// <see cref="ScopedChatId"/> (los endpoints de <c>AiSdk.AspNetCore</c> ya lo hacen).
     /// </summary>
     public static async Task<string> StartAsync(IResumableStreamStore store, string chatId, IAsyncEnumerable<JsonObject> chunks)
     {

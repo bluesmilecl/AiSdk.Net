@@ -38,24 +38,59 @@ public sealed class UIChatRequest
     public string? Trigger { get; set; }
 }
 
+/// <summary>Opciones de <see cref="UIMessageConverter.ToModelMessages(IEnumerable{UIMessage}, UIMessageConverterOptions?)"/>.</summary>
+/// <remarks>
+/// Todo el historial lo envía el navegador y no es de confianza: el cliente puede escribir cualquier mensaje, incluidos
+/// textos "del asistente" y resultados de herramientas. Las instrucciones y los datos sensibles deben vivir en el servidor
+/// (instrucciones del agente, historial guardado con <c>AgentSession</c>), no en lo que reenvía el cliente.
+/// </remarks>
+public sealed class UIMessageConverterOptions
+{
+    /// <summary>
+    /// Acepta mensajes con rol <c>system</c> enviados por el cliente. Por defecto <c>false</c>: se descartan, porque
+    /// un usuario podría reemplazar o contradecir las instrucciones del agente.
+    /// </summary>
+    public bool AllowSystemMessages { get; init; }
+
+    /// <summary>
+    /// Herramientas que ejecuta el servidor. Sus partes en el historial (llamada y resultado) se descartan, porque el
+    /// cliente podría falsificar sus resultados (p. ej. un "pago aprobado"). Deje fuera las herramientas que ejecuta el
+    /// navegador (sin <c>execute</c> en el servidor), cuyo resultado sí debe llegar desde el cliente.
+    /// </summary>
+    public IReadOnlyCollection<string>? ServerExecutedTools { get; init; }
+}
+
 public static class UIMessageConverter
 {
-    /// <summary>Convierte mensajes de UI a mensajes de modelo (equivalente a <c>convertToModelMessages</c>).</summary>
-    public static List<ModelMessage> ToModelMessages(IEnumerable<UIMessage> messages)
+    /// <summary>
+    /// Convierte mensajes de UI a mensajes de modelo (equivalente a <c>convertToModelMessages</c>).
+    /// Los mensajes <c>system</c> del cliente se descartan y las partes inválidas (archivos con URL o data URL
+    /// incorrectas, campos con tipos inesperados) se ignoran en lugar de producir un error 500.
+    /// </summary>
+    public static List<ModelMessage> ToModelMessages(IEnumerable<UIMessage> messages, UIMessageConverterOptions? options = null)
     {
+        ArgumentNullException.ThrowIfNull(messages);
+        options ??= new UIMessageConverterOptions();
+        var serverTools = options.ServerExecutedTools is { Count: > 0 } names ? new HashSet<string>(names, StringComparer.Ordinal) : null;
         var result = new List<ModelMessage>();
         foreach (var message in messages)
         {
+            if (message is null)
+            {
+                continue;
+            }
+
+            var parts = message.Parts?.Where(p => p is not null).ToList() ?? [];
             switch (message.Role)
             {
-                case "system":
-                    result.Add(ModelMessage.System(string.Concat(message.Parts.Where(IsText).Select(p => (string?)p["text"]))));
+                case "system" when options.AllowSystemMessages:
+                    result.Add(ModelMessage.System(string.Concat(parts.Where(IsText).Select(p => Str(p["text"])))));
                     break;
                 case "user":
-                    result.Add(new ModelMessage(ChatRole.User, message.Parts.Select(ToUserPart).OfType<ContentPart>().ToList()));
+                    result.Add(new ModelMessage(ChatRole.User, parts.Select(ToUserPart).OfType<ContentPart>().ToList()));
                     break;
                 case "assistant":
-                    AddAssistant(result, message);
+                    AddAssistant(result, parts, serverTools);
                     break;
             }
         }
@@ -63,38 +98,79 @@ public static class UIMessageConverter
         return result;
     }
 
-    private static bool IsText(JsonObject p) => (string?)p["type"] == "text";
+    private static bool IsText(JsonObject p) => Str(p["type"]) == "text";
+
+    /// <summary>Valor de texto de un nodo JSON, o null si no es un string (el cliente puede enviar cualquier tipo).</summary>
+    private static string? Str(JsonNode? node) => node is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
 
     private static ContentPart? ToUserPart(JsonObject p)
     {
-        switch ((string?)p["type"])
+        switch (Str(p["type"]))
         {
             case "text":
-                return new TextPart((string?)p["text"] ?? string.Empty);
+                return new TextPart(Str(p["text"]) ?? string.Empty);
             case "file":
-                var mediaType = (string?)p["mediaType"] ?? "application/octet-stream";
-                var url = (string?)p["url"] ?? string.Empty;
-                byte[]? data = null;
-                Uri? uri = null;
-                if (url.StartsWith("data:", StringComparison.Ordinal))
+                // Una URL inválida es un error del cliente: la parte se descarta en lugar de lanzar (500).
+                if (!TryParseFileUrl(Str(p["url"]), out var data, out var uri))
                 {
-                    var comma = url.IndexOf(',');
-                    data = Convert.FromBase64String(url[(comma + 1)..]);
-                }
-                else
-                {
-                    uri = new Uri(url);
+                    return null;
                 }
 
+                var mediaType = Str(p["mediaType"]) ?? "application/octet-stream";
                 return mediaType.StartsWith("image/", StringComparison.Ordinal)
                     ? new ImagePart { Data = data, Url = uri, MediaType = mediaType }
-                    : new FilePart { Data = data, Url = uri, MediaType = mediaType, Filename = (string?)p["filename"] };
+                    : new FilePart { Data = data, Url = uri, MediaType = mediaType, Filename = Str(p["filename"]) };
             default:
                 return null;
         }
     }
 
-    private static void AddAssistant(List<ModelMessage> result, UIMessage message)
+    /// <summary>Acepta data URLs (base64 o texto) y URLs absolutas http(s); el resto se rechaza.</summary>
+    private static bool TryParseFileUrl(string? url, out byte[]? data, out Uri? uri)
+    {
+        data = null;
+        uri = null;
+        if (string.IsNullOrEmpty(url))
+        {
+            return false;
+        }
+
+        if (url.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+        {
+            var comma = url.IndexOf(',', StringComparison.Ordinal);
+            if (comma < 0)
+            {
+                return false;
+            }
+
+            var payload = url[(comma + 1)..];
+            if (!url.AsSpan(0, comma).EndsWith(";base64", StringComparison.OrdinalIgnoreCase))
+            {
+                data = Encoding.UTF8.GetBytes(Uri.UnescapeDataString(payload));
+                return true;
+            }
+
+            try
+            {
+                data = Convert.FromBase64String(payload);
+                return true;
+            }
+            catch (FormatException)
+            {
+                return false;
+            }
+        }
+
+        if (Uri.TryCreate(url, UriKind.Absolute, out var parsed) && (parsed.Scheme == Uri.UriSchemeHttps || parsed.Scheme == Uri.UriSchemeHttp))
+        {
+            uri = parsed;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static void AddAssistant(List<ModelMessage> result, List<JsonObject> parts, HashSet<string>? serverTools)
     {
         var content = new List<ContentPart>();
         var toolResults = new List<ToolResultPart>();
@@ -115,37 +191,43 @@ public static class UIMessageConverter
             toolResults.Clear();
         }
 
-        foreach (var part in message.Parts)
+        foreach (var part in parts)
         {
-            var type = (string?)part["type"] ?? string.Empty;
+            var type = Str(part["type"]) ?? string.Empty;
             if (type == "step-start")
             {
                 Flush();
             }
             else if (type == "text")
             {
-                content.Add(new TextPart((string?)part["text"] ?? string.Empty));
+                content.Add(new TextPart(Str(part["text"]) ?? string.Empty));
             }
             else if (type == "source-url")
             {
-                content.Add(new SourcePart((string?)part["sourceId"] ?? Guid.NewGuid().ToString("N"), (string?)part["url"] ?? string.Empty) { Title = (string?)part["title"] });
+                content.Add(new SourcePart(Str(part["sourceId"]) ?? Guid.NewGuid().ToString("N"), Str(part["url"]) ?? string.Empty) { Title = Str(part["title"]) });
             }
             else if (type == "reasoning")
             {
-                content.Add(new ReasoningPart((string?)part["text"] ?? string.Empty));
+                content.Add(new ReasoningPart(Str(part["text"]) ?? string.Empty));
             }
             else if (type.StartsWith("tool-", StringComparison.Ordinal) || type == "dynamic-tool")
             {
-                var toolName = type == "dynamic-tool" ? (string?)part["toolName"] ?? "tool" : type["tool-".Length..];
-                var id = (string?)part["toolCallId"] ?? Guid.NewGuid().ToString("N");
-                var state = (string?)part["state"];
+                var toolName = type == "dynamic-tool" ? Str(part["toolName"]) ?? "tool" : type["tool-".Length..];
+                if (serverTools is not null && serverTools.Contains(toolName))
+                {
+                    // Resultado de una herramienta del servidor reenviado por el cliente: podría estar falsificado.
+                    continue;
+                }
+
+                var id = Str(part["toolCallId"]) ?? Guid.NewGuid().ToString("N");
+                var state = Str(part["state"]);
                 var input = part["input"] is { } i ? JsonSerializer.SerializeToElement(i) : JsonUtil.EmptyObject;
                 if (state is "input-available" or "output-available" or "output-error")
                 {
                     content.Add(new ToolCallPart(id, toolName, input));
                 }
 
-                var providerExecuted = (bool?)part["providerExecuted"] == true;
+                var providerExecuted = part["providerExecuted"] is JsonValue flag && flag.TryGetValue<bool>(out var executed) && executed;
                 if (providerExecuted && content.Count > 0 && content[^1] is ToolCallPart last && last.ToolCallId == id)
                 {
                     content[^1] = last with { ProviderExecuted = true };
@@ -154,7 +236,7 @@ public static class UIMessageConverter
                 ToolResultPart? toolResult = state switch
                 {
                     "output-available" => new ToolResultPart(id, toolName, JsonSerializer.SerializeToElement(part["output"])) { ProviderExecuted = providerExecuted },
-                    "output-error" => new ToolResultPart(id, toolName, JsonSerializer.SerializeToElement((string?)part["errorText"])) { IsError = true, ProviderExecuted = providerExecuted },
+                    "output-error" => new ToolResultPart(id, toolName, JsonSerializer.SerializeToElement(Str(part["errorText"]))) { IsError = true, ProviderExecuted = providerExecuted },
                     _ => null,
                 };
                 if (toolResult is not null)
@@ -174,6 +256,28 @@ public static class UIMessageConverter
 
         Flush();
     }
+}
+
+/// <summary>
+/// Error de una herramienta tal como se pasa a <c>onError</c> al escribir el stream UI (<c>tool-output-error</c>).
+/// Por defecto el navegador solo recibe un mensaje genérico, porque el texto de una excepción puede revelar detalles
+/// internos; el modelo sí recibe el mensaje real. Para mostrarlo:
+/// <c>onError: ex =&gt; ex is ToolErrorException t ? t.Message : "Se produjo un error."</c>.
+/// </summary>
+public sealed class ToolErrorException : AiSdkException
+{
+    public ToolErrorException(string toolName, string toolCallId, string message)
+        : base(message)
+    {
+        ToolName = toolName;
+        ToolCallId = toolCallId;
+    }
+
+    /// <summary>Herramienta que falló.</summary>
+    public string ToolName { get; }
+
+    /// <summary>Id de la llamada.</summary>
+    public string ToolCallId { get; }
 }
 
 /// <summary>
@@ -215,7 +319,8 @@ public static partial class UIMessageStream
                 {
                     ["type"] = "tool-output-error",
                     ["toolCallId"] = r.ToolResult.ToolCallId,
-                    ["errorText"] = r.ToolResult.Output.ValueKind == JsonValueKind.String ? r.ToolResult.Output.GetString() : r.ToolResult.Output.GetRawText(),
+                    // Mismo enmascarado que los demás errores: el texto real solo si onError decide mostrarlo.
+                    ["errorText"] = ErrorText(new ToolErrorException(r.ToolResult.ToolName, r.ToolResult.ToolCallId, ToolErrorMessage(r.ToolResult.Output)), onError),
                 },
                 ToolResultStreamPart r => WithProviderFlag(new()
                 {
@@ -228,7 +333,7 @@ public static partial class UIMessageStream
                 FinishPart => new() { ["type"] = "finish" },
                 AbortPart => new() { ["type"] = "abort" },
                 DataStreamPart d => DataChunk(d.Type, d.Data, d.Id, d.Transient),
-                ErrorPart e => new() { ["type"] = "error", ["errorText"] = onError?.Invoke(e.Error) ?? "Se produjo un error." },
+                ErrorPart e => new() { ["type"] = "error", ["errorText"] = ErrorText(e.Error, onError) },
                 _ => null,
             };
 
@@ -238,6 +343,19 @@ public static partial class UIMessageStream
             }
         }
     }
+
+    /// <summary>Texto de error que recibe el cliente: el de <paramref name="onError"/> o uno genérico.</summary>
+    internal static string ErrorText(Exception error, Func<Exception, string>? onError) => onError?.Invoke(error) ?? DefaultErrorText;
+
+    internal const string DefaultErrorText = "Se produjo un error.";
+
+    private static string ToolErrorMessage(JsonElement output) =>
+        output.ValueKind switch
+        {
+            JsonValueKind.String => output.GetString() ?? string.Empty,
+            JsonValueKind.Undefined => string.Empty,
+            _ => output.GetRawText(),
+        };
 
     internal static JsonObject DataChunk(string type, JsonNode? data, string? id, bool transient)
     {

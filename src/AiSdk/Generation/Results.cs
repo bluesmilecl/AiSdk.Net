@@ -21,6 +21,9 @@ public sealed record StepResult
 
     public IReadOnlyList<string> Warnings { get; init; } = [];
 
+    /// <summary>Llamadas que quedaron pendientes de aprobación en este paso (<see cref="CallSettings.DeferToolApprovals"/>).</summary>
+    public IReadOnlyList<ToolApprovalRequest> PendingApprovals { get; init; } = [];
+
     public string Text => string.Concat(Content.OfType<TextPart>().Select(p => p.Text));
 
     public string? ReasoningText => Content.OfType<ReasoningPart>().Any()
@@ -64,6 +67,12 @@ public sealed class GenerateTextResult
     /// <summary>Llamadas del último paso que no tienen resultado (herramientas de cliente o pendientes de aprobación).</summary>
     public IReadOnlyList<ToolCallPart> PendingToolCalls =>
         ToolCalls.Where(c => !c.ProviderExecuted && ToolResults.All(r => r.ToolCallId != c.ToolCallId)).ToList();
+
+    /// <summary>
+    /// Llamadas del último paso que esperan aprobación (solo con <see cref="CallSettings.DeferToolApprovals"/>).
+    /// Respóndalas con <see cref="GenerateTextOptions.ToolApprovals"/> en la siguiente llamada.
+    /// </summary>
+    public IReadOnlyList<ToolApprovalRequest> PendingApprovals => Last.PendingApprovals;
 
     /// <summary>Fuentes citadas en todos los pasos.</summary>
     public IReadOnlyList<SourcePart> Sources => Steps.SelectMany(s => s.Sources).ToList();

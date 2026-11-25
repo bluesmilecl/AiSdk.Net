@@ -22,6 +22,12 @@ public class CallSettings
     /// <summary>Reintentos ante errores transitorios (429, 5xx...). Por defecto 2.</summary>
     public int MaxRetries { get; init; } = 2;
 
+    /// <summary>
+    /// Espera máxima que se respeta de un <c>Retry-After</c> del servidor antes de reintentar (por defecto 60 s). Si
+    /// el servidor pide esperar más, no se reintenta y se lanza el error (<see cref="ApiCallException.RetryAfter"/>).
+    /// </summary>
+    public TimeSpan MaxRetryAfter { get; init; } = TimeSpan.FromSeconds(60);
+
     public IReadOnlyDictionary<string, string>? Headers { get; init; }
 
     public ProviderOptions? ProviderOptions { get; init; }
@@ -33,10 +39,25 @@ public class CallSettings
     public IReadOnlyDictionary<string, object?>? Context { get; init; }
 
     /// <summary>
-    /// Callback de aprobación humana para herramientas con <see cref="Tool.NeedsApproval"/>.
-    /// Si es null, las llamadas que requieren aprobación quedan pendientes y el bucle se detiene.
+    /// Callback de aprobación humana para herramientas con <see cref="Tool.NeedsApproval"/>. Si es null, la llamada
+    /// no se ejecuta y el modelo recibe un error explícito ("requiere aprobación y no hay un manejador"), salvo que
+    /// se active <see cref="DeferToolApprovals"/>.
     /// </summary>
     public Func<ToolApprovalRequest, ValueTask<bool>>? OnToolApproval { get; init; }
+
+    /// <summary>
+    /// Sin <see cref="OnToolApproval"/>, deja pendientes las llamadas que requieren aprobación en vez de rechazarlas
+    /// (aprobación diferida, como <c>tool-approval-request</c> del AI SDK): el bucle se detiene, las llamadas quedan
+    /// en <see cref="GenerateTextResult.PendingApprovals"/> y se resuelven en la siguiente llamada con
+    /// <see cref="GenerateTextOptions.ToolApprovals"/> (o <see cref="AgentSession.SendApprovalsAsync"/>).
+    /// </summary>
+    public bool DeferToolApprovals { get; init; }
+
+    /// <summary>
+    /// Máximo de herramientas que se ejecutan a la vez cuando el modelo pide varias en un mismo paso (por defecto 8;
+    /// 1 las ejecuta en orden). Limita el gasto y la carga cuando el modelo pide muchas llamadas de golpe.
+    /// </summary>
+    public int MaxParallelToolCalls { get; init; } = 8;
 
     /// <summary>
     /// Repara una llamada a herramienta inválida (JSON roto, entrada que no cumple el esquema
@@ -81,10 +102,21 @@ public sealed record ToolCallRepairContext(
 {
     /// <summary>Herramienta destino (null si <see cref="Reason"/> es <see cref="ToolCallRepairReason.UnknownTool"/>).</summary>
     public Tool? Tool => Tools.FirstOrDefault(t => t.Name == ToolCall.ToolName);
+
+    /// <summary>Cancelación de la generación en curso (la reparación debe respetarla).</summary>
+    public CancellationToken CancellationToken { get; init; }
 }
 
 /// <summary>Solicitud de aprobación de una llamada a herramienta.</summary>
 public sealed record ToolApprovalRequest(ToolCallPart ToolCall, Tool Tool);
+
+/// <summary>
+/// Decisión sobre una llamada que quedó pendiente de aprobación (ver <see cref="CallSettings.DeferToolApprovals"/>).
+/// </summary>
+/// <param name="ToolCallId">Id de la llamada (<see cref="ToolCallPart.ToolCallId"/>).</param>
+/// <param name="Approved">True para ejecutarla; false para responder al modelo que se denegó.</param>
+/// <param name="Reason">Motivo opcional de la denegación, que se informa al modelo.</param>
+public sealed record ToolApprovalResponse(string ToolCallId, bool Approved, string? Reason = null);
 
 /// <summary>Opciones de <see cref="Ai.GenerateTextAsync(GenerateTextOptions)"/> y <see cref="Ai.StreamText(GenerateTextOptions)"/>.</summary>
 public sealed class GenerateTextOptions : CallSettings
@@ -116,6 +148,19 @@ public sealed class GenerateTextOptions : CallSettings
     public Func<PrepareStepContext, ValueTask<PrepareStepResult?>>? PrepareStep { get; init; }
 
     public Func<StepResult, ValueTask>? OnStepFinish { get; init; }
+
+    /// <summary>
+    /// Decisiones sobre las llamadas que quedaron pendientes de aprobación (<see cref="CallSettings.DeferToolApprovals"/>).
+    /// <see cref="Messages"/> debe terminar en el mensaje del asistente con esas llamadas (opcionalmente seguido de
+    /// resultados de herramientas). Antes de llamar al modelo se ejecutan las aprobadas; las denegadas y las que no
+    /// tengan decisión se responden con un error. Los resultados forman parte de
+    /// <see cref="StepResult.ResponseMessages"/> del primer paso.
+    /// </summary>
+    /// <remarks>
+    /// Las aprobaciones se aplican a las llamadas de los mensajes que usted entrega: si el historial viene del cliente,
+    /// valídelo (o guárdelo en el servidor, como <see cref="AgentSession"/>) para que no se aprueben llamadas inventadas.
+    /// </remarks>
+    public IReadOnlyList<ToolApprovalResponse>? ToolApprovals { get; init; }
 
     /// <summary>
     /// (streaming) Transforma el stream de cada paso antes de emitirlo, p. ej.

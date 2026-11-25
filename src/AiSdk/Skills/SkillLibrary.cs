@@ -20,6 +20,14 @@ namespace AiSdk.Skills;
 /// </example>
 public sealed class SkillLibrary
 {
+    /// <summary>
+    /// Marcador de procedencia que se guarda junto al <c>SKILL.md</c> de las skills no confiables (p. ej. las
+    /// creadas por un agente con <c>create_skill</c>). Al cargar, una skill con este archivo es siempre no
+    /// confiable, aunque la carpeta se cargue con <see cref="SkillLoadOptions.Trusted"/>: así una inyección de
+    /// prompt no se convierte en código de confianza al reiniciar. Para confiar en ella, revísela y borre el archivo.
+    /// </summary>
+    public const string ProvenanceFileName = ".aisdk-provenance.json";
+
     private readonly ConcurrentDictionary<string, Skill> _skills = new(StringComparer.Ordinal);
     private readonly ConcurrentQueue<string> _loadErrors = new();
     private readonly SkillUsage _usage = new();
@@ -54,7 +62,10 @@ public sealed class SkillLibrary
 
     public bool Contains(string name) => _skills.ContainsKey(name);
 
-    /// <summary>Agrega o reemplaza una skill (la valida: una skill inválida lanza <see cref="FormatException"/>, salvo con <paramref name="strict"/> = false).</summary>
+    /// <summary>
+    /// Agrega o reemplaza explícitamente una skill (la valida: una skill inválida lanza <see cref="FormatException"/>,
+    /// salvo con <paramref name="strict"/> = false). Los métodos <c>Load*</c>, en cambio, no reemplazan skills ya cargadas.
+    /// </summary>
     public SkillLibrary Add(Skill skill, bool strict = true)
     {
         if (strict)
@@ -91,12 +102,28 @@ public sealed class SkillLibrary
             throw new DirectoryNotFoundException($"No existe la carpeta de skills '{root}'.");
         }
 
-        foreach (var skillMd in Directory.EnumerateFiles(root, "SKILL.md", SearchOption.AllDirectories)
+        // No se siguen enlaces simbólicos ni junctions (ni carpetas ni SKILL.md enlazados): una skill no puede
+        // "traer" archivos de fuera de la carpeta cargada.
+        foreach (var skillMd in Directory.EnumerateFiles(root, "SKILL.md", SkillFiles.WithoutLinks)
                      .Where(f => !Path.GetRelativePath(root, f).Split(Path.DirectorySeparatorChar).Any(s => s.StartsWith('.') && s.Length > 1 && s != ".claude" && s != ".agents" && s != ".github")))
         {
             var folder = Path.GetDirectoryName(skillMd)!;
             TryAdd(
-                () => Skill.Parse(File.ReadAllText(skillMd), SkillFiles.FromDirectory(folder), folder, options.Trusted),
+                () =>
+                {
+                    if (new FileInfo(skillMd).Length > options.MaxFileBytes)
+                    {
+                        throw new InvalidDataException($"El SKILL.md supera el tamaño máximo ({options.MaxFileBytes} bytes).");
+                    }
+
+                    var files = SkillFiles.FromDirectory(folder, options.MaxFileBytes);
+                    if (files.List().Count > options.MaxFiles)
+                    {
+                        throw new InvalidDataException($"La skill tiene más de {options.MaxFiles} archivos.");
+                    }
+
+                    return Skill.Parse(File.ReadAllText(skillMd), files, folder, options.Trusted && !HasProvenanceMarker(folder));
+                },
                 Path.GetFileName(folder),
                 skillMd,
                 options,
@@ -106,17 +133,26 @@ public sealed class SkillLibrary
         return loaded;
     }
 
+    /// <summary>True si la carpeta tiene el marcador <see cref="ProvenanceFileName"/> (aunque sea un enlace).</summary>
+    private static bool HasProvenanceMarker(string folder)
+    {
+        var marker = Path.Combine(folder, ProvenanceFileName);
+        return File.Exists(marker) || Directory.Exists(marker) || new FileInfo(marker).LinkTarget is not null;
+    }
+
     /// <summary>Carga skills desde un ZIP (paquete de una skill o un repositorio completo).</summary>
     public IReadOnlyList<Skill> LoadZip(Stream zip, string? path = null, SkillLoadOptions? options = null, string? location = null)
     {
         options ??= SkillLoadOptions.Default;
         var loaded = new List<Skill>();
-        foreach (var (folder, markdown, files) in SkillArchive.Read(zip, path, options))
+        foreach (var archived in SkillArchive.Read(zip, path, options))
         {
             TryAdd(
-                () => Skill.Parse(markdown, SkillFiles.FromDictionary(files), $"{location ?? "zip"}:{folder}", options.Trusted),
-                folder,
-                $"{location ?? "zip"}:{folder}",
+                () => archived.Error is { } error
+                    ? throw error
+                    : Skill.Parse(archived.Markdown!, SkillFiles.FromDictionary(archived.Files!), $"{location ?? "zip"}:{archived.Folder}", options.Trusted && !archived.Untrusted),
+                archived.Folder,
+                $"{location ?? "zip"}:{archived.Folder}",
                 options,
                 loaded);
         }
@@ -147,16 +183,39 @@ public sealed class SkillLibrary
             throw new ArgumentException("Use el formato 'propietario/repositorio'.", nameof(repository));
         }
 
+        options ??= SkillLoadOptions.Default;
         var url = new Uri($"https://codeload.github.com/{repository}/zip/{Uri.EscapeDataString(reference)}");
-        using var response = await (httpClient ?? ProviderHttp.DefaultClient).GetAsync(url, cancellationToken).ConfigureAwait(false);
+        using var response = await (httpClient ?? ProviderHttp.DefaultClient)
+            .GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
             throw new InvalidOperationException($"No se encontró {repository}@{reference} en GitHub (¿repositorio privado o rama inexistente?).");
         }
 
         response.EnsureSuccessStatusCode();
+        var tooLarge = $"El ZIP de {repository}@{reference} supera el tamaño máximo de {options.MaxArchiveBytes} bytes (SkillLoadOptions.MaxArchiveBytes).";
+        if (response.Content.Headers.ContentLength > options.MaxArchiveBytes)
+        {
+            throw new InvalidDataException(tooLarge);
+        }
+
+        // Se copia con límite: el Content-Length puede faltar o mentir.
         using var buffer = new MemoryStream();
-        await response.Content.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
+        await using (var source = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false))
+        {
+            var chunk = new byte[81920];
+            int read;
+            while ((read = await source.ReadAsync(chunk, cancellationToken).ConfigureAwait(false)) > 0)
+            {
+                if (buffer.Length + read > options.MaxArchiveBytes)
+                {
+                    throw new InvalidDataException(tooLarge);
+                }
+
+                buffer.Write(chunk, 0, read);
+            }
+        }
+
         buffer.Position = 0;
         return LoadZip(buffer, path, options, $"github:{repository}@{reference}");
     }
@@ -200,11 +259,24 @@ public sealed class SkillLibrary
                 _loadErrors.Enqueue($"{location}: aceptada en modo no estricto: {string.Join(" ", validation.Errors)}");
             }
 
-            _skills[skill.Name] = skill;
+            if (options.ReplaceExisting)
+            {
+                _skills[skill.Name] = skill;
+            }
+            else if (!_skills.TryAdd(skill.Name, skill))
+            {
+                // Una carga posterior (p. ej. de GitHub) no reemplaza en silencio una skill ya cargada.
+                var existing = _skills.TryGetValue(skill.Name, out var current) ? current.Location : null;
+                throw new InvalidOperationException(
+                    $"Ya hay una skill '{skill.Name}'{(existing is null ? string.Empty : $" (de {existing})")}; se conserva la primera. Use SkillLoadOptions.ReplaceExisting para reemplazarla.");
+            }
+
             loaded.Add(skill);
         }
-        catch (Exception ex) when (!options.ThrowOnInvalid && ex is FormatException or InvalidDataException or IOException)
+        catch (Exception ex) when (!options.ThrowOnInvalid && ex is not OperationCanceledException)
         {
+            // Cada skill falla por separado (YAML mal formado, rutas inválidas en un ZIP, límites...): una skill
+            // rota no impide cargar las demás.
             _loadErrors.Enqueue($"{location}: {ex.Message}");
         }
     }
@@ -213,12 +285,37 @@ public sealed class SkillLibrary
     // Escritura
     // ---------------------------------------------------------------------
 
-    /// <summary>Escribe una skill en <c>{directorio}/{nombre}/</c> (SKILL.md y archivos).</summary>
-    public static async Task<string> SaveAsync(Skill skill, string directory, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Escribe una skill en <c>{directorio}/{nombre}/</c> (SKILL.md y archivos). La confianza se conserva en disco:
+    /// si la skill no es de confianza se escribe el marcador <see cref="ProvenanceFileName"/> (y al volver a
+    /// cargarla seguirá sin serlo); si lo es, se elimina el marcador que hubiera.
+    /// </summary>
+    public static Task<string> SaveAsync(Skill skill, string directory, CancellationToken cancellationToken = default) =>
+        SaveAsync(skill, directory, skill.Trusted ? null : "untrusted", cancellationToken);
+
+    /// <summary>Escribe la skill; con <paramref name="untrustedSource"/> deja el marcador de procedencia.</summary>
+    internal static async Task<string> SaveAsync(Skill skill, string directory, string? untrustedSource, CancellationToken cancellationToken)
     {
         skill.Validate().ThrowIfInvalid(skill.Name);
-        var folder = Path.Combine(directory, skill.Name);
+        var root = Path.GetFullPath(directory);
+        var folder = Path.Combine(root, skill.Name);
+        EnsureNoLinks(root, skill.Name);
         Directory.CreateDirectory(folder);
+
+        // El marcador se escribe antes que el contenido: si la escritura falla a medias, lo escrito no queda de confianza.
+        var marker = Path.Combine(folder, ProvenanceFileName);
+        if (untrustedSource is not null)
+        {
+            var provenance = new System.Text.Json.Nodes.JsonObject
+            {
+                ["trusted"] = false,
+                ["source"] = untrustedSource,
+                ["savedAt"] = DateTimeOffset.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
+                ["note"] = "Skill no confiable: revísela y borre este archivo para confiar en ella.",
+            };
+            await File.WriteAllTextAsync(marker, provenance.ToJsonString(), cancellationToken).ConfigureAwait(false);
+        }
+
         await File.WriteAllTextAsync(Path.Combine(folder, "SKILL.md"), skill.ToMarkdown(), cancellationToken).ConfigureAwait(false);
         foreach (var path in skill.Files.List())
         {
@@ -228,12 +325,38 @@ public sealed class SkillLibrary
                 continue;
             }
 
-            var target = Path.Combine(folder, SkillFiles.NormalizePath(path));
+            var relative = SkillFiles.NormalizePath(path);
+            if (relative.Split('/').Any(s => s.StartsWith('.')))
+            {
+                continue; // los archivos ocultos (como el marcador) no forman parte de la skill
+            }
+
+            EnsureNoLinks(folder, relative);
+            var target = Path.Combine(folder, relative);
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             await File.WriteAllBytesAsync(target, data, cancellationToken).ConfigureAwait(false);
         }
 
+        if (untrustedSource is null && File.Exists(marker))
+        {
+            File.Delete(marker);
+        }
+
         return folder;
+    }
+
+    /// <summary>Impide escribir a través de un enlace simbólico o junction que apunte fuera de la carpeta.</summary>
+    private static void EnsureNoLinks(string root, string relative)
+    {
+        var current = root;
+        foreach (var segment in relative.Split('/'))
+        {
+            current = Path.Combine(current, segment);
+            if (new FileInfo(current).LinkTarget is not null)
+            {
+                throw new IOException($"No se escribe la skill a través del enlace '{current}'.");
+            }
+        }
     }
 
     /// <summary>Empaqueta una skill en ZIP (<c>nombre/SKILL.md</c>...), el formato que aceptan Claude.ai y la API de Skills.</summary>

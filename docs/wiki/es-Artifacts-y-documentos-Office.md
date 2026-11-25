@@ -35,13 +35,40 @@ var agent = new ToolLoopAgent(new()
     Tools = ArtifactTools.Create(store, new() { Url = a => $"/artifacts/{a.Id}" }),
 });
 
-app.MapArtifacts("/artifacts");   // GET /artifacts/{id}: página renderizada en un origen aislado (CSP sandbox)
+// En cada petición: el usuario sale de tu autenticación, nunca del cuerpo de la petición.
+var result = agent.Stream(new AgentCallOptions
+{
+    Messages = UIMessageConverter.ToModelMessages(req.Messages),
+    Context = new Dictionary<string, object?> { ["conversationId"] = req.Id, ["userId"] = EndpointSecurity.GetUserId(http) },
+});
+
+app.MapArtifacts("/artifacts");   // exige autorización; cada usuario solo ve sus artifacts (CSP sandbox)
 ```
 
 Herramientas: `create_artifact`, `update_artifact` (reemplazo exacto), `rewrite_artifact`, `read_artifact`, `list_artifacts`.
 Cada cambio llega a `useChat` como parte `data-artifact` (con id, tipo, versión y contenido) para mostrarlo en un panel;
 `ArtifactRenderer.ToHtml(artifact)` convierte Markdown, Mermaid, React, SVG o CSV en una página autónoma.
-Con `Context["conversationId"]` cada conversación solo ve y edita sus artifacts.
+
+Las herramientas necesitan `Context["userId"]` (el dueño, de tu autenticación) y/o `Context["conversationId"]`, y
+**fallan sin ninguno de los dos** (`new ArtifactToolOptions { AllowUnscoped = true }` para aplicaciones de un solo usuario
+o scripts). Cada conversación solo ve y edita sus artifacts, y un usuario nunca ve los de otro aunque el id de
+conversación (que elige el cliente) coincida. Los artifacts guardan su `Owner`; `ArtifactScope.CanAccess` aplica la
+misma regla en tu código.
+
+### Servir artifacts de forma segura
+
+- `MapArtifacts` exige autorización (`new ArtifactEndpointOptions { AllowAnonymous = true }` para desactivarla) y sirve
+  cada artifact solo a su dueño (`Artifact.Owner` igual al usuario autenticado). Personalízalo con
+  `CanAccess = (http, artifact) => ...` (equipos, administradores, conversaciones compartidas); lo que no puedes ver responde 404.
+- `GET /artifacts?conversationId=` lista los metadatos de esa conversación que puedes ver; sin él, tus propios artifacts.
+  Nunca lista todo el almacén, y `FileSystemArtifactStore.ListAsync` ya no lee los binarios (`Data` es null en los listados).
+- Todo lo que escribe el modelo se sirve con `Content-Security-Policy: sandbox ...` y `X-Content-Type-Options: nosniff`;
+  el HTML, SVG o XML crudo (`/raw`) y los archivos se descargan (`Content-Disposition: attachment`).
+- Los artifacts guardados antes de 0.2 no tienen `Owner` y no se sirven por defecto: complétalo o decide con `CanAccess`.
+
+> [!IMPORTANT]
+> Como defensa en profundidad, sirve los artifacts desde un origen propio (por ejemplo `artifacts.example.com`, sin las
+> cookies de la aplicación) y muéstralos en un `<iframe>`.
 
 > [!TIP]
 > El lado del frontend (`useChat` y la parte `data-artifact`) se explica en [ASP.NET Core y useChat](es-ASP.NET-Core-y-useChat).
@@ -53,7 +80,7 @@ var style = new DocumentStyleOptions { Title = "Informe Q3", Author = "Ventas", 
 File.WriteAllBytes("informe.docx", DocumentGenerator.ToDocx(markdown, style));   // estilos reales de Word, editable
 File.WriteAllBytes("informe.pdf", DocumentGenerator.ToPdf(markdown, style));     // sin navegador ni dependencias nativas
 
-var xlsx = new SpreadsheetBuilder()
+var xlsx = new SpreadsheetBuilder { AllowFormulas = true }                       // datos de confianza: "=..." es fórmula
     .AddSheet("Ventas", ventas, new SheetOptions { Totals = true })               // desde objetos: tipos y formatos automáticos
     .AddSheet("Cálculo", [new("Item"), new("Precio", ColumnType.Currency), new("Cant."), new("Subtotal", ColumnType.Currency)],
               [["Mesa", 120.5, 2, "=B2*C2"]])                                    // fórmulas con "="
@@ -68,6 +95,15 @@ var xlsx = new SpreadsheetBuilder()
   acentos, ñ, griego y símbolos; para otros alfabetos: `PdfFonts.FromSingle(File.ReadAllBytes("NotoSansCJK.ttf"))`.
 - **Excel**: columnas tipadas (moneda, porcentaje, fechas...), encabezado con estilo, filtros, panel fijo, anchos
   automáticos, fila de totales con `SUM` y fórmulas; entiende números como `1.234,50` y `12,5%`.
+- **Enlaces** en Word y PDF: solo se crean para `http`, `https` y `mailto`; `file:`, rutas UNC, `javascript:` o
+  `data:` quedan como texto.
+
+> [!WARNING]
+> **Las fórmulas están desactivadas por defecto** (desde la 0.2). Los textos que empiezan con `=`, `+`, `-` o `@` se
+> escriben como texto (con el prefijo de comilla de Excel), así los datos de usuarios finales (`AddSheet<T>`) o de un
+> modelo (`AddMarkdownTables`, `ToXlsx`) no se convierten en `=HYPERLINK(...)`, `=WEBSERVICE(...)` ni DDE que filtren
+> datos al abrir el archivo. Actívelas con `AllowFormulas = true` para datos de confianza, opcionalmente con
+> `FormulaFilter = SpreadsheetBuilder.IsSafeFormula` (solo funciones de cálculo: sin red, enlaces, DDE ni otros libros).
 
 Para que el **agente** genere los archivos (se guardan como artifacts descargables):
 
@@ -75,6 +111,11 @@ Para que el **agente** genere los archivos (se guardan como artifacts descargabl
 Tools = DocumentTools.Create(new DocumentToolOptions { Store = store, ArtifactOptions = new() { Url = a => $"/artifacts/{a.Id}" } }),
 // create_word_document, create_pdf, create_spreadsheet  (+ DocumentTools.Instructions en el system prompt)
 ```
+
+`create_spreadsheet` conserva las fórmulas de cálculo del modelo (`=B2*C2`, `=SUM(D2:D9)`), pero solo las que acepta
+`DocumentToolOptions.FormulaFilter` (por defecto `SpreadsheetBuilder.IsSafeFormula`); las demás se escriben como
+texto. El modelo puede estar siguiendo instrucciones inyectadas en una página o un correo que leyó, y una fórmula de
+red filtraría datos cuando el usuario abra el archivo. `AllowFormulas = false` escribe todo como texto.
 
 ---
 

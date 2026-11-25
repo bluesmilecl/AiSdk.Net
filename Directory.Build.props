@@ -13,8 +13,13 @@
     <!-- Calidad: analizadores recomendados de .NET y advertencias como errores. -->
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <!-- Las alertas de vulnerabilidades de NuGet se ven en la compilación, pero no la bloquean. -->
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
+    <!--
+      Auditoría de NuGet (dependencias directas y transitivas): las vulnerabilidades bajas y moderadas se ven como
+      advertencia; las altas y críticas (NU1903, NU1904) son errores, así que no se compila ni se publica con ellas.
+    -->
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1901;NU1902</WarningsNotAsErrors>
 
     <!-- Solo los proyectos de src/ generan paquetes NuGet. -->
     <IsPackable>false</IsPackable>

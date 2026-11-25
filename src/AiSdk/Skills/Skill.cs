@@ -111,7 +111,13 @@ public static class SkillFiles
     public static ISkillFiles FromText(IReadOnlyDictionary<string, string> files) =>
         new InMemory(files.ToDictionary(kv => kv.Key, kv => Encoding.UTF8.GetBytes(kv.Value)));
 
-    public static ISkillFiles FromDirectory(string directory) => new Directory(directory);
+    /// <summary>
+    /// Archivos leídos desde una carpeta. No sigue enlaces simbólicos ni puntos de reanálisis (junctions): un
+    /// archivo o carpeta enlazada dentro de la skill se ignora, para que no pueda exponer archivos de fuera.
+    /// </summary>
+    /// <param name="directory">Carpeta de la skill (puede ser ella misma un enlace).</param>
+    /// <param name="maxFileBytes">Tamaño máximo de un archivo al leerlo.</param>
+    public static ISkillFiles FromDirectory(string directory, long maxFileBytes = long.MaxValue) => new Directory(directory, maxFileBytes);
 
     /// <summary>Normaliza una ruta relativa y rechaza rutas absolutas o que salgan de la skill.</summary>
     public static string NormalizePath(string path)
@@ -131,6 +137,50 @@ public static class SkillFiles
         return normalized;
     }
 
+    /// <summary>Opciones de enumeración que no entran en carpetas enlazadas ni devuelven archivos enlazados.</summary>
+    internal static EnumerationOptions WithoutLinks { get; } = new()
+    {
+        RecurseSubdirectories = true,
+        AttributesToSkip = FileAttributes.ReparsePoint,
+        IgnoreInaccessible = true,
+    };
+
+    /// <summary>
+    /// Ruta real de <paramref name="relative"/> bajo <paramref name="root"/> si cada componente existe y ninguno es un
+    /// enlace (<see cref="FileAttributes.ReparsePoint"/>); null en otro caso. Con la ruta ya normalizada (sin <c>..</c>)
+    /// y sin enlaces, el resultado está necesariamente contenido en <paramref name="root"/>.
+    /// </summary>
+    internal static string? ResolveInside(string root, string relative)
+    {
+        var current = root;
+        foreach (var segment in relative.Split('/'))
+        {
+            current = Path.Combine(current, segment);
+            if (LinkOrMissing(current))
+            {
+                return null;
+            }
+        }
+
+        return current;
+    }
+
+    /// <summary>True si la ruta no existe o es un enlace (aunque apunte a un destino inexistente).</summary>
+    internal static bool LinkOrMissing(string path)
+    {
+        FileAttributes attributes;
+        try
+        {
+            attributes = File.GetAttributes(path);
+        }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+        {
+            return true;
+        }
+
+        return (attributes & FileAttributes.ReparsePoint) != 0;
+    }
+
     private sealed class InMemory(IReadOnlyDictionary<string, byte[]> files) : ISkillFiles
     {
         private readonly Dictionary<string, byte[]> _files = files.ToDictionary(kv => NormalizePath(kv.Key), kv => kv.Value, StringComparer.Ordinal);
@@ -141,12 +191,12 @@ public static class SkillFiles
             Task.FromResult(_files.TryGetValue(NormalizePath(path), out var data) ? data : null);
     }
 
-    private sealed class Directory(string root) : ISkillFiles
+    private sealed class Directory(string root, long maxFileBytes) : ISkillFiles
     {
         private readonly string _root = Path.GetFullPath(root);
 
         public IReadOnlyList<string> List() =>
-            System.IO.Directory.EnumerateFiles(_root, "*", SearchOption.AllDirectories)
+            System.IO.Directory.EnumerateFiles(_root, "*", WithoutLinks)
                 .Select(f => Path.GetRelativePath(_root, f).Replace('\\', '/'))
                 .Where(f => f != "SKILL.md" && !f.Split('/').Any(s => s.StartsWith('.')))
                 .Order(StringComparer.Ordinal)
@@ -154,10 +204,23 @@ public static class SkillFiles
 
         public async Task<byte[]?> ReadAsync(string path, CancellationToken cancellationToken = default)
         {
-            var full = Path.GetFullPath(Path.Combine(_root, NormalizePath(path)));
-            if (!full.StartsWith(_root + Path.DirectorySeparatorChar, StringComparison.Ordinal) || !File.Exists(full))
+            var relative = NormalizePath(path);
+            if (relative.Split('/').Any(s => s.StartsWith('.')))
+            {
+                return null; // los archivos ocultos no forman parte de la skill (List tampoco los muestra)
+            }
+
+            // GetFullPath no resuelve enlaces: se rechaza cualquier componente que sea un enlace simbólico o una
+            // junction, así references/x.md → /etc/hostname (o una carpeta enlazada) no sale de la skill.
+            if (ResolveInside(_root, relative) is not { } full || !File.Exists(full))
             {
                 return null;
+            }
+
+            var length = new FileInfo(full).Length;
+            if (length > maxFileBytes)
+            {
+                throw new IOException($"El archivo '{relative}' de la skill supera el tamaño máximo ({maxFileBytes} bytes).");
             }
 
             return await File.ReadAllBytesAsync(full, cancellationToken).ConfigureAwait(false);
@@ -168,7 +231,11 @@ public static class SkillFiles
 /// <summary>Límites al cargar skills de terceros.</summary>
 public sealed record SkillLoadOptions
 {
-    /// <summary>Marca las skills cargadas como de confianza (sus scripts podrán ejecutarse).</summary>
+    /// <summary>
+    /// Marca las skills cargadas como de confianza (sus scripts podrán ejecutarse). Una skill con el marcador
+    /// de procedencia <see cref="SkillLibrary.ProvenanceFileName"/> (p. ej. creada por un agente con
+    /// <c>create_skill</c>) se carga siempre como no confiable, aunque esté en una carpeta de confianza.
+    /// </summary>
     public bool Trusted { get; init; }
 
     /// <summary>Tamaño máximo por archivo (el estándar recomienda 5 MB).</summary>
@@ -176,6 +243,12 @@ public sealed record SkillLoadOptions
 
     /// <summary>Archivos máximos por skill.</summary>
     public int MaxFiles { get; init; } = 500;
+
+    /// <summary>Tamaño máximo de un ZIP (o de la descarga de un repositorio de GitHub). Por defecto 100 MB.</summary>
+    public long MaxArchiveBytes { get; init; } = 100 * 1024 * 1024;
+
+    /// <summary>Total de bytes descomprimidos que se aceptan de un ZIP (protege de "bombas ZIP"). Por defecto 256 MB.</summary>
+    public long MaxArchiveExtractedBytes { get; init; } = 256 * 1024 * 1024;
 
     /// <summary>
     /// Con true (por defecto) se rechazan las skills que no cumplen el estándar. Con false se aceptan las que
@@ -187,24 +260,42 @@ public sealed record SkillLoadOptions
     /// <summary>Si es true, una skill inválida lanza excepción; si es false, se omite y se informa en <see cref="SkillLibrary.LoadErrors"/>.</summary>
     public bool ThrowOnInvalid { get; init; }
 
+    /// <summary>
+    /// Si es false (por defecto), una skill con el nombre de otra ya cargada se omite y se informa en
+    /// <see cref="SkillLibrary.LoadErrors"/> (o se lanza <see cref="InvalidOperationException"/> con
+    /// <see cref="ThrowOnInvalid"/>): se conserva la primera, para que una carga posterior (p. ej. un repositorio de
+    /// GitHub) no reemplace en silencio una skill propia. Con true, la nueva reemplaza a la anterior (útil para recargar).
+    /// </summary>
+    public bool ReplaceExisting { get; init; }
+
     public static SkillLoadOptions Default { get; } = new();
 }
+
+/// <summary>Skill leída de un ZIP, o el error que impidió leerla (se informa por skill, sin detener la carga).</summary>
+internal sealed record ArchivedSkill(string Folder, string? Markdown, Dictionary<string, byte[]>? Files, bool Untrusted, Exception? Error);
 
 /// <summary>Carga de skills desde ZIP (paquetes .skill / .zip, repositorios de GitHub).</summary>
 internal static class SkillArchive
 {
     /// <summary>Lee todas las skills de un ZIP; <paramref name="prefix"/> limita a una subcarpeta.</summary>
-    public static List<(string Folder, string Markdown, Dictionary<string, byte[]> Files)> Read(Stream zip, string? prefix, SkillLoadOptions options)
+    public static List<ArchivedSkill> Read(Stream zip, string? prefix, SkillLoadOptions options)
     {
-        using var archive = new ZipArchive(zip, ZipArchiveMode.Read);
+        if (zip.CanSeek && zip.Length - zip.Position > options.MaxArchiveBytes)
+        {
+            throw new InvalidDataException($"El ZIP supera el tamaño máximo de {options.MaxArchiveBytes} bytes.");
+        }
+
+        using var archive = new ZipArchive(zip, ZipArchiveMode.Read, leaveOpen: true); // el stream es del llamador
         var entries = archive.Entries.Where(e => e.Length > 0 || !e.FullName.EndsWith('/')).ToList();
 
         // Los ZIP de GitHub tienen una carpeta raíz "repo-rama/": se descarta si todas las entradas la comparten.
         var root = CommonRoot(entries.Select(e => e.FullName));
         var normalizedPrefix = prefix?.Trim('/') is { Length: > 0 } p ? p + "/" : string.Empty;
 
-        var skills = new List<(string, string, Dictionary<string, byte[]>)>();
+        var skills = new List<ArchivedSkill>();
         var folders = entries.Where(e => e.Name == "SKILL.md").Select(e => e.FullName[..^"SKILL.md".Length]).ToList();
+        var names = entries.Select(e => e.FullName).ToHashSet(StringComparer.Ordinal);
+        var extracted = 0L;
 
         // Cada archivo pertenece a la skill cuya carpeta es el prefijo más largo (soporta skills anidadas).
         string? Owner(string fullName) => folders.Where(f => fullName.StartsWith(f, StringComparison.Ordinal)).MaxBy(f => f.Length);
@@ -218,31 +309,66 @@ internal static class SkillArchive
             }
 
             var folder = skillMd.FullName[..^"SKILL.md".Length];
-            var files = new Dictionary<string, byte[]>(StringComparer.Ordinal);
-            foreach (var entry in entries.Where(e => e.FullName.StartsWith(folder, StringComparison.Ordinal) && e != skillMd && !e.FullName.EndsWith('/')))
+            var folderName = folder.TrimEnd('/').Split('/')[^1];
+            try
             {
-                var path = entry.FullName[folder.Length..];
-                if (path.Split('/').Any(s => s.StartsWith('.')) || Owner(entry.FullName) != folder)
+                var files = new Dictionary<string, byte[]>(StringComparer.Ordinal);
+                foreach (var entry in entries.Where(e => e.FullName.StartsWith(folder, StringComparison.Ordinal) && e != skillMd && !e.FullName.EndsWith('/')))
                 {
-                    continue; // archivos ocultos o pertenecientes a una skill anidada
+                    var path = entry.FullName[folder.Length..];
+                    if (path.Split('/').Any(s => s.StartsWith('.')) || Owner(entry.FullName) != folder)
+                    {
+                        continue; // archivos ocultos o pertenecientes a una skill anidada
+                    }
+
+                    if (entry.Length > options.MaxFileBytes || files.Count >= options.MaxFiles)
+                    {
+                        throw new InvalidDataException($"La skill en '{folder}' supera los límites de tamaño ({path}).");
+                    }
+
+                    files[path] = ReadBounded(entry, options.MaxFileBytes, $"La skill en '{folder}' supera los límites de tamaño ({path}).");
+                    extracted += files[path].Length;
+                    if (extracted > options.MaxArchiveExtractedBytes)
+                    {
+                        throw new InvalidDataException($"El ZIP supera el máximo de {options.MaxArchiveExtractedBytes} bytes descomprimidos.");
+                    }
                 }
 
-                if (entry.Length > options.MaxFileBytes || files.Count >= options.MaxFiles)
-                {
-                    throw new InvalidDataException($"La skill en '{folder}' supera los límites de tamaño ({path}).");
-                }
-
-                using var stream = entry.Open();
-                using var buffer = new MemoryStream();
-                stream.CopyTo(buffer);
-                files[path] = buffer.ToArray();
+                var markdown = Encoding.UTF8.GetString(ReadBounded(skillMd, options.MaxFileBytes, $"El SKILL.md de '{folder}' supera el tamaño máximo."));
+                var untrusted = names.Contains(folder + SkillLibrary.ProvenanceFileName);
+                skills.Add(new ArchivedSkill(folderName, markdown, files, untrusted, null));
             }
-
-            using var reader = new StreamReader(skillMd.Open(), Encoding.UTF8);
-            skills.Add((folder.TrimEnd('/').Split('/')[^1], reader.ReadToEnd(), files));
+            catch (InvalidDataException ex) when (ex.Message.StartsWith("El ZIP supera", StringComparison.Ordinal))
+            {
+                throw; // límite global: no tiene sentido seguir con las demás skills
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                skills.Add(new ArchivedSkill(folderName, null, null, true, ex));
+            }
         }
 
         return skills;
+    }
+
+    /// <summary>Lee una entrada sin confiar en el tamaño declarado en el ZIP (puede mentir).</summary>
+    private static byte[] ReadBounded(ZipArchiveEntry entry, long maxBytes, string error)
+    {
+        using var stream = entry.Open();
+        using var buffer = new MemoryStream();
+        var chunk = new byte[81920];
+        int read;
+        while ((read = stream.Read(chunk, 0, chunk.Length)) > 0)
+        {
+            if (buffer.Length + read > maxBytes)
+            {
+                throw new InvalidDataException(error);
+            }
+
+            buffer.Write(chunk, 0, read);
+        }
+
+        return buffer.ToArray();
     }
 
     private static string CommonRoot(IEnumerable<string> names)

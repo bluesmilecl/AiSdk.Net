@@ -52,7 +52,9 @@ var result = await Ai.GenerateTextAsync(new GenerateTextOptions
 
 Los errores de las herramientas (excepciones, JSON inválido, herramienta desconocida) se devuelven al modelo
 como resultados con `IsError = true`, para que pueda corregirse. Las herramientas sin `Execute`
-(`Tool.Define<T>`) se resuelven en el cliente: el bucle se detiene y quedan en `result.PendingToolCalls`.
+(`Tool.Define<T>`) se resuelven en el cliente: el bucle se detiene y quedan en `result.PendingToolCalls`. Cuando el
+modelo pide varias herramientas en un mismo paso se ejecutan en paralelo, como máximo `MaxParallelToolCalls` a la vez
+(8 por defecto; con 1 se ejecutan en orden).
 
 ## 🤖 Agentes
 
@@ -98,6 +100,12 @@ var r = await chat.SendAsync("¿Cómo me llamo?");
 `ModelMessage` es serializable a JSON (con discriminador `type`), así que implementar
 `IConversationStore` sobre EF Core, Redis o Cosmos DB es directo.
 
+Una sesión nunca conserva llamadas a herramientas sin resultado (que harían fallar en el proveedor todas las peticiones
+siguientes): si la conversación continúa mientras una llamada está pendiente (una herramienta de cliente o una aprobación
+diferida), se cierra con un resultado de error que también se guarda, y los historiales guardados por la 0.1.0 con
+llamadas colgantes se reparan en memoria. Para responder herramientas de cliente, envía un `ModelMessage.Tool(...)` con
+sus resultados; `GetPendingToolCallsAsync` lista lo pendiente.
+
 **Sub-agentes / multi-agente:**
 
 ```csharp
@@ -107,6 +115,9 @@ var orchestrator = new ToolLoopAgent(new AgentSettings
     Tools = [researchAgent.AsTool(), writerAgent.AsTool("writer", "Redacta el informe final")],
 });
 ```
+
+Un sub-agente sin manejador de aprobación propio usa el del agente que lo llama (`OnToolApproval`) y, si se detiene con
+llamadas sin resolver, la herramienta falla con un error explícito en vez de devolver un texto vacío.
 
 > [!TIP]
 > Para patrones listos (paralelo, router, supervisor, traspasos…) ver [Orquestación multi-agente](es-Orquestacion-multi-agente).
@@ -122,6 +133,34 @@ await Ai.GenerateTextAsync(new GenerateTextOptions
     OnToolApproval = async req => await AskOperatorAsync(req.ToolCall),   // false → se informa al modelo
 });
 ```
+
+Sin `OnToolApproval`, una herramienta que requiere aprobación **no se ejecuta**: el modelo recibe un error explícito
+("requiere aprobación y no hay un manejador de aprobación configurado") y el historial sigue siendo válido. Para aprobar
+**más tarde** (por ejemplo en otra petición HTTP, como `tool-approval-request` del AI SDK), difiere las aprobaciones y
+reanuda:
+
+```csharp
+var first = await Ai.GenerateTextAsync(new() { Model = model, Messages = history, Tools = [deleteUser], DeferToolApprovals = true });
+foreach (var pending in first.PendingApprovals) { /* muestra pending.ToolCall al usuario */ }
+history.AddRange(first.ResponseMessages);                                  // guarda el historial en el servidor
+
+var resumed = await Ai.GenerateTextAsync(new()
+{
+    Model = model, Messages = history, Tools = [deleteUser],
+    ToolApprovals = [new ToolApprovalResponse(callId, Approved: true)],    // o Approved: false, Reason: "..."
+});
+
+// Con una sesión (AgentSettings.DeferToolApprovals = true):
+await chat.SendApprovalsAsync([new ToolApprovalResponse(callId, Approved: true)]);
+```
+
+Las llamadas aprobadas se ejecutan antes de volver a llamar al modelo y sus resultados forman parte de los
+`ResponseMessages` del primer paso; las denegadas, y las pendientes sin decisión, se informan al modelo como errores.
+
+> [!WARNING]
+> Las aprobaciones se aplican a las llamadas de los mensajes que entregas. Guarda el historial en el servidor (como hace
+> `AgentSession`) en vez de confiar en un historial enviado por el cliente, o un cliente podría lograr que se apruebe una
+> llamada inventada.
 
 **Control por paso** (`PrepareStep`): cambiar de modelo, forzar herramientas o recortar el contexto.
 
@@ -143,7 +182,8 @@ RepairToolCall = ToolCallRepair.FirstOf(
 ```
 
 Se invoca cuando la herramienta no existe, el JSON está roto o la entrada no cumple el esquema
-(`ToolCallRepairReason`). Si la reparación devuelve null, el error se informa al modelo como antes.
+(`ToolCallRepairReason`). Si la reparación devuelve null, el error se informa al modelo como antes. La reparación recibe
+la cancelación de la generación en `ToolCallRepairContext.CancellationToken` (`WithModel` la respeta).
 
 ## 📣 Callbacks
 

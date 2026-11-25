@@ -32,7 +32,7 @@ public sealed class AiSdkBuilder
         var options = new OpenAIProviderOptions();
         configure?.Invoke(options);
         var clientName = $"AiSdk.{options.Name}";
-        Services.AddHttpClient(clientName, c => c.Timeout = TimeSpan.FromMinutes(10));
+        AddProviderHttpClient(clientName);
         return AddProvider(options.Name, sp =>
         {
             options.HttpClient ??= sp.GetRequiredService<IHttpClientFactory>().CreateClient(clientName);
@@ -46,7 +46,7 @@ public sealed class AiSdkBuilder
         var options = new AnthropicProviderOptions();
         configure?.Invoke(options);
         var clientName = $"AiSdk.{options.Name}";
-        Services.AddHttpClient(clientName, c => c.Timeout = TimeSpan.FromMinutes(10));
+        AddProviderHttpClient(clientName);
         return AddProvider(options.Name, sp =>
         {
             options.HttpClient ??= sp.GetRequiredService<IHttpClientFactory>().CreateClient(clientName);
@@ -81,13 +81,22 @@ public sealed class AiSdkBuilder
         configure?.Invoke(options);
         var providerName = name(options);
         var clientName = $"AiSdk.{providerName}";
-        Services.AddHttpClient(clientName, c => c.Timeout = TimeSpan.FromMinutes(10));
+        AddProviderHttpClient(clientName);
         return AddProvider(providerName, sp =>
         {
             setClient(options, sp.GetRequiredService<IHttpClientFactory>().CreateClient(clientName));
             return create(options);
         });
     }
+
+    /// <summary>
+    /// Cliente HTTP con nombre para un proveedor: sin redirecciones automáticas (que reenviarían cabeceras de
+    /// autenticación propias como <c>x-api-key</c> a otro origen) y con <see cref="AiSdk.Http.SafeRedirectHandler"/>.
+    /// </summary>
+    private void AddProviderHttpClient(string clientName) =>
+        Services.AddHttpClient(clientName, c => c.Timeout = TimeSpan.FromMinutes(10))
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false })
+            .AddHttpMessageHandler(() => new AiSdk.Http.SafeRedirectHandler());
 
     /// <summary>Registra el almacén de streams reanudables (en memoria por defecto).</summary>
     public AiSdkBuilder AddResumableStreams(IResumableStreamStore? store = null)
@@ -99,6 +108,8 @@ public sealed class AiSdkBuilder
     /// <summary>
     /// Registra una <see cref="AiSdk.Skills.SkillLibrary"/> singleton con las skills de las carpetas indicadas
     /// (de confianza, por ser del propio proyecto). Úsela en agentes con <c>Skills = sp.GetRequiredService&lt;SkillLibrary&gt;()</c>.
+    /// Las skills con el marcador <see cref="AiSdk.Skills.SkillLibrary.ProvenanceFileName"/> (p. ej. creadas por un
+    /// agente con <c>create_skill</c> en esa misma carpeta) se cargan como no confiables.
     /// </summary>
     public AiSdkBuilder AddSkills(params string[] directories) => AddSkills(library =>
     {

@@ -37,10 +37,24 @@ public sealed record DocumentSource
             FilePath = Path.GetFullPath(path),
         };
 
-    public static async Task<DocumentSource> FromStreamAsync(Stream stream, string? mediaType = null, string? fileName = null, CancellationToken cancellationToken = default)
+    /// <summary>Lee el documento de un flujo (p. ej. una subida HTTP), sin pasar de <paramref name="maxBytes"/>.</summary>
+    /// <exception cref="DocumentTooLargeException">El flujo tiene más de <paramref name="maxBytes"/> bytes (se deja de leer al superarlo).</exception>
+    public static async Task<DocumentSource> FromStreamAsync(Stream stream, string? mediaType = null, string? fileName = null, long maxBytes = long.MaxValue, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(stream);
         using var buffer = new MemoryStream();
-        await stream.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
+        var chunk = new byte[81920];
+        int read;
+        while ((read = await stream.ReadAsync(chunk, cancellationToken).ConfigureAwait(false)) > 0)
+        {
+            if (buffer.Length + read > maxBytes)
+            {
+                throw new DocumentTooLargeException(buffer.Length + read, maxBytes, fileName);
+            }
+
+            buffer.Write(chunk, 0, read);
+        }
+
         return new(buffer.ToArray(), mediaType, fileName);
     }
 

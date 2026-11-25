@@ -130,9 +130,9 @@ public sealed class AnthropicMessagesLanguageModel : ILanguageModel, ITokenCount
             return part;
         }
 
-        await foreach (var sse in ProviderHttp.ReadSseAsync(response, cancellationToken).ConfigureAwait(false))
+        await foreach (var sse in ProviderHttp.ReadSseAsync(response, ProviderHttp.ModelStreamOptions, cancellationToken).ConfigureAwait(false))
         {
-            if (JsonNode.Parse(sse.Data) is not JsonObject evt)
+            if (ProviderHttp.ParseSseJson(sse, "Anthropic") is not { } evt)
             {
                 continue;
             }

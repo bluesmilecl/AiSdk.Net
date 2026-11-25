@@ -18,6 +18,7 @@ How the concepts of the Vercel AI SDK (TypeScript) and the Laravel AI SDK map to
 | `new ToolLoopAgent({...})` | `class X extends Agent` | `new ToolLoopAgent(new AgentSettings {...})` or `class X : Agent` |
 | `Output.object / array / choice` | — | `Output.Object<T>()`, `Output.Array<T>()`, `Output.Choice(...)` |
 | `needsApproval` | — | `tool.RequireApproval()` + `OnToolApproval` |
+| `tool-approval-request` / `tool-approval-response` | — | `DeferToolApprovals` + `result.PendingApprovals`, then `ToolApprovals` (or `session.SendApprovalsAsync`) |
 | `RemembersConversations` | `RemembersConversations` | `agent.CreateSession(id, store)` + `IConversationStore` |
 | `wrapLanguageModel({ middleware })` | — | `model.WithMiddleware(...)` |
 | `createProviderRegistry` | `config/ai.php` | `ProviderRegistry` / `AddAiSdk(...)` |

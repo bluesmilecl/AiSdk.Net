@@ -207,7 +207,7 @@ public static class DocxWriter
         foreach (var run in runs)
         {
             var element = Run(run);
-            if (run.Link is { } url && Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            if (MarkdownModel.IsSafeLink(run.Link, out var uri))
             {
                 var rel = context.Main.AddHyperlinkRelationship(uri, true);
                 element.RunProperties!.Append(new RunStyle { Val = "Hyperlink" });

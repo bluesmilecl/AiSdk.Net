@@ -58,6 +58,10 @@ public static class JsonUtil
     /// Intenta parsear JSON incompleto (por ejemplo, mientras se recibe por streaming),
     /// cerrando strings, arrays y objetos abiertos. Devuelve null si no es posible.
     /// </summary>
+    /// <remarks>
+    /// Tiempo lineal: un solo recorrido repara el prefijo (como <c>fixJson</c> del AI SDK) y se parsea una vez.
+    /// Se llama con el texto acumulado en cada fragmento del stream, así que no puede probar prefijos más cortos.
+    /// </remarks>
     public static JsonNode? ParsePartial(string text)
     {
         if (string.IsNullOrWhiteSpace(text))
@@ -71,99 +75,272 @@ public static class JsonUtil
             return null;
         }
 
-        text = text[start..];
-        for (var length = text.Length; length > 0; length--)
+        try
         {
-            var candidate = CloseJson(text.AsSpan(0, length));
-            if (candidate is null)
-            {
-                continue;
-            }
-
-            try
-            {
-                return JsonNode.Parse(candidate);
-            }
-            catch (JsonException)
-            {
-                // Probar con un prefijo más corto.
-            }
+            return JsonNode.Parse(RepairPartialJson(text.AsSpan(start)));
         }
-
-        return null;
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
-    private static string? CloseJson(ReadOnlySpan<char> text)
+    private enum PartialFrame : byte
     {
-        var stack = new Stack<char>();
-        var inString = false;
-        var escaped = false;
-        foreach (var c in text)
+        ObjectStart,
+        ObjectKey,
+        ObjectAfterKey,
+        ObjectBeforeValue,
+        ObjectAfterValue,
+        ObjectAfterComma,
+        ArrayStart,
+        ArrayAfterValue,
+        ArrayAfterComma,
+    }
+
+    private enum PartialToken : byte
+    {
+        None,
+        String,
+        Escape,
+        Unicode,
+        Number,
+        Literal,
+    }
+
+    /// <summary>
+    /// Devuelve el prefijo válido más largo de <paramref name="text"/> (que empieza con <c>{</c> o <c>[</c>) con sus
+    /// strings, literales, arrays y objetos cerrados. Las claves incompletas y los valores a medio escribir que no
+    /// pueden completarse (p. ej. <c>"a":</c> o <c>1.</c>) se descartan; lo que sigue a un carácter inválido o al
+    /// cierre del valor raíz se ignora.
+    /// </summary>
+    internal static string RepairPartialJson(ReadOnlySpan<char> text)
+    {
+        var frames = new List<PartialFrame>();
+        var token = PartialToken.None;
+        var inKey = false;
+        var unicodeLeft = 0;
+        var literalStart = 0;
+        var validLength = 0; // el prefijo text[..validLength] + los cierres es JSON válido
+
+        for (var i = 0; i < text.Length; i++)
         {
-            if (inString)
+            var c = text[i];
+            switch (token)
             {
-                if (escaped)
+                case PartialToken.String:
+                    if (c == '"')
+                    {
+                        token = PartialToken.None;
+                        if (inKey)
+                        {
+                            inKey = false;
+                            frames[^1] = PartialFrame.ObjectAfterKey;
+                        }
+                        else
+                        {
+                            validLength = i + 1;
+                        }
+                    }
+                    else if (c == '\\')
+                    {
+                        token = PartialToken.Escape;
+                    }
+                    else if (!inKey)
+                    {
+                        validLength = i + 1;
+                    }
+
+                    continue;
+                case PartialToken.Escape:
+                    if (c == 'u')
+                    {
+                        token = PartialToken.Unicode;
+                        unicodeLeft = 4;
+                    }
+                    else if (c is '"' or '\\' or '/' or 'b' or 'f' or 'n' or 'r' or 't')
+                    {
+                        token = PartialToken.String;
+                        validLength = inKey ? validLength : i + 1;
+                    }
+                    else
+                    {
+                        return Close(text, validLength, frames, token, inKey, literalStart);
+                    }
+
+                    continue;
+                case PartialToken.Unicode:
+                    if (!char.IsAsciiHexDigit(c))
+                    {
+                        return Close(text, validLength, frames, token, inKey, literalStart);
+                    }
+
+                    if (--unicodeLeft == 0)
+                    {
+                        token = PartialToken.String;
+                        validLength = inKey ? validLength : i + 1;
+                    }
+
+                    continue;
+                case PartialToken.Number:
+                    if (char.IsAsciiDigit(c))
+                    {
+                        validLength = i + 1;
+                        continue;
+                    }
+
+                    if (c is '.' or 'e' or 'E' or '+' or '-')
+                    {
+                        continue;
+                    }
+
+                    token = PartialToken.None; // fin del número: c se procesa como carácter estructural
+                    break;
+                case PartialToken.Literal:
+                    if (IsLiteralPrefix(text[literalStart..(i + 1)]))
+                    {
+                        validLength = i + 1;
+                        continue;
+                    }
+
+                    if (!IsLiteral(text[literalStart..i]))
+                    {
+                        return Close(text, validLength, frames, token, inKey, literalStart);
+                    }
+
+                    token = PartialToken.None;
+                    break;
+            }
+
+            if (c is ' ' or '\t' or '\n' or '\r')
+            {
+                continue;
+            }
+
+            if (frames.Count == 0)
+            {
+                // Raíz: siempre un objeto o un array (el llamador salta lo anterior a '{' o '[').
+                if (!StartValue(c, i))
                 {
-                    escaped = false;
-                }
-                else if (c == '\\')
-                {
-                    escaped = true;
-                }
-                else if (c == '"')
-                {
-                    inString = false;
+                    break;
                 }
 
                 continue;
             }
 
-            switch (c)
+            var ok = true;
+            switch (frames[^1])
             {
-                case '"':
-                    inString = true;
+                case PartialFrame.ObjectStart when c == '}':
+                case PartialFrame.ObjectAfterValue when c == '}':
+                case PartialFrame.ArrayStart when c == ']':
+                case PartialFrame.ArrayAfterValue when c == ']':
+                    frames.RemoveAt(frames.Count - 1);
+                    validLength = i + 1;
                     break;
-                case '{':
-                    stack.Push('}');
+                case PartialFrame.ObjectStart or PartialFrame.ObjectAfterComma when c == '"':
+                    frames[^1] = PartialFrame.ObjectKey;
+                    token = PartialToken.String;
+                    inKey = true;
                     break;
-                case '[':
-                    stack.Push(']');
+                case PartialFrame.ObjectAfterKey when c == ':':
+                    frames[^1] = PartialFrame.ObjectBeforeValue;
                     break;
-                case '}':
-                case ']':
-                    if (stack.Count == 0 || stack.Pop() != c)
-                    {
-                        return null;
-                    }
+                case PartialFrame.ObjectAfterValue when c == ',':
+                    frames[^1] = PartialFrame.ObjectAfterComma;
+                    break;
+                case PartialFrame.ArrayAfterValue when c == ',':
+                    frames[^1] = PartialFrame.ArrayAfterComma;
+                    break;
+                case PartialFrame.ObjectBeforeValue:
+                    frames[^1] = PartialFrame.ObjectAfterValue;
+                    ok = StartValue(c, i);
+                    break;
+                case PartialFrame.ArrayStart or PartialFrame.ArrayAfterComma:
+                    frames[^1] = PartialFrame.ArrayAfterValue;
+                    ok = StartValue(c, i);
+                    break;
+                default:
+                    ok = false;
+                    break;
+            }
 
-                    break;
+            if (!ok || frames.Count == 0)
+            {
+                break; // carácter inválido o valor raíz completo: el resto se ignora
             }
         }
 
-        if (escaped)
+        return Close(text, validLength, frames, token, inKey, literalStart);
+
+        // El contenedor padre ya quedó en "después del valor": al cerrar este valor no hay que tocarlo.
+        bool StartValue(char c, int i)
         {
-            return null;
+            switch (c)
+            {
+                case '{':
+                    frames.Add(PartialFrame.ObjectStart);
+                    validLength = i + 1;
+                    return true;
+                case '[':
+                    frames.Add(PartialFrame.ArrayStart);
+                    validLength = i + 1;
+                    return true;
+                case '"':
+                    token = PartialToken.String;
+                    validLength = i + 1;
+                    return true;
+                case '-':
+                    token = PartialToken.Number;
+                    return true;
+                case >= '0' and <= '9':
+                    token = PartialToken.Number;
+                    validLength = i + 1;
+                    return true;
+                case 't' or 'f' or 'n':
+                    token = PartialToken.Literal;
+                    literalStart = i;
+                    validLength = i + 1;
+                    return true;
+                default:
+                    return false;
+            }
+        }
+    }
+
+    private static bool IsLiteralPrefix(ReadOnlySpan<char> partial) =>
+        "true".AsSpan().StartsWith(partial) || "false".AsSpan().StartsWith(partial) || "null".AsSpan().StartsWith(partial);
+
+    private static bool IsLiteral(ReadOnlySpan<char> value) => value is "true" or "false" or "null";
+
+    private static string Close(ReadOnlySpan<char> text, int validLength, List<PartialFrame> frames, PartialToken token, bool inKey, int literalStart)
+    {
+        var builder = new StringBuilder(validLength + frames.Count + 5);
+        builder.Append(text[..validLength]);
+        switch (token)
+        {
+            case PartialToken.String or PartialToken.Escape or PartialToken.Unicode when !inKey:
+                builder.Append('"');
+                break;
+            case PartialToken.Literal when validLength > literalStart:
+                var partial = text[literalStart..validLength];
+                foreach (var literal in (ReadOnlySpan<string>)["true", "false", "null"])
+                {
+                    if (literal.AsSpan().StartsWith(partial))
+                    {
+                        builder.Append(literal.AsSpan(partial.Length));
+                        break;
+                    }
+                }
+
+                break;
         }
 
-        var sb = new StringBuilder(text.Length + stack.Count + 1);
-        sb.Append(text);
-        if (inString)
+        for (var i = frames.Count - 1; i >= 0; i--)
         {
-            sb.Append('"');
+            builder.Append(frames[i] >= PartialFrame.ArrayStart ? ']' : '}');
         }
 
-        var trimmed = sb.ToString().TrimEnd();
-        if (trimmed.EndsWith(',') || trimmed.EndsWith(':'))
-        {
-            return null;
-        }
-
-        sb.Clear().Append(trimmed);
-        while (stack.Count > 0)
-        {
-            sb.Append(stack.Pop());
-        }
-
-        return sb.ToString();
+        return builder.ToString();
     }
 }

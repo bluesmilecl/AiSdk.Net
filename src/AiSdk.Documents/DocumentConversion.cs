@@ -112,9 +112,53 @@ public enum PdfOcrMode
 /// </summary>
 public sealed record DocumentConversionProgress(int Pages, int OcrPages, int OcrPagesDone);
 
-/// <summary>Opciones de <see cref="MarkdownConverter"/>.</summary>
+/// <summary>
+/// Opciones de <see cref="MarkdownConverter"/>. Los límites (<see cref="MaxInputBytes"/>, <see cref="MaxPdfPages"/>,
+/// <see cref="MaxOcrPages"/>, <see cref="MaxNestingDepth"/>...) acotan el trabajo que un documento hostil puede provocar
+/// —memoria, CPU, procesos externos y llamadas pagadas de OCR o visión—; al superarlos se convierte una parte y se
+/// agrega un aviso a <see cref="DocumentConversionResult.Warnings"/>, salvo <see cref="MaxInputBytes"/>, que lanza
+/// <see cref="DocumentTooLargeException"/>.
+/// </summary>
 public sealed class MarkdownConverterOptions
 {
+    /// <summary>Tamaño máximo de un documento, en bytes (por defecto 100 MB). Uno más grande lanza <see cref="DocumentTooLargeException"/> sin convertirse.</summary>
+    public long MaxInputBytes { get; init; } = 100L * 1024 * 1024;
+
+    /// <summary>
+    /// Profundidad máxima de anidamiento (por defecto 128). En HTML, lo que esté más abajo se convierte a texto plano con
+    /// un aviso. En Word, Excel y PowerPoint, una parte XML más profunda se rechaza con <see cref="InvalidDataException"/>:
+    /// el SDK de Open XML la cargaría de forma recursiva y un archivo de pocos KB desbordaría la pila del proceso.
+    /// </summary>
+    public int MaxNestingDepth { get; init; } = 128;
+
+    /// <summary>HTML: bytes máximos que se convierten (por defecto 10 MB); el resto se omite con un aviso.</summary>
+    public int MaxHtmlBytes { get; init; } = 10 * 1024 * 1024;
+
+    /// <summary>
+    /// Caracteres máximos de cada parte XML de Word, Excel y PowerPoint, ya descomprimida (por defecto 32 millones;
+    /// <c>OpenSettings.MaxCharactersInPart</c>). Evita que un archivo pequeño y muy comprimido ocupe gigabytes. Una parte
+    /// más grande lanza <see cref="InvalidDataException"/>, salvo las hojas de Excel, que se leen hasta ese punto.
+    /// </summary>
+    public long MaxOfficePartChars { get; init; } = 32_000_000;
+
+    /// <summary>PDF: páginas máximas que se procesan (por defecto 1000); las demás se omiten con un aviso.</summary>
+    public int MaxPdfPages { get; init; } = 1000;
+
+    /// <summary>
+    /// Páginas o imágenes máximas de un documento que se envían a OCR o al modelo de visión (por defecto 100): páginas
+    /// escaneadas de un PDF e imágenes incrustadas en Word, PowerPoint y PDF. Las demás se omiten con un aviso. Acota
+    /// los procesos de OCR y las llamadas pagadas que puede provocar, p. ej., un PDF de pocos KB con miles de páginas
+    /// en blanco. Con un OCR que lee el PDF completo (Mistral OCR) se cuentan todas sus páginas.
+    /// </summary>
+    public int MaxOcrPages { get; init; } = 100;
+
+    /// <summary>
+    /// Lado mayor máximo, en píxeles, de una página de PDF rasterizada para OCR (por defecto 5000). Las páginas se
+    /// rasterizan a 200 ppp; una página enorme se rasteriza a menos resolución para no exceder este tamaño. Las imágenes
+    /// incrustadas de más de este tamaño al cuadrado (en píxeles) se ignoran.
+    /// </summary>
+    public int MaxRasterPixels { get; init; } = 5000;
+
     /// <summary>Motor OCR para imágenes, páginas escaneadas e imágenes incrustadas.</summary>
     public IOcrEngine? Ocr { get; init; }
 
@@ -155,8 +199,17 @@ public sealed class MarkdownConverterOptions
     /// <summary>Imágenes incrustadas más pequeñas que esto (bytes) se ignoran (iconos, viñetas...).</summary>
     public int MinEmbeddedImageBytes { get; init; } = 4096;
 
+    /// <summary>Imágenes incrustadas más grandes que esto (bytes, ya descomprimidas) se ignoran (por defecto 20 MB).</summary>
+    public int MaxEmbeddedImageBytes { get; init; } = 20 * 1024 * 1024;
+
     /// <summary>Ruta de <c>ffmpeg</c> (video).</summary>
     public string FfmpegPath { get; init; } = "ffmpeg";
+
+    /// <summary>
+    /// Duración máxima de un video que se analiza con ffmpeg (por defecto 1 hora): se transcribe y se describe solo ese
+    /// tramo inicial, con un aviso.
+    /// </summary>
+    public TimeSpan MaxMediaDuration { get; init; } = TimeSpan.FromHours(1);
 
     /// <summary>
     /// Ejecutor de las herramientas que lanzan los convertidores (ffmpeg); null usa <see cref="ExternalProcess.Runner"/>.
@@ -172,8 +225,12 @@ public sealed class MarkdownConverterOptions
     /// <summary>Llamadas de OCR / visión en paralelo.</summary>
     public int MaxConcurrency { get; init; } = 4;
 
-    /// <summary>Cliente para descargar adjuntos por URL.</summary>
-    public HttpClient? HttpClient { get; init; }
+    /// <summary>
+    /// Descarga de adjuntos por URL (<see cref="MarkdownConverter.ConvertAsync(ContentPart, bool, CancellationToken)"/> y
+    /// <see cref="AttachmentConversionOptions.DownloadUrls"/>): solo http/https, sin redes privadas, con tamaño, tiempo y
+    /// redirecciones acotados (ver <see cref="UrlDownloadOptions"/>).
+    /// </summary>
+    public UrlDownloadOptions UrlDownload { get; init; } = new();
 
     /// <summary>Recibe el avance de la conversión (p. ej. para una barra de progreso). Se invoca desde varios hilos.</summary>
     public IProgress<DocumentConversionProgress>? Progress { get; init; }
@@ -182,12 +239,54 @@ public sealed class MarkdownConverterOptions
 /// <summary>Contexto que reciben los convertidores: opciones y servicios de IA compartidos.</summary>
 public sealed class DocumentConversionContext(MarkdownConverterOptions options, MarkdownConverter converter)
 {
+    private int _imageAnalyses;
+    private int _imageAnalysesSkipped;
+
     public MarkdownConverterOptions Options { get; } = options;
 
     /// <summary>Convertidor principal (para documentos anidados).</summary>
     public MarkdownConverter Converter { get; } = converter;
 
     public bool CanAnalyzeImages => Options.Ocr is not null || Options.VisionModel is not null;
+
+    /// <summary>Páginas o imágenes que aún se pueden enviar a OCR o visión en este documento (ver <see cref="MarkdownConverterOptions.MaxOcrPages"/>).</summary>
+    public int RemainingImageAnalyses => Math.Max(0, Options.MaxOcrPages - Volatile.Read(ref _imageAnalyses));
+
+    /// <summary>Páginas o imágenes que no se analizaron por superar <see cref="MarkdownConverterOptions.MaxOcrPages"/>.</summary>
+    public int ImageAnalysesSkipped => Volatile.Read(ref _imageAnalysesSkipped);
+
+    /// <summary>
+    /// Reserva hasta <paramref name="count"/> análisis (OCR o visión) del máximo del documento y devuelve cuántos se
+    /// concedieron; los demás se cuentan en <see cref="ImageAnalysesSkipped"/>. Es seguro desde varios hilos.
+    /// </summary>
+    public int ReserveImageAnalyses(int count = 1)
+    {
+        if (count <= 0)
+        {
+            return 0;
+        }
+
+        while (true)
+        {
+            var used = Volatile.Read(ref _imageAnalyses);
+            var granted = Math.Clamp(Options.MaxOcrPages - used, 0, count);
+            if (Interlocked.CompareExchange(ref _imageAnalyses, used + granted, used) == used)
+            {
+                if (granted < count)
+                {
+                    Interlocked.Add(ref _imageAnalysesSkipped, count - granted);
+                }
+
+                return granted;
+            }
+        }
+    }
+
+    /// <summary>Aviso para los resultados con análisis omitidos por <see cref="MarkdownConverterOptions.MaxOcrPages"/>; null si no hubo.</summary>
+    public string? ImageAnalysisLimitWarning() =>
+        ImageAnalysesSkipped == 0
+            ? null
+            : $"{ImageAnalysesSkipped} página(s) o imagen(es) no se enviaron a OCR ni a visión: se alcanzó el máximo del documento (MaxOcrPages = {Options.MaxOcrPages}).";
 
     /// <summary>OCR de una imagen o documento; null si no hay motor configurado.</summary>
     public async Task<OcrResult?> OcrAsync(byte[] data, string mediaType, CancellationToken cancellationToken)
@@ -232,4 +331,24 @@ public sealed class DocumentConversionContext(MarkdownConverterOptions options, 
         var ocr = await OcrAsync(data, mediaType, cancellationToken).ConfigureAwait(false);
         return ocr is null ? null : (ocr.Markdown, PageTextSource.Ocr);
     }
+}
+
+/// <summary>El documento supera <see cref="MarkdownConverterOptions.MaxInputBytes"/> (o el máximo de una descarga) y no se convierte.</summary>
+public sealed class DocumentTooLargeException : AiSdkException
+{
+    public DocumentTooLargeException(long size, long limit, string? fileName = null)
+        : base($"El documento{(fileName is null ? string.Empty : $" '{fileName}'")} mide {size} bytes y supera el máximo de {limit} bytes.")
+    {
+        Size = size;
+        Limit = limit;
+        FileName = fileName;
+    }
+
+    /// <summary>Tamaño del documento en bytes (o lo leído hasta superar el máximo).</summary>
+    public long Size { get; }
+
+    /// <summary>Máximo permitido en bytes.</summary>
+    public long Limit { get; }
+
+    public string? FileName { get; }
 }

@@ -51,6 +51,23 @@ public static class MarkdownModel
         .UseAutoLinks()
         .Build();
 
+    /// <summary>
+    /// Esquemas de enlace que se escriben como hipervínculos en Word y PDF: <c>http</c>, <c>https</c> y <c>mailto</c>.
+    /// Otros (<c>file:</c>, rutas UNC <c>\\servidor\recurso</c>, <c>javascript:</c>, <c>data:</c>...) quedan como texto: el
+    /// Markdown puede venir de un modelo o de un usuario, y esos enlaces filtran credenciales de red o ejecutan código.
+    /// </summary>
+    public static bool IsSafeLink(string? url, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out Uri? uri)
+    {
+        uri = null;
+        if (url is null || !Uri.TryCreate(url.Trim(), UriKind.Absolute, out var parsed) || parsed.Scheme is not ("http" or "https" or "mailto"))
+        {
+            return false;
+        }
+
+        uri = parsed;
+        return true;
+    }
+
     public static IReadOnlyList<DocBlock> Parse(string markdown)
     {
         var document = Markdown.Parse(markdown.Replace("\r\n", "\n", StringComparison.Ordinal), Pipeline);

@@ -30,6 +30,16 @@ public sealed class AgentCallOptions
     /// <summary>Callback adicional por paso (se ejecuta después del del agente).</summary>
     public Func<StepResult, ValueTask>? OnStepFinish { get; init; }
 
+    /// <summary>
+    /// Manejador de aprobación para esta llamada. Se usa si el agente no gestiona sus aprobaciones
+    /// (<c>HandlesApprovals</c>) ni tiene <see cref="CallSettings.OnToolApproval"/> en su configuración. Los
+    /// sub-agentes (<see cref="Agent.AsTool"/>) reciben así el manejador del agente que los llama.
+    /// </summary>
+    public Func<ToolApprovalRequest, ValueTask<bool>>? OnToolApproval { get; init; }
+
+    /// <summary>Decisiones sobre llamadas pendientes de aprobación (ver <see cref="GenerateTextOptions.ToolApprovals"/>).</summary>
+    public IReadOnlyList<ToolApprovalResponse>? ToolApprovals { get; init; }
+
     public CancellationToken CancellationToken { get; init; }
 
     public static implicit operator AgentCallOptions(string prompt) => new() { Prompt = prompt };
@@ -114,6 +124,12 @@ public abstract class Agent : IAgent, IOrchestrationNode
     /// Expone el agente como herramienta para otro agente (sub-agentes / multi-agente).
     /// La herramienta recibe <c>{ "task": "..." }</c> y devuelve el texto final del sub-agente.
     /// </summary>
+    /// <remarks>
+    /// Las aprobaciones de las herramientas del sub-agente se piden al manejador del agente que lo llama (si el
+    /// sub-agente no tiene uno propio); sin ninguno, se deniegan con un error explícito. Si el sub-agente se detiene
+    /// con llamadas sin resolver (herramientas de cliente o aprobaciones diferidas), la herramienta falla con un
+    /// error en vez de devolver un texto vacío.
+    /// </remarks>
     public Tool AsTool(string? name = null, string? description = null) =>
         Tool.Create<SubAgentInput, string>(
             name ?? ToSnakeCase(Name),
@@ -125,10 +141,24 @@ public abstract class Agent : IAgent, IOrchestrationNode
                     Prompt = input.Task,
                     Services = ctx.Services,
                     Context = ctx.Context,
+                    OnToolApproval = ctx.OnToolApproval,
                     CancellationToken = ct,
                 }).ConfigureAwait(false);
+                EnsureCompleted(Name, result, includeClientTools: true);
                 return result.Text;
             });
+
+    /// <summary>Falla si el agente se detuvo con llamadas que nadie podrá resolver (p. ej. dentro de un sub-agente).</summary>
+    internal static void EnsureCompleted(string agentName, GenerateTextResult result, bool includeClientTools)
+    {
+        var pending = includeClientTools ? result.PendingToolCalls : result.PendingApprovals.Select(a => a.ToolCall).ToList();
+        if (pending.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"El agente '{agentName}' se detuvo con llamadas sin resolver ({string.Join(", ", pending.Select(c => c.ToolName))}): " +
+                "requieren aprobación o son herramientas de cliente, y no se pueden reanudar desde aquí. Configure OnToolApproval en el agente principal o en este agente.");
+        }
+    }
 
     /// <summary>Participa en orquestaciones como un nodo más.</summary>
     Task<string> IOrchestrationNode.RunAsync(string input, OrchestrationContext context) => context.RunAgentAsync(this, input);
@@ -155,7 +185,10 @@ public abstract class Agent : IAgent, IOrchestrationNode
                     await OnStepFinishAsync(step).ConfigureAwait(false);
                     await call.OnStepFinish(step).ConfigureAwait(false);
                 },
-            OnToolApproval = HandlesApprovals ? ApproveToolCallAsync : s.OnToolApproval,
+            OnToolApproval = HandlesApprovals ? ApproveToolCallAsync : s.OnToolApproval ?? call.OnToolApproval,
+            DeferToolApprovals = s.DeferToolApprovals,
+            ToolApprovals = call.ToolApprovals,
+            MaxParallelToolCalls = s.MaxParallelToolCalls,
             MaxOutputTokens = s.MaxOutputTokens,
             Temperature = s.Temperature,
             TopP = s.TopP,
@@ -165,6 +198,7 @@ public abstract class Agent : IAgent, IOrchestrationNode
             StopSequences = s.StopSequences,
             Seed = s.Seed,
             MaxRetries = s.MaxRetries,
+            MaxRetryAfter = s.MaxRetryAfter,
             Headers = s.Headers,
             ProviderOptions = s.ProviderOptions,
             RepairToolCall = s.RepairToolCall,
