@@ -44,7 +44,7 @@ namespaces cortos: `using AiSdk;`, `using AiSdk.OpenAI;`.
 <details>
 <summary><b>¿Está listo para producción?</b></summary>
 
-El proyecto está en versión 0.x: la API está completa y probada (más de 200 pruebas unitarias y pruebas en vivo),
+El proyecto está en versión 0.x: la API está completa y probada (más de 450 pruebas unitarias y pruebas en vivo),
 pero puede cambiar antes de la 1.0. Fija versiones y revisa la [Hoja de ruta](es-Hoja-de-ruta) y las notas de
 versión en `CHANGELOG.md`.
 </details>

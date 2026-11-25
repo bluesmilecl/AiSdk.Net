@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+## [0.3.0-preview.1] - 2026-11-25
+
+Tool approval in `useChat` with the AI SDK's own protocol and signed approvals, a PostgreSQL workflow store for several
+replicas (new package `AiSdk.Net.Workflows.Postgres`), and more hardening: MCP stdio limits, image and audio limits
+before OCR and transcription, skills that cannot be written through hard links, and workflow events that only resume
+the runs that were authorized. Two small breaking changes in the UI stream, with migration notes under **Changed**.
+
 ### Added
 - **Tool approval with `useChat`**, using the AI SDK's own protocol (`ai@6` and `ai@7`): a call left pending by
   `DeferToolApprovals` is streamed as `tool-approval-request` (`approvalId`, `toolCallId`), so `useChat` shows the part

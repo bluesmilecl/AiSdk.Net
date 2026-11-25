@@ -74,7 +74,9 @@ var prompt = library.TryInvokeSlashCommand("/cotizar-envios 4 kg al sur");      
   `SkillAuthoringOptions.AllowScripts` / `AllowOverwrite`.
 - **Sin escapes por enlaces.** Los enlaces simbólicos y junctions dentro de una skill (archivos o carpetas, a cualquier
   profundidad) se ignoran: `references/x.md → /etc/hostname` no se puede leer con `read_skill_file`; los archivos ocultos
-  tampoco.
+  tampoco. `SkillLibrary.SaveAsync` escribe cada archivo en un temporal y lo renombra sobre el destino: un hard link
+  dejado en la carpeta (que no se distingue de un archivo normal) se reemplaza en vez de escribir a través de él; los
+  archivos vacíos y los FIFO nunca se abren.
 - **Los scripts son opt-in y se aprueban.** Requieren un `ScriptRunner`, una skill de confianza (`AllowUntrustedScripts`
   sigue desactivado) y, por defecto, **aprobar cada llamada a `run_skill_script`** con `OnToolApproval`: las instrucciones
   de cualquier skill, o el resultado de otra herramienta, podrían inducir al modelo a ejecutar un script de confianza. Sin

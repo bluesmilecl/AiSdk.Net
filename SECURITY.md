@@ -32,7 +32,8 @@ Areas where AiSdk.Net handles untrusted input and where reports are especially w
 
 - Skills loaded from GitHub, zip files or directories (path traversal, script execution)
 - MCP servers and tool results returned to the model
-- Webhook triggers in `AiSdk.Net.Workflows` (signature verification)
+- Webhook triggers in `AiSdk.Net.Workflows` (signature verification) and workflow events sent over HTTP (approvals)
+- Tool approvals with `useChat` (signed `approvalId`s, `UIMessageConverter.ToModelInput`)
 - Document converters (PDF, Office, HTML, images) and the external tools they call
 
 Prompt injection in model outputs is a general risk of LLM applications; reports are welcome when the SDK's

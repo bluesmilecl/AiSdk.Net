@@ -44,7 +44,7 @@ DeepSeek…) y todo lo de Microsoft.Extensions.AI.
 <td width="33%" valign="top">
 
 ### 🏗️ Listo para producción
-Workflows durables, OpenTelemetry, reintentos y fallback, analizadores con cero warnings, más de 200 pruebas y
+Workflows durables, OpenTelemetry, reintentos y fallback, analizadores con cero warnings, más de 450 pruebas y
 pruebas en vivo contra APIs reales.
 
 </td>
@@ -54,7 +54,7 @@ pruebas en vivo contra APIs reales.
 ## 🚀 Inicio rápido
 
 > [!NOTE]
-> AiSdk.Net está en **versión preliminar** (`0.2.0-preview.1` en [NuGet](https://www.nuget.org/packages/AiSdk.Net)):
+> AiSdk.Net está en **versión preliminar** (`0.3.0-preview.1` en [NuGet](https://www.nuget.org/packages/AiSdk.Net)):
 > instálalo con `--prerelease`. La API todavía puede cambiar antes de la primera versión estable.
 
 ```bash
@@ -165,7 +165,7 @@ La guía completa está en la **[wiki](https://github.com/bluesmilecl/AiSdk.Net/
 ## 🧪 Calidad
 
 - ✅ **0 warnings** con `AnalysisLevel=latest-recommended` y warnings como errores
-- ✅ **Más de 200 pruebas unitarias** (xunit.v3), pruebas de integración con PostgreSQL + pgvector y **pruebas en vivo** contra APIs reales, que se omiten sin API key ni base de datos
+- ✅ **Más de 450 pruebas unitarias** (xunit.v3), pruebas de integración con PostgreSQL + pgvector y **pruebas en vivo** contra APIs reales, que se omiten sin API key ni base de datos
 - ✅ Central Package Management, `Directory.Build.props` por capas, Source Link y paquetes de símbolos
 - ✅ Publicación en NuGet con **trusted publishing** (OIDC), sin API keys de larga duración
 
@@ -179,8 +179,8 @@ timeline
     Listo : Texto, streaming, objetos, herramientas, agentes
           : 7 proveedores, MCP, RAG, documentos y OCR
           : Orquestación, artifacts, workflows, Skills
-          : Primeras versiones preliminares en NuGet (0.1.0 y 0.2.0 de seguridad)
-    Siguiente : Primera versión estable (v0.1.0)
+          : Versiones preliminares en NuGet 0.1 → 0.3 (seguridad, aprobaciones en useChat, workflows en PostgreSQL)
+    Siguiente : API estable 1.0 (analizadores de API pública, telemetría gen_ai)
               : Pruebas en vivo con Claude, Gemini y Mistral
               : Vertex AI y Azure OpenAI con Entra ID
 ```

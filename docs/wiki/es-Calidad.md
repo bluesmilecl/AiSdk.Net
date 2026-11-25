@@ -20,7 +20,7 @@ flowchart LR
 | 📦 Dependencias | **Central Package Management**: una versión por paquete en `Directory.Packages.props` | [convert-to-cpm.es.md](https://github.com/bluesmilecl/AiSdk.Net/blob/HEAD/docs/quality/convert-to-cpm.es.md) |
 | 🏗️ Compilación | `Directory.Build.props` por capas (raíz, `src/`, `tests/`): metadatos NuGet, Source Link, símbolos y documentación XML en un solo lugar | |
 | 🔍 Analizadores | `AnalysisLevel=latest-recommended`, `TreatWarningsAsErrors`: **0 warnings** | |
-| 🧪 Pruebas | Más de 200 pruebas unitarias con **xunit.v3**, `TestContext.Current.CancellationToken`, omisiones explícitas | |
+| 🧪 Pruebas | Más de 450 pruebas unitarias con **xunit.v3**, `TestContext.Current.CancellationToken`, omisiones explícitas | |
 | 🕵️ Auditoría de pruebas | Anti-patrones (carreras por tiempos, dependencias de reloj y SO, aserciones permisivas): todos los hallazgos altos corregidos | [test-anti-patterns.es.md](https://github.com/bluesmilecl/AiSdk.Net/blob/HEAD/docs/quality/test-anti-patterns.es.md) |
 | 🌍 Validación en vivo | `LiveFeatureTests` prueba skills, router, artifacts + Excel y resúmenes map-reduce con modelos reales | |
 | 🔐 Publicación | **Trusted publishing** de NuGet con OIDC, sin API keys de larga duración | [nuget-trusted-publishing.es.md](https://github.com/bluesmilecl/AiSdk.Net/blob/HEAD/docs/quality/nuget-trusted-publishing.es.md) |

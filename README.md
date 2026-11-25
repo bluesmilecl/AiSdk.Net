@@ -43,7 +43,7 @@ DeepSeek…) and anything in Microsoft.Extensions.AI.
 <td width="33%" valign="top">
 
 ### 🏗️ Built for production
-Durable workflows, OpenTelemetry, retries and fallbacks, analyzers with zero warnings, 200+ tests and
+Durable workflows, OpenTelemetry, retries and fallbacks, analyzers with zero warnings, 450+ tests and
 live tests against real APIs.
 
 </td>
@@ -53,7 +53,7 @@ live tests against real APIs.
 ## 🚀 Quick start
 
 > [!NOTE]
-> AiSdk.Net is in **preview** (`0.2.0-preview.1` on [NuGet](https://www.nuget.org/packages/AiSdk.Net)): install it
+> AiSdk.Net is in **preview** (`0.3.0-preview.1` on [NuGet](https://www.nuget.org/packages/AiSdk.Net)): install it
 > with `--prerelease`. The API may still change before the first stable version.
 
 ```bash
@@ -164,7 +164,7 @@ The full guide lives in the **[wiki](https://github.com/bluesmilecl/AiSdk.Net/wi
 ## 🧪 Quality
 
 - ✅ **0 warnings** with `AnalysisLevel=latest-recommended` and warnings as errors
-- ✅ **200+ unit tests** (xunit.v3), integration tests against PostgreSQL + pgvector and **live tests** against real APIs, skipped when no key or database is set
+- ✅ **450+ unit tests** (xunit.v3), integration tests against PostgreSQL + pgvector and **live tests** against real APIs, skipped when no key or database is set
 - ✅ Central Package Management, layered `Directory.Build.props`, Source Link and symbol packages
 - ✅ NuGet **trusted publishing** (OIDC), no long-lived API keys
 
@@ -178,8 +178,8 @@ timeline
     Done : Text, streaming, objects, tools, agents
          : 7 providers, MCP, RAG, documents and OCR
          : Orchestration, artifacts, workflows, Skills
-         : First NuGet previews (0.1.0, 0.2.0 security release)
-    Next : First stable release (v0.1.0)
+         : NuGet previews 0.1 → 0.3 (security, useChat approvals, PostgreSQL workflows)
+    Next : Stable 1.0 API (public API analyzers, gen_ai telemetry)
          : Live test suite for Claude, Gemini and Mistral
          : Vertex AI and Azure OpenAI with Entra ID
 ```

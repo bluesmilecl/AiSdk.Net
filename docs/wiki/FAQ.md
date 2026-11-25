@@ -44,7 +44,7 @@ namespaces: `using AiSdk;`, `using AiSdk.OpenAI;`.
 <details>
 <summary><b>Is it production ready?</b></summary>
 
-The project is at version 0.x: the API is complete and tested (200+ unit tests and live tests), but it may still
+The project is at version 0.x: the API is complete and tested (450+ unit tests and live tests), but it may still
 change before 1.0. Pin versions and check the [Roadmap](Roadmap) and release notes in `CHANGELOG.md`.
 </details>
 

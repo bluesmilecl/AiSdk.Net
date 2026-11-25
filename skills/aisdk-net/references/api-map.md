@@ -19,5 +19,5 @@
 | Workflows | `Workflow.Create<TIn, TOut>(name, async (ctx, input) => ...)`, `services.AddAiSdkWorkflows(...)`, `app.MapWorkflows()`; stores: `InMemoryWorkflowStore`, `FileSystemWorkflowStore`, `PostgresWorkflowStore` (`w.UsePostgresStore(...)`, several machines) |
 | Skills | `new SkillLibrary().LoadDirectory("skills")`, `AgentSettings.Skills`, `SkillAuthoringTools.Create(...)` |
 | Anthropic Skills | `AnthropicSkills.Options([AnthropicSkill.Excel])` + `AnthropicTools.CodeExecution()` |
-| ASP.NET + useChat | `stream.ToUIMessageStreamResult()`, `UIMessageConverter.ToModelMessages(request.Messages)` |
+| ASP.NET + useChat | `stream.ToUIMessageStreamResult()`, `UIMessageConverter.ToModelMessages(request.Messages)`; tool approval in the chat: `ToolApprovalProtection.ForChat(http, chatId)`, `UIMessageConverter.ToModelInput(...)`, `DeferToolApprovals = true`, `ToUIMessageStreamResult(toolApprovals: ...)` |
 | Testing | `MockLanguageModel`, `MockEmbeddingModel` |

@@ -73,6 +73,9 @@ var prompt = library.TryInvokeSlashCommand("/quote-shipping 4 kg to the south");
   existing folders unless you enable `SkillAuthoringOptions.AllowScripts` / `AllowOverwrite`.
 - **No escapes through links.** Symbolic links and junctions inside a skill (files or folders, at any depth) are ignored,
   so `references/x.md → /etc/hostname` cannot be read with `read_skill_file`; hidden files are not readable either.
+  `SkillLibrary.SaveAsync` writes each file to a temporary file and renames it over the target, so a hard link left in
+  the folder (indistinguishable from a regular file) is replaced instead of written through; empty files and FIFOs are
+  never opened.
 - **Scripts are opt-in and approved.** They need a `ScriptRunner`, a trusted skill (`AllowUntrustedScripts` stays off) and,
   by default, **approval of every `run_skill_script` call** through `OnToolApproval`: instructions from any skill, or the
   result of another tool, could steer the model into running a trusted script. Without a handler the call fails with an

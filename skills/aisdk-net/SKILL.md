@@ -86,6 +86,6 @@ testing without an API key and the rules of durable workflows.
 | The tool is called but there is no final answer | `StopWhen` is missing from `GenerateTextOptions` |
 | `ArgumentException` for a path in a skill | Skill file paths are relative and cannot contain `..` |
 | Skill scripts do not run | They require `SkillToolOptions.ScriptRunner`, trusted skills (`Build(trusted: true)` / `Trusted = true`, without a `.aisdk-provenance.json` marker) and approving each `run_skill_script` call (`OnToolApproval`) |
-| A tool returns "requires approval and no approval handler is configured" | Set `OnToolApproval`, or `DeferToolApprovals = true` and resume with `ToolApprovals` / `session.SendApprovalsAsync` |
+| A tool returns "requires approval and no approval handler is configured" | Set `OnToolApproval`, or `DeferToolApprovals = true` and resume with `ToolApprovals` / `session.SendApprovalsAsync`; with `useChat`, stream with `toolApprovals: ToolApprovalProtection.ForChat(http, chatId)` and resume with `UIMessageConverter.ToModelInput` |
 | An OpenAI-compatible server gets no API key | `OPENAI_API_KEY` is only sent to api.openai.com: pass `apiKey` or `apiKeyEnvironmentVariable` to `OpenAIProvider.Compatible` |
 | The model does not activate a skill | Improve the description: what it does, USE FOR and DO NOT USE FOR |
