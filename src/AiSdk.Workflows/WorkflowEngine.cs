@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using AiSdk.Workflows.Resources;
 
 namespace AiSdk.Workflows;
 
@@ -89,7 +90,7 @@ public sealed class WorkflowEngine : IDisposable
         _options = options ?? new WorkflowEngineOptions();
         if (_options.LeaseDuration < TimeSpan.FromSeconds(1) || _options.BatchSize <= 0 || _options.MaxAutomationFailures <= 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(options), "LeaseDuration debe ser de al menos 1 s y BatchSize y MaxAutomationFailures mayores que cero.");
+            throw new ArgumentOutOfRangeException(nameof(options), Strings.Engine_InvalidOptions);
         }
 
         _concurrency = new SemaphoreSlim(_options.MaxConcurrency);
@@ -162,7 +163,7 @@ public sealed class WorkflowEngine : IDisposable
     {
         if (!_workflows.ContainsKey(workflowName))
         {
-            throw new ArgumentException($"El workflow '{workflowName}' no está registrado.", nameof(workflowName));
+            throw new ArgumentException(string.Format(CultureInfo.CurrentCulture, Strings.Workflow_NotRegistered, workflowName), nameof(workflowName));
         }
 
         if (runId is not null && await Store.GetRunAsync(runId, cancellationToken).ConfigureAwait(false) is { } existing)
@@ -247,7 +248,7 @@ public sealed class WorkflowEngine : IDisposable
             run.CompletedAt = Now;
             run.LeaseOwner = null;
             run.LeaseExpiresAt = null;
-            run.Logs.Add($"{Now:O} Ejecución cancelada.");
+            run.Logs.Add($"{Now:O} {Strings.Run_CancelledLog}");
             try
             {
                 await SaveAsync(run, cancellationToken).ConfigureAwait(false);
@@ -387,7 +388,7 @@ public sealed class WorkflowEngine : IDisposable
             run.ResumeAt = null;
             run.Status = WorkflowStatus.Pending;
             Lease(run);
-            run.Logs.Add($"{Now:O} Evento recibido: {eventName}{(key is null ? string.Empty : $" ({key})")}");
+            run.Logs.Add($"{Now:O} {string.Format(CultureInfo.CurrentCulture, Strings.Run_EventReceivedLog, eventName)}{(key is null ? string.Empty : $" ({key})")}");
             try
             {
                 await SaveAsync(run, cancellationToken).ConfigureAwait(false);
@@ -403,7 +404,7 @@ public sealed class WorkflowEngine : IDisposable
     }
 
     private async Task<WorkflowRun> GetRequiredAsync(string runId, CancellationToken cancellationToken) =>
-        await Store.GetRunAsync(runId, cancellationToken).ConfigureAwait(false) ?? throw new KeyNotFoundException($"No existe la ejecución '{runId}'.");
+        await Store.GetRunAsync(runId, cancellationToken).ConfigureAwait(false) ?? throw new KeyNotFoundException(string.Format(CultureInfo.CurrentCulture, Strings.Run_NotFound, runId));
 
     /// <summary>Runs in the background; does not duplicate if a run is already queued for the same saved version.</summary>
     private WorkflowRun Background(WorkflowRun run)
@@ -422,7 +423,7 @@ public sealed class WorkflowEngine : IDisposable
                 catch (Exception ex)
                 {
                     // Un fallo del almacén no debe romper WhenIdleAsync: la ejecución se retoma en un ciclo posterior.
-                    ReportError(ex, $"Error al ejecutar '{runId}' en segundo plano");
+                    ReportError(ex, string.Format(CultureInfo.CurrentCulture, Strings.Engine_BackgroundRunFailed, runId));
                 }
                 finally
                 {
@@ -459,7 +460,7 @@ public sealed class WorkflowEngine : IDisposable
             if (!_workflows.TryGetValue(run.WorkflowName, out var workflow))
             {
                 run.Status = WorkflowStatus.Failed;
-                run.Error = $"El workflow '{run.WorkflowName}' no está registrado.";
+                run.Error = string.Format(CultureInfo.CurrentCulture, Strings.Workflow_NotRegistered, run.WorkflowName);
                 run.CompletedAt = Now;
                 ReleaseLease(run);
                 return await TrySaveAsync(run, cancellationToken).ConfigureAwait(false);
@@ -588,7 +589,7 @@ public sealed class WorkflowEngine : IDisposable
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    ReportError(ex, $"No se pudo renovar el reclamo de '{context.RunId}'");
+                    ReportError(ex, string.Format(CultureInfo.CurrentCulture, Strings.Engine_LeaseRenewalFailed, context.RunId));
                 }
             }
         }
@@ -659,7 +660,7 @@ public sealed class WorkflowEngine : IDisposable
     {
         if (!_workflows.ContainsKey(automation.Workflow))
         {
-            throw new ArgumentException($"El workflow '{automation.Workflow}' no está registrado.");
+            throw new ArgumentException(string.Format(CultureInfo.CurrentCulture, Strings.Workflow_NotRegistered, automation.Workflow));
         }
 
         automation.Trigger.Validate();
@@ -706,7 +707,7 @@ public sealed class WorkflowEngine : IDisposable
     /// <summary>Runs an automation now (manually), in the background.</summary>
     public async Task<WorkflowRun> RunAutomationNowAsync(string id, CancellationToken cancellationToken = default)
     {
-        var automation = await Store.GetAutomationAsync(id, cancellationToken).ConfigureAwait(false) ?? throw new KeyNotFoundException($"No existe la automatización '{id}'.");
+        var automation = await Store.GetAutomationAsync(id, cancellationToken).ConfigureAwait(false) ?? throw new KeyNotFoundException(string.Format(CultureInfo.CurrentCulture, Strings.Automation_NotFound, id));
         return await FireAsync(automation, null, $"manual:{id}", null, cancellationToken).ConfigureAwait(false);
     }
 
@@ -728,7 +729,7 @@ public sealed class WorkflowEngine : IDisposable
         var automation = await Store.GetAutomationAsync(automationId, cancellationToken).ConfigureAwait(false);
         if (automation is not { Enabled: true, Trigger: WebhookTrigger trigger })
         {
-            throw new KeyNotFoundException($"No existe un webhook activo '{automationId}'.");
+            throw new KeyNotFoundException(string.Format(CultureInfo.CurrentCulture, Strings.Webhook_NotFound, automationId));
         }
 
         var replayKey = Authenticate(trigger, request);
@@ -777,7 +778,7 @@ public sealed class WorkflowEngine : IDisposable
     {
         if (trigger.Secret is not { Length: > 0 } secret)
         {
-            return trigger.AllowUnauthenticated ? null : throw new UnauthorizedAccessException("El webhook no tiene secreto configurado.");
+            return trigger.AllowUnauthenticated ? null : throw new UnauthorizedAccessException(Strings.Webhook_NoSecret);
         }
 
         var body = request.Body.Span;
@@ -787,24 +788,24 @@ public sealed class WorkflowEngine : IDisposable
                 if (!long.TryParse(request.Timestamp, NumberStyles.None, CultureInfo.InvariantCulture, out var timestamp)
                     || Math.Abs((Now - DateTimeOffset.FromUnixTimeSeconds(Math.Clamp(timestamp, 0, 253402300799))).Ticks) > _options.WebhookTolerance.Ticks)
                 {
-                    throw new UnauthorizedAccessException($"Falta la cabecera {WebhookSignature.TimestampHeader} o está fuera de la tolerancia.");
+                    throw new UnauthorizedAccessException(string.Format(CultureInfo.CurrentCulture, Strings.Webhook_TimestampOutOfTolerance, WebhookSignature.TimestampHeader));
                 }
 
                 var expected = WebhookSignature.Sign(secret, timestamp, body);
                 return WebhookSignature.Matches(expected, request.Signature)
                     ? expected
-                    : throw new UnauthorizedAccessException("Firma del webhook inválida.");
+                    : throw new UnauthorizedAccessException(Strings.Webhook_InvalidSignature);
 
             case WebhookVerification.BodySignature:
                 return WebhookSignature.Matches(WebhookSignature.SignBody(secret, body), request.Signature)
                     ? null
-                    : throw new UnauthorizedAccessException("Firma del webhook inválida.");
+                    : throw new UnauthorizedAccessException(Strings.Webhook_InvalidSignature);
 
             default:
                 return request.Secret is not null
                        && CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(request.Secret), Encoding.UTF8.GetBytes(secret))
                     ? null
-                    : throw new UnauthorizedAccessException("Secreto del webhook inválido.");
+                    : throw new UnauthorizedAccessException(Strings.Webhook_InvalidSecret);
         }
     }
 
@@ -866,7 +867,7 @@ public sealed class WorkflowEngine : IDisposable
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                ReportError(ex, "Error al borrar ejecuciones antiguas");
+                ReportError(ex, Strings.Engine_PurgeFailed);
             }
         }
     }
@@ -892,7 +893,7 @@ public sealed class WorkflowEngine : IDisposable
     {
         if (!_workflows.ContainsKey(automation.Workflow))
         {
-            throw new InvalidOperationException($"El workflow '{automation.Workflow}' de la automatización '{automation.Id}' no está registrado.");
+            throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, Strings.Automation_WorkflowNotRegistered, automation.Workflow, automation.Id));
         }
 
         var due = automation.NextRunAt!.Value;
@@ -933,7 +934,7 @@ public sealed class WorkflowEngine : IDisposable
     /// </summary>
     private async Task RecordFailureAsync(Automation automation, Exception error, DateTimeOffset current, bool reschedule)
     {
-        ReportError(error, $"La automatización '{automation.Id}' falló");
+        ReportError(error, string.Format(CultureInfo.CurrentCulture, Strings.Automation_Failed, automation.Id));
         var failures = automation.ConsecutiveFailures + 1;
         var disable = failures >= _options.MaxAutomationFailures;
         var delay = TimeSpan.FromTicks(Math.Min(
@@ -952,7 +953,7 @@ public sealed class WorkflowEngine : IDisposable
         catch (Exception ex)
         {
             // Conflicto (otra réplica la atendió) o almacén caído: se reintentará en el próximo ciclo.
-            ReportError(ex, $"No se pudo registrar el fallo de la automatización '{automation.Id}'");
+            ReportError(ex, string.Format(CultureInfo.CurrentCulture, Strings.Automation_FailureNotRecorded, automation.Id));
         }
     }
 

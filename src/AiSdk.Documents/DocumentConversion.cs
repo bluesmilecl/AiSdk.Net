@@ -1,3 +1,6 @@
+using System.Globalization;
+using AiSdk.Documents.Resources;
+
 namespace AiSdk.Documents;
 
 /// <summary>Converts a document type to Markdown.</summary>
@@ -176,10 +179,15 @@ public sealed class MarkdownConverterOptions
     /// <summary>Vision model used to describe images, charts and video frames.</summary>
     public ILanguageModel? VisionModel { get; init; }
 
-    /// <summary>Instruction used to describe images with <see cref="VisionModel"/>.</summary>
-    public string ImageDescriptionPrompt { get; init; } =
-        "Describe esta imagen para alguien que no puede verla, en el idioma del texto que contenga (o en español). " +
-        "Incluye el texto visible, datos de gráficos o tablas, y elementos relevantes. Sé conciso y objetivo, en Markdown.";
+    /// <summary>
+    /// Instruction used to describe images with <see cref="VisionModel"/>. By default, a built-in instruction in the
+    /// language of <see cref="CultureInfo.CurrentUICulture"/> when the image is described (English, or Spanish for "es*").
+    /// </summary>
+    public string ImageDescriptionPrompt
+    {
+        get => field ?? Strings.Vision_ImageDescriptionPrompt;
+        init;
+    }
 
     /// <summary>Transcription model for audio and video.</summary>
     public ITranscriptionModel? Transcription { get; init; }
@@ -298,7 +306,7 @@ public sealed class DocumentConversionContext(MarkdownConverterOptions options, 
     public string? ImageAnalysisLimitWarning() =>
         ImageAnalysesSkipped == 0
             ? null
-            : $"{ImageAnalysesSkipped} página(s) o imagen(es) no se enviaron a OCR ni a visión: se alcanzó el máximo del documento (MaxOcrPages = {Options.MaxOcrPages}).";
+            : string.Format(CultureInfo.CurrentCulture, Strings.Ocr_MaxPagesReached, ImageAnalysesSkipped, Options.MaxOcrPages);
 
     /// <summary>Images not sent to OCR because they exceeded <see cref="MarkdownConverterOptions.MaxRasterPixels"/> squared.</summary>
     public int OversizedImagesSkipped => Volatile.Read(ref _oversizedImages);
@@ -307,7 +315,7 @@ public sealed class DocumentConversionContext(MarkdownConverterOptions options, 
     public string? OversizedImageWarning() =>
         OversizedImagesSkipped == 0
             ? null
-            : $"{OversizedImagesSkipped} imagen(es) no se enviaron a OCR: superan {Options.MaxRasterPixels} × {Options.MaxRasterPixels} píxeles (MaxRasterPixels); una imagen pequeña en bytes puede ocupar gigabytes al decodificarse.";
+            : string.Format(CultureInfo.CurrentCulture, Strings.Ocr_OversizedImages, OversizedImagesSkipped, Options.MaxRasterPixels);
 
     /// <summary>
     /// OCR of an image or document; null if no engine is configured or if the image exceeds
@@ -369,7 +377,9 @@ public sealed class DocumentConversionContext(MarkdownConverterOptions options, 
 public sealed class DocumentTooLargeException : AiSdkException
 {
     public DocumentTooLargeException(long size, long limit, string? fileName = null)
-        : base($"El documento{(fileName is null ? string.Empty : $" '{fileName}'")} mide {size} bytes y supera el máximo de {limit} bytes.")
+        : base(fileName is null
+            ? string.Format(CultureInfo.CurrentCulture, Strings.Conversion_DocumentTooLarge, size, limit)
+            : string.Format(CultureInfo.CurrentCulture, Strings.Conversion_NamedDocumentTooLarge, fileName, size, limit))
     {
         Size = size;
         Limit = limit;

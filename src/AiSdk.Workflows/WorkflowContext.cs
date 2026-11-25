@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Text.Json;
+using AiSdk.Workflows.Resources;
 
 namespace AiSdk.Workflows;
 
@@ -73,7 +75,7 @@ public sealed class WorkflowContext
                                        && ex is not NonRetryableException
                                        && (options.ShouldRetry?.Invoke(ex) ?? true))
             {
-                Log($"Paso '{key}' falló (intento {attempt}/{options.MaxAttempts}): {ex.Message}");
+                Log(string.Format(CultureInfo.CurrentCulture, Strings.Step_FailedLog, key, attempt, options.MaxAttempts, ex.Message));
                 await Task.Delay(delay, _engine.TimeProvider, CancellationToken).ConfigureAwait(false);
                 delay = TimeSpan.FromMilliseconds(delay.TotalMilliseconds * options.BackoffFactor);
                 continue;

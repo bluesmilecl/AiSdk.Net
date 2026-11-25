@@ -69,7 +69,7 @@ public class WorkflowTests
         Assert.Equal(WorkflowStatus.Failed, run.Status);
         Assert.Equal("dato inválido", run.Error);
         Assert.Equal(3, run.Steps["flaky"].Attempts);
-        Assert.Contains(run.Logs, l => l.Contains("falló (intento 1/3)"));
+        Assert.Contains(run.Logs, l => l.Contains("failed (attempt 1/3)"));
 
         broken = false;
         var retried = await engine.RetryAsync(run.Id, TestContext.Current.CancellationToken);

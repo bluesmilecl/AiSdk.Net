@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="Conversion_NoConverter" xml:space="preserve"><value>There is no converter for '{0}' ({1}).</value></data>
+  <data name="Conversion_UnsupportedPart" xml:space="preserve"><value>Cannot convert a {0} part.</value></data>
+  <data name="Conversion_AttachmentIsUrl" xml:space="preserve"><value>The attachment is a URL; enable URL downloads to convert it.</value></data>
+  <data name="Conversion_AttachmentWithoutData" xml:space="preserve"><value>The attachment has no data (files referenced by FileId cannot be converted locally).</value></data>
+  <data name="Conversion_DocumentTooLarge" xml:space="preserve"><value>The document is {0} bytes and exceeds the maximum of {1} bytes.</value></data>
+  <data name="Conversion_NamedDocumentTooLarge" xml:space="preserve"><value>The document '{0}' is {1} bytes and exceeds the maximum of {2} bytes.</value></data>
+  <data name="Ocr_MaxPagesReached" xml:space="preserve"><value>{0} page(s) or image(s) were not sent to OCR or vision: the document maximum was reached (MaxOcrPages = {1}).</value></data>
+  <data name="Ocr_OversizedImages" xml:space="preserve"><value>{0} image(s) were not sent to OCR: they exceed {1} × {1} pixels (MaxRasterPixels); an image that is small in bytes can take gigabytes once decoded.</value></data>
+  <data name="Vision_ImageDescriptionPrompt" xml:space="preserve"><value>Describe this image for someone who cannot see it, in the language of any text it contains (or in English). Include the visible text, chart or table data, and relevant elements. Be concise and objective, in Markdown.</value></data>
+  <data name="Attachment_DefaultName" xml:space="preserve"><value>attachment</value></data>
+  <data name="Attachment_Warnings" xml:space="preserve"><value>warnings</value></data>
+  <data name="Attachment_Truncated" xml:space="preserve"><value>[… content truncated for length]</value></data>
+  <data name="Process_CouldNotStart" xml:space="preserve"><value>Could not start '{0}'.</value></data>
+  <data name="Process_Timeout" xml:space="preserve"><value>'{0}' exceeded the time limit of {1} and was stopped.</value></data>
+  <data name="Process_OutputTooLarge" xml:space="preserve"><value>'{0}' exceeded the maximum of {1} output bytes and was stopped.</value></data>
+  <data name="Process_ExitCode" xml:space="preserve"><value>'{0}' exited with code {1}: {2}</value></data>
+  <data name="Download_RedirectWithoutLocation" xml:space="preserve"><value>{0} responded {1} without Location.</value></data>
+  <data name="Download_TooManyRedirects" xml:space="preserve"><value>The download of {0} exceeded the maximum of {1} redirects.</value></data>
+  <data name="Download_HttpError" xml:space="preserve"><value>{0} responded {1} {2}.</value></data>
+  <data name="Download_Timeout" xml:space="preserve"><value>The download of {0} exceeded the time limit of {1:0.#} s.</value></data>
+  <data name="Download_OnlyHttp" xml:space="preserve"><value>Only http or https URLs are downloaded: {0}.</value></data>
+  <data name="Download_UrlNotAllowed" xml:space="preserve"><value>The URL {0} is not allowed (UrlValidator).</value></data>
+  <data name="Download_CouldNotConnect" xml:space="preserve"><value>Could not connect to '{0}'.</value></data>
+  <data name="Download_DataUrlMissingComma" xml:space="preserve"><value>Invalid data: URL (missing comma).</value></data>
+  <data name="Download_DataUrlInvalidBase64" xml:space="preserve"><value>data: URL with invalid base64.</value></data>
+  <data name="Download_Blocked" xml:space="preserve"><value>Download blocked: '{0}' resolves to a non-public address ({1}). Use UrlDownloadOptions.AllowPrivateNetworks or AddressValidator only if the URL is trusted.</value></data>
+  <data name="Image_DefaultName" xml:space="preserve"><value>image</value></data>
+  <data name="Image_Label" xml:space="preserve"><value>Image</value></data>
+  <data name="Image_DetectedText" xml:space="preserve"><value>Detected text (OCR)</value></data>
+  <data name="Image_NotAnalyzed" xml:space="preserve"><value>No Ocr or VisionModel is configured: the image could not be analyzed.</value></data>
+  <data name="Media_Transcription" xml:space="preserve"><value>Transcription</value></data>
+  <data name="Media_FullTranscription" xml:space="preserve"><value>Full transcription</value></data>
+  <data name="Audio_NoTranscriptionModel" xml:space="preserve"><value>No transcription model is configured (Transcription).</value></data>
+  <data name="Audio_CouldNotTrim" xml:space="preserve"><value>The audio lasts {0} (longer than MaxMediaDuration) and could not be trimmed: {1}</value></data>
+  <data name="Audio_Trimmed" xml:space="preserve"><value>The audio lasts {0}: only the first {1} were transcribed (MaxMediaDuration).</value></data>
+  <data name="Video_FramePrompt" xml:space="preserve"><value>This is a frame from a video. Describe in one or two sentences the scene, people, actions and any visible text (slides, subtitles, screens). In the language of the visible text, or in English.</value></data>
+  <data name="Video_NoFfmpeg" xml:space="preserve"><value>ffmpeg is not installed: the video cannot be analyzed.</value></data>
+  <data name="Video_Trimmed" xml:space="preserve"><value>The video lasts {0}: only the first {1} were analyzed (MaxMediaDuration).</value></data>
+  <data name="Video_NoTranscriptionModel" xml:space="preserve"><value>No Transcription: the video's audio is not transcribed.</value></data>
+  <data name="Video_NoAudioTrack" xml:space="preserve"><value>The video has no audio track or it could not be extracted.</value></data>
+  <data name="Video_NoImageAnalysis" xml:space="preserve"><value>No Ocr or VisionModel: only the audio is transcribed.</value></data>
+  <data name="Video_Duration" xml:space="preserve"><value>Duration</value></data>
+  <data name="Video_Scene" xml:space="preserve"><value>Scene</value></data>
+  <data name="Pdf_PagesLimited" xml:space="preserve"><value>The PDF has {0} pages: only the first {1} were processed (MaxPdfPages).</value></data>
+  <data name="Pdf_PagesWithoutText" xml:space="preserve"><value>{0} page(s) without text (scanned?): configure Ocr or VisionModel to recognize them.</value></data>
+  <data name="Pdf_OcrTimeLimit" xml:space="preserve"><value>{0} of {1} page(s) were recognized with OCR: {2} were left unread when the time limit was reached ({3}, MaxOcrDuration).</value></data>
+  <data name="Pdf_EmbeddedImageUsed" xml:space="preserve"><value>{0} page(s) could not be rasterized: the image embedded in the page was recognized instead.</value></data>
+  <data name="Pdf_NoRasterizer" xml:space="preserve"><value>{0} page(s) without text could not be rasterized: install poppler-utils (pdftoppm) or use an OCR engine that accepts PDF.</value></data>
+  <data name="Pdf_NotRasterized" xml:space="preserve"><value>{0} page(s) without text could not be rasterized and have no embedded image to recognize.</value></data>
+  <data name="Csv_ColumnsOmitted" xml:space="preserve"><value>Columns beyond column {0} were omitted.</value></data>
+  <data name="Csv_TableTruncated" xml:space="preserve"><value>The table was truncated to {0} cells.</value></data>
+  <data name="Csv_RowsOmittedNote" xml:space="preserve"><value>_… {0} more rows omitted (of {1})._</value></data>
+  <data name="Csv_RowsOmitted" xml:space="preserve"><value>{0} rows were omitted.</value></data>
+  <data name="Html_Truncated" xml:space="preserve"><value>The HTML is {0} bytes: only the first {1} were converted (MaxHtmlBytes).</value></data>
+  <data name="Html_TooComplex" xml:space="preserve"><value>The HTML exceeds {0} nesting levels or has too many elements: only the text was extracted.</value></data>
+  <data name="Html_Flattened" xml:space="preserve"><value>The HTML has more than {0} nesting levels: the deepest content was converted to plain text.</value></data>
+  <data name="Html_TooNested" xml:space="preserve"><value>HTML nested too deeply.</value></data>
+  <data name="Office_TooDeep" xml:space="preserve"><value>The part '{0}' has more than {1} nesting levels (MaxNestingDepth).</value></data>
+  <data name="Office_InvalidXml" xml:space="preserve"><value>The part '{0}' is not valid XML or exceeds {1} characters (MaxOfficePartChars): {2}</value></data>
+  <data name="Office_TablesTruncated" xml:space="preserve"><value>One or more tables were truncated (maximum {0} cells per table).</value></data>
+  <data name="Word_NoMainContent" xml:space="preserve"><value>The document has no main content.</value></data>
+  <data name="Word_TooManyColumns" xml:space="preserve"><value>One or more tables have more than {0} columns: the rest were omitted.</value></data>
+  <data name="Excel_NoContent" xml:space="preserve"><value>The workbook has no content.</value></data>
+  <data name="Excel_SheetNumber" xml:space="preserve"><value>Sheet {0}</value></data>
+  <data name="Excel_SheetLabel" xml:space="preserve"><value>Sheet: {0}</value></data>
+  <data name="Excel_RowsOmittedNote" xml:space="preserve"><value>_… {0} more rows omitted ({1} data rows in total)._</value></data>
+  <data name="Excel_RowsOmittedNoteAtLeast" xml:space="preserve"><value>_… at least {0} more rows omitted (at least {1} data rows in total)._</value></data>
+  <data name="Excel_RowsOmitted" xml:space="preserve"><value>Sheet '{0}': {1} rows were omitted.</value></data>
+  <data name="Excel_RowsOmittedAtLeast" xml:space="preserve"><value>Sheet '{0}': at least {1} rows were omitted.</value></data>
+  <data name="Excel_True" xml:space="preserve"><value>TRUE</value></data>
+  <data name="Excel_False" xml:space="preserve"><value>FALSE</value></data>
+  <data name="PowerPoint_NoContent" xml:space="preserve"><value>The presentation has no content.</value></data>
+  <data name="PowerPoint_Slide" xml:space="preserve"><value>Slide {0}</value></data>
+  <data name="PowerPoint_SpeakerNotes" xml:space="preserve"><value>Speaker notes</value></data>
+  <data name="Generation_MissingFont" xml:space="preserve"><value>The embedded font {0} is missing.</value></data>
+  <data name="Generation_PageNumber" xml:space="preserve"><value>Page {0} of {1}</value></data>
+  <data name="Generation_DateFormat" xml:space="preserve"><value>MMMM d, yyyy</value></data>
+  <data name="Generation_DateCulture" xml:space="preserve"><value></value></data>
+  <data name="Spreadsheet_NoSheets" xml:space="preserve"><value>Add at least one sheet.</value></data>
+  <data name="Spreadsheet_TableName" xml:space="preserve"><value>Table {0}</value></data>
+  <data name="Spreadsheet_ColumnName" xml:space="preserve"><value>Column {0}</value></data>
+  <data name="Spreadsheet_SheetName" xml:space="preserve"><value>Sheet</value></data>
+  <data name="Spreadsheet_DataSheetName" xml:space="preserve"><value>Data</value></data>
+  <data name="Tools_Instructions" xml:space="preserve"><value>You can generate downloadable files: create_word_document and create_pdf from Markdown
+(# headings, lists, tables, **bold**, quotes, code blocks and \pagebreak for page breaks),
+and create_spreadsheet with sheets, typed columns (text, number, integer, currency, percent, date, boolean)
+and data rows; text that starts with "=" is an Excel formula (e.g. "=B2*C2" or "=SUM(D2:D9)"),
+with calculation functions only (no links or network functions, which are written as text).
+Write complete, well-structured content. After generating, provide the link and a brief summary.</value></data>
+  <data name="Tools_DefaultFileName" xml:space="preserve"><value>document</value></data>
+  <data name="Tools_CreateWordDocument" xml:space="preserve"><value>Generates an editable Word document (.docx) from Markdown.</value></data>
+  <data name="Tools_CreatePdf" xml:space="preserve"><value>Generates a PDF from Markdown (reports, letters, contracts, quotes).</value></data>
+  <data name="Tools_CreateSpreadsheet" xml:space="preserve"><value>Generates an Excel file (.xlsx) with one or more sheets, typed columns, formats, filters and totals.</value></data>
+</root>

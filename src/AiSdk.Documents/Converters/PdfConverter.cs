@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using AiSdk.Documents.Resources;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.Content;
 using UglyToad.PdfPig.DocumentLayoutAnalysis;
@@ -51,7 +53,7 @@ public sealed partial class PdfConverter : IDocumentConverter
 
         if (processed < totalPages)
         {
-            warnings.Add($"El PDF tiene {totalPages} páginas: solo se procesaron las primeras {processed} (MaxPdfPages).");
+            warnings.Add(string.Format(CultureInfo.CurrentCulture, Strings.Pdf_PagesLimited, totalPages, processed));
         }
 
         var bodySize = Median(extracted.SelectMany(p => p.Blocks).Where(b => b.Text.Length > 40).Select(b => b.Size))
@@ -77,7 +79,7 @@ public sealed partial class PdfConverter : IDocumentConverter
         if (needOcr.Count > 0 && !canOcr)
         {
             options.Progress?.Report(new DocumentConversionProgress(pages.Length, 0, 0));
-            warnings.Add($"{needOcr.Count} página(s) sin texto (¿escaneadas?): configure Ocr o VisionModel para reconocerlas.");
+            warnings.Add(string.Format(CultureInfo.CurrentCulture, Strings.Pdf_PagesWithoutText, needOcr.Count));
         }
         else if (needOcr.Count > 0)
         {
@@ -247,19 +249,19 @@ public sealed partial class PdfConverter : IDocumentConverter
 
         if (outOfTime > 0)
         {
-            warnings.Add($"Se reconocieron {needOcr.Count - outOfTime} de {needOcr.Count} página(s) con OCR: {outOfTime} quedaron sin leer al alcanzar el tiempo máximo ({options.MaxOcrDuration}, MaxOcrDuration).");
+            warnings.Add(string.Format(CultureInfo.CurrentCulture, Strings.Pdf_OcrTimeLimit, needOcr.Count - outOfTime, needOcr.Count, outOfTime, options.MaxOcrDuration));
         }
 
         if (notRasterized > missing)
         {
-            warnings.Add($"{notRasterized - missing} página(s) no se pudieron rasterizar: se reconoció la imagen incrustada en la página.");
+            warnings.Add(string.Format(CultureInfo.CurrentCulture, Strings.Pdf_EmbeddedImageUsed, notRasterized - missing));
         }
 
         if (missing > 0)
         {
             warnings.Add(options.PdfRasterizer is null
-                ? $"{missing} página(s) sin texto no se pudieron rasterizar: instale poppler-utils (pdftoppm) o use un OCR que acepte PDF."
-                : $"{missing} página(s) sin texto no se pudieron rasterizar ni tienen una imagen incrustada que reconocer.");
+                ? string.Format(CultureInfo.CurrentCulture, Strings.Pdf_NoRasterizer, missing)
+                : string.Format(CultureInfo.CurrentCulture, Strings.Pdf_NotRasterized, missing));
         }
     }
 

@@ -25,7 +25,7 @@ public class HtmlSecurityTests
         var result = await ConvertHtmlAsync(html);
 
         Assert.Contains("texto del fondo", result.Markdown);
-        Assert.Contains(result.Warnings, w => w.Contains("niveles de anidamiento", StringComparison.Ordinal));
+        Assert.Contains(result.Warnings, w => w.Contains("nesting levels", StringComparison.Ordinal));
         Assert.True(watch.Elapsed < TimeSpan.FromSeconds(10), $"Tardó {watch.Elapsed}.");
     }
 
@@ -54,7 +54,7 @@ public class HtmlSecurityTests
         Assert.Contains("dos", result.Markdown);
         Assert.DoesNotContain("**dos**", result.Markdown); // por debajo del máximo queda solo el texto
         Assert.Contains("Fin", result.Markdown);
-        Assert.Contains(result.Warnings, w => w.Contains("más de 20 niveles", StringComparison.Ordinal));
+        Assert.Contains(result.Warnings, w => w.Contains("more than 20 nesting levels", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -68,7 +68,7 @@ public class HtmlSecurityTests
 
         Assert.Contains("visible", result.Markdown);
         Assert.Contains("final", result.Markdown);
-        Assert.Contains(result.Warnings, w => w.Contains("se extrajo solo el texto", StringComparison.Ordinal));
+        Assert.Contains(result.Warnings, w => w.Contains("only the text was extracted", StringComparison.Ordinal));
         Assert.True(watch.Elapsed < TimeSpan.FromSeconds(10), $"Tardó {watch.Elapsed}.");
     }
 
@@ -180,8 +180,8 @@ public class LimitTests
         var result = await new MarkdownConverter().ConvertAsync(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", "ancho.csv", TestContext.Current.CancellationToken);
 
         Assert.True(result.Markdown.Length < 10_000_000, $"Markdown de {result.Markdown.Length} caracteres.");
-        Assert.Contains(result.Warnings, w => w.Contains("columnas", StringComparison.Ordinal));
-        Assert.Contains(result.Warnings, w => w.Contains("celdas", StringComparison.Ordinal));
+        Assert.Contains(result.Warnings, w => w.Contains("Columns", StringComparison.Ordinal));
+        Assert.Contains(result.Warnings, w => w.Contains("cells", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -330,7 +330,7 @@ public class UrlDownloadSecurityTests
         foreach (var target in targets)
         {
             var error = await Assert.ThrowsAsync<UrlDownloadException>(() => UrlDownloader.DownloadAsync(target, cancellationToken: TestContext.Current.CancellationToken));
-            Assert.Contains("no pública", error.Message, StringComparison.Ordinal);
+            Assert.Contains("non-public", error.Message, StringComparison.Ordinal);
         }
 
         Assert.Empty(server.Paths); // ninguna petición llegó al servicio "interno"
@@ -343,7 +343,7 @@ public class UrlDownloadSecurityTests
     public async Task OnlyHttpAndHttpsAreDownloaded(string url)
     {
         var error = await Assert.ThrowsAsync<UrlDownloadException>(() => UrlDownloader.DownloadAsync(new Uri(url), cancellationToken: TestContext.Current.CancellationToken));
-        Assert.Contains("http o https", error.Message, StringComparison.Ordinal);
+        Assert.Contains("http or https", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -367,7 +367,7 @@ public class UrlDownloadSecurityTests
         Assert.Equal("/final", ok.Url.AbsolutePath);
 
         var loop = await Assert.ThrowsAsync<UrlDownloadException>(() => UrlDownloader.DownloadAsync(server.Url("/loop"), LoopbackOnly, TestContext.Current.CancellationToken));
-        Assert.Contains("redirecciones", loop.Message, StringComparison.Ordinal);
+        Assert.Contains("redirects", loop.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -381,7 +381,7 @@ public class UrlDownloadSecurityTests
 
         var watch = Stopwatch.StartNew();
         var timeout = await Assert.ThrowsAsync<UrlDownloadException>(() => UrlDownloader.DownloadAsync(server.Url("/slow"), small, TestContext.Current.CancellationToken));
-        Assert.Contains("tiempo máximo", timeout.Message, StringComparison.Ordinal);
+        Assert.Contains("time limit", timeout.Message, StringComparison.Ordinal);
         Assert.True(watch.Elapsed < TimeSpan.FromSeconds(5));
 
         var text = await UrlDownloader.DownloadAsync(server.Url("/doc.txt"), small, TestContext.Current.CancellationToken);
@@ -591,7 +591,7 @@ public class OfficeSecurityTests
         Assert.Contains("| 2 | par |", result.Markdown);
         Assert.Contains("| 3 | impar |", result.Markdown);
         Assert.DoesNotContain("FONETICA", result.Markdown);
-        Assert.Contains("4989 filas más omitidas (total 4999 filas de datos)", result.Markdown);
+        Assert.Contains("4989 more rows omitted (4999 data rows in total)", result.Markdown);
         Assert.Contains(result.Warnings, w => w.Contains("4989", StringComparison.Ordinal));
     }
 }
@@ -682,7 +682,7 @@ public class PdfLimitTests
         Assert.Equal(100, ocr.Calls);
         Assert.Equal(100, rasterizer.Calls.Count);
         Assert.Equal(100, result.Pages.Count(p => p.Source == PageTextSource.Ocr));
-        Assert.Contains(result.Warnings, w => w.Contains("200 página(s) o imagen(es)", StringComparison.Ordinal) && w.Contains("MaxOcrPages = 100", StringComparison.Ordinal));
+        Assert.Contains(result.Warnings, w => w.Contains("200 page(s) or image(s)", StringComparison.Ordinal) && w.Contains("MaxOcrPages = 100", StringComparison.Ordinal));
         Assert.Equal(100, progress.Reports.Max(r => r.OcrPages));
     }
 
@@ -713,7 +713,7 @@ public class PdfLimitTests
 
         var read = result.Pages.Count(p => p.Source == PageTextSource.Ocr);
         Assert.InRange(read, 1, 29);
-        Assert.Contains(result.Warnings, w => w.Contains($"Se reconocieron {read} de 30", StringComparison.Ordinal) && w.Contains("MaxOcrDuration", StringComparison.Ordinal));
+        Assert.Contains(result.Warnings, w => w.Contains($"{read} of 30 page(s) were recognized", StringComparison.Ordinal) && w.Contains("MaxOcrDuration", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -790,7 +790,7 @@ public class ExternalProcessSecurityTests
 
         var error = await Assert.ThrowsAsync<TimeoutException>(() => runner.RunAsync("sh", ["-c", $"(sleep 1; touch '{marker}') & sleep 30"], cancellationToken: TestContext.Current.CancellationToken));
 
-        Assert.Contains("tiempo máximo", error.Message, StringComparison.Ordinal);
+        Assert.Contains("time limit", error.Message, StringComparison.Ordinal);
         Assert.True(watch.Elapsed < TimeSpan.FromSeconds(5), $"Tardó {watch.Elapsed}.");
         await Task.Delay(1500, TestContext.Current.CancellationToken);
         Assert.False(File.Exists(marker)); // el hijo también se detuvo
@@ -803,7 +803,7 @@ public class ExternalProcessSecurityTests
         var runner = new ExternalProcessRunner(new ExternalProcessOptions { MaxOutputBytes = 100_000 });
 
         var overflow = await Assert.ThrowsAsync<InvalidOperationException>(() => runner.RunAsync("sh", ["-c", "yes"], cancellationToken: TestContext.Current.CancellationToken));
-        Assert.Contains("máximo de 100000 bytes", overflow.Message, StringComparison.Ordinal);
+        Assert.Contains("maximum of 100000 output bytes", overflow.Message, StringComparison.Ordinal);
 
         var noisy = await runner.RunAsync("sh", ["-c", "head -c 2000000 /dev/zero | tr '\\0' e >&2; echo ok"], cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal("ok", Encoding.UTF8.GetString(noisy.Output).Trim());

@@ -188,7 +188,7 @@ public class WorkflowSecurityTests
         Assert.Equal(["vigente:schedule:" + healthy.Id], calls); // la automatización sana se disparó igual
         var failed = (await store.GetAutomationAsync(broken.Id, Ct))!;
         Assert.Equal(1, failed.ConsecutiveFailures);
-        Assert.Contains("no está registrado", failed.LastError);
+        Assert.Contains("is not registered", failed.LastError);
         Assert.Equal(t + TimeSpan.FromMinutes(1), failed.NextRunAt); // espera antes de reintentar
         Assert.True(failed.Enabled);
 

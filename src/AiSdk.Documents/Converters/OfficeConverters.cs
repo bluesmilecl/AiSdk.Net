@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml;
+using AiSdk.Documents.Resources;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using OxImagePart = DocumentFormat.OpenXml.Packaging.ImagePart;
@@ -69,12 +70,12 @@ internal static class OfficeXml
     {
         if (reader.Depth > options.MaxNestingDepth)
         {
-            throw new InvalidDataException($"La parte '{part.Uri}' tiene más de {options.MaxNestingDepth} niveles de anidamiento (MaxNestingDepth).");
+            throw new InvalidDataException(string.Format(CultureInfo.CurrentCulture, Strings.Office_TooDeep, part.Uri, options.MaxNestingDepth));
         }
     }
 
     public static InvalidDataException Unreadable(OpenXmlPart part, MarkdownConverterOptions options, XmlException ex) =>
-        new($"La parte '{part.Uri}' no es XML válido o supera {options.MaxOfficePartChars} caracteres (MaxOfficePartChars): {ex.Message}", ex);
+        new(string.Format(CultureInfo.CurrentCulture, Strings.Office_InvalidXml, part.Uri, options.MaxOfficePartChars, ex.Message), ex);
 
     /// <summary>
     /// Bytes of an embedded image to analyze, or null if it is smaller than <see cref="MarkdownConverterOptions.MinEmbeddedImageBytes"/>,
@@ -105,7 +106,7 @@ internal static class OfficeXml
     {
         if (tableTruncated)
         {
-            warnings.Add($"Una o más tablas se recortaron (máximo {MarkdownTable.DefaultMaxCells} celdas por tabla).");
+            warnings.Add(string.Format(CultureInfo.CurrentCulture, Strings.Office_TablesTruncated, MarkdownTable.DefaultMaxCells));
         }
 
         if (context.ImageAnalysisLimitWarning() is { } images)
@@ -135,7 +136,7 @@ public sealed partial class DocxConverter : IDocumentConverter
     {
         var options = context.Options;
         using var document = WordprocessingDocument.Open(new MemoryStream(source.Data), false, OfficeXml.Settings(options));
-        var main = document.MainDocumentPart ?? throw new InvalidDataException("El documento no tiene contenido principal.");
+        var main = document.MainDocumentPart ?? throw new InvalidDataException(Strings.Word_NoMainContent);
         var body = OfficeXml.Load(main, p => p.Document, options)?.Body;
         var state = new State(main, context);
         var builder = new StringBuilder();
@@ -146,7 +147,7 @@ public sealed partial class DocxConverter : IDocumentConverter
 
         if (state.ColumnsTruncated)
         {
-            state.Warnings.Add($"Una o más tablas tienen más de {MaxTableColumns} columnas: se omitieron las demás.");
+            state.Warnings.Add(string.Format(CultureInfo.CurrentCulture, Strings.Word_TooManyColumns, MaxTableColumns));
         }
 
         OfficeXml.AddLimitWarnings(state.Warnings, context, state.TableTruncated);
@@ -383,7 +384,7 @@ public sealed partial class DocxConverter : IDocumentConverter
     private static async Task<string> ImageAsync(W.Drawing drawing, State state, CancellationToken cancellationToken)
     {
         var properties = drawing.Descendants<DocumentFormat.OpenXml.Drawing.Wordprocessing.DocProperties>().FirstOrDefault();
-        var alt = properties?.Description?.Value ?? properties?.Title?.Value ?? properties?.Name?.Value ?? "imagen";
+        var alt = properties?.Description?.Value ?? properties?.Title?.Value ?? properties?.Name?.Value ?? Strings.Image_DefaultName;
         var embed = drawing.Descendants<A.Blip>().FirstOrDefault()?.Embed?.Value;
         if (embed is null || !state.Context.Options.ProcessEmbeddedImages || !state.Context.CanAnalyzeImages
             || !state.Main.TryGetPartById(embed, out var found) || found is not OxImagePart part
@@ -399,7 +400,7 @@ public sealed partial class DocxConverter : IDocumentConverter
         }
 
         state.UsedAi = true;
-        return $"\n> **[Imagen: {alt}]** {result.Markdown.Replace("\n", "\n> ", StringComparison.Ordinal)}\n";
+        return $"\n> **[{Strings.Image_Label}: {alt}]** {result.Markdown.Replace("\n", "\n> ", StringComparison.Ordinal)}\n";
     }
 
     private static int HeadingLevel(W.Paragraph paragraph, State state)
@@ -499,7 +500,7 @@ public sealed class XlsxConverter : IDocumentConverter
     {
         var options = context.Options;
         using var document = SpreadsheetDocument.Open(new MemoryStream(source.Data), false, OfficeXml.Settings(options));
-        var workbook = document.WorkbookPart ?? throw new InvalidDataException("El libro no tiene contenido.");
+        var workbook = document.WorkbookPart ?? throw new InvalidDataException(Strings.Excel_NoContent);
         var sharedStrings = ReadSharedStrings(workbook.SharedStringTablePart, options);
         var dateStyles = DateStyleIndexes(workbook, options);
         var pages = new List<DocumentPage>();
@@ -517,7 +518,7 @@ public sealed class XlsxConverter : IDocumentConverter
                 continue;
             }
 
-            var name = sheet.Name?.Value ?? $"Hoja {number + 1}";
+            var name = sheet.Name?.Value ?? string.Format(CultureInfo.CurrentCulture, Strings.Excel_SheetNumber, number + 1);
             number++;
             var sheetData = ReadSheet(part, sharedStrings, dateStyles, options);
             if (sheetData.Rows.Count == 0)
@@ -535,12 +536,11 @@ public sealed class XlsxConverter : IDocumentConverter
             var omitted = sheetData.TotalRows - rows.Count;
             if (omitted > 0)
             {
-                var more = sheetData.Complete ? string.Empty : "al menos ";
-                markdown.Append(CultureInfo.InvariantCulture, $"\n\n_… {more}{omitted} filas más omitidas (total {more}{sheetData.TotalRows - 1} filas de datos)._");
-                warnings.Add($"Hoja '{name}': se omitieron {more}{omitted} filas.");
+                markdown.Append("\n\n").AppendFormat(CultureInfo.InvariantCulture, sheetData.Complete ? Strings.Excel_RowsOmittedNote : Strings.Excel_RowsOmittedNoteAtLeast, omitted, sheetData.TotalRows - 1);
+                warnings.Add(string.Format(CultureInfo.CurrentCulture, sheetData.Complete ? Strings.Excel_RowsOmitted : Strings.Excel_RowsOmittedAtLeast, name, omitted));
             }
 
-            pages.Add(new DocumentPage(number, markdown.ToString()) { Label = $"Hoja: {name}" });
+            pages.Add(new DocumentPage(number, markdown.ToString()) { Label = string.Format(CultureInfo.CurrentCulture, Strings.Excel_SheetLabel, name) });
         }
 
         OfficeXml.AddLimitWarnings(warnings, context, tableTruncated);
@@ -762,7 +762,7 @@ public sealed class XlsxConverter : IDocumentConverter
             case "inlineStr":
                 return inline ?? string.Empty;
             case "b":
-                return raw?.Trim() == "1" ? "VERDADERO" : "FALSO";
+                return raw?.Trim() == "1" ? Strings.Excel_True : Strings.Excel_False;
         }
 
         if (raw is null)
@@ -850,7 +850,7 @@ public sealed class PptxConverter : IDocumentConverter
     {
         var options = context.Options;
         using var document = PresentationDocument.Open(new MemoryStream(source.Data), false, OfficeXml.Settings(options));
-        var presentation = document.PresentationPart ?? throw new InvalidDataException("La presentación no tiene contenido.");
+        var presentation = document.PresentationPart ?? throw new InvalidDataException(Strings.PowerPoint_NoContent);
         var pages = new List<DocumentPage>();
         var warnings = new List<string>();
         var tableTruncated = false;
@@ -916,8 +916,8 @@ public sealed class PptxConverter : IDocumentConverter
                             && await OfficeXml.ReadImageAsync(image, context, cancellationToken).ConfigureAwait(false) is { } data
                             && await context.AnalyzeImageAsync(data, MediaTypes.Normalize(image.ContentType), cancellationToken).ConfigureAwait(false) is { Markdown.Length: > 0 } analysis)
                         {
-                            var alt = picture.NonVisualPictureProperties?.NonVisualDrawingProperties?.Description?.Value ?? "imagen";
-                            body.Append("> **[Imagen: ").Append(alt).Append("]** ").Append(analysis.Markdown.Replace("\n", "\n> ", StringComparison.Ordinal)).Append("\n\n");
+                            var alt = picture.NonVisualPictureProperties?.NonVisualDrawingProperties?.Description?.Value ?? Strings.Image_DefaultName;
+                            body.Append("> **[").Append(Strings.Image_Label).Append(": ").Append(alt).Append("]** ").Append(analysis.Markdown.Replace("\n", "\n> ", StringComparison.Ordinal)).Append("\n\n");
                             usedAi = true;
                         }
 
@@ -933,13 +933,14 @@ public sealed class PptxConverter : IDocumentConverter
                 .ToList();
             if (notes is { Count: > 0 })
             {
-                body.Append("> **Notas del orador:** ").Append(string.Join(' ', notes)).Append("\n\n");
+                body.Append("> **").Append(Strings.PowerPoint_SpeakerNotes).Append(":** ").Append(string.Join(' ', notes)).Append("\n\n");
             }
 
-            var heading = title is null ? $"## Diapositiva {number}" : $"## Diapositiva {number}: {title}";
+            var label = string.Format(CultureInfo.CurrentCulture, Strings.PowerPoint_Slide, number);
+            var heading = title is null ? $"## {label}" : $"## {label}: {title}";
             pages.Add(new DocumentPage(number, $"{heading}\n\n{body.ToString().Trim()}".Trim(), usedAi ? PageTextSource.Vision : PageTextSource.Text)
             {
-                Label = $"Diapositiva {number}",
+                Label = label,
             });
         }
 

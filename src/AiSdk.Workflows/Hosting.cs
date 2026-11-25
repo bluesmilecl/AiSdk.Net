@@ -1,3 +1,5 @@
+using System.Globalization;
+using AiSdk.Workflows.Resources;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -113,7 +115,7 @@ public sealed class WorkflowHostedService(WorkflowEngine engine, WorkflowBuilder
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 // Un error puntual (p. ej. el almacén no disponible) no debe detener el servicio.
-                Console.Error.WriteLine($"[AiSdk.Workflows] Error en el ciclo de automatizaciones: {ex.Message}");
+                Console.Error.WriteLine($"[AiSdk.Workflows] {string.Format(CultureInfo.CurrentCulture, Strings.Hosting_LoopError, ex.Message)}");
             }
         }
         while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false));

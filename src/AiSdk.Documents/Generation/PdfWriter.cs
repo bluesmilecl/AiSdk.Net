@@ -1,4 +1,5 @@
 using System.Globalization;
+using AiSdk.Documents.Resources;
 using UglyToad.PdfPig.Core;
 using UglyToad.PdfPig.Writer;
 using AddedFont = UglyToad.PdfPig.Writer.PdfDocumentBuilder.AddedFont;
@@ -41,7 +42,7 @@ public sealed class PdfFonts
     private static byte[] Resource(string name)
     {
         using var stream = typeof(PdfFonts).Assembly.GetManifestResourceStream("AiSdk.Documents.Fonts." + name)
-                           ?? throw new InvalidOperationException($"Falta la fuente incrustada {name}.");
+                           ?? throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, Strings.Generation_MissingFont, name));
         using var buffer = new MemoryStream();
         stream.CopyTo(buffer);
         return buffer.ToArray();
@@ -121,7 +122,7 @@ internal sealed class PdfLayout : IDisposable
         {
             DrawRuns([new TextRun(_options.Title, Bold: true)], Left, Right, BaseSize * 2.3, _accent);
             if (_options.Subtitle is not null) DrawRuns([new TextRun(_options.Subtitle)], Left, Right, BaseSize * 1.3, (89, 89, 89));
-            var byline = string.Join(" · ", new[] { _options.Author, DateTime.Now.ToString("d 'de' MMMM 'de' yyyy", new CultureInfo("es-ES")) }.Where(s => s is not null));
+            var byline = string.Join(" · ", new[] { _options.Author, GeneratedText.Today() }.Where(s => s is not null));
             DrawRuns([new TextRun(byline)], Left, Right, BaseSize, (110, 110, 110));
             _y -= BaseSize * 1.5;
         }
@@ -652,7 +653,7 @@ internal sealed class PdfLayout : IDisposable
 
             if (_options.PageNumbers)
             {
-                var text = $"Página {i + 1} de {_pages.Count}";
+                var text = string.Format(CultureInfo.CurrentCulture, Strings.Generation_PageNumber, i + 1, _pages.Count);
                 var width = Width(text, Regular, size);
                 DrawText(text, (_pageWidth - width) / 2, _margin - 2, Regular, size, (127, 127, 127));
             }

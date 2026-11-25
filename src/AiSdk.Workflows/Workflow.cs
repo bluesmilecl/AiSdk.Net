@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using AiSdk.Workflows.Resources;
 
 namespace AiSdk.Workflows;
 
@@ -163,7 +164,7 @@ public sealed class NonRetryableException(string message, Exception? inner = nul
 public sealed class WorkflowSuspendedException : Exception
 {
     internal WorkflowSuspendedException(WorkflowStatus status, DateTimeOffset? resumeAt)
-        : base("La ejecución del workflow quedó suspendida.")
+        : base(Strings.Workflow_Suspended)
     {
         Status = status;
         ResumeAt = resumeAt;

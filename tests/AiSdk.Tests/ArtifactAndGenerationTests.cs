@@ -224,7 +224,7 @@ public class DocumentGenerationTests
         {
             Assert.Equal(2, pdf.NumberOfPages);
             Assert.Equal("Ventas", pdf.Information.Title);
-            Assert.Contains("Página 1 de 2", pdf.GetPage(1).Text);
+            Assert.Contains("Page 1 of 2", pdf.GetPage(1).Text);
             Assert.Contains("Canción,", pdf.GetPage(2).Text);
             Assert.Contains("ñandú,", pdf.GetPage(2).Text);
             Assert.Contains("€", pdf.GetPage(2).Text);

@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Globalization;
+using AiSdk.Documents.Resources;
 
 namespace AiSdk.Documents;
 
@@ -135,7 +137,7 @@ public sealed class ExternalProcessRunner(ExternalProcessOptions? options = null
         var name = Path.GetFileName(executable);
 
         using var process = Process.Start(CreateStartInfo(executable, arguments, input is not null))
-                            ?? throw new InvalidOperationException($"No se pudo iniciar '{executable}'.");
+                            ?? throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, Strings.Process_CouldNotStart, executable));
         using var registration = token.Register(() => Kill(process));
 
         var overflow = false;
@@ -167,12 +169,12 @@ public sealed class ExternalProcessRunner(ExternalProcessOptions? options = null
         catch (OperationCanceledException) when (timeoutSource?.IsCancellationRequested == true && !cancellationToken.IsCancellationRequested)
         {
             Kill(process);
-            throw new TimeoutException($"'{name}' superó el tiempo máximo de {timeout} y se detuvo.");
+            throw new TimeoutException(string.Format(CultureInfo.CurrentCulture, Strings.Process_Timeout, name, timeout));
         }
 
         if (overflow)
         {
-            throw new InvalidOperationException($"'{name}' superó el máximo de {Options.MaxOutputBytes} bytes de salida y se detuvo.");
+            throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, Strings.Process_OutputTooLarge, name, Options.MaxOutputBytes));
         }
 
         return new ExternalProcess.Result(process.ExitCode, output.ToArray(), await stderr.ConfigureAwait(false));
@@ -329,6 +331,6 @@ public static class ExternalProcessRunnerExtensions
         var result = await runner.RunAsync(executable, arguments, input, cancellationToken).ConfigureAwait(false);
         return result.ExitCode == 0
             ? result.Output
-            : throw new InvalidOperationException($"'{Path.GetFileName(executable)}' terminó con código {result.ExitCode}: {result.Error.Trim()}");
+            : throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, Strings.Process_ExitCode, Path.GetFileName(executable), result.ExitCode, result.Error.Trim()));
     }
 }

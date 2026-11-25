@@ -1,6 +1,8 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using AiSdk.Documents.Resources;
 
 namespace AiSdk.Documents;
 
@@ -103,12 +105,12 @@ public static class UrlDownloader
                     {
                         if (response.Headers.Location is not { } location)
                         {
-                            throw new UrlDownloadException($"{Describe(current)} respondió {(int)response.StatusCode} sin Location.");
+                            throw new UrlDownloadException(string.Format(CultureInfo.CurrentCulture, Strings.Download_RedirectWithoutLocation, Describe(current), (int)response.StatusCode));
                         }
 
                         if (redirects >= options.MaxRedirects)
                         {
-                            throw new UrlDownloadException($"La descarga de {Describe(url)} superó el máximo de {options.MaxRedirects} redirecciones.");
+                            throw new UrlDownloadException(string.Format(CultureInfo.CurrentCulture, Strings.Download_TooManyRedirects, Describe(url), options.MaxRedirects));
                         }
 
                         current = location.IsAbsoluteUri ? location : new Uri(current, location);
@@ -117,7 +119,7 @@ public static class UrlDownloader
 
                     if (!response.IsSuccessStatusCode)
                     {
-                        throw new UrlDownloadException($"{Describe(current)} respondió {(int)response.StatusCode} {response.ReasonPhrase}.");
+                        throw new UrlDownloadException(string.Format(CultureInfo.CurrentCulture, Strings.Download_HttpError, Describe(current), (int)response.StatusCode, response.ReasonPhrase));
                     }
 
                     var name = Path.GetFileName(current.LocalPath);
@@ -133,7 +135,7 @@ public static class UrlDownloader
         }
         catch (OperationCanceledException ex) when (timeout.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
-            throw new UrlDownloadException($"La descarga de {Describe(url)} superó el tiempo máximo de {options.Timeout.TotalSeconds:0.#} s.", ex);
+            throw new UrlDownloadException(string.Format(CultureInfo.CurrentCulture, Strings.Download_Timeout, Describe(url), options.Timeout.TotalSeconds), ex);
         }
     }
 
@@ -208,12 +210,12 @@ public static class UrlDownloader
     {
         if (!url.IsAbsoluteUri || url.Scheme is not ("http" or "https") || string.IsNullOrEmpty(url.Host))
         {
-            throw new UrlDownloadException($"Solo se descargan URLs http o https: {Describe(url)}.");
+            throw new UrlDownloadException(string.Format(CultureInfo.CurrentCulture, Strings.Download_OnlyHttp, Describe(url)));
         }
 
         if (options.UrlValidator is { } validator && !validator(url))
         {
-            throw new UrlDownloadException($"La URL {Describe(url)} no está permitida (UrlValidator).");
+            throw new UrlDownloadException(string.Format(CultureInfo.CurrentCulture, Strings.Download_UrlNotAllowed, Describe(url)));
         }
 
         // Una IP literal se rechaza antes de conectar (el ConnectCallback valida igual cada conexión).
@@ -265,7 +267,7 @@ public static class UrlDownloader
                 }
             }
 
-            throw new HttpRequestException($"No se pudo conectar a '{host}'.", lastError);
+            throw new HttpRequestException(string.Format(CultureInfo.CurrentCulture, Strings.Download_CouldNotConnect, host), lastError);
         },
     };
 
@@ -295,7 +297,7 @@ public static class UrlDownloader
         var comma = raw.IndexOf(',', StringComparison.Ordinal);
         if (comma < 5)
         {
-            throw new UrlDownloadException("URL data: inválida (falta la coma).");
+            throw new UrlDownloadException(Strings.Download_DataUrlMissingComma);
         }
 
         var meta = raw[5..comma];
@@ -315,7 +317,7 @@ public static class UrlDownloader
         }
         catch (FormatException ex)
         {
-            throw new UrlDownloadException("URL data: con base64 inválido.", ex);
+            throw new UrlDownloadException(Strings.Download_DataUrlInvalidBase64, ex);
         }
     }
 
@@ -324,8 +326,7 @@ public static class UrlDownloader
             or HttpStatusCode.TemporaryRedirect or HttpStatusCode.PermanentRedirect or HttpStatusCode.MultipleChoices;
 
     private static string BlockedMessage(string host, IReadOnlyCollection<IPAddress> addresses) =>
-        $"Descarga bloqueada: '{host}' corresponde a una dirección no pública ({string.Join(", ", addresses)}). " +
-        "Use UrlDownloadOptions.AllowPrivateNetworks o AddressValidator solo si la URL es de confianza.";
+        string.Format(CultureInfo.CurrentCulture, Strings.Download_Blocked, host, string.Join(", ", addresses));
 
     /// <summary>URL without credentials or query, for error messages.</summary>
     private static string Describe(Uri url) =>

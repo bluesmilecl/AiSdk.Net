@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Text.Json;
 using AiSdk.Artifacts;
+using AiSdk.Documents.Resources;
 
 namespace AiSdk.Documents.Generation;
 
@@ -21,9 +22,12 @@ public static class DocumentGenerator
     public static byte[] ToXlsx(string markdownTables, SheetOptions? options = null) =>
         new SpreadsheetBuilder().AddMarkdownTables(markdownTables, options).Build();
 
-    /// <summary>Objects → Excel. Text that looks like a formula is written as text.</summary>
-    public static byte[] ToXlsx<T>(IEnumerable<T> items, string sheetName = "Datos", SheetOptions? options = null) =>
-        new SpreadsheetBuilder().AddSheet(sheetName, items, options).Build();
+    /// <summary>
+    /// Objects → Excel. Text that looks like a formula is written as text. Without <paramref name="sheetName"/>, the sheet
+    /// is named "Data" in the language of <see cref="System.Globalization.CultureInfo.CurrentUICulture"/>.
+    /// </summary>
+    public static byte[] ToXlsx<T>(IEnumerable<T> items, string? sheetName = null, SheetOptions? options = null) =>
+        new SpreadsheetBuilder().AddSheet(sheetName ?? Strings.Spreadsheet_DataSheetName, items, options).Build();
 }
 
 /// <summary>Options for <see cref="DocumentTools"/>.</summary>
@@ -67,16 +71,8 @@ public sealed class DocumentToolOptions
 /// </summary>
 public static class DocumentTools
 {
-    /// <summary>Recommended system instructions.</summary>
-    public const string Instructions =
-        """
-        Puedes generar archivos descargables: create_word_document y create_pdf a partir de Markdown
-        (títulos #, listas, tablas, **negrita**, citas, bloques de código y \pagebreak para saltos de página),
-        y create_spreadsheet con hojas, columnas tipadas (text, number, integer, currency, percent, date, boolean)
-        y filas de datos; los textos que empiezan con "=" son fórmulas de Excel (p. ej. "=B2*C2" o "=SUM(D2:D9)"),
-        solo con funciones de cálculo (no enlaces ni funciones de red, que se escriben como texto).
-        Escribe contenido completo y bien estructurado. Después de generar, entrega el enlace y un resumen breve.
-        """;
+    /// <summary>Recommended system instructions, in the language of <see cref="System.Globalization.CultureInfo.CurrentUICulture"/> (English, or Spanish for "es*").</summary>
+    public static string Instructions => Strings.Tools_Instructions;
 
     public static IReadOnlyList<Tool> Create(DocumentToolOptions options)
     {
@@ -84,7 +80,7 @@ public static class DocumentTools
 
         async Task<object> SaveAsync(byte[] data, string fileName, string extension, string mediaType, string? title, ToolExecutionContext ctx, CancellationToken ct)
         {
-            fileName = Path.GetFileNameWithoutExtension(string.IsNullOrWhiteSpace(fileName) ? title ?? "documento" : fileName);
+            fileName = Path.GetFileNameWithoutExtension(string.IsNullOrWhiteSpace(fileName) ? title ?? Strings.Tools_DefaultFileName : fileName);
             fileName = string.Concat(fileName.Split(Path.GetInvalidFileNameChars())) + extension;
             var artifact = await ArtifactTools.SaveFileAsync(options.Store, data, fileName, mediaType, title, ctx, options.ArtifactOptions, ct).ConfigureAwait(false);
             return new { id = artifact.Id, fileName, size = data.Length, version = artifact.Version, url = options.ArtifactOptions.Url?.Invoke(artifact) };
@@ -112,7 +108,7 @@ public static class DocumentTools
         {
             tools.Add(Tool.Create<MarkdownDocumentInput, object>(
                 "create_word_document",
-                "Genera un documento Word (.docx) editable a partir de Markdown.",
+                Strings.Tools_CreateWordDocument,
                 (input, ctx, ct) => SaveAsync(DocxWriter.FromMarkdown(input.Markdown, Style(input)), input.FileName, ".docx", DocumentGenerator.DocxMediaType, input.Title, ctx, ct)));
         }
 
@@ -120,7 +116,7 @@ public static class DocumentTools
         {
             tools.Add(Tool.Create<MarkdownDocumentInput, object>(
                 "create_pdf",
-                "Genera un PDF a partir de Markdown (informes, cartas, contratos, cotizaciones).",
+                Strings.Tools_CreatePdf,
                 (input, ctx, ct) => SaveAsync(PdfWriter.FromMarkdown(input.Markdown, Style(input)), input.FileName, ".pdf", DocumentGenerator.PdfMediaType, input.Title, ctx, ct)));
         }
 
@@ -128,7 +124,7 @@ public static class DocumentTools
         {
             tools.Add(Tool.Create<SpreadsheetInput, object>(
                 "create_spreadsheet",
-                "Genera un archivo Excel (.xlsx) con una o más hojas, columnas tipadas, formatos, filtros y totales.",
+                Strings.Tools_CreateSpreadsheet,
                 (input, ctx, ct) =>
                 {
                     var builder = new SpreadsheetBuilder
