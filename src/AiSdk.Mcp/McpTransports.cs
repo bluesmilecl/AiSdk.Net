@@ -8,31 +8,31 @@ using AiSdk.Http;
 
 namespace AiSdk.Mcp;
 
-/// <summary>Transporte de mensajes JSON-RPC entre el cliente y un servidor MCP.</summary>
+/// <summary>Transport for JSON-RPC messages between the client and an MCP server.</summary>
 public interface IMcpTransport : IAsyncDisposable
 {
-    /// <summary>Mensajes recibidos del servidor (respuestas, peticiones y notificaciones).</summary>
+    /// <summary>Messages received from the server (responses, requests and notifications).</summary>
     ChannelReader<JsonObject> Messages { get; }
 
     Task StartAsync(CancellationToken cancellationToken = default);
 
     Task SendAsync(JsonObject message, CancellationToken cancellationToken = default);
 
-    /// <summary>Lo invoca el cliente tras <c>initialize</c> con la versión de protocolo negociada.</summary>
+    /// <summary>Called by the client after <c>initialize</c> with the negotiated protocol version.</summary>
     void SetProtocolVersion(string version)
     {
     }
 }
 
 /// <summary>
-/// Transporte stdio: lanza el servidor como proceso y se comunica por stdin/stdout
-/// con JSON delimitado por saltos de línea (p. ej. <c>npx -y @modelcontextprotocol/server-filesystem</c>).
+/// stdio transport: launches the server as a process and communicates over stdin/stdout
+/// using newline-delimited JSON (e.g. <c>npx -y @modelcontextprotocol/server-filesystem</c>).
 /// </summary>
 /// <remarks>
-/// El proceso hijo <b>no</b> hereda el entorno completo del host: solo recibe las variables de
-/// <see cref="DefaultInheritedVariables"/>, las de <see cref="InheritedVariables"/> y las pasadas
-/// explícitamente en el constructor. Así un servidor de terceros no ve API keys ni cadenas de conexión.
-/// Use <see cref="InheritEnvironment"/> = true solo con servidores de confianza.
+/// The child process does <b>not</b> inherit the host's full environment: it only receives the variables in
+/// <see cref="DefaultInheritedVariables"/>, those in <see cref="InheritedVariables"/> and those passed
+/// explicitly to the constructor, so a third-party server never sees API keys or connection strings.
+/// Set <see cref="InheritEnvironment"/> = true only for trusted servers.
 /// </remarks>
 public sealed class StdioMcpTransport : IMcpTransport
 {
@@ -47,17 +47,17 @@ public sealed class StdioMcpTransport : IMcpTransport
     private Task? _readLoop;
     private readonly CancellationTokenSource _cts = new();
 
-    /// <summary>Tamaño máximo de un mensaje JSON-RPC (una línea de stdout), en bytes: 16 MiB. Uno mayor se descarta.</summary>
+    /// <summary>Maximum size of a JSON-RPC message (one stdout line), in bytes: 16 MiB. Larger messages are discarded.</summary>
     public long MaxMessageBytes { get; init; } = 16 * 1024 * 1024;
 
-    /// <summary>Largo máximo de una línea de stderr que se entrega a <c>OnStderr</c>, en bytes (64 KiB); el resto se corta.</summary>
+    /// <summary>Maximum length of a stderr line delivered to <c>OnStderr</c>, in bytes (64 KiB); the rest is truncated.</summary>
     public int MaxStderrLineBytes { get; init; } = 64 * 1024;
 
-    /// <summary>Lanza <paramref name="command"/> con los argumentos y variables de entorno indicados.</summary>
-    /// <param name="command">Ejecutable del servidor (se lanza sin shell).</param>
-    /// <param name="arguments">Argumentos, pasados uno a uno sin interpretar.</param>
-    /// <param name="environment">Variables que se pasan al servidor además de las heredadas permitidas.</param>
-    /// <param name="workingDirectory">Directorio de trabajo (por defecto, el actual).</param>
+    /// <summary>Launches <paramref name="command"/> with the specified arguments and environment variables.</summary>
+    /// <param name="command">Server executable (launched without a shell).</param>
+    /// <param name="arguments">Arguments, passed one by one without interpretation.</param>
+    /// <param name="environment">Variables passed to the server in addition to the allowed inherited ones.</param>
+    /// <param name="workingDirectory">Working directory (defaults to the current one).</param>
     public StdioMcpTransport(
         string command,
         IEnumerable<string>? arguments = null,
@@ -89,32 +89,32 @@ public sealed class StdioMcpTransport : IMcpTransport
     }
 
     /// <summary>
-    /// Variables del host que el servidor hereda por defecto (las mismas que el SDK oficial de MCP en TypeScript):
-    /// <c>HOME, LOGNAME, PATH, SHELL, TERM, USER</c> en POSIX y
-    /// <c>APPDATA, HOMEDRIVE, HOMEPATH, LOCALAPPDATA, PATH, PROCESSOR_ARCHITECTURE, SYSTEMDRIVE, SYSTEMROOT, TEMP, USERNAME, USERPROFILE</c> en Windows.
+    /// Host variables the server inherits by default (the same as the official MCP TypeScript SDK):
+    /// <c>HOME, LOGNAME, PATH, SHELL, TERM, USER</c> on POSIX and
+    /// <c>APPDATA, HOMEDRIVE, HOMEPATH, LOCALAPPDATA, PATH, PROCESSOR_ARCHITECTURE, SYSTEMDRIVE, SYSTEMROOT, TEMP, USERNAME, USERPROFILE</c> on Windows.
     /// </summary>
     public static IReadOnlyList<string> DefaultInheritedVariables { get; } = OperatingSystem.IsWindows()
         ? ["APPDATA", "HOMEDRIVE", "HOMEPATH", "LOCALAPPDATA", "PATH", "PROCESSOR_ARCHITECTURE", "SYSTEMDRIVE", "SYSTEMROOT", "TEMP", "USERNAME", "USERPROFILE"]
         : ["HOME", "LOGNAME", "PATH", "SHELL", "TERM", "USER"];
 
     /// <summary>
-    /// Variables adicionales del host que el servidor puede heredar (p. ej. <c>HTTPS_PROXY</c> o <c>NODE_EXTRA_CA_CERTS</c>).
-    /// Se suman a <see cref="DefaultInheritedVariables"/>.
+    /// Additional host variables the server may inherit (e.g. <c>HTTPS_PROXY</c> or <c>NODE_EXTRA_CA_CERTS</c>).
+    /// They are added to <see cref="DefaultInheritedVariables"/>.
     /// </summary>
     public IReadOnlyCollection<string>? InheritedVariables { get; init; }
 
     /// <summary>
-    /// Si es true, el servidor hereda <b>todo</b> el entorno del host (comportamiento anterior a 0.2):
-    /// API keys, cadenas de conexión y cualquier secreto en variables de entorno. Úselo solo con servidores de confianza.
+    /// If true, the server inherits the host's <b>entire</b> environment (the behavior before 0.2):
+    /// API keys, connection strings and any secret in environment variables. Use it only with trusted servers.
     /// </summary>
     public bool InheritEnvironment { get; init; }
 
-    /// <summary>Usa streams ya abiertos (útil para pruebas o servidores en el mismo proceso).</summary>
-    /// <param name="serverInput">Stream donde se escriben los mensajes hacia el servidor.</param>
-    /// <param name="serverOutput">Stream desde donde se leen los mensajes del servidor.</param>
+    /// <summary>Uses already open streams (useful for tests or in-process servers).</summary>
+    /// <param name="serverInput">Stream to which messages for the server are written.</param>
+    /// <param name="serverOutput">Stream from which the server's messages are read.</param>
     public static StdioMcpTransport FromStreams(Stream serverInput, Stream serverOutput) => new(serverInput, serverOutput);
 
-    /// <summary>Recibe cada línea que el servidor escribe en stderr (logs).</summary>
+    /// <summary>Receives each line the server writes to stderr (logs).</summary>
     public Action<string>? OnStderr { get; init; }
 
     public ChannelReader<JsonObject> Messages => _messages.Reader;
@@ -148,7 +148,7 @@ public sealed class StdioMcpTransport : IMcpTransport
         return Task.CompletedTask;
     }
 
-    /// <summary>Deja en el entorno del proceso hijo solo las variables permitidas más las explícitas.</summary>
+    /// <summary>Keeps only the allowed variables plus the explicit ones in the child process environment.</summary>
     private void ApplyEnvironment(ProcessStartInfo startInfo)
     {
         // ProcessStartInfo.Environment empieza como una copia del entorno del proceso actual.
@@ -278,15 +278,15 @@ public sealed class StdioMcpTransport : IMcpTransport
 }
 
 /// <summary>
-/// Transporte <b>Streamable HTTP</b> de MCP: cada mensaje se envía por POST y la respuesta
-/// llega como JSON o como stream SSE. Gestiona la cabecera <c>Mcp-Session-Id</c>.
+/// MCP <b>Streamable HTTP</b> transport: each message is sent via POST and the response
+/// arrives as JSON or as an SSE stream. Manages the <c>Mcp-Session-Id</c> header.
 /// </summary>
 /// <remarks>
-/// Las respuestas JSON se leen con un límite de tamaño (<see cref="MaxMessageBytes"/>) y dentro del plazo del
-/// token de cancelación de <see cref="SendAsync"/> (el <see cref="McpClient"/> le aplica su
-/// <see cref="McpClientOptions.RequestTimeout"/>, que cubre también la lectura del cuerpo). Un stream SSE se
-/// cierra al llegar la respuesta a su petición; si se corta o trae datos inválidos antes, la petición
-/// pendiente falla de inmediato con un error en vez de esperar al plazo.
+/// JSON responses are read with a size limit (<see cref="MaxMessageBytes"/>) and within the deadline of the
+/// cancellation token passed to <see cref="SendAsync"/> (the <see cref="McpClient"/> applies its
+/// <see cref="McpClientOptions.RequestTimeout"/>, which also covers reading the body). An SSE stream is
+/// closed once the response to its request arrives; if it is cut off or carries invalid data before that, the
+/// pending request fails immediately with an error instead of waiting for the deadline.
 /// </remarks>
 public sealed class HttpMcpTransport : IMcpTransport
 {
@@ -313,12 +313,12 @@ public sealed class HttpMcpTransport : IMcpTransport
     {
     }
 
-    /// <summary>Identificador de sesión asignado por el servidor (si usa sesiones).</summary>
+    /// <summary>Session identifier assigned by the server (if it uses sessions).</summary>
     public string? SessionId { get; private set; }
 
     /// <summary>
-    /// Tamaño máximo (en bytes) de una respuesta JSON o de un evento SSE del servidor. Lo que lo supere se rechaza
-    /// y la petición falla. Por defecto, 16 MiB.
+    /// Maximum size (in bytes) of a JSON response or an SSE event from the server. Anything larger is rejected
+    /// and the request fails. Defaults to 16 MiB.
     /// </summary>
     public long MaxMessageBytes { get; init; } = 16 * 1024 * 1024;
 
@@ -470,7 +470,7 @@ public sealed class HttpMcpTransport : IMcpTransport
         };
     }
 
-    /// <summary>Lee el cuerpo completo sin superar <paramref name="maxBytes"/>.</summary>
+    /// <summary>Reads the whole body without exceeding <paramref name="maxBytes"/>.</summary>
     private static async Task<byte[]> ReadBoundedAsync(HttpContent content, long maxBytes, CancellationToken cancellationToken)
     {
         if (content.Headers.ContentLength > maxBytes)
@@ -495,7 +495,7 @@ public sealed class HttpMcpTransport : IMcpTransport
         return buffer.ToArray();
     }
 
-    /// <summary>Lee como mucho los primeros caracteres de un cuerpo de error (para el mensaje de la excepción).</summary>
+    /// <summary>Reads at most the first characters of an error body (for the exception message).</summary>
     private static async Task<string> ReadErrorBodyAsync(HttpContent content, CancellationToken cancellationToken)
     {
         await using var stream = await content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
@@ -529,7 +529,7 @@ public sealed class HttpMcpTransport : IMcpTransport
         }
     }
 
-    /// <summary>Cierra los streams abiertos y la sesión (DELETE). Nunca lanza excepciones.</summary>
+    /// <summary>Closes the open streams and the session (DELETE). Never throws.</summary>
     public async ValueTask DisposeAsync()
     {
         if (Interlocked.Exchange(ref _disposed, 1) == 1)
@@ -574,8 +574,8 @@ public sealed class HttpMcpTransport : IMcpTransport
 }
 
 /// <summary>
-/// Lector de líneas UTF-8 con tamaño máximo: nunca acumula más de <c>maxBytes</c> por línea (lo que sobra se descarta
-/// hasta el salto de línea y la línea queda marcada como truncada). Lee por bloques, no byte a byte.
+/// UTF-8 line reader with a maximum size: it never buffers more than <c>maxBytes</c> per line (the excess is discarded
+/// up to the line break and the line is flagged as truncated). Reads in blocks, not byte by byte.
 /// </summary>
 internal sealed class BoundedLineReader(Stream stream, long maxBytes)
 {
@@ -583,7 +583,7 @@ internal sealed class BoundedLineReader(Stream stream, long maxBytes)
     private int _start;
     private int _end;
 
-    /// <summary>La siguiente línea (sin <c>\n</c> ni <c>\r</c> final); null al terminar el flujo.</summary>
+    /// <summary>The next line (without a trailing <c>\n</c> or <c>\r</c>); null at the end of the stream.</summary>
     public async Task<(string Text, bool Truncated)?> ReadLineAsync(CancellationToken cancellationToken)
     {
         using var line = new MemoryStream();

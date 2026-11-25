@@ -8,36 +8,36 @@ using Microsoft.Net.Http.Headers;
 
 namespace AiSdk.AspNetCore;
 
-/// <summary>Opciones de <see cref="ArtifactEndpoints.MapArtifacts"/>.</summary>
+/// <summary>Options for <see cref="ArtifactEndpoints.MapArtifacts"/>.</summary>
 public sealed class ArtifactEndpointOptions : EndpointSecurityOptions
 {
     /// <summary>
-    /// Decide si la petición puede ver un artifact (cada versión se comprueba por separado). Por defecto solo su dueño:
-    /// <see cref="Artifact.Owner"/> igual a <see cref="EndpointSecurityOptions.ResolveUser"/>; los artifacts sin dueño no
-    /// se sirven. Úselo para reglas propias (equipos, administradores, conversaciones compartidas...).
+    /// Decides whether the request may view an artifact (each version is checked separately). By default only its owner:
+    /// <see cref="Artifact.Owner"/> equal to <see cref="EndpointSecurityOptions.ResolveUser"/>; artifacts without an owner are not
+    /// served. Use it for custom rules (teams, administrators, shared conversations...).
     /// </summary>
     public Func<HttpContext, Artifact, ValueTask<bool>>? CanAccess { get; init; }
 }
 
-/// <summary>Endpoints para ver y descargar los artifacts creados por los agentes.</summary>
+/// <summary>Endpoints for viewing and downloading the artifacts created by agents.</summary>
 public static class ArtifactEndpoints
 {
     /// <summary>
-    /// Publica los artifacts:
+    /// Maps the artifacts:
     /// <list type="bullet">
-    /// <item><c>GET {prefix}?conversationId=</c>: lista de metadatos de una conversación; sin <c>conversationId</c>, los
-    /// artifacts del usuario actual. Nunca lista todo el almacén.</item>
-    /// <item><c>GET {prefix}/{id}</c>: página renderizada (o descarga si es un archivo)</item>
-    /// <item><c>GET {prefix}/{id}/raw</c>: contenido original</item>
-    /// <item><c>GET {prefix}/{id}/versions</c> y <c>{prefix}/{id}/v/{version}</c>: historial</item>
+    /// <item><c>GET {prefix}?conversationId=</c>: metadata list for a conversation; without <c>conversationId</c>, the
+    /// current user's artifacts. It never lists the whole store.</item>
+    /// <item><c>GET {prefix}/{id}</c>: rendered page (or a download if it is a file)</item>
+    /// <item><c>GET {prefix}/{id}/raw</c>: original content</item>
+    /// <item><c>GET {prefix}/{id}/versions</c> and <c>{prefix}/{id}/v/{version}</c>: history</item>
     /// </list>
-    /// Exigen autorización por defecto y cada artifact pasa por <see cref="ArtifactEndpointOptions.CanAccess"/> (solo su
-    /// dueño por defecto); los que no se pueden ver responden 404.
-    /// Todas las respuestas llevan CSP <c>sandbox</c> (<see cref="ArtifactRenderer.ContentSecurityPolicy"/>) y
-    /// <c>nosniff</c>: el contenido corre en un origen opaco, sin acceso a las cookies ni al DOM de la app. El HTML, SVG o
-    /// XML crudo y los archivos se descargan como adjuntos. Aun así, lo más seguro es servir los artifacts desde un
-    /// dominio propio (p. ej. <c>artifacts.example.com</c>), separado del de la aplicación.
-    /// El almacén se toma de <paramref name="store"/> o del contenedor (<see cref="IArtifactStore"/>).
+    /// They require authorization by default and each artifact goes through <see cref="ArtifactEndpointOptions.CanAccess"/> (only its
+    /// owner by default); those that cannot be viewed respond 404.
+    /// All responses carry a CSP <c>sandbox</c> (<see cref="ArtifactRenderer.ContentSecurityPolicy"/>) and
+    /// <c>nosniff</c>: the content runs in an opaque origin, with no access to the app's cookies or DOM. Raw HTML, SVG or
+    /// XML and files are downloaded as attachments. Even so, the safest option is to serve the artifacts from a
+    /// dedicated domain (e.g. <c>artifacts.example.com</c>), separate from the application's.
+    /// The store is taken from <paramref name="store"/> or from the container (<see cref="IArtifactStore"/>).
     /// </summary>
     public static RouteGroupBuilder MapArtifacts(this IEndpointRouteBuilder endpoints, string prefix = "/artifacts", IArtifactStore? store = null, ArtifactEndpointOptions? options = null)
     {
@@ -158,13 +158,13 @@ public static class ArtifactEndpoints
         return Results.Content(ArtifactRenderer.ToHtml(artifact), "text/html; charset=utf-8");
     }
 
-    /// <summary>Tipo de medio sin parámetros y en minúsculas; si no es válido, <c>application/octet-stream</c>.</summary>
+    /// <summary>Media type without parameters and in lowercase; if invalid, <c>application/octet-stream</c>.</summary>
     internal static string SafeMediaType(string? mediaType) =>
         MediaTypeHeaderValue.TryParse(mediaType, out var parsed) && parsed.MediaType.Value is { } value && !value.Contains('*', StringComparison.Ordinal)
             ? value.ToLowerInvariant()
             : "application/octet-stream";
 
-    /// <summary>Tipos que el navegador ejecuta como documento (scripts, eventos): HTML, SVG y XML.</summary>
+    /// <summary>Types the browser executes as a document (scripts, events): HTML, SVG and XML.</summary>
     internal static bool IsActiveContent(string mediaType)
     {
         var slash = mediaType.IndexOf('/', StringComparison.Ordinal);

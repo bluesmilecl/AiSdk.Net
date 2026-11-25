@@ -5,7 +5,7 @@ using AiSdk.Internal;
 
 namespace AiSdk.OpenAI;
 
-/// <summary>Generación de imágenes (<c>/images/generations</c>): <c>gpt-image-1</c>, <c>dall-e-3</c>...</summary>
+/// <summary>Image generation (<c>/images/generations</c>): <c>gpt-image-1</c>, <c>dall-e-3</c>...</summary>
 public sealed class OpenAIImageModel : IImageModel
 {
     private readonly OpenAIProvider _provider;
@@ -20,7 +20,7 @@ public sealed class OpenAIImageModel : IImageModel
 
     public string ModelId { get; }
 
-    /// <summary>dall-e-3 solo admite una imagen por llamada.</summary>
+    /// <summary>dall-e-3 only supports one image per call.</summary>
     public int? MaxImagesPerCall => ModelId.StartsWith("dall-e-3", StringComparison.Ordinal) ? 1 : 10;
 
     public async Task<ImageModelResult> GenerateAsync(ImageModelRequest request, CancellationToken cancellationToken = default)
@@ -79,7 +79,7 @@ public sealed class OpenAIImageModel : IImageModel
     }
 }
 
-/// <summary>Texto a voz (<c>/audio/speech</c>): <c>gpt-4o-mini-tts</c>, <c>tts-1</c>...</summary>
+/// <summary>Text to speech (<c>/audio/speech</c>): <c>gpt-4o-mini-tts</c>, <c>tts-1</c>...</summary>
 public sealed class OpenAISpeechModel : ISpeechModel
 {
     private readonly OpenAIProvider _provider;
@@ -141,7 +141,7 @@ public sealed class OpenAISpeechModel : ISpeechModel
     };
 }
 
-/// <summary>Transcripción (<c>/audio/transcriptions</c>): <c>gpt-4o-transcribe</c>, <c>whisper-1</c>...</summary>
+/// <summary>Transcription (<c>/audio/transcriptions</c>): <c>gpt-4o-transcribe</c>, <c>whisper-1</c>...</summary>
 public sealed class OpenAITranscriptionModel : ITranscriptionModel
 {
     private readonly OpenAIProvider _provider;

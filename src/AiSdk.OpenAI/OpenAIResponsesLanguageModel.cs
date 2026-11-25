@@ -8,16 +8,16 @@ using AiSdk.Internal;
 namespace AiSdk.OpenAI;
 
 /// <summary>
-/// Modelo de lenguaje sobre la API Responses de OpenAI (<c>POST /responses</c>), la API
-/// recomendada por OpenAI: herramientas de función y de servidor (búsqueda web, intérprete
-/// de código, búsqueda en archivos), razonamiento con resumen y salida estructurada.
+/// Language model over the OpenAI Responses API (<c>POST /responses</c>), the API
+/// recommended by OpenAI: function and server tools (web search, code
+/// interpreter, file search), reasoning with summaries and structured output.
 /// </summary>
 public sealed class OpenAIResponsesLanguageModel : ILanguageModel, ITokenCountingModel
 {
-    /// <summary>Id del item de salida (para reenviar razonamiento y llamadas con <c>item_reference</c>).</summary>
+    /// <summary>Id of the output item (to forward reasoning and calls with <c>item_reference</c>).</summary>
     public const string ItemIdKey = "openai.itemId";
 
-    /// <summary>Razonamiento cifrado (cuando se usa <c>store: false</c> con <c>include: ["reasoning.encrypted_content"]</c>).</summary>
+    /// <summary>Encrypted reasoning (when <c>store: false</c> is used with <c>include: ["reasoning.encrypted_content"]</c>).</summary>
     public const string EncryptedContentKey = "openai.encryptedContent";
 
     private static readonly HashSet<string> ProviderToolItems =
@@ -49,7 +49,7 @@ public sealed class OpenAIResponsesLanguageModel : ILanguageModel, ITokenCountin
         return ParseResponse(json) with { Warnings = warnings };
     }
 
-    /// <summary>Cuenta los tokens de entrada con <c>/responses/input_tokens</c>.</summary>
+    /// <summary>Counts the input tokens with <c>/responses/input_tokens</c>.</summary>
     public async Task<int> CountTokensAsync(LanguageModelRequest request, CancellationToken cancellationToken = default)
     {
         var (body, _) = BuildBody(request, stream: false);

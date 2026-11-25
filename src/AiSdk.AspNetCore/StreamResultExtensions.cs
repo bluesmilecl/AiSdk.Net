@@ -5,14 +5,14 @@ using Microsoft.AspNetCore.Http;
 
 namespace AiSdk.AspNetCore;
 
-/// <summary>Resultados HTTP para devolver streams desde Minimal APIs o controladores.</summary>
+/// <summary>HTTP results for returning streams from Minimal APIs or controllers.</summary>
 public static class StreamResultExtensions
 {
     /// <summary>
-    /// Devuelve el stream en formato UI Message Stream (SSE), compatible con
-    /// <c>useChat</c> de <c>@ai-sdk/react</c> (equivalente a <c>toUIMessageStreamResponse()</c>).
-    /// Con <paramref name="toolApprovals"/> (<see cref="ToolApprovalProtection.ForChat"/>), las llamadas pendientes de
-    /// aprobación llegan a <c>useChat</c> en el estado <c>approval-requested</c>.
+    /// Returns the stream in UI Message Stream format (SSE), compatible with
+    /// <c>useChat</c> from <c>@ai-sdk/react</c> (equivalent to <c>toUIMessageStreamResponse()</c>).
+    /// With <paramref name="toolApprovals"/> (<see cref="ToolApprovalProtection.ForChat"/>), calls awaiting
+    /// approval reach <c>useChat</c> in the <c>approval-requested</c> state.
     /// </summary>
     public static IResult ToUIMessageStreamResult(
         this StreamTextResult result,
@@ -21,10 +21,10 @@ public static class StreamResultExtensions
         ToolApprovalProtector? toolApprovals = null) =>
         new UIMessageStreamHttpResult(result.FullStream, messageId, onError, toolApprovals);
 
-    /// <summary>Devuelve solo el texto como <c>text/plain</c> en streaming (equivalente a <c>toTextStreamResponse()</c>).</summary>
+    /// <summary>Returns only the text as streaming <c>text/plain</c> (equivalent to <c>toTextStreamResponse()</c>).</summary>
     public static IResult ToTextStreamResult(this StreamTextResult result) => new TextStreamHttpResult(result.TextStream);
 
-    /// <summary>Escribe el stream UI directamente en la respuesta HTTP.</summary>
+    /// <summary>Writes the UI stream directly to the HTTP response.</summary>
     public static Task WriteUIMessageStreamAsync(
         this HttpResponse response,
         StreamTextResult result,
@@ -34,13 +34,13 @@ public static class StreamResultExtensions
         new UIMessageStreamHttpResult(result.FullStream, messageId, onError, toolApprovals).ExecuteAsync(response.HttpContext);
 
     /// <summary>
-    /// Devuelve el stream como respuesta <b>reanudable</b>: la generación se guarda en
-    /// <paramref name="store"/> y continúa aunque el cliente se desconecte; el cliente puede
-    /// reconectarse con <see cref="UIMessageStreamResults.Resume"/> (<c>useChat({ resume: true })</c>).
-    /// El stream se guarda bajo el chat <b>y su dueño</b> (<paramref name="owner"/> o, si es null, el usuario
-    /// autenticado): otro usuario con el mismo id de chat no puede reemplazarlo ni reanudarlo.
-    /// Sin dueño la respuesta falla: en aplicaciones anónimas pase un id de sesión que emita el servidor.
-    /// <paramref name="toolApprovals"/>: ver <see cref="ToUIMessageStreamResult"/>.
+    /// Returns the stream as a <b>resumable</b> response: the generation is stored in
+    /// <paramref name="store"/> and continues even if the client disconnects; the client can
+    /// reconnect with <see cref="UIMessageStreamResults.Resume"/> (<c>useChat({ resume: true })</c>).
+    /// The stream is stored under the chat <b>and its owner</b> (<paramref name="owner"/> or, if null, the authenticated
+    /// user): another user with the same chat id cannot replace or resume it.
+    /// Without an owner the response fails: in anonymous applications, pass a server-issued session id.
+    /// <paramref name="toolApprovals"/>: see <see cref="ToUIMessageStreamResult"/>.
     /// </summary>
     public static IResult ToResumableUIMessageStreamResult(
         this StreamTextResult result,
@@ -91,30 +91,30 @@ public static class StreamResultExtensions
     }
 }
 
-/// <summary>Resultados HTTP para streams UI propios y reanudables.</summary>
+/// <summary>HTTP results for custom and resumable UI streams.</summary>
 public static class UIMessageStreamResults
 {
     /// <summary>
-    /// Stream UI compuesto con datos propios (<c>data-*</c>) y uno o varios streams de texto.
+    /// UI stream composed of custom data (<c>data-*</c>) and one or more text streams.
     /// </summary>
     public static IResult Create(Func<UIMessageStreamWriter, Task> execute, string? messageId = null, Func<Exception, string>? onError = null) =>
         new ChunksResult(ct => UIMessageStream.Create(execute, messageId, onError, ct));
 
     /// <summary>
-    /// Envía chunks del protocolo y los guarda en el almacén para poder reanudarlos, bajo el chat y su dueño
-    /// (<paramref name="owner"/> o, si es null, el usuario autenticado; sin dueño falla).
+    /// Sends protocol chunks and stores them in the store so they can be resumed, under the chat and its owner
+    /// (<paramref name="owner"/> or, if null, the authenticated user; fails without an owner).
     /// </summary>
     public static IResult Resumable(IResumableStreamStore store, string chatId, IAsyncEnumerable<JsonObject> chunks, string? owner = null) =>
         new ResumableResult(store, chatId, chunks, owner);
 
     /// <summary>
-    /// Endpoint de reanudación (<c>GET /api/chat/{id}/stream</c>): devuelve el stream activo del chat
-    /// desde el principio, o 204 si no hay ninguno en curso. Solo encuentra los streams del mismo dueño
-    /// (<paramref name="owner"/> o el usuario autenticado); una petición sin dueño siempre recibe 204.
+    /// Resume endpoint (<c>GET /api/chat/{id}/stream</c>): returns the chat's active stream
+    /// from the beginning, or 204 if none is in progress. It only finds streams of the same owner
+    /// (<paramref name="owner"/> or the authenticated user); a request without an owner always gets 204.
     /// </summary>
     public static IResult Resume(IResumableStreamStore store, string chatId, string? owner = null) => new ResumeResult(store, chatId, owner);
 
-    /// <summary>Clave del chat en el almacén: el id de chat del cliente dentro del ámbito de su dueño.</summary>
+    /// <summary>Chat key in the store: the client's chat id within its owner's scope.</summary>
     private static string? ScopedKey(HttpContext http, string chatId, string? owner) =>
         (owner ?? EndpointSecurity.GetUserId(http)) is { Length: > 0 } scope ? ResumableUIMessageStream.ScopedChatId(scope, chatId) : null;
 

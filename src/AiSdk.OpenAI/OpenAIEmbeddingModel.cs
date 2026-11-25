@@ -3,7 +3,7 @@ using AiSdk.Http;
 
 namespace AiSdk.OpenAI;
 
-/// <summary>Modelo de embeddings de OpenAI (<c>/embeddings</c>).</summary>
+/// <summary>OpenAI embedding model (<c>/embeddings</c>).</summary>
 public sealed class OpenAIEmbeddingModel : IEmbeddingModel
 {
     private readonly OpenAIProvider _provider;

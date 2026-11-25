@@ -3,14 +3,14 @@ using System.Text.Json.Nodes;
 namespace AiSdk.OpenAI;
 
 /// <summary>
-/// Herramientas de servidor de OpenAI (solo con la API Responses: <c>openai.Responses("gpt-5")</c>).
+/// OpenAI server tools (Responses API only: <c>openai.Responses("gpt-5")</c>).
 /// </summary>
 public static class OpenAITools
 {
-    /// <summary>Búsqueda web. Las citas aparecen como <see cref="SourcePart"/> en <c>result.Sources</c>.</summary>
-    /// <param name="searchContextSize"><c>low</c>, <c>medium</c> o <c>high</c>.</param>
-    /// <param name="allowedDomains">Limita la búsqueda a estos dominios.</param>
-    /// <param name="userLocation">Ubicación aproximada, p. ej. <c>("Santiago", "CL")</c>.</param>
+    /// <summary>Web search. Citations appear as <see cref="SourcePart"/> in <c>result.Sources</c>.</summary>
+    /// <param name="searchContextSize"><c>low</c>, <c>medium</c> or <c>high</c>.</param>
+    /// <param name="allowedDomains">Restricts the search to these domains.</param>
+    /// <param name="userLocation">Approximate location, e.g. <c>("Santiago", "CL")</c>.</param>
     public static Tool WebSearch(
         string? searchContextSize = null,
         IEnumerable<string>? allowedDomains = null,
@@ -35,7 +35,7 @@ public static class OpenAITools
         return Tool.ProviderDefined("openai", "web_search", definition);
     }
 
-    /// <summary>Intérprete de código en un contenedor gestionado por OpenAI.</summary>
+    /// <summary>Code interpreter in a container managed by OpenAI.</summary>
     public static Tool CodeInterpreter(string? containerId = null) =>
         Tool.ProviderDefined("openai", "code_interpreter", new JsonObject
         {
@@ -43,7 +43,7 @@ public static class OpenAITools
             ["container"] = containerId is null ? new JsonObject { ["type"] = "auto" } : containerId,
         });
 
-    /// <summary>Búsqueda en vector stores de OpenAI.</summary>
+    /// <summary>Search in OpenAI vector stores.</summary>
     public static Tool FileSearch(IEnumerable<string> vectorStoreIds, int? maxNumResults = null)
     {
         var definition = new JsonObject
@@ -59,7 +59,7 @@ public static class OpenAITools
         return Tool.ProviderDefined("openai", "file_search", definition);
     }
 
-    /// <summary>Cualquier otra herramienta de servidor por su tipo.</summary>
+    /// <summary>Any other server tool by its type.</summary>
     public static Tool ServerTool(string type, string name, JsonObject? extra = null)
     {
         var definition = new JsonObject { ["type"] = type };
@@ -68,20 +68,20 @@ public static class OpenAITools
     }
 }
 
-/// <summary>Constructor tipado de <see cref="ProviderOptions"/> para OpenAI.</summary>
+/// <summary>Typed builder of <see cref="ProviderOptions"/> for OpenAI.</summary>
 public static class OpenAIOptions
 {
-    /// <param name="reasoningEffort"><c>minimal</c>, <c>low</c>, <c>medium</c> o <c>high</c> (modelos de razonamiento).</param>
+    /// <param name="reasoningEffort"><c>minimal</c>, <c>low</c>, <c>medium</c> or <c>high</c> (reasoning models).</param>
     /// <param name="reasoningSummary">
-    /// <c>auto</c> o <c>detailed</c> para recibir el resumen del razonamiento (solo API Responses).
+    /// <c>auto</c> or <c>detailed</c> to receive the reasoning summary (Responses API only).
     /// </param>
     /// <param name="store">
-    /// false para no guardar la respuesta en OpenAI (solo API Responses); en ese caso se pide el
-    /// razonamiento cifrado para poder reenviarlo en los siguientes turnos.
+    /// false to not store the response at OpenAI (Responses API only); in that case the encrypted
+    /// reasoning is requested so it can be forwarded in subsequent turns.
     /// </param>
-    /// <param name="parallelToolCalls">Permite varias llamadas a herramientas en un mismo paso.</param>
-    /// <param name="serviceTier"><c>auto</c>, <c>default</c>, <c>flex</c> o <c>priority</c>.</param>
-    /// <param name="user">Identificador estable del usuario final (para detección de abuso).</param>
+    /// <param name="parallelToolCalls">Allows multiple tool calls in the same step.</param>
+    /// <param name="serviceTier"><c>auto</c>, <c>default</c>, <c>flex</c> or <c>priority</c>.</param>
+    /// <param name="user">Stable identifier of the end user (for abuse detection).</param>
     public static ProviderOptions Create(
         string? reasoningEffort = null,
         string? reasoningSummary = null,

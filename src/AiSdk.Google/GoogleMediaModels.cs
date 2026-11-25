@@ -4,7 +4,7 @@ using AiSdk.Internal;
 
 namespace AiSdk.Google;
 
-/// <summary>Embeddings de Gemini (<c>batchEmbedContents</c>).</summary>
+/// <summary>Gemini embeddings (<c>batchEmbedContents</c>).</summary>
 public sealed class GoogleEmbeddingModel : IEmbeddingModel
 {
     private readonly GoogleProvider _provider;
@@ -59,7 +59,7 @@ public sealed class GoogleEmbeddingModel : IEmbeddingModel
     }
 }
 
-/// <summary>Generación de imágenes con Imagen (<c>predict</c>).</summary>
+/// <summary>Image generation with Imagen (<c>predict</c>).</summary>
 public sealed class GoogleImageModel : IImageModel
 {
     private readonly GoogleProvider _provider;

@@ -7,60 +7,60 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace AiSdk.AspNetCore;
 
-/// <summary>Opciones de seguridad de <see cref="WorkflowEndpoints.MapWorkflows"/>.</summary>
+/// <summary>Security options for <see cref="WorkflowEndpoints.MapWorkflows"/>.</summary>
 public sealed class WorkflowEndpointOptions : EndpointSecurityOptions
 {
     /// <summary>
-    /// Decide si la petición puede iniciar el workflow indicado (también al crear o editar automatizaciones que lo usan).
-    /// Por defecto cualquier usuario autorizado puede iniciar cualquier workflow registrado: restrínjalo si hay workflows
-    /// internos (p. ej. <c>agent-task</c>, cuya entrada indica el dueño).
+    /// Decides whether the request may start the given workflow (also when creating or editing automations that use it).
+    /// By default any authorized user can start any registered workflow: restrict it if there are internal workflows
+    /// (e.g. <c>agent-task</c>, whose input specifies the owner).
     /// </summary>
     public Func<HttpContext, string, ValueTask<bool>>? CanStart { get; init; }
 
     /// <summary>
-    /// Decide si la petición puede ver, cancelar o reintentar una ejecución. Por defecto solo su dueño, según
-    /// <see cref="WorkflowEndpoints.GetRunOwnerAsync"/>: quien la inició por HTTP o el dueño de la automatización que la
-    /// disparó. Las ejecuciones sin dueño (iniciadas desde código o por eventos) no se muestran.
+    /// Decides whether the request may view, cancel or retry a run. By default only its owner, according to
+    /// <see cref="WorkflowEndpoints.GetRunOwnerAsync"/>: whoever started it over HTTP or the owner of the automation that
+    /// triggered it. Runs without an owner (started from code or by events) are not shown.
     /// </summary>
     public Func<HttpContext, WorkflowRun, ValueTask<bool>>? CanAccessRun { get; init; }
 
     /// <summary>
-    /// Decide si la petición puede ver, modificar, borrar o ejecutar una automatización. Por defecto solo su dueño
-    /// (<see cref="Automation.Owner"/>); las declaradas en código (sin dueño) no se muestran.
+    /// Decides whether the request may view, modify, delete or run an automation. By default only its owner
+    /// (<see cref="Automation.Owner"/>); automations declared in code (without an owner) are not shown.
     /// </summary>
     public Func<HttpContext, Automation, ValueTask<bool>>? CanAccessAutomation { get; init; }
 
     /// <summary>
-    /// Decide si la petición puede enviar un evento (p. ej. una aprobación), con las ejecuciones que lo esperan.
-    /// Es obligatorio para usar <c>POST {prefix}/events/{evento}</c>: sin él responde 403, porque quién puede aprobar
-    /// depende de cada aplicación (normalmente no es quien inició la ejecución) y un evento también dispara
-    /// automatizaciones con <see cref="EventTrigger"/>.
+    /// Decides whether the request may send an event (e.g. an approval), given the runs waiting for it.
+    /// Required to use <c>POST {prefix}/events/{eventName}</c>: without it the endpoint returns 403, because who may approve
+    /// depends on each application (usually not whoever started the run) and an event also triggers
+    /// automations with an <see cref="EventTrigger"/>.
     /// </summary>
     public Func<HttpContext, WorkflowEventRequest, ValueTask<bool>>? CanSendEvent { get; init; }
 
     /// <summary>
-    /// Incluye los webhooks entrantes (<c>POST {prefix}/hooks/{id}</c>). Por defecto <c>true</c>. No exigen usuario: se
-    /// autentican con el secreto o la firma de su <see cref="WebhookTrigger"/>.
+    /// Includes the incoming webhooks (<c>POST {prefix}/hooks/{id}</c>). Defaults to <c>true</c>. They do not require a user:
+    /// they authenticate with the secret or signature of their <see cref="WebhookTrigger"/>.
     /// </summary>
     public bool MapWebhooks { get; init; } = true;
 }
 
-/// <summary>Evento que se quiere enviar por HTTP y las ejecuciones que lo esperan (y que reanudaría).</summary>
-/// <param name="EventName">Nombre del evento.</param>
-/// <param name="Key">Clave de correlación (<c>?key=</c>), p. ej. el id del pedido.</param>
-/// <param name="Payload">Cuerpo JSON del evento.</param>
-/// <param name="WaitingRuns">Ejecuciones que esperan este evento con esta clave.</param>
+/// <summary>Event to be sent over HTTP and the runs waiting for it (which it would resume).</summary>
+/// <param name="EventName">Event name.</param>
+/// <param name="Key">Correlation key (<c>?key=</c>), e.g. the order id.</param>
+/// <param name="Payload">JSON body of the event.</param>
+/// <param name="WaitingRuns">Runs waiting for this event with this key.</param>
 public sealed record WorkflowEventRequest(string EventName, string? Key, JsonElement Payload, IReadOnlyList<WorkflowRun> WaitingRuns);
 
-/// <summary>Endpoints HTTP del motor de workflows.</summary>
+/// <summary>HTTP endpoints for the workflow engine.</summary>
 public static class WorkflowEndpoints
 {
-    /// <summary>Prefijo de <see cref="WorkflowRun.TriggeredBy"/> en las ejecuciones iniciadas por un usuario por HTTP.</summary>
+    /// <summary>Prefix of <see cref="WorkflowRun.TriggeredBy"/> for runs started by a user over HTTP.</summary>
     public const string UserTriggerPrefix = "user:";
 
     /// <summary>
-    /// Tamaño máximo (bytes) del cuerpo de las peticiones a estos endpoints, webhooks incluidos: 1 MiB. Un cuerpo mayor
-    /// responde 413 sin leerse completo (los webhooks son anónimos: no se debe poder llenar la memoria con uno).
+    /// Maximum size (bytes) of the request body for these endpoints, webhooks included: 1 MiB. A larger body
+    /// gets a 413 without being read in full (webhooks are anonymous: they must not be able to fill memory).
     /// </summary>
     public const int MaxRequestBodyBytes = 1 << 20;
 
@@ -68,20 +68,20 @@ public static class WorkflowEndpoints
     private static readonly string[] AutomationTriggerPrefixes = ["schedule:", "webhook:", "manual:"];
 
     /// <summary>
-    /// Publica el motor de workflows:
+    /// Maps the workflow engine:
     /// <list type="bullet">
-    /// <item><c>POST {prefix}/{workflow}/start</c>: inicia (cuerpo = entrada JSON; <c>?wait=true</c> espera el resultado)</item>
-    /// <item><c>GET {prefix}/runs</c> y <c>GET {prefix}/runs/{id}</c>: estado, pasos, salida y registro</item>
-    /// <item><c>POST {prefix}/runs/{id}/cancel</c> y <c>/retry</c></item>
-    /// <item><c>POST {prefix}/events/{evento}?key=</c>: envía un evento (aprobaciones, pagos confirmados...)</item>
+    /// <item><c>POST {prefix}/{workflow}/start</c>: starts a run (body = JSON input; <c>?wait=true</c> waits for the result)</item>
+    /// <item><c>GET {prefix}/runs</c> and <c>GET {prefix}/runs/{id}</c>: status, steps, output and log</item>
+    /// <item><c>POST {prefix}/runs/{id}/cancel</c> and <c>/retry</c></item>
+    /// <item><c>POST {prefix}/events/{eventName}?key=</c>: sends an event (approvals, confirmed payments...)</item>
     /// <item><c>GET/POST {prefix}/automations</c>, <c>DELETE {prefix}/automations/{id}</c>, <c>POST .../{id}/run</c></item>
-    /// <item><c>POST {prefix}/hooks/{id}</c>: webhooks entrantes (validan secreto o firma HMAC)</item>
+    /// <item><c>POST {prefix}/hooks/{id}</c>: incoming webhooks (they validate a secret or HMAC signature)</item>
     /// </list>
-    /// Seguridad por defecto: exigen autorización (salvo los webhooks), cada ejecución y automatización solo la ve su
-    /// dueño (<see cref="WorkflowEndpointOptions.CanAccessRun"/>, <see cref="WorkflowEndpointOptions.CanAccessAutomation"/>),
-    /// el dueño se toma de la autenticación y nunca del cuerpo, los eventos necesitan
-    /// <see cref="WorkflowEndpointOptions.CanSendEvent"/> y los POST exigen <c>Content-Type: application/json</c> (415 si no)
-    /// para evitar CSRF desde formularios de otros sitios.
+    /// Secure by default: authorization is required (except for webhooks), each run and automation is visible only to its
+    /// owner (<see cref="WorkflowEndpointOptions.CanAccessRun"/>, <see cref="WorkflowEndpointOptions.CanAccessAutomation"/>),
+    /// the owner is taken from authentication and never from the body, events require
+    /// <see cref="WorkflowEndpointOptions.CanSendEvent"/>, and POST requests require <c>Content-Type: application/json</c> (415 otherwise)
+    /// to prevent CSRF from other sites' forms.
     /// </summary>
     public static RouteGroupBuilder MapWorkflows(this IEndpointRouteBuilder endpoints, string prefix = "/workflows", WorkflowEndpointOptions? options = null)
     {
@@ -277,7 +277,7 @@ public static class WorkflowEndpoints
         return group;
     }
 
-    /// <summary>Publica solo los webhooks entrantes (<c>POST {prefix}/hooks/{id}</c>), sin autenticación de usuario.</summary>
+    /// <summary>Maps only the incoming webhooks (<c>POST {prefix}/hooks/{id}</c>), without user authentication.</summary>
     public static RouteGroupBuilder MapWorkflowWebhooks(this IEndpointRouteBuilder endpoints, string prefix = "/workflows")
     {
         var group = endpoints.MapGroup(prefix).AddEndpointFilter(BadRequestFilter);
@@ -286,9 +286,9 @@ public static class WorkflowEndpoints
     }
 
     /// <summary>
-    /// Dueño de una ejecución: el usuario que la inició por HTTP (<see cref="UserTriggerPrefix"/>) o el dueño de la
-    /// automatización programada, webhook o manual que la disparó. <c>null</c> si no tiene (iniciada desde código o por
-    /// un evento). Útil para combinar con reglas propias en <see cref="WorkflowEndpointOptions.CanAccessRun"/>.
+    /// Owner of a run: the user who started it over HTTP (<see cref="UserTriggerPrefix"/>) or the owner of the
+    /// scheduled, webhook or manual automation that triggered it. <c>null</c> if it has none (started from code or by
+    /// an event). Useful to combine with custom rules in <see cref="WorkflowEndpointOptions.CanAccessRun"/>.
     /// </summary>
     public static async Task<string?> GetRunOwnerAsync(WorkflowEngine engine, WorkflowRun run, CancellationToken cancellationToken = default)
     {
@@ -348,7 +348,7 @@ public static class WorkflowEndpoints
         return automation is not null && await CanAccessAutomationAsync(http, automation, options).ConfigureAwait(false) ? automation : null;
     }
 
-    /// <summary>Oculta el secreto de los webhooks al devolver automatizaciones.</summary>
+    /// <summary>Hides the webhook secret when returning automations.</summary>
     private static Automation Redact(Automation automation) =>
         automation.Trigger is WebhookTrigger { Secret: { Length: > 0 } } ? automation with { Trigger = new WebhookTrigger("***") } : automation;
 
@@ -380,7 +380,7 @@ public static class WorkflowEndpoints
             }
         });
 
-    /// <summary>Convierte los errores de la petición (JSON inválido, cuerpo demasiado grande) en su código HTTP.</summary>
+    /// <summary>Converts request errors (invalid JSON, body too large) into their HTTP status code.</summary>
     private static async ValueTask<object?> BadRequestFilter(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
         try
@@ -393,7 +393,7 @@ public static class WorkflowEndpoints
         }
     }
 
-    /// <summary>Lee el cuerpo hasta <see cref="MaxRequestBodyBytes"/>; null si lo supera (sin seguir leyendo).</summary>
+    /// <summary>Reads the body up to <see cref="MaxRequestBodyBytes"/>; null if it exceeds it (without reading further).</summary>
     private static async Task<MemoryStream?> ReadBodyAsync(HttpContext http)
     {
         if (http.Request.ContentLength > MaxRequestBodyBytes)
@@ -453,7 +453,7 @@ public static class WorkflowEndpoints
         error = run.Error,
     };
 
-    /// <summary>Control de acceso a ejecuciones de una petición (cachea los dueños de las automatizaciones).</summary>
+    /// <summary>Run access control for a request (caches automation owners).</summary>
     private sealed class RunAccess(HttpContext http, WorkflowEngine engine, WorkflowEndpointOptions options)
     {
         private readonly Dictionary<string, string?> _automationOwners = new(StringComparer.Ordinal);
@@ -481,7 +481,7 @@ public static class WorkflowEndpoints
             return owner == user;
         }
 
-        /// <summary>La ejecución (o null si no existe o el id no es válido) y si la petición puede verla.</summary>
+        /// <summary>The run (or null if it does not exist or the id is invalid) and whether the request may view it.</summary>
         public async ValueTask<(WorkflowRun? Run, bool Visible)> FindAsync(string id)
         {
             WorkflowRun? run;

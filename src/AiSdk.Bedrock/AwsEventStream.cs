@@ -4,7 +4,7 @@ using System.Text;
 
 namespace AiSdk.Bedrock;
 
-/// <summary>Mensaje del formato binario <c>application/vnd.amazon.eventstream</c>.</summary>
+/// <summary>Message in the <c>application/vnd.amazon.eventstream</c> binary format.</summary>
 public sealed record AwsEventStreamMessage(IReadOnlyDictionary<string, string> Headers, byte[] Payload)
 {
     public string? EventType => Headers.GetValueOrDefault(":event-type");
@@ -17,22 +17,22 @@ public sealed record AwsEventStreamMessage(IReadOnlyDictionary<string, string> H
 }
 
 /// <summary>
-/// Lector del formato <c>event-stream</c> de AWS: cada mensaje tiene un preludio (longitud total,
-/// longitud de cabeceras, CRC), cabeceras tipadas, carga útil y un CRC32 final.
+/// Reader for the AWS <c>event-stream</c> format: each message has a prelude (total length,
+/// headers length, CRC), typed headers, a payload and a trailing CRC32.
 /// </summary>
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "Nombre del formato binario event-stream de AWS; es una clase estática de utilidades, no un Stream.")]
 public static class AwsEventStream
 {
-    /// <summary>Tamaño máximo por defecto de un mensaje (AWS limita los mensajes de event-stream a 16 MB).</summary>
+    /// <summary>Default maximum size of a message (AWS limits event-stream messages to 16 MB).</summary>
     public const int DefaultMaxMessageBytes = 16 * 1024 * 1024 + 1024;
 
-    /// <summary>Lee los mensajes del stream con el tamaño máximo por defecto (<see cref="DefaultMaxMessageBytes"/>).</summary>
+    /// <summary>Reads the messages from the stream with the default maximum size (<see cref="DefaultMaxMessageBytes"/>).</summary>
     public static IAsyncEnumerable<AwsEventStreamMessage> ReadAsync(Stream stream, CancellationToken cancellationToken = default) =>
         ReadAsync(stream, DefaultMaxMessageBytes, cancellationToken);
 
     /// <summary>
-    /// Lee los mensajes del stream. Un mensaje cuyo preludio declare más de <paramref name="maxMessageBytes"/> se
-    /// rechaza antes de reservar memoria (el servidor no puede forzar reservas de hasta 2 GB).
+    /// Reads the messages from the stream. A message whose prelude declares more than <paramref name="maxMessageBytes"/> is
+    /// rejected before allocating memory (the server cannot force allocations of up to 2 GB).
     /// </summary>
     public static async IAsyncEnumerable<AwsEventStreamMessage> ReadAsync(Stream stream, int maxMessageBytes, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
@@ -78,7 +78,7 @@ public static class AwsEventStream
         }
     }
 
-    /// <summary>Codifica un mensaje (útil para pruebas). Solo cabeceras de tipo string.</summary>
+    /// <summary>Encodes a message (useful for tests). String headers only.</summary>
     public static byte[] Encode(IReadOnlyDictionary<string, string> headers, byte[] payload)
     {
         using var headerBytes = new MemoryStream();

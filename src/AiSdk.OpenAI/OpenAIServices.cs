@@ -5,14 +5,14 @@ using AiSdk.Http;
 
 namespace AiSdk.OpenAI;
 
-/// <summary>Files API de OpenAI (<c>/files</c>).</summary>
+/// <summary>OpenAI Files API (<c>/files</c>).</summary>
 public sealed class OpenAIFileClient : IFileClient
 {
     private readonly OpenAIProvider _provider;
 
     internal OpenAIFileClient(OpenAIProvider provider) => _provider = provider;
 
-    /// <summary>Sube un archivo. <c>purpose</c> por defecto es <c>user_data</c>; usa <c>assistants</c> para vector stores y <c>batch</c> para lotes.</summary>
+    /// <summary>Uploads a file. <c>purpose</c> defaults to <c>user_data</c>; use <c>assistants</c> for vector stores and <c>batch</c> for batches.</summary>
     public async Task<UploadedFile> UploadAsync(byte[] data, string filename, string mediaType, string? purpose = null, CancellationToken cancellationToken = default)
     {
         var request = ProviderHttp.CreateRequest(HttpMethod.Post, _provider.Url("files"), _provider.Headers(null));
@@ -29,7 +29,7 @@ public sealed class OpenAIFileClient : IFileClient
     public async Task DeleteAsync(string fileId, CancellationToken cancellationToken = default) =>
         await ProviderHttp.SendJsonAsync(_provider.Http, ProviderHttp.CreateRequest(HttpMethod.Delete, _provider.Url($"files/{Uri.EscapeDataString(fileId)}"), _provider.Headers(null)), cancellationToken).ConfigureAwait(false);
 
-    /// <summary>Descarga el contenido de un archivo.</summary>
+    /// <summary>Downloads the contents of a file.</summary>
     public async Task<byte[]> DownloadAsync(string fileId, CancellationToken cancellationToken = default)
     {
         using var request = ProviderHttp.CreateRequest(HttpMethod.Get, _provider.Url($"files/{Uri.EscapeDataString(fileId)}/content"), _provider.Headers(null));
@@ -45,18 +45,18 @@ public sealed class OpenAIFileClient : IFileClient
         ProviderHttp.ParseTimestamp(f["created_at"]));
 }
 
-/// <summary>Estado de un vector store de OpenAI.</summary>
+/// <summary>Status of an OpenAI vector store.</summary>
 public sealed record OpenAIVectorStore(string Id, string Name, string Status, int FilesCompleted, int FilesInProgress, int FilesFailed)
 {
     public bool IsReady => Status == "completed" && FilesInProgress == 0;
 }
 
-/// <summary>Resultado de búsqueda en un vector store.</summary>
+/// <summary>Search result in a vector store.</summary>
 public sealed record OpenAIVectorStoreHit(string FileId, string Filename, double Score, string Text);
 
 /// <summary>
-/// Vector stores de OpenAI (<c>/vector_stores</c>): indexa archivos para la herramienta
-/// <see cref="OpenAITools.FileSearch"/> o búscalos directamente.
+/// OpenAI vector stores (<c>/vector_stores</c>): index files for the
+/// <see cref="OpenAITools.FileSearch"/> tool or search them directly.
 /// </summary>
 public sealed class OpenAIVectorStoreClient
 {
@@ -84,11 +84,11 @@ public sealed class OpenAIVectorStoreClient
         return (json["data"] as JsonArray ?? []).OfType<JsonObject>().Select(Parse).ToList();
     }
 
-    /// <summary>Añade un archivo (subido con <c>purpose: "assistants"</c> o <c>"user_data"</c>) al vector store.</summary>
+    /// <summary>Adds a file (uploaded with <c>purpose: "assistants"</c> or <c>"user_data"</c>) to the vector store.</summary>
     public Task AddFileAsync(string vectorStoreId, string fileId, CancellationToken cancellationToken = default) =>
         PostAsync($"vector_stores/{Uri.EscapeDataString(vectorStoreId)}/files", new JsonObject { ["file_id"] = fileId }, cancellationToken);
 
-    /// <summary>Sube un archivo y lo añade al vector store en un paso.</summary>
+    /// <summary>Uploads a file and adds it to the vector store in one step.</summary>
     public async Task<UploadedFile> UploadFileAsync(string vectorStoreId, byte[] data, string filename, string mediaType, CancellationToken cancellationToken = default)
     {
         var file = await _provider.Files.UploadAsync(data, filename, mediaType, "assistants", cancellationToken).ConfigureAwait(false);
@@ -96,7 +96,7 @@ public sealed class OpenAIVectorStoreClient
         return file;
     }
 
-    /// <summary>Espera a que todos los archivos estén indexados.</summary>
+    /// <summary>Waits until all files are indexed.</summary>
     public async Task<OpenAIVectorStore> WaitUntilReadyAsync(string vectorStoreId, TimeSpan? pollInterval = null, CancellationToken cancellationToken = default)
     {
         while (true)
@@ -111,7 +111,7 @@ public sealed class OpenAIVectorStoreClient
         }
     }
 
-    /// <summary>Búsqueda semántica directa en el vector store.</summary>
+    /// <summary>Direct semantic search in the vector store.</summary>
     public async Task<IReadOnlyList<OpenAIVectorStoreHit>> SearchAsync(string vectorStoreId, string query, int maxResults = 10, CancellationToken cancellationToken = default)
     {
         var json = await PostAsync($"vector_stores/{Uri.EscapeDataString(vectorStoreId)}/search", new JsonObject { ["query"] = query, ["max_num_results"] = maxResults }, cancellationToken).ConfigureAwait(false);
@@ -141,8 +141,8 @@ public sealed class OpenAIVectorStoreClient
 }
 
 /// <summary>
-/// Batch API de OpenAI (<c>/batches</c>): sube las peticiones como JSONL y las procesa en
-/// hasta 24 h con descuento. Usa la API Responses o Chat Completions.
+/// OpenAI Batch API (<c>/batches</c>): uploads the requests as JSONL and processes them within
+/// 24 h at a discount. Uses the Responses or Chat Completions API.
 /// </summary>
 public sealed class OpenAIBatchClient : IBatchClient
 {

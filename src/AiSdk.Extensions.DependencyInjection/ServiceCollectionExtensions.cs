@@ -10,7 +10,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace AiSdk.Extensions.DependencyInjection;
 
-/// <summary>Constructor fluido para configurar el SDK en el contenedor de dependencias.</summary>
+/// <summary>Fluent builder for configuring the SDK in the dependency injection container.</summary>
 public sealed class AiSdkBuilder
 {
     private readonly List<Action<IServiceProvider, ProviderRegistry>> _registrations = [];
@@ -19,14 +19,14 @@ public sealed class AiSdkBuilder
 
     public IServiceCollection Services { get; }
 
-    /// <summary>Registra un proveedor arbitrario.</summary>
+    /// <summary>Registers an arbitrary provider.</summary>
     public AiSdkBuilder AddProvider(string name, Func<IServiceProvider, IProvider> factory)
     {
         _registrations.Add((sp, registry) => registry.Register(name, factory(sp)));
         return this;
     }
 
-    /// <summary>Registra OpenAI (o un servidor compatible si se cambia <c>BaseUrl</c>/<c>Name</c>).</summary>
+    /// <summary>Registers OpenAI (or a compatible server if <c>BaseUrl</c>/<c>Name</c> is changed).</summary>
     public AiSdkBuilder AddOpenAI(Action<OpenAIProviderOptions>? configure = null)
     {
         var options = new OpenAIProviderOptions();
@@ -40,7 +40,7 @@ public sealed class AiSdkBuilder
         });
     }
 
-    /// <summary>Registra Anthropic (Claude).</summary>
+    /// <summary>Registers Anthropic (Claude).</summary>
     public AiSdkBuilder AddAnthropic(Action<AnthropicProviderOptions>? configure = null)
     {
         var options = new AnthropicProviderOptions();
@@ -54,19 +54,19 @@ public sealed class AiSdkBuilder
         });
     }
 
-    /// <summary>Registra Google Gemini.</summary>
+    /// <summary>Registers Google Gemini.</summary>
     public AiSdkBuilder AddGoogle(Action<GoogleProviderOptions>? configure = null) =>
         AddHttpProvider<GoogleProviderOptions>(configure, o => o.Name, (o, c) => o.HttpClient ??= c, o => new GoogleProvider(o));
 
-    /// <summary>Registra Mistral AI.</summary>
+    /// <summary>Registers Mistral AI.</summary>
     public AiSdkBuilder AddMistral(Action<MistralProviderOptions>? configure = null) =>
         AddHttpProvider<MistralProviderOptions>(configure, o => o.Name, (o, c) => o.HttpClient ??= c, o => new MistralProvider(o));
 
-    /// <summary>Registra Amazon Bedrock.</summary>
+    /// <summary>Registers Amazon Bedrock.</summary>
     public AiSdkBuilder AddBedrock(Action<BedrockProviderOptions>? configure = null) =>
         AddHttpProvider<BedrockProviderOptions>(configure, o => o.Name, (o, c) => o.HttpClient ??= c, o => new BedrockProvider(o));
 
-    /// <summary>Registra Cohere (reranking y embeddings).</summary>
+    /// <summary>Registers Cohere (reranking and embeddings).</summary>
     public AiSdkBuilder AddCohere(Action<CohereProviderOptions>? configure = null) =>
         AddHttpProvider<CohereProviderOptions>(configure, o => o.Name, (o, c) => o.HttpClient ??= c, o => new CohereProvider(o));
 
@@ -90,15 +90,15 @@ public sealed class AiSdkBuilder
     }
 
     /// <summary>
-    /// Cliente HTTP con nombre para un proveedor: sin redirecciones automáticas (que reenviarían cabeceras de
-    /// autenticación propias como <c>x-api-key</c> a otro origen) y con <see cref="AiSdk.Http.SafeRedirectHandler"/>.
+    /// Named HTTP client for a provider: without automatic redirects (which would forward its own authentication
+    /// headers, such as <c>x-api-key</c>, to another origin) and with <see cref="AiSdk.Http.SafeRedirectHandler"/>.
     /// </summary>
     private void AddProviderHttpClient(string clientName) =>
         Services.AddHttpClient(clientName, c => c.Timeout = TimeSpan.FromMinutes(10))
             .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false })
             .AddHttpMessageHandler(() => new AiSdk.Http.SafeRedirectHandler());
 
-    /// <summary>Registra el almacén de streams reanudables (en memoria por defecto).</summary>
+    /// <summary>Registers the resumable stream store (in memory by default).</summary>
     public AiSdkBuilder AddResumableStreams(IResumableStreamStore? store = null)
     {
         Services.TryAddSingleton(store ?? new InMemoryResumableStreamStore());
@@ -106,10 +106,10 @@ public sealed class AiSdkBuilder
     }
 
     /// <summary>
-    /// Registra una <see cref="AiSdk.Skills.SkillLibrary"/> singleton con las skills de las carpetas indicadas
-    /// (de confianza, por ser del propio proyecto). Úsela en agentes con <c>Skills = sp.GetRequiredService&lt;SkillLibrary&gt;()</c>.
-    /// Las skills con el marcador <see cref="AiSdk.Skills.SkillLibrary.ProvenanceFileName"/> (p. ej. creadas por un
-    /// agente con <c>create_skill</c> en esa misma carpeta) se cargan como no confiables.
+    /// Registers a singleton <see cref="AiSdk.Skills.SkillLibrary"/> with the skills from the specified folders
+    /// (trusted, since they belong to the project itself). Use it in agents with <c>Skills = sp.GetRequiredService&lt;SkillLibrary&gt;()</c>.
+    /// Skills with the <see cref="AiSdk.Skills.SkillLibrary.ProvenanceFileName"/> marker (e.g. created by an
+    /// agent with <c>create_skill</c> in that same folder) are loaded as untrusted.
     /// </summary>
     public AiSdkBuilder AddSkills(params string[] directories) => AddSkills(library =>
     {
@@ -119,7 +119,7 @@ public sealed class AiSdkBuilder
         }
     });
 
-    /// <summary>Registra una <see cref="AiSdk.Skills.SkillLibrary"/> singleton configurada por código.</summary>
+    /// <summary>Registers a singleton <see cref="AiSdk.Skills.SkillLibrary"/> configured in code.</summary>
     public AiSdkBuilder AddSkills(Action<AiSdk.Skills.SkillLibrary> configure)
     {
         Services.TryAddSingleton(_ =>
@@ -131,28 +131,28 @@ public sealed class AiSdkBuilder
         return this;
     }
 
-    /// <summary>Registra un modelo de reranking por defecto.</summary>
+    /// <summary>Registers a default reranking model.</summary>
     public AiSdkBuilder AddDefaultRerankingModel(string modelId)
     {
         Services.TryAddSingleton<IRerankingModel>(sp => sp.GetRequiredService<ProviderRegistry>().RerankingModel(modelId));
         return this;
     }
 
-    /// <summary>Registra un alias de modelo (p. ej. <c>"rapido"</c> → <c>"anthropic:claude-haiku-5-5"</c>).</summary>
+    /// <summary>Registers a model alias (e.g. <c>"fast"</c> → <c>"anthropic:claude-haiku-5-5"</c>).</summary>
     public AiSdkBuilder AddAlias(string alias, string target)
     {
         _registrations.Add((_, registry) => registry.Alias(alias, target));
         return this;
     }
 
-    /// <summary>Registra un alias con conmutación por error entre varios modelos.</summary>
+    /// <summary>Registers an alias with failover across multiple models.</summary>
     public AiSdkBuilder AddFallback(string alias, params string[] modelIds)
     {
         _registrations.Add((_, registry) => registry.Fallback(alias, modelIds));
         return this;
     }
 
-    /// <summary>Registra <see cref="ILanguageModel"/> como el modelo indicado (para inyectarlo directamente).</summary>
+    /// <summary>Registers <see cref="ILanguageModel"/> as the specified model (to inject it directly).</summary>
     public AiSdkBuilder AddDefaultModel(string modelId, params ILanguageModelMiddleware[] middleware)
     {
         Services.TryAddSingleton<ILanguageModel>(sp =>
@@ -163,14 +163,14 @@ public sealed class AiSdkBuilder
         return this;
     }
 
-    /// <summary>Registra <see cref="IEmbeddingModel"/> por defecto.</summary>
+    /// <summary>Registers the default <see cref="IEmbeddingModel"/>.</summary>
     public AiSdkBuilder AddDefaultEmbeddingModel(string modelId)
     {
         Services.TryAddSingleton<IEmbeddingModel>(sp => sp.GetRequiredService<ProviderRegistry>().EmbeddingModel(modelId));
         return this;
     }
 
-    /// <summary>Registra un agente basado en clase (hereda de <see cref="Agent"/>).</summary>
+    /// <summary>Registers a class-based agent (derived from <see cref="Agent"/>).</summary>
     public AiSdkBuilder AddAgent<TAgent>(ServiceLifetime lifetime = ServiceLifetime.Scoped)
         where TAgent : Agent
     {
@@ -178,14 +178,14 @@ public sealed class AiSdkBuilder
         return this;
     }
 
-    /// <summary>Registra un <see cref="ToolLoopAgent"/> con clave (keyed service).</summary>
+    /// <summary>Registers a keyed <see cref="ToolLoopAgent"/> (keyed service).</summary>
     public AiSdkBuilder AddAgent(string key, Func<IServiceProvider, AgentSettings> settings)
     {
         Services.AddKeyedSingleton<IAgent>(key, (sp, _) => new ToolLoopAgent(settings(sp)));
         return this;
     }
 
-    /// <summary>Usa un almacén de conversaciones propio (por defecto, en memoria).</summary>
+    /// <summary>Uses a custom conversation store (in memory by default).</summary>
     public AiSdkBuilder AddConversationStore<TStore>()
         where TStore : class, IConversationStore
     {
@@ -208,8 +208,8 @@ public sealed class AiSdkBuilder
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// Añade el SDK: registra <see cref="ProviderRegistry"/> (singleton), los proveedores
-    /// configurados y un <see cref="IConversationStore"/> en memoria.
+    /// Adds the SDK: registers <see cref="ProviderRegistry"/> (singleton), the configured
+    /// providers and an in-memory <see cref="IConversationStore"/>.
     /// </summary>
     public static IServiceCollection AddAiSdk(this IServiceCollection services, Action<AiSdkBuilder> configure)
     {
