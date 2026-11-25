@@ -16,8 +16,9 @@ public static class ExternalProcess
 
     /// <summary>
     /// Ejecutor que usan el SDK y estos métodos estáticos cuando un componente no recibe uno propio. Por defecto
-    /// lanza la herramienta directamente con todo el entorno; asígnelo al iniciar la aplicación para usar un
-    /// envoltorio o limpiar el entorno (ver <see cref="ExternalProcessRunner"/>).
+    /// lanza la herramienta directamente, solo con las variables de <see cref="ExternalProcessOptions.CommonEnvironmentVariables"/>,
+    /// con 10 minutos y 64 MB de salida como máximo; asígnelo al iniciar la aplicación para usar un envoltorio o
+    /// cambiar esos límites (ver <see cref="ExternalProcessRunner"/>).
     /// </summary>
     public static IExternalProcessRunner Runner
     {
@@ -36,13 +37,15 @@ public static class ExternalProcess
         Runner.RunCheckedAsync(executable, arguments.ToList(), input, cancellationToken);
 }
 
-/// <summary>Directorio temporal que se elimina al desecharse.</summary>
+/// <summary>
+/// Directorio temporal que se elimina al desecharse. Se crea con <see cref="Directory.CreateTempSubdirectory"/>: en
+/// Unix, con permisos 0700, así otros usuarios del equipo no leen los documentos ni las páginas rasterizadas.
+/// </summary>
 internal sealed class TempDirectory : IDisposable
 {
     public TempDirectory()
     {
-        Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "aisdk-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(Path);
+        Path = Directory.CreateTempSubdirectory("aisdk-").FullName;
     }
 
     public string Path { get; }
@@ -196,6 +199,14 @@ public sealed class PdftoppmRasterizer(string executable = "pdftoppm", IExternal
     /// <summary>Páginas consecutivas que rasteriza un mismo proceso.</summary>
     public int MaxPagesPerProcess { get; init; } = 8;
 
+    /// <summary>
+    /// Ancho y alto máximos de cada imagen, en píxeles (por defecto 10.000; <c>-W</c>/<c>-H</c> de pdftoppm): lo que
+    /// exceda se recorta, así una página enorme no ocupa gigabytes. Para reducir la resolución de las páginas grandes,
+    /// pida un <c>dpi</c> menor (<see cref="MarkdownConverter"/> lo calcula por página con
+    /// <see cref="MarkdownConverterOptions.MaxRasterPixels"/>).
+    /// </summary>
+    public int MaxPixels { get; init; } = 10_000;
+
     private IExternalProcessRunner Runner => runner ?? ExternalProcess.Runner;
 
     public async Task<IReadOnlyDictionary<int, byte[]>> RenderAsync(byte[] pdf, IReadOnlyList<int> pages, int dpi = 200, CancellationToken cancellationToken = default)
@@ -280,6 +291,7 @@ public sealed class PdftoppmRasterizer(string executable = "pdftoppm", IExternal
         await Runner.RunCheckedAsync(
             executable,
             ["-r", dpi.ToString(CultureInfo.InvariantCulture), "-png", "-gray",
+             "-W", Math.Max(1, MaxPixels).ToString(CultureInfo.InvariantCulture), "-H", Math.Max(1, MaxPixels).ToString(CultureInfo.InvariantCulture),
              "-f", first.ToString(CultureInfo.InvariantCulture), "-l", last.ToString(CultureInfo.InvariantCulture),
              input, output.File(prefix)],
             cancellationToken: cancellationToken).ConfigureAwait(false);

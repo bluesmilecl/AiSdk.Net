@@ -13,10 +13,16 @@ namespace AiSdk.Documents.Converters;
 /// PDF a Markdown. Extrae el texto en orden de lectura, detecta títulos por tamaño de fuente y quita
 /// encabezados y pies de página repetidos. Las páginas escaneadas (sin texto) pasan por OCR: el motor
 /// recibe el PDF completo si lo admite (Mistral OCR) o cada página como imagen, una por una (pdftoppm o,
-/// si no se puede rasterizar, la imagen incrustada en esa página).
+/// si no se puede rasterizar, la imagen incrustada en esa página). Se procesan a lo más
+/// <see cref="MarkdownConverterOptions.MaxPdfPages"/> páginas y se reconocen a lo más
+/// <see cref="MarkdownConverterOptions.MaxOcrPages"/>, cada una rasterizada sin superar
+/// <see cref="MarkdownConverterOptions.MaxRasterPixels"/> por lado.
 /// </summary>
 public sealed partial class PdfConverter : IDocumentConverter
 {
+    /// <summary>Resolución con la que se rasterizan las páginas para OCR (menor en páginas muy grandes).</summary>
+    public const int OcrDpi = 200;
+
     public bool CanConvert(string mediaType) => mediaType == MediaTypes.Pdf;
 
     public async Task<DocumentConversionResult> ConvertAsync(DocumentSource source, DocumentConversionContext context, CancellationToken cancellationToken = default)
@@ -24,15 +30,25 @@ public sealed partial class PdfConverter : IDocumentConverter
         var options = context.Options;
         var warnings = new List<string>();
         var extracted = new List<(int Number, List<(string Text, double Size)> Blocks)>();
+        var sizes = new List<double>();
 
         // El documento queda abierto hasta terminar el OCR: las imágenes incrustadas se leen solo de las páginas
         // que lo necesitan y solo si no se pudieron rasterizar.
         using var document = PdfDocument.Open(source.Data);
         var title = document.Information.Title is { Length: > 0 } t ? t : null;
-        foreach (var page in document.GetPages())
+        var totalPages = document.NumberOfPages;
+        var processed = Math.Clamp(options.MaxPdfPages, 0, totalPages);
+        for (var number = 1; number <= processed; number++)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            var page = document.GetPage(number);
             extracted.Add((page.Number, ExtractBlocks(page)));
+            sizes.Add(Math.Max(page.Width, page.Height));
+        }
+
+        if (processed < totalPages)
+        {
+            warnings.Add($"El PDF tiene {totalPages} páginas: solo se procesaron las primeras {processed} (MaxPdfPages).");
         }
 
         var bodySize = Median(extracted.SelectMany(p => p.Blocks).Where(b => b.Text.Length > 40).Select(b => b.Size))
@@ -55,35 +71,60 @@ public sealed partial class PdfConverter : IDocumentConverter
         }
 
         var canOcr = options.Ocr is not null || options.VisionModel is not null;
-        options.Progress?.Report(new DocumentConversionProgress(pages.Length, canOcr ? needOcr.Count : 0, 0));
-        if (needOcr.Count > 0)
+        if (needOcr.Count > 0 && !canOcr)
         {
-            if (!canOcr)
+            options.Progress?.Report(new DocumentConversionProgress(pages.Length, 0, 0));
+            warnings.Add($"{needOcr.Count} página(s) sin texto (¿escaneadas?): configure Ocr o VisionModel para reconocerlas.");
+        }
+        else if (needOcr.Count > 0)
+        {
+            // Un motor que lee el PDF completo (p. ej. Mistral OCR) procesa y cobra todas sus páginas: solo se usa si
+            // caben en el máximo; si no, se reconocen página por página las primeras que quepan.
+            var wholeDocument = options.Ocr is { } pdfOcr && pdfOcr.Supports(MediaTypes.Pdf) && totalPages <= context.RemainingImageAnalyses
+                                && context.ReserveImageAnalyses(totalPages) == totalPages;
+            if (!wholeDocument)
             {
-                warnings.Add($"{needOcr.Count} página(s) sin texto (¿escaneadas?): configure Ocr o VisionModel para reconocerlas.");
+                needOcr = needOcr.Take(context.ReserveImageAnalyses(needOcr.Count)).ToList();
             }
-            else
+
+            options.Progress?.Report(new DocumentConversionProgress(pages.Length, needOcr.Count, 0));
+            if (needOcr.Count > 0)
             {
-                await OcrPagesAsync(source, context, document, pages, needOcr, warnings, cancellationToken).ConfigureAwait(false);
+                await OcrPagesAsync(source, context, document, pages, sizes, needOcr, wholeDocument, warnings, cancellationToken).ConfigureAwait(false);
             }
+        }
+        else
+        {
+            options.Progress?.Report(new DocumentConversionProgress(pages.Length, 0, 0));
+        }
+
+        if (context.ImageAnalysisLimitWarning() is { } limit)
+        {
+            warnings.Add(limit);
         }
 
         return DocumentConversionResult.FromPages(source, pages, title, warnings);
     }
+
+    /// <summary>Resolución para rasterizar una página cuyo lado mayor mide <paramref name="points"/> puntos, sin superar <paramref name="maxPixels"/> píxeles.</summary>
+    internal static int RasterDpi(double points, int maxPixels) =>
+        points <= 0 ? OcrDpi : (int)Math.Clamp(Math.Floor(Math.Max(1, maxPixels) * 72.0 / points), 1, OcrDpi);
 
     private static async Task OcrPagesAsync(
         DocumentSource source,
         DocumentConversionContext context,
         PdfDocument document,
         DocumentPage[] pages,
+        List<double> sizes,
         List<int> needOcr,
+        bool wholeDocument,
         List<string> warnings,
         CancellationToken cancellationToken)
     {
         var options = context.Options;
 
         // Motores que leen PDF completos (p. ej. Mistral OCR): una sola llamada.
-        if (options.Ocr is { } pdfOcr && pdfOcr.Supports(MediaTypes.Pdf))
+        if (wholeDocument && options.Ocr is { } pdfOcr)
         {
             var result = await pdfOcr.RecognizeAsync(new OcrRequest { Data = source.Data, MediaType = MediaTypes.Pdf, Language = options.Language }, cancellationToken).ConfigureAwait(false);
             foreach (var index in needOcr)
@@ -127,9 +168,10 @@ public sealed partial class PdfConverter : IDocumentConverter
                 {
                     try
                     {
+                        var dpi = RasterDpi(sizes[index], options.MaxRasterPixels);
                         var rendered = pdfPath is not null
-                            ? await rasterizer.RenderFileAsync(pdfPath, [number], cancellationToken: cancellationToken).ConfigureAwait(false)
-                            : await rasterizer.RenderAsync(source.Data, [number], cancellationToken: cancellationToken).ConfigureAwait(false);
+                            ? await rasterizer.RenderFileAsync(pdfPath, [number], dpi, cancellationToken).ConfigureAwait(false)
+                            : await rasterizer.RenderAsync(source.Data, [number], dpi, cancellationToken).ConfigureAwait(false);
                         image = rendered.GetValueOrDefault(number);
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException)
@@ -147,7 +189,7 @@ public sealed partial class PdfConverter : IDocumentConverter
                 {
                     lock (documentLock)
                     {
-                        image = LargestImage(document.GetPage(number), options.MinEmbeddedImageBytes);
+                        image = LargestImage(document.GetPage(number), options.MinEmbeddedImageBytes, options.MaxRasterPixels);
                     }
                 }
 
@@ -254,14 +296,23 @@ public sealed partial class PdfConverter : IDocumentConverter
         return letters.Count == 0 ? 0 : letters.Average(l => l.PointSize);
     }
 
-    /// <summary>La imagen incrustada más grande de la página (la del escaneo), o null si no hay ninguna utilizable.</summary>
-    private static byte[]? LargestImage(Page page, int minBytes)
+    /// <summary>
+    /// La imagen incrustada más grande de la página (la del escaneo), o null si no hay ninguna utilizable. Las de más de
+    /// <paramref name="maxPixels"/>² píxeles se ignoran sin decodificarlas (una imagen comprimida puede ocupar gigabytes).
+    /// </summary>
+    private static byte[]? LargestImage(Page page, int minBytes, int maxPixels)
     {
         byte[]? largest = null;
+        var maxArea = (long)maxPixels * maxPixels;
         foreach (var image in page.GetImages())
         {
             try
             {
+                if ((long)image.WidthInSamples * image.HeightInSamples > maxArea)
+                {
+                    continue;
+                }
+
                 var data = image.TryGetPng(out var png) && png.Length >= minBytes ? png : image.RawMemory.ToArray();
                 if (data.Length >= minBytes && data.Length > (largest?.Length ?? 0) && MediaTypes.IsImage(MediaTypes.Detect(data)))
                 {

@@ -68,9 +68,15 @@ var converter = new MarkdownConverter(new()
 });
 ```
 
-**External tools** (`tesseract`, `pdftoppm`, `ffmpeg`) are launched through `ExternalProcess.Runner`. Replace it at
-startup to run them through a wrapper (sandbox, `nice`, a container) and without inheriting your app's secrets;
-`TesseractOcr`, `PdftoppmRasterizer` and `MarkdownConverterOptions.ProcessRunner` also accept their own runner:
+**External tools** (`tesseract`, `pdftoppm`, `ffmpeg`) are launched through `ExternalProcess.Runner`. By default each
+tool only receives the variables in `ExternalProcessOptions.CommonEnvironmentVariables` (never your API keys or
+connection strings), is stopped together with its child processes after 10 minutes (`Timeout`) and may write at most
+64 MB to its standard output (`MaxOutputBytes`). `ffmpeg` and `ffprobe` only read the local file
+(`-protocol_whitelist file`) with audio and video demuxers (`-format_whitelist`: no HLS, DASH or `concat` playlists that
+would fetch URLs or other files) and only the first `MaxMediaDuration`. Temporary files live in a private directory
+(0700 on Unix). Replace the runner at startup to run the tools through a wrapper (sandbox, `nice`, a container) or to
+change those limits; `TesseractOcr`, `PdftoppmRasterizer` and `MarkdownConverterOptions.ProcessRunner` also accept
+their own runner:
 
 ```csharp
 ExternalProcess.Runner = new ExternalProcessRunner(new ExternalProcessOptions
@@ -79,8 +85,38 @@ ExternalProcess.Runner = new ExternalProcessRunner(new ExternalProcessOptions
     WrapperArguments = ["-n", "10"],
     AllowedEnvironmentVariables = [.. ExternalProcessOptions.CommonEnvironmentVariables, "SANDBOX_*"],
     EnvironmentVariables = new Dictionary<string, string?> { ["OMP_THREAD_LIMIT"] = "1" },   // one thread per Tesseract
+    Timeout = TimeSpan.FromMinutes(2),
 });
 ```
+
+> [!WARNING]
+> Since 0.2 the tools no longer inherit the whole environment of your application. If a tool needs another variable,
+> add it to `AllowedEnvironmentVariables`; `AllowedEnvironmentVariables = null` restores the previous behavior.
+
+### Limits for untrusted documents
+
+A document can be small and still ask for a lot of work (a few KB of PDF with thousands of blank pages, a compressed
+spreadsheet with a cell in column ZZZZZZ, deeply nested HTML). `MarkdownConverterOptions` bounds that work; when a
+limit is exceeded the converter returns a partial result and explains it in `result.Warnings`:
+
+| Option | Default | When exceeded |
+|---|---|---|
+| `MaxInputBytes` | 100 MB | `DocumentTooLargeException` (for files, checked before reading them) |
+| `MaxPdfPages` | 1000 | only the first pages are processed |
+| `MaxOcrPages` | 100 | scanned pages and embedded images beyond it are not sent to OCR or vision (caps OCR processes and paid calls) |
+| `MaxRasterPixels` | 5000 px | huge pages are rasterized below 200 dpi; larger embedded images are skipped |
+| `MaxNestingDepth` | 128 | HTML: deeper content becomes plain text; Office: `InvalidDataException` (the OpenXML SDK loads parts recursively) |
+| `MaxHtmlBytes` | 10 MB | the rest of the HTML is skipped |
+| `MaxOfficePartChars` | 32 million | `InvalidDataException` (Excel sheets are read up to that point) |
+| `MaxRowsPerSheet` | 1000 | the remaining rows are counted, not rendered (also for CSV) |
+| `MaxEmbeddedImageBytes` | 20 MB | the image is skipped |
+| `MaxMediaDuration` | 1 hour | only the start of the video is analyzed |
+
+Fixed limits: Markdown tables have at most 1,000,000 cells (`MarkdownTable.DefaultMaxCells`), Word tables at most 63
+columns (also for `gridSpan`), Excel references beyond column `XFD` are ignored, list levels are 0 to 8 and CSV lines
+are read up to 16,384 columns. HTML is parsed once with a depth guard, noise (`script`, `style`, `nav`...) is removed
+from the DOM, and the conversion runs on a thread with its own large stack, so hostile HTML cannot crash the process.
+To read uploads safely use `DocumentSource.FromStreamAsync(stream, maxBytes: ...)`.
 
 > [!NOTE]
 > `TesseractOcr` runs entirely on your machine, so it is the right choice when documents must not leave your infrastructure.
@@ -97,6 +133,34 @@ var model = mistral.Chat("mistral-small-latest")
         CompressionEmbeddings = openai.Embedding("text-embedding-3-small"),   // keeps what is relevant to the question
     }));
 ```
+
+Each attachment is replaced by `<document name="..." type="...">Markdown</document>`. The file name is escaped and any
+`<document` or `</document` inside the content is neutralized (`&lt;/document`), so a file cannot close the wrapper and
+inject text outside it.
+
+`DownloadUrls = true` (off by default) also converts attachments referenced by URL. Whoever writes the message chooses
+the URL and the content is shown to the model, so downloads go through `UrlDownloader`: http and https only, a direct
+connection (no proxy) to the IP that was validated, never loopback, private networks (RFC 1918), link-local (including
+the cloud metadata endpoint 169.254.169.254), CGNAT, IPv6 unique-local, multicast or their IPv4-mapped forms; at most 5
+redirects, each one validated again; at most 25 MB (checked while streaming) and 30 seconds. `data:` URLs have the same
+size limit. Adjust it with `MarkdownConverterOptions.UrlDownload`:
+
+```csharp
+var converter = new MarkdownConverter(new()
+{
+    UrlDownload = new UrlDownloadOptions
+    {
+        UrlValidator = url => url.Host.EndsWith(".example.com", StringComparison.OrdinalIgnoreCase),   // allowlist, every hop
+        MaxBytes = 10 * 1024 * 1024,
+        // AllowPrivateNetworks = true,   // only when the URLs come from a trusted source
+    },
+});
+```
+
+> [!WARNING]
+> Since 0.2 `MarkdownConverterOptions.HttpClient` no longer exists: it is replaced by `UrlDownload`. A custom
+> `HttpClient` could not enforce these checks. The downloader does not use a proxy (it would validate the proxy's IP,
+> not the destination); behind a mandatory proxy, download the file yourself and pass its bytes.
 
 ## Context compression
 

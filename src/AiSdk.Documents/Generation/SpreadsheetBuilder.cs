@@ -47,7 +47,9 @@ public sealed record SheetOptions
 /// <summary>
 /// Crea archivos Excel (.xlsx) con formato profesional: encabezados con estilo, tipos y formatos por
 /// columna (moneda, porcentaje, fechas), filtros, panel fijo, anchos automáticos y fila de totales.
-/// Los valores de texto que empiezan con <c>=</c> se escriben como fórmulas.
+/// Por defecto los textos que empiezan con <c>=</c>, <c>+</c>, <c>-</c> o <c>@</c> se escriben como texto (con prefijo
+/// de comilla, así Excel tampoco los evalúa al editarlos); con <see cref="AllowFormulas"/>, los que empiezan con
+/// <c>=</c> se escriben como fórmulas.
 /// </summary>
 /// <example>
 /// <code>
@@ -71,6 +73,19 @@ public sealed class SpreadsheetBuilder
     public string? Title { get; init; }
 
     public string? Author { get; init; }
+
+    /// <summary>
+    /// Escribe como fórmulas los textos que empiezan con <c>=</c> (por defecto false: se escriben como texto). Actívelo
+    /// solo con datos de confianza: una fórmula que viene de un usuario o de un modelo puede filtrar datos al abrir el
+    /// archivo (<c>=WEBSERVICE(...)</c>, <c>=HYPERLINK(...)</c>) o ejecutar comandos (DDE). Ver <see cref="FormulaFilter"/>.
+    /// </summary>
+    public bool AllowFormulas { get; init; }
+
+    /// <summary>
+    /// Con <see cref="AllowFormulas"/>, decide qué fórmulas (sin el <c>=</c>) se escriben como tales; las demás quedan
+    /// como texto. Null las permite todas. <see cref="IsSafeFormula"/> admite solo funciones de cálculo.
+    /// </summary>
+    public Func<string, bool>? FormulaFilter { get; init; }
 
     public SpreadsheetBuilder AddSheet(string name, IReadOnlyList<SheetColumn> columns, IEnumerable<IReadOnlyList<object?>> rows, SheetOptions? options = null)
     {
@@ -175,7 +190,7 @@ public sealed class SpreadsheetBuilder
                 var (cell, display, number) = ValueCell(Reference(c, rowIndex), value, types[c], formats[c], styles);
                 if (cell is not null) row.Append(cell);
                 if (number is { } n) sums[c] += n;
-                hasFormula[c] |= value is string f && f.StartsWith('=');
+                hasFormula[c] |= value is string f && IsFormula(f);
                 widths[c] = Math.Max(widths[c], Math.Min(60, display.Length * 1.1 + 2));
             }
 
@@ -254,7 +269,7 @@ public sealed class SpreadsheetBuilder
         {
             case null:
                 return (null, string.Empty, null);
-            case string s when s.StartsWith('=') && s.Length > 1:
+            case string s when IsFormula(s):
                 return (new Cell { CellReference = reference, CellFormula = new CellFormula(s[1..]), StyleIndex = styles.Get(format) }, s, null);
             case bool b:
                 return (new Cell { CellReference = reference, DataType = CellValues.Boolean, CellValue = new CellValue(b ? "1" : "0"), StyleIndex = styles.Get(null) }, b ? "TRUE" : "FALSE", null);
@@ -275,7 +290,118 @@ public sealed class SpreadsheetBuilder
         }
 
         var text = Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty;
-        return (TextCell(reference, text, styles.Get(null)), text, null);
+        return (TextCell(reference, text, styles.Get(null, quotePrefix: LooksLikeFormula(text))), text, null);
+    }
+
+    private bool IsFormula(string value) =>
+        AllowFormulas && value.Length > 1 && value[0] == '=' && (FormulaFilter?.Invoke(value[1..]) ?? true);
+
+    /// <summary>Textos que una hoja de cálculo podría interpretar como fórmula al editarlos o importarlos.</summary>
+    private static bool LooksLikeFormula(string text) => text.Length > 0 && text[0] is '=' or '+' or '-' or '@' or '\t' or '\r';
+
+    /// <summary>
+    /// Funciones que <see cref="IsSafeFormula"/> admite: cálculo, texto, fechas y búsqueda dentro del libro. Quedan fuera
+    /// las que acceden a la red o a otros archivos (WEBSERVICE, FILTERXML, IMAGE, RTD, CALL...), crean enlaces
+    /// (HYPERLINK), revelan el entorno (INFO, CELL) o referencias indirectas (INDIRECT, OFFSET).
+    /// </summary>
+    private static readonly HashSet<string> SafeFunctions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "ABS", "AND", "AVERAGE", "AVERAGEA", "AVERAGEIF", "AVERAGEIFS", "CEILING", "CEILING.MATH", "CHOOSE", "COLUMN", "COLUMNS",
+        "CONCAT", "CONCATENATE", "COUNT", "COUNTA", "COUNTBLANK", "COUNTIF", "COUNTIFS", "DATE", "DATEDIF", "DATEVALUE", "DAY", "DAYS",
+        "EDATE", "EOMONTH", "EXP", "FILTER", "FIND", "FLOOR", "FLOOR.MATH", "FV", "HLOOKUP", "HOUR", "IF", "IFERROR", "IFNA", "IFS",
+        "INDEX", "INT", "IRR", "ISBLANK", "ISERROR", "ISEVEN", "ISNUMBER", "ISODD", "ISTEXT", "LARGE", "LEFT", "LEN", "LN", "LOG",
+        "LOG10", "LOWER", "MATCH", "MAX", "MAXIFS", "MEDIAN", "MID", "MIN", "MINIFS", "MINUTE", "MOD", "MODE", "MONTH", "NETWORKDAYS",
+        "NOT", "NOW", "NPER", "NPV", "OR", "PERCENTILE", "PERCENTRANK", "PI", "PMT", "POWER", "PRODUCT", "PROPER", "PV", "QUOTIENT",
+        "RANK", "RANK.EQ", "RATE", "REPLACE", "REPT", "RIGHT", "ROUND", "ROUNDDOWN", "ROUNDUP", "ROW", "ROWS", "SEARCH", "SECOND",
+        "SEQUENCE", "SIGN", "SMALL", "SORT", "SQRT", "STDEV", "STDEV.P", "STDEV.S", "SUBSTITUTE", "SUBTOTAL", "SUM", "SUMIF", "SUMIFS",
+        "SUMPRODUCT", "SWITCH", "TEXT", "TEXTJOIN", "TIME", "TODAY", "TRIM", "TRUNC", "UNIQUE", "UPPER", "VALUE", "VAR", "VAR.P",
+        "VAR.S", "VLOOKUP", "WEEKDAY", "WEEKNUM", "WORKDAY", "XLOOKUP", "XOR", "YEAR", "YEARFRAC",
+    };
+
+    /// <summary>
+    /// True si la fórmula (sin el <c>=</c>) usa solo referencias del libro, operadores, constantes y funciones de
+    /// cálculo habituales (SUM, IF, VLOOKUP, ROUND, TEXT...): sin funciones de red ni de enlaces, sin DDE
+    /// (<c>cmd|'...'!A1</c>) y sin referencias a otros libros (<c>[1]Hoja!A1</c>, <c>'C:\ruta\[libro.xlsx]Hoja'!A1</c>).
+    /// Filtro por defecto de las fórmulas que escribe un agente con <see cref="DocumentTools"/>.
+    /// </summary>
+    public static bool IsSafeFormula(string formula)
+    {
+        ArgumentNullException.ThrowIfNull(formula);
+        if (formula.Length > 8192)
+        {
+            return false; // máximo de Excel
+        }
+
+        for (var i = 0; i < formula.Length; i++)
+        {
+            var c = formula[i];
+            if (c == '"')
+            {
+                // Texto literal ("" escapa una comilla): no se interpreta.
+                var end = i + 1;
+                while (end < formula.Length)
+                {
+                    if (formula[end] == '"' && (end + 1 >= formula.Length || formula[end + 1] != '"'))
+                    {
+                        break;
+                    }
+
+                    end += formula[end] == '"' ? 2 : 1;
+                }
+
+                if (end >= formula.Length)
+                {
+                    return false; // texto sin cerrar
+                }
+
+                i = end;
+            }
+            else if (c == '\'')
+            {
+                // Nombre de hoja entre comillas: no puede llevar ruta ni libro.
+                var end = formula.IndexOf('\'', i + 1);
+                if (end < 0 || formula.AsSpan(i + 1, end - i - 1).IndexOfAny(@"[]\/:") >= 0)
+                {
+                    return false;
+                }
+
+                i = end;
+            }
+            else if (c is '|' or '[' or ']' or '\\')
+            {
+                return false; // DDE o referencia a otro libro
+            }
+            else if (char.IsAsciiLetter(c) || c == '_')
+            {
+                var start = i;
+                while (i + 1 < formula.Length && (char.IsAsciiLetterOrDigit(formula[i + 1]) || formula[i + 1] is '_' or '.'))
+                {
+                    i++;
+                }
+
+                var name = formula[start..(i + 1)];
+                var next = i + 1;
+                while (next < formula.Length && formula[next] == ' ')
+                {
+                    next++;
+                }
+
+                if (next < formula.Length && formula[next] == '(')
+                {
+                    var function = name.StartsWith("_xlfn.", StringComparison.OrdinalIgnoreCase) ? name[6..] : name;
+                    if (!SafeFunctions.Contains(function))
+                    {
+                        return false;
+                    }
+                }
+                else if (next < formula.Length && formula[next] == '!' && name.Contains('.', StringComparison.Ordinal))
+                {
+                    return false; // libro.xlsx!Nombre
+                }
+            }
+        }
+
+        return true;
     }
 
     private static bool TryNumber(object value, ColumnType type, out double number)
@@ -376,22 +502,23 @@ public sealed class SpreadsheetBuilder
     private sealed class StyleRegistry(string accent)
     {
         private readonly Dictionary<string, uint> _numberFormats = [];
-        private readonly List<(uint NumFmt, bool Bold, bool TopBorder)> _formats = [];
-        private readonly Dictionary<(uint, bool, bool), uint> _index = [];
+        private readonly List<(uint NumFmt, bool Bold, bool TopBorder, bool QuotePrefix)> _formats = [];
+        private readonly Dictionary<(uint, bool, bool, bool), uint> _index = [];
 
         public uint Header { get; } = 1; // índice 1 reservado para el encabezado
 
-        public uint Get(string? format, bool bold = false, bool topBorder = false)
+        public uint Get(string? format, bool bold = false, bool topBorder = false, bool quotePrefix = false)
         {
             var numFmt = format is null ? 0u : NumberFormatId(format);
-            if (_index.TryGetValue((numFmt, bold, topBorder), out var index))
+            var key = (numFmt, bold, topBorder, quotePrefix);
+            if (_index.TryGetValue(key, out var index))
             {
                 return index;
             }
 
             index = (uint)(_formats.Count + 2);
-            _formats.Add((numFmt, bold, topBorder));
-            _index[(numFmt, bold, topBorder)] = index;
+            _formats.Add(key);
+            _index[key] = index;
             return index;
         }
 
@@ -438,7 +565,7 @@ public sealed class SpreadsheetBuilder
                 new CellFormat { FontId = 0, FillId = 0, BorderId = 0, NumberFormatId = 0 },
                 new CellFormat(new Alignment { Vertical = VerticalAlignmentValues.Center, WrapText = true })
                 { FontId = 2, FillId = 2, BorderId = 0, NumberFormatId = 0, ApplyFont = true, ApplyFill = true, ApplyAlignment = true });
-            foreach (var (numFmt, bold, topBorder) in _formats)
+            foreach (var (numFmt, bold, topBorder, quotePrefix) in _formats)
             {
                 cellFormats.Append(new CellFormat
                 {
@@ -449,6 +576,7 @@ public sealed class SpreadsheetBuilder
                     ApplyNumberFormat = numFmt != 0,
                     ApplyFont = bold,
                     ApplyBorder = topBorder,
+                    QuotePrefix = quotePrefix ? true : null,
                 });
             }
 

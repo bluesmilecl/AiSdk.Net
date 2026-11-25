@@ -68,10 +68,15 @@ var converter = new MarkdownConverter(new()
 });
 ```
 
-**Herramientas externas** (`tesseract`, `pdftoppm`, `ffmpeg`): se lanzan con `ExternalProcess.Runner`. Reemplácelo al
-iniciar la aplicación para ejecutarlas con un envoltorio (sandbox, `nice`, un contenedor) y sin heredar los secretos
-de la aplicación; `TesseractOcr`, `PdftoppmRasterizer` y `MarkdownConverterOptions.ProcessRunner` también aceptan uno
-propio:
+**Herramientas externas** (`tesseract`, `pdftoppm`, `ffmpeg`): se lanzan con `ExternalProcess.Runner`. Por defecto
+cada herramienta recibe solo las variables de `ExternalProcessOptions.CommonEnvironmentVariables` (nunca las claves de
+API ni las cadenas de conexión de la aplicación), se detiene junto con sus procesos hijos a los 10 minutos (`Timeout`)
+y puede escribir a lo más 64 MB en su salida estándar (`MaxOutputBytes`). `ffmpeg` y `ffprobe` solo leen el archivo
+local (`-protocol_whitelist file`) con formatos de audio y video (`-format_whitelist`: sin listas HLS, DASH ni `concat`
+que pedirían URLs u otros archivos) y solo los primeros `MaxMediaDuration`. Los archivos temporales quedan en un
+directorio privado (0700 en Unix). Reemplace el ejecutor al iniciar la aplicación para usar un envoltorio (sandbox,
+`nice`, un contenedor) o cambiar esos límites; `TesseractOcr`, `PdftoppmRasterizer` y
+`MarkdownConverterOptions.ProcessRunner` también aceptan uno propio:
 
 ```csharp
 ExternalProcess.Runner = new ExternalProcessRunner(new ExternalProcessOptions
@@ -80,8 +85,39 @@ ExternalProcess.Runner = new ExternalProcessRunner(new ExternalProcessOptions
     WrapperArguments = ["-n", "10"],
     AllowedEnvironmentVariables = [.. ExternalProcessOptions.CommonEnvironmentVariables, "SANDBOX_*"],
     EnvironmentVariables = new Dictionary<string, string?> { ["OMP_THREAD_LIMIT"] = "1" },   // un hilo por Tesseract
+    Timeout = TimeSpan.FromMinutes(2),
 });
 ```
+
+> [!WARNING]
+> Desde la 0.2 las herramientas ya no heredan todo el entorno de la aplicación. Si una necesita otra variable,
+> agréguela a `AllowedEnvironmentVariables`; `AllowedEnvironmentVariables = null` vuelve al comportamiento anterior.
+
+### Límites para documentos no confiables
+
+Un documento puede ser pequeño y aun así pedir mucho trabajo (unos KB de PDF con miles de páginas en blanco, una hoja
+comprimida con una celda en la columna ZZZZZZ, HTML muy anidado). `MarkdownConverterOptions` acota ese trabajo; al
+superar un límite se devuelve un resultado parcial y se explica en `result.Warnings`:
+
+| Opción | Por defecto | Al superarlo |
+|---|---|---|
+| `MaxInputBytes` | 100 MB | `DocumentTooLargeException` (con archivos, antes de leerlos) |
+| `MaxPdfPages` | 1000 | solo se procesan las primeras páginas |
+| `MaxOcrPages` | 100 | las páginas escaneadas e imágenes incrustadas restantes no van a OCR ni a visión (acota procesos y llamadas pagadas) |
+| `MaxRasterPixels` | 5000 px | las páginas enormes se rasterizan a menos de 200 ppp; las imágenes incrustadas más grandes se omiten |
+| `MaxNestingDepth` | 128 | HTML: lo más profundo se convierte a texto plano; Office: `InvalidDataException` (el SDK de Open XML carga las partes de forma recursiva) |
+| `MaxHtmlBytes` | 10 MB | se omite el resto del HTML |
+| `MaxOfficePartChars` | 32 millones | `InvalidDataException` (las hojas de Excel se leen hasta ese punto) |
+| `MaxRowsPerSheet` | 1000 | las demás filas se cuentan, no se escriben (también en CSV) |
+| `MaxEmbeddedImageBytes` | 20 MB | la imagen se omite |
+| `MaxMediaDuration` | 1 hora | solo se analiza el comienzo del video |
+
+Límites fijos: las tablas Markdown tienen a lo más 1.000.000 de celdas (`MarkdownTable.DefaultMaxCells`), las de Word a
+lo más 63 columnas (también con `gridSpan`), las referencias de Excel más allá de la columna `XFD` se ignoran, los
+niveles de lista van de 0 a 8 y las líneas de un CSV se leen hasta 16.384 columnas. El HTML se analiza una vez
+vigilando la profundidad, el ruido (`script`, `style`, `nav`...) se quita del DOM y la conversión corre en un hilo con
+pila propia amplia: un HTML hostil no puede botar el proceso. Para leer subidas use
+`DocumentSource.FromStreamAsync(stream, maxBytes: ...)`.
 
 > [!NOTE]
 > `TesseractOcr` se ejecuta completamente en tu máquina, por lo que es la opción adecuada cuando los documentos no pueden salir de tu infraestructura.
@@ -98,6 +134,34 @@ var model = mistral.Chat("mistral-small-latest")
         CompressionEmbeddings = openai.Embedding("text-embedding-3-small"),   // conserva lo relevante a la pregunta
     }));
 ```
+
+Cada adjunto se reemplaza por `<document name="..." type="...">Markdown</document>`. El nombre se escapa y cualquier
+`<document` o `</document` del contenido se neutraliza (`&lt;/document`), así un archivo no puede cerrar el envoltorio
+e inyectar texto fuera de él.
+
+`DownloadUrls = true` (desactivado por defecto) también convierte adjuntos referenciados por URL. La URL la elige quien
+escribe el mensaje y el contenido se muestra al modelo, así que las descargas pasan por `UrlDownloader`: solo http y
+https, conexión directa (sin proxy) a la IP ya validada, nunca a loopback, redes privadas (RFC 1918), link-local
+(incluido el servicio de metadatos de la nube 169.254.169.254), CGNAT, direcciones locales únicas IPv6, multicast ni sus
+formas IPv4 mapeadas; a lo más 5 redirecciones, validando cada una; a lo más 25 MB (comprobado mientras se lee) y 30
+segundos. Las URLs `data:` tienen el mismo máximo. Se ajusta con `MarkdownConverterOptions.UrlDownload`:
+
+```csharp
+var converter = new MarkdownConverter(new()
+{
+    UrlDownload = new UrlDownloadOptions
+    {
+        UrlValidator = url => url.Host.EndsWith(".ejemplo.cl", StringComparison.OrdinalIgnoreCase),   // lista permitida, en cada salto
+        MaxBytes = 10 * 1024 * 1024,
+        // AllowPrivateNetworks = true,   // solo si las URLs vienen de una fuente de confianza
+    },
+});
+```
+
+> [!WARNING]
+> Desde la 0.2 `MarkdownConverterOptions.HttpClient` ya no existe: lo reemplaza `UrlDownload`. Un `HttpClient` propio no
+> podía aplicar estas comprobaciones. El descargador no usa proxy (validaría la IP del proxy, no la del destino); detrás
+> de un proxy obligatorio, descargue el archivo usted y pase sus bytes.
 
 ## Compresión de contexto
 
