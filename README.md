@@ -53,7 +53,7 @@ live tests against real APIs.
 ## 🚀 Quick start
 
 > [!NOTE]
-> AiSdk.Net is in **preview** (`0.1.0-preview.1` on [NuGet](https://www.nuget.org/packages/AiSdk.Net)): install it
+> AiSdk.Net is in **preview** (`0.2.0-preview.1` on [NuGet](https://www.nuget.org/packages/AiSdk.Net)): install it
 > with `--prerelease`. The API may still change before the first stable version.
 
 ```bash
@@ -177,7 +177,7 @@ timeline
     Done : Text, streaming, objects, tools, agents
          : 7 providers, MCP, RAG, documents and OCR
          : Orchestration, artifacts, workflows, Skills
-         : First NuGet preview (0.1.0-preview.1)
+         : First NuGet previews (0.1.0, 0.2.0 security release)
     Next : First stable release (v0.1.0)
          : Live test suite for Claude, Gemini and Mistral
          : Vertex AI and Azure OpenAI with Entra ID

@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+## [0.2.0-preview.1] - 2026-11-25
+
 Security and stability release. It follows a full review of the SDK against the OWASP Top 10 for LLM Applications
 (2026), the OWASP Top 10 for Agentic Applications and the MCP security best practices. Several **defaults change to
 fail closed**; every breaking change below has a one-line migration note.
@@ -63,9 +65,15 @@ fail closed**; every breaking change below has a one-line migration note.
   build.
 
 ### Stability
-- Limits for documents: `MaxInputBytes` (100 MB), `MaxNestingDepth` (128), `MaxHtmlBytes` (10 MB),
-  `MaxOfficePartChars` (32M), `MaxPdfPages` (1000), `MaxOcrPages` (100, also covers embedded images), `MaxRasterPixels`
-  (5000 px long side), `MaxMediaDuration` (1 h); external processes 10 min, 64 MB stdout.
+- **OCR of large PDFs:** external tools run with `OMP_THREAD_LIMIT=1` unless it is set (`LimitOpenMpThreads`).
+  Tesseract's OpenMP threads made parallel pages crawl (4 pages took over 10 minutes on 4 cores instead of 2 seconds);
+  a 400-page, 212 MB scanned PDF is now read in about 4 minutes on 4 cores. Fully blank pages (no text, images or
+  drawings) are never sent to OCR. New `MaxOcrDuration`: when it runs out, the pages read so far are returned with a
+  warning instead of the whole conversion being cancelled.
+- Limits for documents: `MaxInputBytes` (512 MB), `MaxNestingDepth` (128), `MaxHtmlBytes` (10 MB),
+  `MaxOfficePartChars` (32M), `MaxPdfPages` (2000), `MaxOcrPages` (1000, also covers embedded images; lower it with a
+  paid vision model), `MaxRasterPixels` (5000 px long side), `MaxMediaDuration` (1 h); external processes 10 min,
+  64 MB stdout.
 - Workflows: per-automation error isolation with backoff and auto-disable (`MaxAutomationFailures`), schedules and time
   zones validated at creation, cancellation signals the running workflow and is final, optimistic concurrency
   (`Version`) and run leases so replicas sharing a store don't duplicate work, indexed store queries instead of full

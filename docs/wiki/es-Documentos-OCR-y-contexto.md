@@ -84,10 +84,15 @@ ExternalProcess.Runner = new ExternalProcessRunner(new ExternalProcessOptions
     Wrapper = "nice",                                    // ejecuta: nice -n 10 tesseract ...
     WrapperArguments = ["-n", "10"],
     AllowedEnvironmentVariables = [.. ExternalProcessOptions.CommonEnvironmentVariables, "SANDBOX_*"],
-    EnvironmentVariables = new Dictionary<string, string?> { ["OMP_THREAD_LIMIT"] = "1" },   // un hilo por Tesseract
+    EnvironmentVariables = new Dictionary<string, string?> { ["TESSDATA_PREFIX"] = "/opt/tessdata" },
     Timeout = TimeSpan.FromMinutes(2),
 });
 ```
+
+> [!NOTE]
+> Las herramientas corren con `OMP_THREAD_LIMIT=1` salvo que lo fijes (`LimitOpenMpThreads`). Tesseract usa OpenMP, y
+> varios procesos con un hilo por núcleo cada uno se estorban mucho: 4 páginas en paralelo tardaban más de 10 minutos en
+> 4 núcleos en vez de 2 segundos. Un PDF escaneado de 400 páginas y 212 MB se lee en unos 4 minutos con 4 núcleos.
 
 > [!WARNING]
 > Desde la 0.2 las herramientas ya no heredan todo el entorno de la aplicación. Si una necesita otra variable,
@@ -101,9 +106,10 @@ superar un límite se devuelve un resultado parcial y se explica en `result.Warn
 
 | Opción | Por defecto | Al superarlo |
 |---|---|---|
-| `MaxInputBytes` | 100 MB | `DocumentTooLargeException` (con archivos, antes de leerlos) |
-| `MaxPdfPages` | 1000 | solo se procesan las primeras páginas |
-| `MaxOcrPages` | 100 | las páginas escaneadas e imágenes incrustadas restantes no van a OCR ni a visión (acota procesos y llamadas pagadas) |
+| `MaxInputBytes` | 512 MB | `DocumentTooLargeException` (con archivos, antes de leerlos) |
+| `MaxPdfPages` | 2000 | solo se procesan las primeras páginas |
+| `MaxOcrPages` | 1000 | las páginas escaneadas e imágenes incrustadas restantes no van a OCR ni a visión (bájalo con un modelo de visión de pago); las páginas totalmente en blanco nunca van a OCR |
+| `MaxOcrDuration` | sin límite | al cumplirse, las páginas que faltan quedan sin leer y un aviso dice cuántas se leyeron: resultado parcial en vez de una conversión cancelada |
 | `MaxRasterPixels` | 5000 px | las páginas enormes se rasterizan a menos de 200 ppp; las imágenes incrustadas más grandes se omiten |
 | `MaxNestingDepth` | 128 | HTML: lo más profundo se convierte a texto plano; Office: `InvalidDataException` (el SDK de Open XML carga las partes de forma recursiva) |
 | `MaxHtmlBytes` | 10 MB | se omite el resto del HTML |

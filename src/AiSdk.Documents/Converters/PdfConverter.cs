@@ -31,6 +31,7 @@ public sealed partial class PdfConverter : IDocumentConverter
         var warnings = new List<string>();
         var extracted = new List<(int Number, List<(string Text, double Size)> Blocks)>();
         var sizes = new List<double>();
+        var blank = new List<bool>();
 
         // El documento queda abierto hasta terminar el OCR: las imágenes incrustadas se leen solo de las páginas
         // que lo necesitan y solo si no se pudieron rasterizar.
@@ -44,6 +45,9 @@ public sealed partial class PdfConverter : IDocumentConverter
             var page = document.GetPage(number);
             extracted.Add((page.Number, ExtractBlocks(page)));
             sizes.Add(Math.Max(page.Width, page.Height));
+
+            // Sin texto, imágenes ni dibujos no hay nada que reconocer: no se rasteriza ni se manda a OCR.
+            blank.Add(page.Letters.Count == 0 && page.NumberOfImages == 0 && page.Paths.Count == 0);
         }
 
         if (processed < totalPages)
@@ -64,7 +68,7 @@ public sealed partial class PdfConverter : IDocumentConverter
             var markdown = Render(blocks.Where(b => !repeated.Contains(Normalize(b.Text))).ToList(), bodySize);
             pages[i] = new DocumentPage(number, markdown);
             var hasText = markdown.Count(char.IsLetterOrDigit) >= options.PdfMinCharsPerPage;
-            if (options.PdfOcr == PdfOcrMode.Always || (options.PdfOcr == PdfOcrMode.Auto && !hasText))
+            if (!blank[i] && (options.PdfOcr == PdfOcrMode.Always || (options.PdfOcr == PdfOcrMode.Auto && !hasText)))
             {
                 needOcr.Add(i);
             }
@@ -157,11 +161,20 @@ public sealed partial class PdfConverter : IDocumentConverter
         var missing = 0;
         var notRasterized = 0;
         var done = 0;
+        var outOfTime = 0;
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
         await Task.WhenAll(needOcr.Select(async index =>
         {
             await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
+                // Presupuesto de tiempo: las páginas que aún no empiezan quedan sin OCR (las que están en curso terminan).
+                if (options.MaxOcrDuration is { } budget && System.Diagnostics.Stopwatch.GetElapsedTime(started) >= budget)
+                {
+                    Interlocked.Increment(ref outOfTime);
+                    return;
+                }
+
                 var number = pages[index].Number;
                 byte[]? image = null;
                 if (options.PdfRasterizer is { } rasterizer)
@@ -227,6 +240,11 @@ public sealed partial class PdfConverter : IDocumentConverter
                 gate.Release();
             }
         })).ConfigureAwait(false);
+
+        if (outOfTime > 0)
+        {
+            warnings.Add($"Se reconocieron {needOcr.Count - outOfTime} de {needOcr.Count} página(s) con OCR: {outOfTime} quedaron sin leer al alcanzar el tiempo máximo ({options.MaxOcrDuration}, MaxOcrDuration).");
+        }
 
         if (notRasterized > missing)
         {

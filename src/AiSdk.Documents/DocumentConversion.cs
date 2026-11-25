@@ -121,8 +121,11 @@ public sealed record DocumentConversionProgress(int Pages, int OcrPages, int Ocr
 /// </summary>
 public sealed class MarkdownConverterOptions
 {
-    /// <summary>Tamaño máximo de un documento, en bytes (por defecto 100 MB). Uno más grande lanza <see cref="DocumentTooLargeException"/> sin convertirse.</summary>
-    public long MaxInputBytes { get; init; } = 100L * 1024 * 1024;
+    /// <summary>
+    /// Tamaño máximo de un documento, en bytes (por defecto 512 MB: alcanza para expedientes escaneados de cientos de
+    /// páginas). Uno más grande lanza <see cref="DocumentTooLargeException"/> sin convertirse.
+    /// </summary>
+    public long MaxInputBytes { get; init; } = 512L * 1024 * 1024;
 
     /// <summary>
     /// Profundidad máxima de anidamiento (por defecto 128). En HTML, lo que esté más abajo se convierte a texto plano con
@@ -141,16 +144,24 @@ public sealed class MarkdownConverterOptions
     /// </summary>
     public long MaxOfficePartChars { get; init; } = 32_000_000;
 
-    /// <summary>PDF: páginas máximas que se procesan (por defecto 1000); las demás se omiten con un aviso.</summary>
-    public int MaxPdfPages { get; init; } = 1000;
+    /// <summary>PDF: páginas máximas que se procesan (por defecto 2000); las demás se omiten con un aviso.</summary>
+    public int MaxPdfPages { get; init; } = 2000;
 
     /// <summary>
-    /// Páginas o imágenes máximas de un documento que se envían a OCR o al modelo de visión (por defecto 100): páginas
+    /// Páginas o imágenes máximas de un documento que se envían a OCR o al modelo de visión (por defecto 1000): páginas
     /// escaneadas de un PDF e imágenes incrustadas en Word, PowerPoint y PDF. Las demás se omiten con un aviso. Acota
-    /// los procesos de OCR y las llamadas pagadas que puede provocar, p. ej., un PDF de pocos KB con miles de páginas
-    /// en blanco. Con un OCR que lee el PDF completo (Mistral OCR) se cuentan todas sus páginas.
+    /// los procesos de OCR y las llamadas que puede provocar un documento hostil (las páginas totalmente en blanco, sin
+    /// texto, imágenes ni dibujos, nunca van a OCR). Con un modelo de visión de pago conviene bajarlo. Con un OCR que lee
+    /// el PDF completo (Mistral OCR) se cuentan todas sus páginas.
     /// </summary>
-    public int MaxOcrPages { get; init; } = 100;
+    public int MaxOcrPages { get; init; } = 1000;
+
+    /// <summary>
+    /// Tiempo máximo para el OCR de las páginas de un PDF (por defecto sin límite). Al cumplirse, las páginas que faltan
+    /// quedan sin reconocer y el resultado lleva un aviso con cuántas se leyeron: mejor un documento largo leído en parte
+    /// que una conversión cancelada sin nada. Úselo por debajo del tiempo máximo que la aplicación da a una conversión.
+    /// </summary>
+    public TimeSpan? MaxOcrDuration { get; init; }
 
     /// <summary>
     /// Lado mayor máximo, en píxeles, de una página de PDF rasterizada para OCR (por defecto 5000). Las páginas se

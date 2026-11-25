@@ -31,6 +31,14 @@ public sealed class ExternalProcessOptions
     /// las del sistema), además de <c>TESSDATA_PREFIX</c> y <c>OMP_THREAD_LIMIT</c>. Valor por defecto de
     /// <see cref="AllowedEnvironmentVariables"/>.
     /// </summary>
+    /// <summary>
+    /// Si es true (por defecto) y nadie fijó <c>OMP_THREAD_LIMIT</c>, las herramientas corren con
+    /// <c>OMP_THREAD_LIMIT=1</c>. Tesseract usa OpenMP: cada proceso abre un hilo por núcleo y espera activamente, así que
+    /// varias páginas en paralelo (como hace el SDK) se estorban: 4 páginas tardaban más de 10 minutos en 4 núcleos en vez
+    /// de 2 segundos. Con un hilo por proceso el paralelismo lo da el SDK (una página por proceso).
+    /// </summary>
+    public bool LimitOpenMpThreads { get; init; } = true;
+
     public static IReadOnlyList<string> CommonEnvironmentVariables { get; } =
     [
         "PATH", "HOME", "LANG", "LANGUAGE", "LC_*", "TMPDIR", "TEMP", "TMP", "TZ",
@@ -273,6 +281,11 @@ public sealed class ExternalProcessRunner(ExternalProcessOptions? options = null
             {
                 info.Environment[name] = value;
             }
+        }
+
+        if (Options.LimitOpenMpThreads && !info.Environment.ContainsKey("OMP_THREAD_LIMIT"))
+        {
+            info.Environment["OMP_THREAD_LIMIT"] = "1";
         }
 
         return info;

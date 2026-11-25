@@ -288,6 +288,18 @@ public class ExternalProcessRunnerTests
     }
 
     [Fact]
+    public void ToolsRunWithOneOpenMpThreadUnlessConfigured()
+    {
+        // Tesseract con OpenMP y varias páginas en paralelo: sin este límite, 4 páginas tardaban minutos en vez de segundos.
+        Assert.Equal("1", new ExternalProcessRunner(new ExternalProcessOptions { AllowedEnvironmentVariables = [] })
+            .CreateStartInfo("tesseract", []).Environment["OMP_THREAD_LIMIT"]);
+        Assert.Equal("4", new ExternalProcessRunner(new ExternalProcessOptions { AllowedEnvironmentVariables = [], EnvironmentVariables = new Dictionary<string, string?> { ["OMP_THREAD_LIMIT"] = "4" } })
+            .CreateStartInfo("tesseract", []).Environment["OMP_THREAD_LIMIT"]);
+        Assert.False(new ExternalProcessRunner(new ExternalProcessOptions { AllowedEnvironmentVariables = [], LimitOpenMpThreads = false })
+            .CreateStartInfo("tesseract", []).Environment.ContainsKey("OMP_THREAD_LIMIT"));
+    }
+
+    [Fact]
     public async Task RunsThroughTheWrapperWithOnlyTheAllowedVariables()
     {
         Assert.SkipWhen(OperatingSystem.IsWindows(), "usa sh y env");

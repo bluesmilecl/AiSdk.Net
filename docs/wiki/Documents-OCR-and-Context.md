@@ -84,10 +84,15 @@ ExternalProcess.Runner = new ExternalProcessRunner(new ExternalProcessOptions
     Wrapper = "nice",                                    // runs: nice -n 10 tesseract ...
     WrapperArguments = ["-n", "10"],
     AllowedEnvironmentVariables = [.. ExternalProcessOptions.CommonEnvironmentVariables, "SANDBOX_*"],
-    EnvironmentVariables = new Dictionary<string, string?> { ["OMP_THREAD_LIMIT"] = "1" },   // one thread per Tesseract
+    EnvironmentVariables = new Dictionary<string, string?> { ["TESSDATA_PREFIX"] = "/opt/tessdata" },
     Timeout = TimeSpan.FromMinutes(2),
 });
 ```
+
+> [!NOTE]
+> Tools run with `OMP_THREAD_LIMIT=1` unless you set it (`LimitOpenMpThreads`). Tesseract uses OpenMP, and several
+> processes with one thread per core each slow each other down badly: 4 pages in parallel took over 10 minutes on 4
+> cores instead of 2 seconds. A 400-page, 212 MB scanned PDF is read in about 4 minutes on 4 cores.
 
 > [!WARNING]
 > Since 0.2 the tools no longer inherit the whole environment of your application. If a tool needs another variable,
@@ -101,9 +106,10 @@ limit is exceeded the converter returns a partial result and explains it in `res
 
 | Option | Default | When exceeded |
 |---|---|---|
-| `MaxInputBytes` | 100 MB | `DocumentTooLargeException` (for files, checked before reading them) |
-| `MaxPdfPages` | 1000 | only the first pages are processed |
-| `MaxOcrPages` | 100 | scanned pages and embedded images beyond it are not sent to OCR or vision (caps OCR processes and paid calls) |
+| `MaxInputBytes` | 512 MB | `DocumentTooLargeException` (for files, checked before reading them) |
+| `MaxPdfPages` | 2000 | only the first pages are processed |
+| `MaxOcrPages` | 1000 | scanned pages and embedded images beyond it are not sent to OCR or vision (lower it with a paid vision model); fully blank pages never go to OCR |
+| `MaxOcrDuration` | none | when it runs out, the remaining pages are left unread and a warning says how many were read: a partial result instead of a cancelled conversion |
 | `MaxRasterPixels` | 5000 px | huge pages are rasterized below 200 dpi; larger embedded images are skipped |
 | `MaxNestingDepth` | 128 | HTML: deeper content becomes plain text; Office: `InvalidDataException` (the OpenXML SDK loads parts recursively) |
 | `MaxHtmlBytes` | 10 MB | the rest of the HTML is skipped |
