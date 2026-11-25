@@ -546,6 +546,6 @@ public sealed partial class PostgresWorkflowStore : IWorkflowStore, IAsyncDispos
         }
     }
 
-    [GeneratedRegex("^[A-Za-z_][A-Za-z0-9_]{0,62}$")]
+    [GeneratedRegex(@"^[A-Za-z_][A-Za-z0-9_]{0,62}\z")]
     private static partial Regex IdentifierRegex();
 }

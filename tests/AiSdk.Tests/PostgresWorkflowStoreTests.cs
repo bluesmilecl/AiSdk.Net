@@ -133,6 +133,8 @@ public class PostgresWorkflowStoreTests
             new PostgresWorkflowStoreOptions { TablePrefix = "wf-" },
             new PostgresWorkflowStoreOptions { TablePrefix = "1wf_" },
             new PostgresWorkflowStoreOptions { TablePrefix = "wf_\"x" },
+            new PostgresWorkflowStoreOptions { Schema = "public\n" }, // en .NET, "$" también acepta un \n final
+            new PostgresWorkflowStoreOptions { TablePrefix = "wf_\n" },
             new PostgresWorkflowStoreOptions { TablePrefix = new string('a', 45) }, // "{prefijo}automations_due_idx" > 63
         })
         {
