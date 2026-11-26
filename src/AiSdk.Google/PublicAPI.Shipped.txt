@@ -1,0 +1,49 @@
+#nullable enable
+AiSdk.Google.GoogleEmbeddingModel
+AiSdk.Google.GoogleEmbeddingModel.EmbedAsync(System.Collections.Generic.IReadOnlyList<string!>! values, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.EmbeddingModelResult!>!
+AiSdk.Google.GoogleEmbeddingModel.MaxEmbeddingsPerCall.get -> int?
+AiSdk.Google.GoogleEmbeddingModel.ModelId.get -> string!
+AiSdk.Google.GoogleEmbeddingModel.Provider.get -> string!
+AiSdk.Google.GoogleGenerativeLanguageModel
+AiSdk.Google.GoogleGenerativeLanguageModel.CountTokensAsync(AiSdk.LanguageModelRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+AiSdk.Google.GoogleGenerativeLanguageModel.GenerateAsync(AiSdk.LanguageModelRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.LanguageModelResult!>!
+AiSdk.Google.GoogleGenerativeLanguageModel.ModelId.get -> string!
+AiSdk.Google.GoogleGenerativeLanguageModel.Provider.get -> string!
+AiSdk.Google.GoogleGenerativeLanguageModel.StreamAsync(AiSdk.LanguageModelRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<AiSdk.StreamPart!>!
+AiSdk.Google.GoogleImageModel
+AiSdk.Google.GoogleImageModel.GenerateAsync(AiSdk.ImageModelRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.ImageModelResult!>!
+AiSdk.Google.GoogleImageModel.MaxImagesPerCall.get -> int?
+AiSdk.Google.GoogleImageModel.ModelId.get -> string!
+AiSdk.Google.GoogleImageModel.Provider.get -> string!
+AiSdk.Google.GoogleOptions
+AiSdk.Google.GoogleProvider
+AiSdk.Google.GoogleProvider.Embedding(string! modelId = "gemini-embedding-001", int? outputDimensionality = null, string? taskType = null) -> AiSdk.IEmbeddingModel!
+AiSdk.Google.GoogleProvider.EmbeddingModel(string! modelId) -> AiSdk.IEmbeddingModel!
+AiSdk.Google.GoogleProvider.Gemini(string! modelId) -> AiSdk.ILanguageModel!
+AiSdk.Google.GoogleProvider.GoogleProvider(AiSdk.Google.GoogleProviderOptions? options = null) -> void
+AiSdk.Google.GoogleProvider.GoogleProvider(System.Action<AiSdk.Google.GoogleProviderOptions!>! configure) -> void
+AiSdk.Google.GoogleProvider.Image(string! modelId) -> AiSdk.IImageModel!
+AiSdk.Google.GoogleProvider.ImageModel(string! modelId) -> AiSdk.IImageModel!
+AiSdk.Google.GoogleProvider.LanguageModel(string! modelId) -> AiSdk.ILanguageModel!
+AiSdk.Google.GoogleProvider.Name.get -> string!
+AiSdk.Google.GoogleProvider.this[string! modelId].get -> AiSdk.ILanguageModel!
+AiSdk.Google.GoogleProviderOptions
+AiSdk.Google.GoogleProviderOptions.ApiKey.get -> string?
+AiSdk.Google.GoogleProviderOptions.ApiKey.set -> void
+AiSdk.Google.GoogleProviderOptions.BaseUrl.get -> string!
+AiSdk.Google.GoogleProviderOptions.BaseUrl.set -> void
+AiSdk.Google.GoogleProviderOptions.GoogleProviderOptions() -> void
+AiSdk.Google.GoogleProviderOptions.Headers.get -> System.Collections.Generic.Dictionary<string!, string!>!
+AiSdk.Google.GoogleProviderOptions.Headers.set -> void
+AiSdk.Google.GoogleProviderOptions.HttpClient.get -> System.Net.Http.HttpClient?
+AiSdk.Google.GoogleProviderOptions.HttpClient.set -> void
+AiSdk.Google.GoogleProviderOptions.Name.get -> string!
+AiSdk.Google.GoogleProviderOptions.Name.set -> void
+AiSdk.Google.GoogleTools
+const AiSdk.Google.GoogleGenerativeLanguageModel.RawPartKey = "google.rawPart" -> string!
+const AiSdk.Google.GoogleGenerativeLanguageModel.ThoughtSignatureKey = "google.thoughtSignature" -> string!
+static AiSdk.Google.GoogleOptions.Create(int? thinkingBudget = null, bool? includeThoughts = null, string? thinkingLevel = null, System.Collections.Generic.IEnumerable<(string! Category, string! Threshold)>? safetySettings = null) -> AiSdk.ProviderOptions!
+static AiSdk.Google.GoogleProvider.Default.get -> AiSdk.Google.GoogleProvider!
+static AiSdk.Google.GoogleTools.CodeExecution() -> AiSdk.Tool!
+static AiSdk.Google.GoogleTools.GoogleSearch() -> AiSdk.Tool!
+static AiSdk.Google.GoogleTools.UrlContext() -> AiSdk.Tool!

@@ -1,0 +1,31 @@
+#nullable enable
+AiSdk.VectorData.VectorDataStore
+AiSdk.VectorData.VectorDataStore.Collection.get -> Microsoft.Extensions.VectorData.VectorStoreCollection<object!, System.Collections.Generic.Dictionary<string!, object?>!>!
+AiSdk.VectorData.VectorDataStore.DeleteAsync(System.Collections.Generic.IEnumerable<string!>! ids, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+AiSdk.VectorData.VectorDataStore.Dispose() -> void
+AiSdk.VectorData.VectorDataStore.HybridSearchAsync(string! query, int topK = 5, AiSdk.VectorFilter? filter = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.VectorSearchResult!>!>!
+AiSdk.VectorData.VectorDataStore.SearchAsync(string! query, int topK = 5, AiSdk.VectorFilter? filter = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.VectorSearchResult!>!>!
+AiSdk.VectorData.VectorDataStore.ToExpression(AiSdk.VectorFilter! filter) -> System.Linq.Expressions.Expression<System.Func<System.Collections.Generic.Dictionary<string!, object?>!, bool>!>!
+AiSdk.VectorData.VectorDataStore.UpsertAsync(System.Collections.Generic.IEnumerable<AiSdk.VectorDocument!>! documents, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+AiSdk.VectorData.VectorDataStore.VectorDataStore(Microsoft.Extensions.VectorData.VectorStore! vectorStore, AiSdk.IEmbeddingModel! embeddings, AiSdk.VectorData.VectorDataStoreOptions! options) -> void
+AiSdk.VectorData.VectorDataStoreOptions
+AiSdk.VectorData.VectorDataStoreOptions.CollectionName.get -> string!
+AiSdk.VectorData.VectorDataStoreOptions.CollectionName.init -> void
+AiSdk.VectorData.VectorDataStoreOptions.CreateIfNotExists.get -> bool
+AiSdk.VectorData.VectorDataStoreOptions.CreateIfNotExists.init -> void
+AiSdk.VectorData.VectorDataStoreOptions.Dimensions.get -> int
+AiSdk.VectorData.VectorDataStoreOptions.Dimensions.init -> void
+AiSdk.VectorData.VectorDataStoreOptions.DistanceFunction.get -> string!
+AiSdk.VectorData.VectorDataStoreOptions.DistanceFunction.init -> void
+AiSdk.VectorData.VectorDataStoreOptions.FilterableFields.get -> System.Collections.Generic.IReadOnlyList<string!>!
+AiSdk.VectorData.VectorDataStoreOptions.FilterableFields.init -> void
+AiSdk.VectorData.VectorDataStoreOptions.FullTextSearch.get -> bool
+AiSdk.VectorData.VectorDataStoreOptions.FullTextSearch.init -> void
+AiSdk.VectorData.VectorDataStoreOptions.IndexKind.get -> string?
+AiSdk.VectorData.VectorDataStoreOptions.IndexKind.init -> void
+AiSdk.VectorData.VectorDataStoreOptions.VectorDataStoreOptions() -> void
+const AiSdk.VectorData.VectorDataStore.EmbeddingField = "Embedding" -> string!
+const AiSdk.VectorData.VectorDataStore.KeyField = "Id" -> string!
+const AiSdk.VectorData.VectorDataStore.MetadataField = "MetadataJson" -> string!
+const AiSdk.VectorData.VectorDataStore.TextField = "Text" -> string!
+static AiSdk.VectorData.VectorDataStore.BuildDefinition(AiSdk.VectorData.VectorDataStoreOptions! options) -> Microsoft.Extensions.VectorData.VectorStoreCollectionDefinition!

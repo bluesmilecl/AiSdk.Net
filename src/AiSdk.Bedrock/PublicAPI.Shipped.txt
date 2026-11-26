@@ -1,0 +1,84 @@
+#nullable enable
+AiSdk.Bedrock.AwsCredentials
+AiSdk.Bedrock.AwsCredentials.<Clone>$() -> AiSdk.Bedrock.AwsCredentials!
+AiSdk.Bedrock.AwsCredentials.AccessKeyId.get -> string!
+AiSdk.Bedrock.AwsCredentials.AccessKeyId.init -> void
+AiSdk.Bedrock.AwsCredentials.AwsCredentials(string! AccessKeyId, string! SecretAccessKey, string? SessionToken = null) -> void
+AiSdk.Bedrock.AwsCredentials.Deconstruct(out string! AccessKeyId, out string! SecretAccessKey, out string? SessionToken) -> void
+AiSdk.Bedrock.AwsCredentials.Equals(AiSdk.Bedrock.AwsCredentials? other) -> bool
+AiSdk.Bedrock.AwsCredentials.SecretAccessKey.get -> string!
+AiSdk.Bedrock.AwsCredentials.SecretAccessKey.init -> void
+AiSdk.Bedrock.AwsCredentials.SessionToken.get -> string?
+AiSdk.Bedrock.AwsCredentials.SessionToken.init -> void
+AiSdk.Bedrock.AwsEventStream
+AiSdk.Bedrock.AwsEventStreamMessage
+AiSdk.Bedrock.AwsEventStreamMessage.<Clone>$() -> AiSdk.Bedrock.AwsEventStreamMessage!
+AiSdk.Bedrock.AwsEventStreamMessage.AwsEventStreamMessage(System.Collections.Generic.IReadOnlyDictionary<string!, string!>! Headers, byte[]! Payload) -> void
+AiSdk.Bedrock.AwsEventStreamMessage.Deconstruct(out System.Collections.Generic.IReadOnlyDictionary<string!, string!>! Headers, out byte[]! Payload) -> void
+AiSdk.Bedrock.AwsEventStreamMessage.Equals(AiSdk.Bedrock.AwsEventStreamMessage? other) -> bool
+AiSdk.Bedrock.AwsEventStreamMessage.EventType.get -> string?
+AiSdk.Bedrock.AwsEventStreamMessage.ExceptionType.get -> string?
+AiSdk.Bedrock.AwsEventStreamMessage.Headers.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+AiSdk.Bedrock.AwsEventStreamMessage.Headers.init -> void
+AiSdk.Bedrock.AwsEventStreamMessage.MessageType.get -> string?
+AiSdk.Bedrock.AwsEventStreamMessage.Payload.get -> byte[]!
+AiSdk.Bedrock.AwsEventStreamMessage.Payload.init -> void
+AiSdk.Bedrock.AwsEventStreamMessage.PayloadText.get -> string!
+AiSdk.Bedrock.AwsSigV4
+AiSdk.Bedrock.BedrockConverseLanguageModel
+AiSdk.Bedrock.BedrockConverseLanguageModel.GenerateAsync(AiSdk.LanguageModelRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.LanguageModelResult!>!
+AiSdk.Bedrock.BedrockConverseLanguageModel.ModelId.get -> string!
+AiSdk.Bedrock.BedrockConverseLanguageModel.Provider.get -> string!
+AiSdk.Bedrock.BedrockConverseLanguageModel.StreamAsync(AiSdk.LanguageModelRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<AiSdk.StreamPart!>!
+AiSdk.Bedrock.BedrockEmbeddingModel
+AiSdk.Bedrock.BedrockEmbeddingModel.EmbedAsync(System.Collections.Generic.IReadOnlyList<string!>! values, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.EmbeddingModelResult!>!
+AiSdk.Bedrock.BedrockEmbeddingModel.MaxEmbeddingsPerCall.get -> int?
+AiSdk.Bedrock.BedrockEmbeddingModel.ModelId.get -> string!
+AiSdk.Bedrock.BedrockEmbeddingModel.Provider.get -> string!
+AiSdk.Bedrock.BedrockProvider
+AiSdk.Bedrock.BedrockProvider.BedrockProvider(AiSdk.Bedrock.BedrockProviderOptions? options = null) -> void
+AiSdk.Bedrock.BedrockProvider.BedrockProvider(System.Action<AiSdk.Bedrock.BedrockProviderOptions!>! configure) -> void
+AiSdk.Bedrock.BedrockProvider.Converse(string! modelId) -> AiSdk.ILanguageModel!
+AiSdk.Bedrock.BedrockProvider.Embedding(string! modelId = "amazon.titan-embed-text-v2:0", int? dimensions = null) -> AiSdk.IEmbeddingModel!
+AiSdk.Bedrock.BedrockProvider.EmbeddingModel(string! modelId) -> AiSdk.IEmbeddingModel!
+AiSdk.Bedrock.BedrockProvider.LanguageModel(string! modelId) -> AiSdk.ILanguageModel!
+AiSdk.Bedrock.BedrockProvider.Name.get -> string!
+AiSdk.Bedrock.BedrockProvider.this[string! modelId].get -> AiSdk.ILanguageModel!
+AiSdk.Bedrock.BedrockProviderOptions
+AiSdk.Bedrock.BedrockProviderOptions.ApiKey.get -> string?
+AiSdk.Bedrock.BedrockProviderOptions.ApiKey.set -> void
+AiSdk.Bedrock.BedrockProviderOptions.BaseUrl.get -> string?
+AiSdk.Bedrock.BedrockProviderOptions.BaseUrl.set -> void
+AiSdk.Bedrock.BedrockProviderOptions.BedrockProviderOptions() -> void
+AiSdk.Bedrock.BedrockProviderOptions.Clock.get -> System.Func<System.DateTimeOffset>!
+AiSdk.Bedrock.BedrockProviderOptions.Clock.set -> void
+AiSdk.Bedrock.BedrockProviderOptions.Credentials.get -> AiSdk.Bedrock.AwsCredentials?
+AiSdk.Bedrock.BedrockProviderOptions.Credentials.set -> void
+AiSdk.Bedrock.BedrockProviderOptions.CredentialsProvider.get -> System.Func<System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<AiSdk.Bedrock.AwsCredentials!>>?
+AiSdk.Bedrock.BedrockProviderOptions.CredentialsProvider.set -> void
+AiSdk.Bedrock.BedrockProviderOptions.HttpClient.get -> System.Net.Http.HttpClient?
+AiSdk.Bedrock.BedrockProviderOptions.HttpClient.set -> void
+AiSdk.Bedrock.BedrockProviderOptions.Name.get -> string!
+AiSdk.Bedrock.BedrockProviderOptions.Name.set -> void
+AiSdk.Bedrock.BedrockProviderOptions.Region.get -> string?
+AiSdk.Bedrock.BedrockProviderOptions.Region.set -> void
+const AiSdk.Bedrock.AwsEventStream.DefaultMaxMessageBytes = 16778240 -> int
+const AiSdk.Bedrock.BedrockConverseLanguageModel.RedactedContentKey = "bedrock.redactedContent" -> string!
+const AiSdk.Bedrock.BedrockConverseLanguageModel.SignatureKey = "bedrock.signature" -> string!
+override AiSdk.Bedrock.AwsCredentials.Equals(object? obj) -> bool
+override AiSdk.Bedrock.AwsCredentials.GetHashCode() -> int
+override AiSdk.Bedrock.AwsCredentials.ToString() -> string!
+override AiSdk.Bedrock.AwsEventStreamMessage.Equals(object? obj) -> bool
+override AiSdk.Bedrock.AwsEventStreamMessage.GetHashCode() -> int
+override AiSdk.Bedrock.AwsEventStreamMessage.ToString() -> string!
+static AiSdk.Bedrock.AwsCredentials.FromEnvironment() -> AiSdk.Bedrock.AwsCredentials?
+static AiSdk.Bedrock.AwsCredentials.operator !=(AiSdk.Bedrock.AwsCredentials? left, AiSdk.Bedrock.AwsCredentials? right) -> bool
+static AiSdk.Bedrock.AwsCredentials.operator ==(AiSdk.Bedrock.AwsCredentials? left, AiSdk.Bedrock.AwsCredentials? right) -> bool
+static AiSdk.Bedrock.AwsEventStream.Crc32(System.ReadOnlySpan<byte> data) -> uint
+static AiSdk.Bedrock.AwsEventStream.Encode(System.Collections.Generic.IReadOnlyDictionary<string!, string!>! headers, byte[]! payload) -> byte[]!
+static AiSdk.Bedrock.AwsEventStream.ReadAsync(System.IO.Stream! stream, int maxMessageBytes, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<AiSdk.Bedrock.AwsEventStreamMessage!>!
+static AiSdk.Bedrock.AwsEventStream.ReadAsync(System.IO.Stream! stream, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<AiSdk.Bedrock.AwsEventStreamMessage!>!
+static AiSdk.Bedrock.AwsEventStreamMessage.operator !=(AiSdk.Bedrock.AwsEventStreamMessage? left, AiSdk.Bedrock.AwsEventStreamMessage? right) -> bool
+static AiSdk.Bedrock.AwsEventStreamMessage.operator ==(AiSdk.Bedrock.AwsEventStreamMessage? left, AiSdk.Bedrock.AwsEventStreamMessage? right) -> bool
+static AiSdk.Bedrock.AwsSigV4.Sign(System.Net.Http.HttpRequestMessage! request, System.ReadOnlySpan<byte> body, string! region, string! service, AiSdk.Bedrock.AwsCredentials! credentials, System.DateTimeOffset now) -> void
+static AiSdk.Bedrock.BedrockProvider.Default.get -> AiSdk.Bedrock.BedrockProvider!

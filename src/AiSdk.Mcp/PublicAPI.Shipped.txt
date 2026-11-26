@@ -1,0 +1,363 @@
+#nullable enable
+[AISDKMCP001]AiSdk.Mcp.McpClient.SetRootsAsync(System.Collections.Generic.IReadOnlyList<AiSdk.Mcp.McpRoot!>! roots, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+[AISDKMCP001]AiSdk.Mcp.McpClientOptions.ApproveSampling.get -> System.Func<AiSdk.Mcp.McpSamplingRequest!, System.Threading.CancellationToken, System.Threading.Tasks.Task<AiSdk.Mcp.McpSamplingRequest?>!>?
+[AISDKMCP001]AiSdk.Mcp.McpClientOptions.ApproveSampling.init -> void
+[AISDKMCP001]AiSdk.Mcp.McpClientOptions.MaxSamplingTokens.get -> int
+[AISDKMCP001]AiSdk.Mcp.McpClientOptions.MaxSamplingTokens.init -> void
+[AISDKMCP001]AiSdk.Mcp.McpClientOptions.ReviewSamplingResult.get -> System.Func<AiSdk.Mcp.McpSamplingRequest!, AiSdk.Mcp.McpSamplingResult!, System.Threading.CancellationToken, System.Threading.Tasks.Task<AiSdk.Mcp.McpSamplingResult?>!>?
+[AISDKMCP001]AiSdk.Mcp.McpClientOptions.ReviewSamplingResult.init -> void
+[AISDKMCP001]AiSdk.Mcp.McpClientOptions.Roots.get -> System.Collections.Generic.IReadOnlyList<AiSdk.Mcp.McpRoot!>?
+[AISDKMCP001]AiSdk.Mcp.McpClientOptions.Roots.init -> void
+[AISDKMCP001]AiSdk.Mcp.McpClientOptions.SamplingHandler.get -> System.Func<AiSdk.Mcp.McpSamplingRequest!, System.Threading.CancellationToken, System.Threading.Tasks.Task<AiSdk.Mcp.McpSamplingResult!>!>?
+[AISDKMCP001]AiSdk.Mcp.McpClientOptions.SamplingHandler.init -> void
+[AISDKMCP001]AiSdk.Mcp.McpClientOptions.SamplingModel.get -> AiSdk.ILanguageModel?
+[AISDKMCP001]AiSdk.Mcp.McpClientOptions.SamplingModel.init -> void
+[AISDKMCP001]AiSdk.Mcp.McpRoot
+[AISDKMCP001]AiSdk.Mcp.McpRoot.<Clone>$() -> AiSdk.Mcp.McpRoot!
+[AISDKMCP001]AiSdk.Mcp.McpRoot.Deconstruct(out string! Uri, out string? Name) -> void
+[AISDKMCP001]AiSdk.Mcp.McpRoot.Equals(AiSdk.Mcp.McpRoot? other) -> bool
+[AISDKMCP001]AiSdk.Mcp.McpRoot.McpRoot(string! Uri, string? Name = null) -> void
+[AISDKMCP001]AiSdk.Mcp.McpRoot.Name.get -> string?
+[AISDKMCP001]AiSdk.Mcp.McpRoot.Name.init -> void
+[AISDKMCP001]AiSdk.Mcp.McpRoot.Uri.get -> string!
+[AISDKMCP001]AiSdk.Mcp.McpRoot.Uri.init -> void
+[AISDKMCP001]AiSdk.Mcp.McpSamplingRequest
+[AISDKMCP001]AiSdk.Mcp.McpSamplingRequest.<Clone>$() -> AiSdk.Mcp.McpSamplingRequest!
+[AISDKMCP001]AiSdk.Mcp.McpSamplingRequest.Deconstruct(out System.Collections.Generic.IReadOnlyList<AiSdk.ModelMessage!>! Messages, out string? SystemPrompt, out int? MaxTokens, out double? Temperature, out System.Collections.Generic.IReadOnlyList<string!>? StopSequences, out System.Text.Json.Nodes.JsonNode? ModelPreferences) -> void
+[AISDKMCP001]AiSdk.Mcp.McpSamplingRequest.Equals(AiSdk.Mcp.McpSamplingRequest? other) -> bool
+[AISDKMCP001]AiSdk.Mcp.McpSamplingRequest.MaxTokens.get -> int?
+[AISDKMCP001]AiSdk.Mcp.McpSamplingRequest.MaxTokens.init -> void
+[AISDKMCP001]AiSdk.Mcp.McpSamplingRequest.McpSamplingRequest(System.Collections.Generic.IReadOnlyList<AiSdk.ModelMessage!>! Messages, string? SystemPrompt, int? MaxTokens, double? Temperature, System.Collections.Generic.IReadOnlyList<string!>? StopSequences, System.Text.Json.Nodes.JsonNode? ModelPreferences) -> void
+[AISDKMCP001]AiSdk.Mcp.McpSamplingRequest.Messages.get -> System.Collections.Generic.IReadOnlyList<AiSdk.ModelMessage!>!
+[AISDKMCP001]AiSdk.Mcp.McpSamplingRequest.Messages.init -> void
+[AISDKMCP001]AiSdk.Mcp.McpSamplingRequest.ModelPreferences.get -> System.Text.Json.Nodes.JsonNode?
+[AISDKMCP001]AiSdk.Mcp.McpSamplingRequest.ModelPreferences.init -> void
+[AISDKMCP001]AiSdk.Mcp.McpSamplingRequest.StopSequences.get -> System.Collections.Generic.IReadOnlyList<string!>?
+[AISDKMCP001]AiSdk.Mcp.McpSamplingRequest.StopSequences.init -> void
+[AISDKMCP001]AiSdk.Mcp.McpSamplingRequest.SystemPrompt.get -> string?
+[AISDKMCP001]AiSdk.Mcp.McpSamplingRequest.SystemPrompt.init -> void
+[AISDKMCP001]AiSdk.Mcp.McpSamplingRequest.Temperature.get -> double?
+[AISDKMCP001]AiSdk.Mcp.McpSamplingRequest.Temperature.init -> void
+[AISDKMCP001]AiSdk.Mcp.McpSamplingResult
+[AISDKMCP001]AiSdk.Mcp.McpSamplingResult.<Clone>$() -> AiSdk.Mcp.McpSamplingResult!
+[AISDKMCP001]AiSdk.Mcp.McpSamplingResult.Deconstruct(out string! Text, out string! Model, out string! StopReason) -> void
+[AISDKMCP001]AiSdk.Mcp.McpSamplingResult.Equals(AiSdk.Mcp.McpSamplingResult? other) -> bool
+[AISDKMCP001]AiSdk.Mcp.McpSamplingResult.McpSamplingResult(string! Text, string! Model, string! StopReason = "endTurn") -> void
+[AISDKMCP001]AiSdk.Mcp.McpSamplingResult.Model.get -> string!
+[AISDKMCP001]AiSdk.Mcp.McpSamplingResult.Model.init -> void
+[AISDKMCP001]AiSdk.Mcp.McpSamplingResult.StopReason.get -> string!
+[AISDKMCP001]AiSdk.Mcp.McpSamplingResult.StopReason.init -> void
+[AISDKMCP001]AiSdk.Mcp.McpSamplingResult.Text.get -> string!
+[AISDKMCP001]AiSdk.Mcp.McpSamplingResult.Text.init -> void
+[AISDKMCP001]override AiSdk.Mcp.McpRoot.Equals(object? obj) -> bool
+[AISDKMCP001]override AiSdk.Mcp.McpRoot.GetHashCode() -> int
+[AISDKMCP001]override AiSdk.Mcp.McpRoot.ToString() -> string!
+[AISDKMCP001]override AiSdk.Mcp.McpSamplingRequest.Equals(object? obj) -> bool
+[AISDKMCP001]override AiSdk.Mcp.McpSamplingRequest.GetHashCode() -> int
+[AISDKMCP001]override AiSdk.Mcp.McpSamplingRequest.ToString() -> string!
+[AISDKMCP001]override AiSdk.Mcp.McpSamplingResult.Equals(object? obj) -> bool
+[AISDKMCP001]override AiSdk.Mcp.McpSamplingResult.GetHashCode() -> int
+[AISDKMCP001]override AiSdk.Mcp.McpSamplingResult.ToString() -> string!
+[AISDKMCP001]static AiSdk.Mcp.McpRoot.operator !=(AiSdk.Mcp.McpRoot? left, AiSdk.Mcp.McpRoot? right) -> bool
+[AISDKMCP001]static AiSdk.Mcp.McpRoot.operator ==(AiSdk.Mcp.McpRoot? left, AiSdk.Mcp.McpRoot? right) -> bool
+[AISDKMCP001]static AiSdk.Mcp.McpSamplingRequest.operator !=(AiSdk.Mcp.McpSamplingRequest? left, AiSdk.Mcp.McpSamplingRequest? right) -> bool
+[AISDKMCP001]static AiSdk.Mcp.McpSamplingRequest.operator ==(AiSdk.Mcp.McpSamplingRequest? left, AiSdk.Mcp.McpSamplingRequest? right) -> bool
+[AISDKMCP001]static AiSdk.Mcp.McpSamplingResult.operator !=(AiSdk.Mcp.McpSamplingResult? left, AiSdk.Mcp.McpSamplingResult? right) -> bool
+[AISDKMCP001]static AiSdk.Mcp.McpSamplingResult.operator ==(AiSdk.Mcp.McpSamplingResult? left, AiSdk.Mcp.McpSamplingResult? right) -> bool
+AiSdk.Mcp.HttpMcpTransport
+AiSdk.Mcp.HttpMcpTransport.DisposeAsync() -> System.Threading.Tasks.ValueTask
+AiSdk.Mcp.HttpMcpTransport.HttpMcpTransport(string! endpoint, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? headers = null) -> void
+AiSdk.Mcp.HttpMcpTransport.HttpMcpTransport(System.Uri! endpoint, System.Net.Http.HttpClient? httpClient = null, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? headers = null) -> void
+AiSdk.Mcp.HttpMcpTransport.MaxMessageBytes.get -> long
+AiSdk.Mcp.HttpMcpTransport.MaxMessageBytes.init -> void
+AiSdk.Mcp.HttpMcpTransport.Messages.get -> System.Threading.Channels.ChannelReader<System.Text.Json.Nodes.JsonObject!>!
+AiSdk.Mcp.HttpMcpTransport.SendAsync(System.Text.Json.Nodes.JsonObject! message, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+AiSdk.Mcp.HttpMcpTransport.SessionId.get -> string?
+AiSdk.Mcp.HttpMcpTransport.SetProtocolVersion(string! version) -> void
+AiSdk.Mcp.HttpMcpTransport.StartAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+AiSdk.Mcp.IMcpTransport
+AiSdk.Mcp.IMcpTransport.Messages.get -> System.Threading.Channels.ChannelReader<System.Text.Json.Nodes.JsonObject!>!
+AiSdk.Mcp.IMcpTransport.SendAsync(System.Text.Json.Nodes.JsonObject! message, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+AiSdk.Mcp.IMcpTransport.SetProtocolVersion(string! version) -> void
+AiSdk.Mcp.IMcpTransport.StartAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+AiSdk.Mcp.McpCallToolResult
+AiSdk.Mcp.McpCallToolResult.<Clone>$() -> AiSdk.Mcp.McpCallToolResult!
+AiSdk.Mcp.McpCallToolResult.Content.get -> System.Text.Json.Nodes.JsonArray!
+AiSdk.Mcp.McpCallToolResult.Content.init -> void
+AiSdk.Mcp.McpCallToolResult.Deconstruct(out System.Text.Json.Nodes.JsonArray! Content, out bool IsError, out System.Text.Json.Nodes.JsonNode? StructuredContent) -> void
+AiSdk.Mcp.McpCallToolResult.Equals(AiSdk.Mcp.McpCallToolResult? other) -> bool
+AiSdk.Mcp.McpCallToolResult.IsError.get -> bool
+AiSdk.Mcp.McpCallToolResult.IsError.init -> void
+AiSdk.Mcp.McpCallToolResult.McpCallToolResult(System.Text.Json.Nodes.JsonArray! Content, bool IsError, System.Text.Json.Nodes.JsonNode? StructuredContent) -> void
+AiSdk.Mcp.McpCallToolResult.StructuredContent.get -> System.Text.Json.Nodes.JsonNode?
+AiSdk.Mcp.McpCallToolResult.StructuredContent.init -> void
+AiSdk.Mcp.McpCallToolResult.Text.get -> string!
+AiSdk.Mcp.McpClient
+AiSdk.Mcp.McpClient.CallToolAsync(string! name, System.Text.Json.JsonElement arguments, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Mcp.McpCallToolResult!>!
+AiSdk.Mcp.McpClient.DisposeAsync() -> System.Threading.Tasks.ValueTask
+AiSdk.Mcp.McpClient.GetPromptAsync(string! name, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? arguments = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Mcp.McpPromptResult!>!
+AiSdk.Mcp.McpClient.GetToolsAsync(System.Collections.Generic.IEnumerable<string!>? include = null, string? prefix = null, System.Collections.Generic.IEnumerable<AiSdk.Tool!>? existingTools = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.Tool!>!>!
+AiSdk.Mcp.McpClient.Instructions.get -> string?
+AiSdk.Mcp.McpClient.ListPromptsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.Mcp.McpPrompt!>!>!
+AiSdk.Mcp.McpClient.ListResourcesAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.Mcp.McpResource!>!>!
+AiSdk.Mcp.McpClient.ListResourceTemplatesAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.Mcp.McpResourceTemplate!>!>!
+AiSdk.Mcp.McpClient.ListToolsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.Mcp.McpToolInfo!>!>!
+AiSdk.Mcp.McpClient.NotificationReceived -> System.Action<string!, System.Text.Json.Nodes.JsonNode?>?
+AiSdk.Mcp.McpClient.ProtocolVersion.get -> string!
+AiSdk.Mcp.McpClient.ReadResourceAsPartsAsync(string! uri, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.ContentPart!>!>!
+AiSdk.Mcp.McpClient.ReadResourceAsync(string! uri, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.Mcp.McpResourceContent!>!>!
+AiSdk.Mcp.McpClient.SendNotificationAsync(string! method, System.Text.Json.Nodes.JsonObject? parameters, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+AiSdk.Mcp.McpClient.SendRequestAsync(string! method, System.Text.Json.Nodes.JsonObject? parameters, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Text.Json.Nodes.JsonNode?>!
+AiSdk.Mcp.McpClient.ServerCapabilities.get -> System.Text.Json.Nodes.JsonObject!
+AiSdk.Mcp.McpClient.ServerInfo.get -> AiSdk.Mcp.McpServerInfo!
+AiSdk.Mcp.McpClient.ServerRequestFailed -> System.Action<string!, System.Exception!>?
+AiSdk.Mcp.McpClient.ToolDefinitionChanged -> System.Action<AiSdk.Mcp.McpToolDefinitionChange!>?
+AiSdk.Mcp.McpClient.ToolHashes.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+AiSdk.Mcp.McpClientOptions
+AiSdk.Mcp.McpClientOptions.ClientName.get -> string!
+AiSdk.Mcp.McpClientOptions.ClientName.init -> void
+AiSdk.Mcp.McpClientOptions.ClientVersion.get -> string!
+AiSdk.Mcp.McpClientOptions.ClientVersion.init -> void
+AiSdk.Mcp.McpClientOptions.ElicitationHandler.get -> System.Func<AiSdk.Mcp.McpElicitationRequest!, System.Threading.CancellationToken, System.Threading.Tasks.Task<AiSdk.Mcp.McpElicitationResult!>!>?
+AiSdk.Mcp.McpClientOptions.ElicitationHandler.init -> void
+AiSdk.Mcp.McpClientOptions.MaxConcurrentServerRequests.get -> int
+AiSdk.Mcp.McpClientOptions.MaxConcurrentServerRequests.init -> void
+AiSdk.Mcp.McpClientOptions.MaxListPages.get -> int
+AiSdk.Mcp.McpClientOptions.MaxListPages.init -> void
+AiSdk.Mcp.McpClientOptions.McpClientOptions() -> void
+AiSdk.Mcp.McpClientOptions.PinnedToolHashes.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>?
+AiSdk.Mcp.McpClientOptions.PinnedToolHashes.init -> void
+AiSdk.Mcp.McpClientOptions.ProtocolVersion.get -> string!
+AiSdk.Mcp.McpClientOptions.ProtocolVersion.init -> void
+AiSdk.Mcp.McpClientOptions.RequestTimeout.get -> System.TimeSpan
+AiSdk.Mcp.McpClientOptions.RequestTimeout.init -> void
+AiSdk.Mcp.McpClientOptions.RequireToolApproval.get -> bool
+AiSdk.Mcp.McpClientOptions.RequireToolApproval.init -> void
+AiSdk.Mcp.McpClientOptions.ToolChangePolicy.get -> AiSdk.Mcp.McpToolChangePolicy
+AiSdk.Mcp.McpClientOptions.ToolChangePolicy.init -> void
+AiSdk.Mcp.McpClientOptions.ToolNamePrefix.get -> string?
+AiSdk.Mcp.McpClientOptions.ToolNamePrefix.init -> void
+AiSdk.Mcp.McpDiagnostics
+AiSdk.Mcp.McpElicitationRequest
+AiSdk.Mcp.McpElicitationRequest.<Clone>$() -> AiSdk.Mcp.McpElicitationRequest!
+AiSdk.Mcp.McpElicitationRequest.Deconstruct(out string! Message, out System.Text.Json.JsonElement RequestedSchema) -> void
+AiSdk.Mcp.McpElicitationRequest.Equals(AiSdk.Mcp.McpElicitationRequest? other) -> bool
+AiSdk.Mcp.McpElicitationRequest.McpElicitationRequest(string! Message, System.Text.Json.JsonElement RequestedSchema) -> void
+AiSdk.Mcp.McpElicitationRequest.Message.get -> string!
+AiSdk.Mcp.McpElicitationRequest.Message.init -> void
+AiSdk.Mcp.McpElicitationRequest.RequestedSchema.get -> System.Text.Json.JsonElement
+AiSdk.Mcp.McpElicitationRequest.RequestedSchema.init -> void
+AiSdk.Mcp.McpElicitationResult
+AiSdk.Mcp.McpElicitationResult.<Clone>$() -> AiSdk.Mcp.McpElicitationResult!
+AiSdk.Mcp.McpElicitationResult.Action.get -> string!
+AiSdk.Mcp.McpElicitationResult.Action.init -> void
+AiSdk.Mcp.McpElicitationResult.Content.get -> System.Text.Json.Nodes.JsonObject?
+AiSdk.Mcp.McpElicitationResult.Content.init -> void
+AiSdk.Mcp.McpElicitationResult.Deconstruct(out string! Action, out System.Text.Json.Nodes.JsonObject? Content) -> void
+AiSdk.Mcp.McpElicitationResult.Equals(AiSdk.Mcp.McpElicitationResult? other) -> bool
+AiSdk.Mcp.McpElicitationResult.McpElicitationResult(string! Action, System.Text.Json.Nodes.JsonObject? Content = null) -> void
+AiSdk.Mcp.McpException
+AiSdk.Mcp.McpException.Code.get -> int
+AiSdk.Mcp.McpException.McpException(string! message, int code = 0) -> void
+AiSdk.Mcp.McpPrompt
+AiSdk.Mcp.McpPrompt.<Clone>$() -> AiSdk.Mcp.McpPrompt!
+AiSdk.Mcp.McpPrompt.Arguments.get -> System.Collections.Generic.IReadOnlyList<AiSdk.Mcp.McpPromptArgument!>!
+AiSdk.Mcp.McpPrompt.Arguments.init -> void
+AiSdk.Mcp.McpPrompt.Deconstruct(out string! Name, out string? Description, out System.Collections.Generic.IReadOnlyList<AiSdk.Mcp.McpPromptArgument!>! Arguments) -> void
+AiSdk.Mcp.McpPrompt.Description.get -> string?
+AiSdk.Mcp.McpPrompt.Description.init -> void
+AiSdk.Mcp.McpPrompt.Equals(AiSdk.Mcp.McpPrompt? other) -> bool
+AiSdk.Mcp.McpPrompt.McpPrompt(string! Name, string? Description, System.Collections.Generic.IReadOnlyList<AiSdk.Mcp.McpPromptArgument!>! Arguments) -> void
+AiSdk.Mcp.McpPrompt.Name.get -> string!
+AiSdk.Mcp.McpPrompt.Name.init -> void
+AiSdk.Mcp.McpPrompt.Title.get -> string?
+AiSdk.Mcp.McpPrompt.Title.init -> void
+AiSdk.Mcp.McpPromptArgument
+AiSdk.Mcp.McpPromptArgument.<Clone>$() -> AiSdk.Mcp.McpPromptArgument!
+AiSdk.Mcp.McpPromptArgument.Deconstruct(out string! Name, out string? Description, out bool Required) -> void
+AiSdk.Mcp.McpPromptArgument.Description.get -> string?
+AiSdk.Mcp.McpPromptArgument.Description.init -> void
+AiSdk.Mcp.McpPromptArgument.Equals(AiSdk.Mcp.McpPromptArgument? other) -> bool
+AiSdk.Mcp.McpPromptArgument.McpPromptArgument(string! Name, string? Description, bool Required) -> void
+AiSdk.Mcp.McpPromptArgument.Name.get -> string!
+AiSdk.Mcp.McpPromptArgument.Name.init -> void
+AiSdk.Mcp.McpPromptArgument.Required.get -> bool
+AiSdk.Mcp.McpPromptArgument.Required.init -> void
+AiSdk.Mcp.McpPromptResult
+AiSdk.Mcp.McpPromptResult.<Clone>$() -> AiSdk.Mcp.McpPromptResult!
+AiSdk.Mcp.McpPromptResult.Deconstruct(out string? Description, out System.Collections.Generic.IReadOnlyList<AiSdk.ModelMessage!>! Messages) -> void
+AiSdk.Mcp.McpPromptResult.Description.get -> string?
+AiSdk.Mcp.McpPromptResult.Description.init -> void
+AiSdk.Mcp.McpPromptResult.Equals(AiSdk.Mcp.McpPromptResult? other) -> bool
+AiSdk.Mcp.McpPromptResult.McpPromptResult(string? Description, System.Collections.Generic.IReadOnlyList<AiSdk.ModelMessage!>! Messages) -> void
+AiSdk.Mcp.McpPromptResult.Messages.get -> System.Collections.Generic.IReadOnlyList<AiSdk.ModelMessage!>!
+AiSdk.Mcp.McpPromptResult.Messages.init -> void
+AiSdk.Mcp.McpRequestRejectedException
+AiSdk.Mcp.McpRequestRejectedException.McpRequestRejectedException(string? message = null) -> void
+AiSdk.Mcp.McpResource
+AiSdk.Mcp.McpResource.<Clone>$() -> AiSdk.Mcp.McpResource!
+AiSdk.Mcp.McpResource.Deconstruct(out string! Uri, out string! Name) -> void
+AiSdk.Mcp.McpResource.Description.get -> string?
+AiSdk.Mcp.McpResource.Description.init -> void
+AiSdk.Mcp.McpResource.Equals(AiSdk.Mcp.McpResource? other) -> bool
+AiSdk.Mcp.McpResource.McpResource(string! Uri, string! Name) -> void
+AiSdk.Mcp.McpResource.MimeType.get -> string?
+AiSdk.Mcp.McpResource.MimeType.init -> void
+AiSdk.Mcp.McpResource.Name.get -> string!
+AiSdk.Mcp.McpResource.Name.init -> void
+AiSdk.Mcp.McpResource.Title.get -> string?
+AiSdk.Mcp.McpResource.Title.init -> void
+AiSdk.Mcp.McpResource.Uri.get -> string!
+AiSdk.Mcp.McpResource.Uri.init -> void
+AiSdk.Mcp.McpResourceContent
+AiSdk.Mcp.McpResourceContent.<Clone>$() -> AiSdk.Mcp.McpResourceContent!
+AiSdk.Mcp.McpResourceContent.Blob.get -> byte[]?
+AiSdk.Mcp.McpResourceContent.Blob.init -> void
+AiSdk.Mcp.McpResourceContent.Deconstruct(out string! Uri, out string? MimeType, out string? Text, out byte[]? Blob) -> void
+AiSdk.Mcp.McpResourceContent.Equals(AiSdk.Mcp.McpResourceContent? other) -> bool
+AiSdk.Mcp.McpResourceContent.McpResourceContent(string! Uri, string? MimeType, string? Text, byte[]? Blob) -> void
+AiSdk.Mcp.McpResourceContent.MimeType.get -> string?
+AiSdk.Mcp.McpResourceContent.MimeType.init -> void
+AiSdk.Mcp.McpResourceContent.Text.get -> string?
+AiSdk.Mcp.McpResourceContent.Text.init -> void
+AiSdk.Mcp.McpResourceContent.Uri.get -> string!
+AiSdk.Mcp.McpResourceContent.Uri.init -> void
+AiSdk.Mcp.McpResourceTemplate
+AiSdk.Mcp.McpResourceTemplate.<Clone>$() -> AiSdk.Mcp.McpResourceTemplate!
+AiSdk.Mcp.McpResourceTemplate.Deconstruct(out string! UriTemplate, out string! Name) -> void
+AiSdk.Mcp.McpResourceTemplate.Description.get -> string?
+AiSdk.Mcp.McpResourceTemplate.Description.init -> void
+AiSdk.Mcp.McpResourceTemplate.Equals(AiSdk.Mcp.McpResourceTemplate? other) -> bool
+AiSdk.Mcp.McpResourceTemplate.McpResourceTemplate(string! UriTemplate, string! Name) -> void
+AiSdk.Mcp.McpResourceTemplate.MimeType.get -> string?
+AiSdk.Mcp.McpResourceTemplate.MimeType.init -> void
+AiSdk.Mcp.McpResourceTemplate.Name.get -> string!
+AiSdk.Mcp.McpResourceTemplate.Name.init -> void
+AiSdk.Mcp.McpResourceTemplate.UriTemplate.get -> string!
+AiSdk.Mcp.McpResourceTemplate.UriTemplate.init -> void
+AiSdk.Mcp.McpServerInfo
+AiSdk.Mcp.McpServerInfo.<Clone>$() -> AiSdk.Mcp.McpServerInfo!
+AiSdk.Mcp.McpServerInfo.Deconstruct(out string! Name, out string? Version) -> void
+AiSdk.Mcp.McpServerInfo.Equals(AiSdk.Mcp.McpServerInfo? other) -> bool
+AiSdk.Mcp.McpServerInfo.McpServerInfo(string! Name, string? Version) -> void
+AiSdk.Mcp.McpServerInfo.Name.get -> string!
+AiSdk.Mcp.McpServerInfo.Name.init -> void
+AiSdk.Mcp.McpServerInfo.Version.get -> string?
+AiSdk.Mcp.McpServerInfo.Version.init -> void
+AiSdk.Mcp.McpToolChangePolicy
+AiSdk.Mcp.McpToolChangePolicy.Accept = 1 -> AiSdk.Mcp.McpToolChangePolicy
+AiSdk.Mcp.McpToolChangePolicy.Reject = 0 -> AiSdk.Mcp.McpToolChangePolicy
+AiSdk.Mcp.McpToolDefinitionChange
+AiSdk.Mcp.McpToolDefinitionChange.<Clone>$() -> AiSdk.Mcp.McpToolDefinitionChange!
+AiSdk.Mcp.McpToolDefinitionChange.Deconstruct(out string! Name, out string! PinnedHash, out string! NewHash, out AiSdk.Mcp.McpToolInfo! Tool) -> void
+AiSdk.Mcp.McpToolDefinitionChange.Equals(AiSdk.Mcp.McpToolDefinitionChange? other) -> bool
+AiSdk.Mcp.McpToolDefinitionChange.McpToolDefinitionChange(string! Name, string! PinnedHash, string! NewHash, AiSdk.Mcp.McpToolInfo! Tool) -> void
+AiSdk.Mcp.McpToolDefinitionChange.Name.get -> string!
+AiSdk.Mcp.McpToolDefinitionChange.Name.init -> void
+AiSdk.Mcp.McpToolDefinitionChange.NewHash.get -> string!
+AiSdk.Mcp.McpToolDefinitionChange.NewHash.init -> void
+AiSdk.Mcp.McpToolDefinitionChange.PinnedHash.get -> string!
+AiSdk.Mcp.McpToolDefinitionChange.PinnedHash.init -> void
+AiSdk.Mcp.McpToolDefinitionChange.Tool.get -> AiSdk.Mcp.McpToolInfo!
+AiSdk.Mcp.McpToolDefinitionChange.Tool.init -> void
+AiSdk.Mcp.McpToolInfo
+AiSdk.Mcp.McpToolInfo.<Clone>$() -> AiSdk.Mcp.McpToolInfo!
+AiSdk.Mcp.McpToolInfo.Deconstruct(out string! Name, out string? Description, out System.Text.Json.JsonElement InputSchema) -> void
+AiSdk.Mcp.McpToolInfo.DefinitionChanged.get -> bool
+AiSdk.Mcp.McpToolInfo.DefinitionChanged.init -> void
+AiSdk.Mcp.McpToolInfo.DefinitionHash.get -> string!
+AiSdk.Mcp.McpToolInfo.DefinitionHash.init -> void
+AiSdk.Mcp.McpToolInfo.Description.get -> string?
+AiSdk.Mcp.McpToolInfo.Description.init -> void
+AiSdk.Mcp.McpToolInfo.Equals(AiSdk.Mcp.McpToolInfo? other) -> bool
+AiSdk.Mcp.McpToolInfo.InputSchema.get -> System.Text.Json.JsonElement
+AiSdk.Mcp.McpToolInfo.InputSchema.init -> void
+AiSdk.Mcp.McpToolInfo.McpToolInfo(string! Name, string? Description, System.Text.Json.JsonElement InputSchema) -> void
+AiSdk.Mcp.McpToolInfo.Name.get -> string!
+AiSdk.Mcp.McpToolInfo.Name.init -> void
+AiSdk.Mcp.McpToolInfo.Title.get -> string?
+AiSdk.Mcp.McpToolInfo.Title.init -> void
+AiSdk.Mcp.StdioMcpTransport
+AiSdk.Mcp.StdioMcpTransport.DisposeAsync() -> System.Threading.Tasks.ValueTask
+AiSdk.Mcp.StdioMcpTransport.InheritedVariables.get -> System.Collections.Generic.IReadOnlyCollection<string!>?
+AiSdk.Mcp.StdioMcpTransport.InheritedVariables.init -> void
+AiSdk.Mcp.StdioMcpTransport.InheritEnvironment.get -> bool
+AiSdk.Mcp.StdioMcpTransport.InheritEnvironment.init -> void
+AiSdk.Mcp.StdioMcpTransport.MaxMessageBytes.get -> long
+AiSdk.Mcp.StdioMcpTransport.MaxMessageBytes.init -> void
+AiSdk.Mcp.StdioMcpTransport.MaxStderrLineBytes.get -> int
+AiSdk.Mcp.StdioMcpTransport.MaxStderrLineBytes.init -> void
+AiSdk.Mcp.StdioMcpTransport.Messages.get -> System.Threading.Channels.ChannelReader<System.Text.Json.Nodes.JsonObject!>!
+AiSdk.Mcp.StdioMcpTransport.OnStderr.get -> System.Action<string!>?
+AiSdk.Mcp.StdioMcpTransport.OnStderr.init -> void
+AiSdk.Mcp.StdioMcpTransport.SendAsync(System.Text.Json.Nodes.JsonObject! message, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+AiSdk.Mcp.StdioMcpTransport.StartAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+AiSdk.Mcp.StdioMcpTransport.StdioMcpTransport(string! command, System.Collections.Generic.IEnumerable<string!>? arguments = null, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? environment = null, string? workingDirectory = null) -> void
+const AiSdk.Mcp.McpClient.LatestProtocolVersion = "2025-06-18" -> string!
+const AiSdk.Mcp.McpDiagnostics.DeprecatedInSpec = "AISDKMCP001" -> string!
+override AiSdk.Mcp.McpCallToolResult.Equals(object? obj) -> bool
+override AiSdk.Mcp.McpCallToolResult.GetHashCode() -> int
+override AiSdk.Mcp.McpCallToolResult.ToString() -> string!
+override AiSdk.Mcp.McpElicitationRequest.Equals(object? obj) -> bool
+override AiSdk.Mcp.McpElicitationRequest.GetHashCode() -> int
+override AiSdk.Mcp.McpElicitationRequest.ToString() -> string!
+override AiSdk.Mcp.McpElicitationResult.Equals(object? obj) -> bool
+override AiSdk.Mcp.McpElicitationResult.GetHashCode() -> int
+override AiSdk.Mcp.McpElicitationResult.ToString() -> string!
+override AiSdk.Mcp.McpPrompt.Equals(object? obj) -> bool
+override AiSdk.Mcp.McpPrompt.GetHashCode() -> int
+override AiSdk.Mcp.McpPrompt.ToString() -> string!
+override AiSdk.Mcp.McpPromptArgument.Equals(object? obj) -> bool
+override AiSdk.Mcp.McpPromptArgument.GetHashCode() -> int
+override AiSdk.Mcp.McpPromptArgument.ToString() -> string!
+override AiSdk.Mcp.McpPromptResult.Equals(object? obj) -> bool
+override AiSdk.Mcp.McpPromptResult.GetHashCode() -> int
+override AiSdk.Mcp.McpPromptResult.ToString() -> string!
+override AiSdk.Mcp.McpResource.Equals(object? obj) -> bool
+override AiSdk.Mcp.McpResource.GetHashCode() -> int
+override AiSdk.Mcp.McpResource.ToString() -> string!
+override AiSdk.Mcp.McpResourceContent.Equals(object? obj) -> bool
+override AiSdk.Mcp.McpResourceContent.GetHashCode() -> int
+override AiSdk.Mcp.McpResourceContent.ToString() -> string!
+override AiSdk.Mcp.McpResourceTemplate.Equals(object? obj) -> bool
+override AiSdk.Mcp.McpResourceTemplate.GetHashCode() -> int
+override AiSdk.Mcp.McpResourceTemplate.ToString() -> string!
+override AiSdk.Mcp.McpServerInfo.Equals(object? obj) -> bool
+override AiSdk.Mcp.McpServerInfo.GetHashCode() -> int
+override AiSdk.Mcp.McpServerInfo.ToString() -> string!
+override AiSdk.Mcp.McpToolDefinitionChange.Equals(object? obj) -> bool
+override AiSdk.Mcp.McpToolDefinitionChange.GetHashCode() -> int
+override AiSdk.Mcp.McpToolDefinitionChange.ToString() -> string!
+override AiSdk.Mcp.McpToolInfo.Equals(object? obj) -> bool
+override AiSdk.Mcp.McpToolInfo.GetHashCode() -> int
+override AiSdk.Mcp.McpToolInfo.ToString() -> string!
+static AiSdk.Mcp.McpCallToolResult.operator !=(AiSdk.Mcp.McpCallToolResult? left, AiSdk.Mcp.McpCallToolResult? right) -> bool
+static AiSdk.Mcp.McpCallToolResult.operator ==(AiSdk.Mcp.McpCallToolResult? left, AiSdk.Mcp.McpCallToolResult? right) -> bool
+static AiSdk.Mcp.McpClient.ConnectAsync(AiSdk.Mcp.IMcpTransport! transport, AiSdk.Mcp.McpClientOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Mcp.McpClient!>!
+static AiSdk.Mcp.McpElicitationRequest.operator !=(AiSdk.Mcp.McpElicitationRequest? left, AiSdk.Mcp.McpElicitationRequest? right) -> bool
+static AiSdk.Mcp.McpElicitationRequest.operator ==(AiSdk.Mcp.McpElicitationRequest? left, AiSdk.Mcp.McpElicitationRequest? right) -> bool
+static AiSdk.Mcp.McpElicitationResult.Accept(System.Text.Json.Nodes.JsonObject! content) -> AiSdk.Mcp.McpElicitationResult!
+static AiSdk.Mcp.McpElicitationResult.Cancel() -> AiSdk.Mcp.McpElicitationResult!
+static AiSdk.Mcp.McpElicitationResult.Decline() -> AiSdk.Mcp.McpElicitationResult!
+static AiSdk.Mcp.McpElicitationResult.operator !=(AiSdk.Mcp.McpElicitationResult? left, AiSdk.Mcp.McpElicitationResult? right) -> bool
+static AiSdk.Mcp.McpElicitationResult.operator ==(AiSdk.Mcp.McpElicitationResult? left, AiSdk.Mcp.McpElicitationResult? right) -> bool
+static AiSdk.Mcp.McpPrompt.operator !=(AiSdk.Mcp.McpPrompt? left, AiSdk.Mcp.McpPrompt? right) -> bool
+static AiSdk.Mcp.McpPrompt.operator ==(AiSdk.Mcp.McpPrompt? left, AiSdk.Mcp.McpPrompt? right) -> bool
+static AiSdk.Mcp.McpPromptArgument.operator !=(AiSdk.Mcp.McpPromptArgument? left, AiSdk.Mcp.McpPromptArgument? right) -> bool
+static AiSdk.Mcp.McpPromptArgument.operator ==(AiSdk.Mcp.McpPromptArgument? left, AiSdk.Mcp.McpPromptArgument? right) -> bool
+static AiSdk.Mcp.McpPromptResult.operator !=(AiSdk.Mcp.McpPromptResult? left, AiSdk.Mcp.McpPromptResult? right) -> bool
+static AiSdk.Mcp.McpPromptResult.operator ==(AiSdk.Mcp.McpPromptResult? left, AiSdk.Mcp.McpPromptResult? right) -> bool
+static AiSdk.Mcp.McpResource.operator !=(AiSdk.Mcp.McpResource? left, AiSdk.Mcp.McpResource? right) -> bool
+static AiSdk.Mcp.McpResource.operator ==(AiSdk.Mcp.McpResource? left, AiSdk.Mcp.McpResource? right) -> bool
+static AiSdk.Mcp.McpResourceContent.operator !=(AiSdk.Mcp.McpResourceContent? left, AiSdk.Mcp.McpResourceContent? right) -> bool
+static AiSdk.Mcp.McpResourceContent.operator ==(AiSdk.Mcp.McpResourceContent? left, AiSdk.Mcp.McpResourceContent? right) -> bool
+static AiSdk.Mcp.McpResourceTemplate.operator !=(AiSdk.Mcp.McpResourceTemplate? left, AiSdk.Mcp.McpResourceTemplate? right) -> bool
+static AiSdk.Mcp.McpResourceTemplate.operator ==(AiSdk.Mcp.McpResourceTemplate? left, AiSdk.Mcp.McpResourceTemplate? right) -> bool
+static AiSdk.Mcp.McpServerInfo.operator !=(AiSdk.Mcp.McpServerInfo? left, AiSdk.Mcp.McpServerInfo? right) -> bool
+static AiSdk.Mcp.McpServerInfo.operator ==(AiSdk.Mcp.McpServerInfo? left, AiSdk.Mcp.McpServerInfo? right) -> bool
+static AiSdk.Mcp.McpToolDefinitionChange.operator !=(AiSdk.Mcp.McpToolDefinitionChange? left, AiSdk.Mcp.McpToolDefinitionChange? right) -> bool
+static AiSdk.Mcp.McpToolDefinitionChange.operator ==(AiSdk.Mcp.McpToolDefinitionChange? left, AiSdk.Mcp.McpToolDefinitionChange? right) -> bool
+static AiSdk.Mcp.McpToolInfo.operator !=(AiSdk.Mcp.McpToolInfo? left, AiSdk.Mcp.McpToolInfo? right) -> bool
+static AiSdk.Mcp.McpToolInfo.operator ==(AiSdk.Mcp.McpToolInfo? left, AiSdk.Mcp.McpToolInfo? right) -> bool
+static AiSdk.Mcp.StdioMcpTransport.DefaultInheritedVariables.get -> System.Collections.Generic.IReadOnlyList<string!>!
+static AiSdk.Mcp.StdioMcpTransport.FromStreams(System.IO.Stream! serverInput, System.IO.Stream! serverOutput) -> AiSdk.Mcp.StdioMcpTransport!

@@ -35,6 +35,14 @@
     <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
+  <!--
+    API pública controlada (política de versiones de la 1.0): PublicAPI.Shipped.txt tiene lo publicado y
+    PublicAPI.Unshipped.txt lo que agrega la próxima versión. Un cambio público sin anotarlo no compila.
+  -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
+  </ItemGroup>
+
   <ItemGroup>
     <!-- README sin SVG ni rutas relativas: nuget.org no los muestra. El README visual está en la raíz del repositorio. -->
     <None Include="$(MSBuildThisFileDirectory)../docs/nuget/README.md" Pack="true" PackagePath="\" Visible="false" />

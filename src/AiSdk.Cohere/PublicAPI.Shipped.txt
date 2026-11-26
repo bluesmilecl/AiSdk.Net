@@ -1,0 +1,29 @@
+#nullable enable
+AiSdk.Cohere.CohereEmbeddingModel
+AiSdk.Cohere.CohereEmbeddingModel.EmbedAsync(System.Collections.Generic.IReadOnlyList<string!>! values, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.EmbeddingModelResult!>!
+AiSdk.Cohere.CohereEmbeddingModel.MaxEmbeddingsPerCall.get -> int?
+AiSdk.Cohere.CohereEmbeddingModel.ModelId.get -> string!
+AiSdk.Cohere.CohereEmbeddingModel.Provider.get -> string!
+AiSdk.Cohere.CohereProvider
+AiSdk.Cohere.CohereProvider.CohereProvider(AiSdk.Cohere.CohereProviderOptions? options = null) -> void
+AiSdk.Cohere.CohereProvider.Embedding(string! modelId = "embed-v4.0", string! inputType = "search_document", int? dimensions = null) -> AiSdk.IEmbeddingModel!
+AiSdk.Cohere.CohereProvider.EmbeddingModel(string! modelId) -> AiSdk.IEmbeddingModel!
+AiSdk.Cohere.CohereProvider.LanguageModel(string! modelId) -> AiSdk.ILanguageModel!
+AiSdk.Cohere.CohereProvider.Name.get -> string!
+AiSdk.Cohere.CohereProvider.Reranking(string! modelId = "rerank-v3.5") -> AiSdk.IRerankingModel!
+AiSdk.Cohere.CohereProvider.RerankingModel(string! modelId) -> AiSdk.IRerankingModel!
+AiSdk.Cohere.CohereProviderOptions
+AiSdk.Cohere.CohereProviderOptions.ApiKey.get -> string?
+AiSdk.Cohere.CohereProviderOptions.ApiKey.set -> void
+AiSdk.Cohere.CohereProviderOptions.BaseUrl.get -> string!
+AiSdk.Cohere.CohereProviderOptions.BaseUrl.set -> void
+AiSdk.Cohere.CohereProviderOptions.CohereProviderOptions() -> void
+AiSdk.Cohere.CohereProviderOptions.HttpClient.get -> System.Net.Http.HttpClient?
+AiSdk.Cohere.CohereProviderOptions.HttpClient.set -> void
+AiSdk.Cohere.CohereProviderOptions.Name.get -> string!
+AiSdk.Cohere.CohereProviderOptions.Name.set -> void
+AiSdk.Cohere.CohereRerankingModel
+AiSdk.Cohere.CohereRerankingModel.ModelId.get -> string!
+AiSdk.Cohere.CohereRerankingModel.Provider.get -> string!
+AiSdk.Cohere.CohereRerankingModel.RerankAsync(AiSdk.RerankModelRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.RerankModelResult!>!
+static AiSdk.Cohere.CohereProvider.Default.get -> AiSdk.Cohere.CohereProvider!

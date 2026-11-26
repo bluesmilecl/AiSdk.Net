@@ -1,0 +1,29 @@
+#nullable enable
+AiSdk.Extensions.AI.ChatClientLanguageModel
+AiSdk.Extensions.AI.ChatClientLanguageModel.ChatClientLanguageModel(Microsoft.Extensions.AI.IChatClient! client, string! provider, string! modelId) -> void
+AiSdk.Extensions.AI.ChatClientLanguageModel.GenerateAsync(AiSdk.LanguageModelRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.LanguageModelResult!>!
+AiSdk.Extensions.AI.ChatClientLanguageModel.ModelId.get -> string!
+AiSdk.Extensions.AI.ChatClientLanguageModel.Provider.get -> string!
+AiSdk.Extensions.AI.ChatClientLanguageModel.StreamAsync(AiSdk.LanguageModelRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<AiSdk.StreamPart!>!
+AiSdk.Extensions.AI.EmbeddingGeneratorModel
+AiSdk.Extensions.AI.EmbeddingGeneratorModel.EmbedAsync(System.Collections.Generic.IReadOnlyList<string!>! values, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.EmbeddingModelResult!>!
+AiSdk.Extensions.AI.EmbeddingGeneratorModel.EmbeddingGeneratorModel(Microsoft.Extensions.AI.IEmbeddingGenerator<string!, Microsoft.Extensions.AI.Embedding<float>!>! generator, string! provider, string! modelId) -> void
+AiSdk.Extensions.AI.EmbeddingGeneratorModel.MaxEmbeddingsPerCall.get -> int?
+AiSdk.Extensions.AI.EmbeddingGeneratorModel.ModelId.get -> string!
+AiSdk.Extensions.AI.EmbeddingGeneratorModel.Provider.get -> string!
+AiSdk.Extensions.AI.EmbeddingModelGenerator
+AiSdk.Extensions.AI.EmbeddingModelGenerator.Dispose() -> void
+AiSdk.Extensions.AI.EmbeddingModelGenerator.EmbeddingModelGenerator(AiSdk.IEmbeddingModel! model, System.Uri? providerUri = null) -> void
+AiSdk.Extensions.AI.EmbeddingModelGenerator.GenerateAsync(System.Collections.Generic.IEnumerable<string!>! values, Microsoft.Extensions.AI.EmbeddingGenerationOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Microsoft.Extensions.AI.GeneratedEmbeddings<Microsoft.Extensions.AI.Embedding<float>!>!>!
+AiSdk.Extensions.AI.EmbeddingModelGenerator.GetService(System.Type! serviceType, object? serviceKey = null) -> object?
+AiSdk.Extensions.AI.LanguageModelChatClient
+AiSdk.Extensions.AI.LanguageModelChatClient.Dispose() -> void
+AiSdk.Extensions.AI.LanguageModelChatClient.GetResponseAsync(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.ChatMessage!>! messages, Microsoft.Extensions.AI.ChatOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Microsoft.Extensions.AI.ChatResponse!>!
+AiSdk.Extensions.AI.LanguageModelChatClient.GetService(System.Type! serviceType, object? serviceKey = null) -> object?
+AiSdk.Extensions.AI.LanguageModelChatClient.GetStreamingResponseAsync(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.ChatMessage!>! messages, Microsoft.Extensions.AI.ChatOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Microsoft.Extensions.AI.ChatResponseUpdate!>!
+AiSdk.Extensions.AI.LanguageModelChatClient.LanguageModelChatClient(AiSdk.ILanguageModel! model, System.Uri? providerUri = null) -> void
+AiSdk.Extensions.AI.MicrosoftExtensionsAIExtensions
+static AiSdk.Extensions.AI.MicrosoftExtensionsAIExtensions.AsEmbeddingModel(this Microsoft.Extensions.AI.IEmbeddingGenerator<string!, Microsoft.Extensions.AI.Embedding<float>!>! generator, string? provider = null, string? modelId = null) -> AiSdk.IEmbeddingModel!
+static AiSdk.Extensions.AI.MicrosoftExtensionsAIExtensions.AsIChatClient(this AiSdk.ILanguageModel! model, System.Uri? providerUri = null) -> Microsoft.Extensions.AI.IChatClient!
+static AiSdk.Extensions.AI.MicrosoftExtensionsAIExtensions.AsIEmbeddingGenerator(this AiSdk.IEmbeddingModel! model, System.Uri? providerUri = null) -> Microsoft.Extensions.AI.IEmbeddingGenerator<string!, Microsoft.Extensions.AI.Embedding<float>!>!
+static AiSdk.Extensions.AI.MicrosoftExtensionsAIExtensions.AsLanguageModel(this Microsoft.Extensions.AI.IChatClient! client, string? provider = null, string? modelId = null) -> AiSdk.ILanguageModel!

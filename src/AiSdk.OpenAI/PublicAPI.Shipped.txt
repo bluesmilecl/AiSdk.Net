@@ -1,0 +1,150 @@
+#nullable enable
+AiSdk.OpenAI.OpenAIBatchClient
+AiSdk.OpenAI.OpenAIBatchClient.CancelAsync(string! batchId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.BatchJob!>!
+AiSdk.OpenAI.OpenAIBatchClient.CreateAsync(System.Collections.Generic.IReadOnlyList<AiSdk.BatchRequestItem!>! requests, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.BatchJob!>!
+AiSdk.OpenAI.OpenAIBatchClient.GetAsync(string! batchId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.BatchJob!>!
+AiSdk.OpenAI.OpenAIBatchClient.GetResultsAsync(string! batchId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<AiSdk.BatchResultItem!>!
+AiSdk.OpenAI.OpenAIChatLanguageModel
+AiSdk.OpenAI.OpenAIChatLanguageModel.GenerateAsync(AiSdk.LanguageModelRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.LanguageModelResult!>!
+AiSdk.OpenAI.OpenAIChatLanguageModel.ModelId.get -> string!
+AiSdk.OpenAI.OpenAIChatLanguageModel.Provider.get -> string!
+AiSdk.OpenAI.OpenAIChatLanguageModel.StreamAsync(AiSdk.LanguageModelRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<AiSdk.StreamPart!>!
+AiSdk.OpenAI.OpenAIEmbeddingModel
+AiSdk.OpenAI.OpenAIEmbeddingModel.EmbedAsync(System.Collections.Generic.IReadOnlyList<string!>! values, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.EmbeddingModelResult!>!
+AiSdk.OpenAI.OpenAIEmbeddingModel.MaxEmbeddingsPerCall.get -> int?
+AiSdk.OpenAI.OpenAIEmbeddingModel.ModelId.get -> string!
+AiSdk.OpenAI.OpenAIEmbeddingModel.Provider.get -> string!
+AiSdk.OpenAI.OpenAIFileClient
+AiSdk.OpenAI.OpenAIFileClient.DeleteAsync(string! fileId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+AiSdk.OpenAI.OpenAIFileClient.DownloadAsync(string! fileId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+AiSdk.OpenAI.OpenAIFileClient.ListAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.UploadedFile!>!>!
+AiSdk.OpenAI.OpenAIFileClient.UploadAsync(byte[]! data, string! filename, string! mediaType, string? purpose = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.UploadedFile!>!
+AiSdk.OpenAI.OpenAIImageModel
+AiSdk.OpenAI.OpenAIImageModel.GenerateAsync(AiSdk.ImageModelRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.ImageModelResult!>!
+AiSdk.OpenAI.OpenAIImageModel.MaxImagesPerCall.get -> int?
+AiSdk.OpenAI.OpenAIImageModel.ModelId.get -> string!
+AiSdk.OpenAI.OpenAIImageModel.Provider.get -> string!
+AiSdk.OpenAI.OpenAIOptions
+AiSdk.OpenAI.OpenAIProvider
+AiSdk.OpenAI.OpenAIProvider.Batches(string! modelId, bool useResponsesApi = true) -> AiSdk.OpenAI.OpenAIBatchClient!
+AiSdk.OpenAI.OpenAIProvider.Chat(string! modelId) -> AiSdk.ILanguageModel!
+AiSdk.OpenAI.OpenAIProvider.Embedding(string! modelId, int? dimensions = null) -> AiSdk.IEmbeddingModel!
+AiSdk.OpenAI.OpenAIProvider.EmbeddingModel(string! modelId) -> AiSdk.IEmbeddingModel!
+AiSdk.OpenAI.OpenAIProvider.Files.get -> AiSdk.OpenAI.OpenAIFileClient!
+AiSdk.OpenAI.OpenAIProvider.Image(string! modelId) -> AiSdk.IImageModel!
+AiSdk.OpenAI.OpenAIProvider.ImageModel(string! modelId) -> AiSdk.IImageModel!
+AiSdk.OpenAI.OpenAIProvider.LanguageModel(string! modelId) -> AiSdk.ILanguageModel!
+AiSdk.OpenAI.OpenAIProvider.Name.get -> string!
+AiSdk.OpenAI.OpenAIProvider.OpenAIProvider(AiSdk.OpenAI.OpenAIProviderOptions? options = null) -> void
+AiSdk.OpenAI.OpenAIProvider.OpenAIProvider(System.Action<AiSdk.OpenAI.OpenAIProviderOptions!>! configure) -> void
+AiSdk.OpenAI.OpenAIProvider.Responses(string! modelId) -> AiSdk.ILanguageModel!
+AiSdk.OpenAI.OpenAIProvider.Speech(string! modelId) -> AiSdk.ISpeechModel!
+AiSdk.OpenAI.OpenAIProvider.SpeechModel(string! modelId) -> AiSdk.ISpeechModel!
+AiSdk.OpenAI.OpenAIProvider.this[string! modelId].get -> AiSdk.ILanguageModel!
+AiSdk.OpenAI.OpenAIProvider.Transcription(string! modelId) -> AiSdk.ITranscriptionModel!
+AiSdk.OpenAI.OpenAIProvider.TranscriptionModel(string! modelId) -> AiSdk.ITranscriptionModel!
+AiSdk.OpenAI.OpenAIProvider.VectorStores.get -> AiSdk.OpenAI.OpenAIVectorStoreClient!
+AiSdk.OpenAI.OpenAIProviderOptions
+AiSdk.OpenAI.OpenAIProviderOptions.ApiKey.get -> string?
+AiSdk.OpenAI.OpenAIProviderOptions.ApiKey.set -> void
+AiSdk.OpenAI.OpenAIProviderOptions.ApiKeyEnvironmentVariable.get -> string?
+AiSdk.OpenAI.OpenAIProviderOptions.ApiKeyEnvironmentVariable.set -> void
+AiSdk.OpenAI.OpenAIProviderOptions.BaseUrl.get -> string!
+AiSdk.OpenAI.OpenAIProviderOptions.BaseUrl.set -> void
+AiSdk.OpenAI.OpenAIProviderOptions.Headers.get -> System.Collections.Generic.Dictionary<string!, string!>!
+AiSdk.OpenAI.OpenAIProviderOptions.Headers.set -> void
+AiSdk.OpenAI.OpenAIProviderOptions.HttpClient.get -> System.Net.Http.HttpClient?
+AiSdk.OpenAI.OpenAIProviderOptions.HttpClient.set -> void
+AiSdk.OpenAI.OpenAIProviderOptions.Name.get -> string!
+AiSdk.OpenAI.OpenAIProviderOptions.Name.set -> void
+AiSdk.OpenAI.OpenAIProviderOptions.OpenAIProviderOptions() -> void
+AiSdk.OpenAI.OpenAIProviderOptions.Organization.get -> string?
+AiSdk.OpenAI.OpenAIProviderOptions.Organization.set -> void
+AiSdk.OpenAI.OpenAIProviderOptions.Project.get -> string?
+AiSdk.OpenAI.OpenAIProviderOptions.Project.set -> void
+AiSdk.OpenAI.OpenAIProviderOptions.RequireApiKey.get -> bool
+AiSdk.OpenAI.OpenAIProviderOptions.RequireApiKey.set -> void
+AiSdk.OpenAI.OpenAIProviderOptions.RequiredToolChoice.get -> string!
+AiSdk.OpenAI.OpenAIProviderOptions.RequiredToolChoice.set -> void
+AiSdk.OpenAI.OpenAIProviderOptions.SeedParameterName.get -> string!
+AiSdk.OpenAI.OpenAIProviderOptions.SeedParameterName.set -> void
+AiSdk.OpenAI.OpenAIProviderOptions.SendEmbeddingEncodingFormat.get -> bool
+AiSdk.OpenAI.OpenAIProviderOptions.SendEmbeddingEncodingFormat.set -> void
+AiSdk.OpenAI.OpenAIProviderOptions.SendStreamOptions.get -> bool
+AiSdk.OpenAI.OpenAIProviderOptions.SendStreamOptions.set -> void
+AiSdk.OpenAI.OpenAIProviderOptions.UseLegacyMaxTokens.get -> bool
+AiSdk.OpenAI.OpenAIProviderOptions.UseLegacyMaxTokens.set -> void
+AiSdk.OpenAI.OpenAIResponsesLanguageModel
+AiSdk.OpenAI.OpenAIResponsesLanguageModel.CountTokensAsync(AiSdk.LanguageModelRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+AiSdk.OpenAI.OpenAIResponsesLanguageModel.GenerateAsync(AiSdk.LanguageModelRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.LanguageModelResult!>!
+AiSdk.OpenAI.OpenAIResponsesLanguageModel.ModelId.get -> string!
+AiSdk.OpenAI.OpenAIResponsesLanguageModel.Provider.get -> string!
+AiSdk.OpenAI.OpenAIResponsesLanguageModel.StreamAsync(AiSdk.LanguageModelRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<AiSdk.StreamPart!>!
+AiSdk.OpenAI.OpenAISpeechModel
+AiSdk.OpenAI.OpenAISpeechModel.GenerateAsync(AiSdk.SpeechModelRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.SpeechModelResult!>!
+AiSdk.OpenAI.OpenAISpeechModel.ModelId.get -> string!
+AiSdk.OpenAI.OpenAISpeechModel.Provider.get -> string!
+AiSdk.OpenAI.OpenAITools
+AiSdk.OpenAI.OpenAITranscriptionModel
+AiSdk.OpenAI.OpenAITranscriptionModel.ModelId.get -> string!
+AiSdk.OpenAI.OpenAITranscriptionModel.Provider.get -> string!
+AiSdk.OpenAI.OpenAITranscriptionModel.TranscribeAsync(AiSdk.TranscriptionModelRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.TranscriptionModelResult!>!
+AiSdk.OpenAI.OpenAIVectorStore
+AiSdk.OpenAI.OpenAIVectorStore.<Clone>$() -> AiSdk.OpenAI.OpenAIVectorStore!
+AiSdk.OpenAI.OpenAIVectorStore.Deconstruct(out string! Id, out string! Name, out string! Status, out int FilesCompleted, out int FilesInProgress, out int FilesFailed) -> void
+AiSdk.OpenAI.OpenAIVectorStore.Equals(AiSdk.OpenAI.OpenAIVectorStore? other) -> bool
+AiSdk.OpenAI.OpenAIVectorStore.FilesCompleted.get -> int
+AiSdk.OpenAI.OpenAIVectorStore.FilesCompleted.init -> void
+AiSdk.OpenAI.OpenAIVectorStore.FilesFailed.get -> int
+AiSdk.OpenAI.OpenAIVectorStore.FilesFailed.init -> void
+AiSdk.OpenAI.OpenAIVectorStore.FilesInProgress.get -> int
+AiSdk.OpenAI.OpenAIVectorStore.FilesInProgress.init -> void
+AiSdk.OpenAI.OpenAIVectorStore.Id.get -> string!
+AiSdk.OpenAI.OpenAIVectorStore.Id.init -> void
+AiSdk.OpenAI.OpenAIVectorStore.IsReady.get -> bool
+AiSdk.OpenAI.OpenAIVectorStore.Name.get -> string!
+AiSdk.OpenAI.OpenAIVectorStore.Name.init -> void
+AiSdk.OpenAI.OpenAIVectorStore.OpenAIVectorStore(string! Id, string! Name, string! Status, int FilesCompleted, int FilesInProgress, int FilesFailed) -> void
+AiSdk.OpenAI.OpenAIVectorStore.Status.get -> string!
+AiSdk.OpenAI.OpenAIVectorStore.Status.init -> void
+AiSdk.OpenAI.OpenAIVectorStoreClient
+AiSdk.OpenAI.OpenAIVectorStoreClient.AddFileAsync(string! vectorStoreId, string! fileId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+AiSdk.OpenAI.OpenAIVectorStoreClient.CreateAsync(string! name, System.Collections.Generic.IEnumerable<string!>? fileIds = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.OpenAI.OpenAIVectorStore!>!
+AiSdk.OpenAI.OpenAIVectorStoreClient.DeleteAsync(string! vectorStoreId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+AiSdk.OpenAI.OpenAIVectorStoreClient.GetAsync(string! vectorStoreId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.OpenAI.OpenAIVectorStore!>!
+AiSdk.OpenAI.OpenAIVectorStoreClient.ListAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.OpenAI.OpenAIVectorStore!>!>!
+AiSdk.OpenAI.OpenAIVectorStoreClient.SearchAsync(string! vectorStoreId, string! query, int maxResults = 10, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.OpenAI.OpenAIVectorStoreHit!>!>!
+AiSdk.OpenAI.OpenAIVectorStoreClient.UploadFileAsync(string! vectorStoreId, byte[]! data, string! filename, string! mediaType, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.UploadedFile!>!
+AiSdk.OpenAI.OpenAIVectorStoreClient.WaitUntilReadyAsync(string! vectorStoreId, System.TimeSpan? pollInterval = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.OpenAI.OpenAIVectorStore!>!
+AiSdk.OpenAI.OpenAIVectorStoreHit
+AiSdk.OpenAI.OpenAIVectorStoreHit.<Clone>$() -> AiSdk.OpenAI.OpenAIVectorStoreHit!
+AiSdk.OpenAI.OpenAIVectorStoreHit.Deconstruct(out string! FileId, out string! Filename, out double Score, out string! Text) -> void
+AiSdk.OpenAI.OpenAIVectorStoreHit.Equals(AiSdk.OpenAI.OpenAIVectorStoreHit? other) -> bool
+AiSdk.OpenAI.OpenAIVectorStoreHit.FileId.get -> string!
+AiSdk.OpenAI.OpenAIVectorStoreHit.FileId.init -> void
+AiSdk.OpenAI.OpenAIVectorStoreHit.Filename.get -> string!
+AiSdk.OpenAI.OpenAIVectorStoreHit.Filename.init -> void
+AiSdk.OpenAI.OpenAIVectorStoreHit.OpenAIVectorStoreHit(string! FileId, string! Filename, double Score, string! Text) -> void
+AiSdk.OpenAI.OpenAIVectorStoreHit.Score.get -> double
+AiSdk.OpenAI.OpenAIVectorStoreHit.Score.init -> void
+AiSdk.OpenAI.OpenAIVectorStoreHit.Text.get -> string!
+AiSdk.OpenAI.OpenAIVectorStoreHit.Text.init -> void
+const AiSdk.OpenAI.OpenAIResponsesLanguageModel.EncryptedContentKey = "openai.encryptedContent" -> string!
+const AiSdk.OpenAI.OpenAIResponsesLanguageModel.ItemIdKey = "openai.itemId" -> string!
+override AiSdk.OpenAI.OpenAIVectorStore.Equals(object? obj) -> bool
+override AiSdk.OpenAI.OpenAIVectorStore.GetHashCode() -> int
+override AiSdk.OpenAI.OpenAIVectorStore.ToString() -> string!
+override AiSdk.OpenAI.OpenAIVectorStoreHit.Equals(object? obj) -> bool
+override AiSdk.OpenAI.OpenAIVectorStoreHit.GetHashCode() -> int
+override AiSdk.OpenAI.OpenAIVectorStoreHit.ToString() -> string!
+static AiSdk.OpenAI.OpenAIOptions.Create(string? reasoningEffort = null, string? reasoningSummary = null, bool? store = null, bool? parallelToolCalls = null, string? serviceTier = null, string? user = null) -> AiSdk.ProviderOptions!
+static AiSdk.OpenAI.OpenAIProvider.Compatible(string! name, string! baseUrl, string? apiKey = null, string? apiKeyEnvironmentVariable = null) -> AiSdk.OpenAI.OpenAIProvider!
+static AiSdk.OpenAI.OpenAIProvider.Default.get -> AiSdk.OpenAI.OpenAIProvider!
+static AiSdk.OpenAI.OpenAITools.CodeInterpreter(string? containerId = null) -> AiSdk.Tool!
+static AiSdk.OpenAI.OpenAITools.FileSearch(System.Collections.Generic.IEnumerable<string!>! vectorStoreIds, int? maxNumResults = null) -> AiSdk.Tool!
+static AiSdk.OpenAI.OpenAITools.ServerTool(string! type, string! name, System.Text.Json.Nodes.JsonObject? extra = null) -> AiSdk.Tool!
+static AiSdk.OpenAI.OpenAITools.WebSearch(string? searchContextSize = null, System.Collections.Generic.IEnumerable<string!>? allowedDomains = null, (string! City, string! Country)? userLocation = null) -> AiSdk.Tool!
+static AiSdk.OpenAI.OpenAIVectorStore.operator !=(AiSdk.OpenAI.OpenAIVectorStore? left, AiSdk.OpenAI.OpenAIVectorStore? right) -> bool
+static AiSdk.OpenAI.OpenAIVectorStore.operator ==(AiSdk.OpenAI.OpenAIVectorStore? left, AiSdk.OpenAI.OpenAIVectorStore? right) -> bool
+static AiSdk.OpenAI.OpenAIVectorStoreHit.operator !=(AiSdk.OpenAI.OpenAIVectorStoreHit? left, AiSdk.OpenAI.OpenAIVectorStoreHit? right) -> bool
+static AiSdk.OpenAI.OpenAIVectorStoreHit.operator ==(AiSdk.OpenAI.OpenAIVectorStoreHit? left, AiSdk.OpenAI.OpenAIVectorStoreHit? right) -> bool

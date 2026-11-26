@@ -1,0 +1,29 @@
+#nullable enable
+AiSdk.Mistral.MistralOcr
+AiSdk.Mistral.MistralOcr.MistralOcr(AiSdk.Mistral.MistralProviderOptions! options, string! modelId = "mistral-ocr-latest") -> void
+AiSdk.Mistral.MistralOcr.Name.get -> string!
+AiSdk.Mistral.MistralOcr.RecognizeAsync(AiSdk.OcrRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.OcrResult!>!
+AiSdk.Mistral.MistralOcr.Supports(string! mediaType) -> bool
+AiSdk.Mistral.MistralProvider
+AiSdk.Mistral.MistralProvider.Chat(string! modelId) -> AiSdk.ILanguageModel!
+AiSdk.Mistral.MistralProvider.Embedding(string! modelId = "mistral-embed") -> AiSdk.IEmbeddingModel!
+AiSdk.Mistral.MistralProvider.EmbeddingModel(string! modelId) -> AiSdk.IEmbeddingModel!
+AiSdk.Mistral.MistralProvider.LanguageModel(string! modelId) -> AiSdk.ILanguageModel!
+AiSdk.Mistral.MistralProvider.MistralProvider(AiSdk.Mistral.MistralProviderOptions? options = null) -> void
+AiSdk.Mistral.MistralProvider.MistralProvider(System.Action<AiSdk.Mistral.MistralProviderOptions!>! configure) -> void
+AiSdk.Mistral.MistralProvider.Name.get -> string!
+AiSdk.Mistral.MistralProvider.Ocr(string! modelId = "mistral-ocr-latest") -> AiSdk.IOcrEngine!
+AiSdk.Mistral.MistralProvider.this[string! modelId].get -> AiSdk.ILanguageModel!
+AiSdk.Mistral.MistralProviderOptions
+AiSdk.Mistral.MistralProviderOptions.ApiKey.get -> string?
+AiSdk.Mistral.MistralProviderOptions.ApiKey.set -> void
+AiSdk.Mistral.MistralProviderOptions.BaseUrl.get -> string!
+AiSdk.Mistral.MistralProviderOptions.BaseUrl.set -> void
+AiSdk.Mistral.MistralProviderOptions.Headers.get -> System.Collections.Generic.Dictionary<string!, string!>!
+AiSdk.Mistral.MistralProviderOptions.Headers.set -> void
+AiSdk.Mistral.MistralProviderOptions.HttpClient.get -> System.Net.Http.HttpClient?
+AiSdk.Mistral.MistralProviderOptions.HttpClient.set -> void
+AiSdk.Mistral.MistralProviderOptions.MistralProviderOptions() -> void
+AiSdk.Mistral.MistralProviderOptions.Name.get -> string!
+AiSdk.Mistral.MistralProviderOptions.Name.set -> void
+static AiSdk.Mistral.MistralProvider.Default.get -> AiSdk.Mistral.MistralProvider!

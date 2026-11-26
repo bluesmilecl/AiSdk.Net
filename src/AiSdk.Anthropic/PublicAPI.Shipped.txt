@@ -1,0 +1,140 @@
+#nullable enable
+AiSdk.Anthropic.AnthropicBatchClient
+AiSdk.Anthropic.AnthropicBatchClient.CancelAsync(string! batchId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.BatchJob!>!
+AiSdk.Anthropic.AnthropicBatchClient.CreateAsync(System.Collections.Generic.IReadOnlyList<AiSdk.BatchRequestItem!>! requests, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.BatchJob!>!
+AiSdk.Anthropic.AnthropicBatchClient.GetAsync(string! batchId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.BatchJob!>!
+AiSdk.Anthropic.AnthropicBatchClient.GetResultsAsync(string! batchId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<AiSdk.BatchResultItem!>!
+AiSdk.Anthropic.AnthropicFileClient
+AiSdk.Anthropic.AnthropicFileClient.DeleteAsync(string! fileId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+AiSdk.Anthropic.AnthropicFileClient.DownloadAsync(string! fileId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+AiSdk.Anthropic.AnthropicFileClient.GetAsync(string! fileId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.UploadedFile!>!
+AiSdk.Anthropic.AnthropicFileClient.ListAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.UploadedFile!>!>!
+AiSdk.Anthropic.AnthropicFileClient.UploadAsync(byte[]! data, string! filename, string! mediaType, string? purpose = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.UploadedFile!>!
+AiSdk.Anthropic.AnthropicMessagesLanguageModel
+AiSdk.Anthropic.AnthropicMessagesLanguageModel.CountTokensAsync(AiSdk.LanguageModelRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+AiSdk.Anthropic.AnthropicMessagesLanguageModel.GenerateAsync(AiSdk.LanguageModelRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.LanguageModelResult!>!
+AiSdk.Anthropic.AnthropicMessagesLanguageModel.ModelId.get -> string!
+AiSdk.Anthropic.AnthropicMessagesLanguageModel.Provider.get -> string!
+AiSdk.Anthropic.AnthropicMessagesLanguageModel.StreamAsync(AiSdk.LanguageModelRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<AiSdk.StreamPart!>!
+AiSdk.Anthropic.AnthropicOptions
+AiSdk.Anthropic.AnthropicProvider
+AiSdk.Anthropic.AnthropicProvider.AnthropicProvider(AiSdk.Anthropic.AnthropicProviderOptions? options = null) -> void
+AiSdk.Anthropic.AnthropicProvider.AnthropicProvider(System.Action<AiSdk.Anthropic.AnthropicProviderOptions!>! configure) -> void
+AiSdk.Anthropic.AnthropicProvider.Batches(string! modelId) -> AiSdk.Anthropic.AnthropicBatchClient!
+AiSdk.Anthropic.AnthropicProvider.Files.get -> AiSdk.Anthropic.AnthropicFileClient!
+AiSdk.Anthropic.AnthropicProvider.LanguageModel(string! modelId) -> AiSdk.ILanguageModel!
+AiSdk.Anthropic.AnthropicProvider.Messages(string! modelId) -> AiSdk.ILanguageModel!
+AiSdk.Anthropic.AnthropicProvider.Name.get -> string!
+AiSdk.Anthropic.AnthropicProvider.Skills.get -> AiSdk.Anthropic.AnthropicSkillsClient!
+AiSdk.Anthropic.AnthropicProvider.this[string! modelId].get -> AiSdk.ILanguageModel!
+AiSdk.Anthropic.AnthropicProviderOptions
+AiSdk.Anthropic.AnthropicProviderOptions.AnthropicProviderOptions() -> void
+AiSdk.Anthropic.AnthropicProviderOptions.ApiKey.get -> string?
+AiSdk.Anthropic.AnthropicProviderOptions.ApiKey.set -> void
+AiSdk.Anthropic.AnthropicProviderOptions.ApiKeyEnvironmentVariable.get -> string!
+AiSdk.Anthropic.AnthropicProviderOptions.ApiKeyEnvironmentVariable.set -> void
+AiSdk.Anthropic.AnthropicProviderOptions.ApiVersion.get -> string!
+AiSdk.Anthropic.AnthropicProviderOptions.ApiVersion.set -> void
+AiSdk.Anthropic.AnthropicProviderOptions.BaseUrl.get -> string!
+AiSdk.Anthropic.AnthropicProviderOptions.BaseUrl.set -> void
+AiSdk.Anthropic.AnthropicProviderOptions.Betas.get -> System.Collections.Generic.List<string!>!
+AiSdk.Anthropic.AnthropicProviderOptions.Betas.set -> void
+AiSdk.Anthropic.AnthropicProviderOptions.DefaultMaxTokens.get -> int
+AiSdk.Anthropic.AnthropicProviderOptions.DefaultMaxTokens.set -> void
+AiSdk.Anthropic.AnthropicProviderOptions.DefaultStreamingMaxTokens.get -> int
+AiSdk.Anthropic.AnthropicProviderOptions.DefaultStreamingMaxTokens.set -> void
+AiSdk.Anthropic.AnthropicProviderOptions.EagerInputStreaming.get -> bool
+AiSdk.Anthropic.AnthropicProviderOptions.EagerInputStreaming.set -> void
+AiSdk.Anthropic.AnthropicProviderOptions.Headers.get -> System.Collections.Generic.Dictionary<string!, string!>!
+AiSdk.Anthropic.AnthropicProviderOptions.Headers.set -> void
+AiSdk.Anthropic.AnthropicProviderOptions.HttpClient.get -> System.Net.Http.HttpClient?
+AiSdk.Anthropic.AnthropicProviderOptions.HttpClient.set -> void
+AiSdk.Anthropic.AnthropicProviderOptions.Name.get -> string!
+AiSdk.Anthropic.AnthropicProviderOptions.Name.set -> void
+AiSdk.Anthropic.AnthropicSkill
+AiSdk.Anthropic.AnthropicSkill.<Clone>$() -> AiSdk.Anthropic.AnthropicSkill!
+AiSdk.Anthropic.AnthropicSkill.AnthropicSkill(string! Type, string! SkillId, string! Version = "latest") -> void
+AiSdk.Anthropic.AnthropicSkill.Deconstruct(out string! Type, out string! SkillId, out string! Version) -> void
+AiSdk.Anthropic.AnthropicSkill.Equals(AiSdk.Anthropic.AnthropicSkill? other) -> bool
+AiSdk.Anthropic.AnthropicSkill.SkillId.get -> string!
+AiSdk.Anthropic.AnthropicSkill.SkillId.init -> void
+AiSdk.Anthropic.AnthropicSkill.Type.get -> string!
+AiSdk.Anthropic.AnthropicSkill.Type.init -> void
+AiSdk.Anthropic.AnthropicSkill.Version.get -> string!
+AiSdk.Anthropic.AnthropicSkill.Version.init -> void
+AiSdk.Anthropic.AnthropicSkillInfo
+AiSdk.Anthropic.AnthropicSkillInfo.<Clone>$() -> AiSdk.Anthropic.AnthropicSkillInfo!
+AiSdk.Anthropic.AnthropicSkillInfo.AnthropicSkillInfo(string! Id, string? DisplayTitle, string! Source, string? LatestVersion, System.DateTimeOffset? CreatedAt, System.DateTimeOffset? UpdatedAt) -> void
+AiSdk.Anthropic.AnthropicSkillInfo.CreatedAt.get -> System.DateTimeOffset?
+AiSdk.Anthropic.AnthropicSkillInfo.CreatedAt.init -> void
+AiSdk.Anthropic.AnthropicSkillInfo.Deconstruct(out string! Id, out string? DisplayTitle, out string! Source, out string? LatestVersion, out System.DateTimeOffset? CreatedAt, out System.DateTimeOffset? UpdatedAt) -> void
+AiSdk.Anthropic.AnthropicSkillInfo.DisplayTitle.get -> string?
+AiSdk.Anthropic.AnthropicSkillInfo.DisplayTitle.init -> void
+AiSdk.Anthropic.AnthropicSkillInfo.Equals(AiSdk.Anthropic.AnthropicSkillInfo? other) -> bool
+AiSdk.Anthropic.AnthropicSkillInfo.Id.get -> string!
+AiSdk.Anthropic.AnthropicSkillInfo.Id.init -> void
+AiSdk.Anthropic.AnthropicSkillInfo.LatestVersion.get -> string?
+AiSdk.Anthropic.AnthropicSkillInfo.LatestVersion.init -> void
+AiSdk.Anthropic.AnthropicSkillInfo.Source.get -> string!
+AiSdk.Anthropic.AnthropicSkillInfo.Source.init -> void
+AiSdk.Anthropic.AnthropicSkillInfo.UpdatedAt.get -> System.DateTimeOffset?
+AiSdk.Anthropic.AnthropicSkillInfo.UpdatedAt.init -> void
+AiSdk.Anthropic.AnthropicSkills
+AiSdk.Anthropic.AnthropicSkillsClient
+AiSdk.Anthropic.AnthropicSkillsClient.CreateAsync(AiSdk.Skills.Skill! skill, string? displayTitle = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Anthropic.AnthropicSkillInfo!>!
+AiSdk.Anthropic.AnthropicSkillsClient.CreateVersionAsync(string! skillId, AiSdk.Skills.Skill! skill, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Anthropic.AnthropicSkillVersion!>!
+AiSdk.Anthropic.AnthropicSkillsClient.DeleteAsync(string! skillId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+AiSdk.Anthropic.AnthropicSkillsClient.GetAsync(string! skillId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Anthropic.AnthropicSkillInfo!>!
+AiSdk.Anthropic.AnthropicSkillsClient.ListAsync(string? source = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.Anthropic.AnthropicSkillInfo!>!>!
+AiSdk.Anthropic.AnthropicSkillsClient.ListVersionsAsync(string! skillId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.Anthropic.AnthropicSkillVersion!>!>!
+AiSdk.Anthropic.AnthropicSkillVersion
+AiSdk.Anthropic.AnthropicSkillVersion.<Clone>$() -> AiSdk.Anthropic.AnthropicSkillVersion!
+AiSdk.Anthropic.AnthropicSkillVersion.AnthropicSkillVersion(string! SkillId, string! Version, string? Name, string? Description, System.DateTimeOffset? CreatedAt) -> void
+AiSdk.Anthropic.AnthropicSkillVersion.CreatedAt.get -> System.DateTimeOffset?
+AiSdk.Anthropic.AnthropicSkillVersion.CreatedAt.init -> void
+AiSdk.Anthropic.AnthropicSkillVersion.Deconstruct(out string! SkillId, out string! Version, out string? Name, out string? Description, out System.DateTimeOffset? CreatedAt) -> void
+AiSdk.Anthropic.AnthropicSkillVersion.Description.get -> string?
+AiSdk.Anthropic.AnthropicSkillVersion.Description.init -> void
+AiSdk.Anthropic.AnthropicSkillVersion.Equals(AiSdk.Anthropic.AnthropicSkillVersion? other) -> bool
+AiSdk.Anthropic.AnthropicSkillVersion.Name.get -> string?
+AiSdk.Anthropic.AnthropicSkillVersion.Name.init -> void
+AiSdk.Anthropic.AnthropicSkillVersion.SkillId.get -> string!
+AiSdk.Anthropic.AnthropicSkillVersion.SkillId.init -> void
+AiSdk.Anthropic.AnthropicSkillVersion.Version.get -> string!
+AiSdk.Anthropic.AnthropicSkillVersion.Version.init -> void
+AiSdk.Anthropic.AnthropicTools
+const AiSdk.Anthropic.AnthropicMessagesLanguageModel.RawBlockKey = "anthropic.rawBlock" -> string!
+const AiSdk.Anthropic.AnthropicMessagesLanguageModel.RedactedDataKey = "anthropic.redactedData" -> string!
+const AiSdk.Anthropic.AnthropicMessagesLanguageModel.SignatureKey = "anthropic.signature" -> string!
+const AiSdk.Anthropic.AnthropicMessagesLanguageModel.StopReasonKey = "anthropic.stopReason" -> string!
+const AiSdk.Anthropic.AnthropicSkills.CodeExecutionBeta = "code-execution-2025-08-25" -> string!
+const AiSdk.Anthropic.AnthropicSkills.SkillsBeta = "skills-2025-10-02" -> string!
+override AiSdk.Anthropic.AnthropicSkill.Equals(object? obj) -> bool
+override AiSdk.Anthropic.AnthropicSkill.GetHashCode() -> int
+override AiSdk.Anthropic.AnthropicSkill.ToString() -> string!
+override AiSdk.Anthropic.AnthropicSkillInfo.Equals(object? obj) -> bool
+override AiSdk.Anthropic.AnthropicSkillInfo.GetHashCode() -> int
+override AiSdk.Anthropic.AnthropicSkillInfo.ToString() -> string!
+override AiSdk.Anthropic.AnthropicSkillVersion.Equals(object? obj) -> bool
+override AiSdk.Anthropic.AnthropicSkillVersion.GetHashCode() -> int
+override AiSdk.Anthropic.AnthropicSkillVersion.ToString() -> string!
+static AiSdk.Anthropic.AnthropicOptions.Create(string? effort = null, string? thinkingDisplay = null, bool cacheControl = false, System.Collections.Generic.IEnumerable<string!>? betas = null, bool refusalFallback = false) -> AiSdk.ProviderOptions!
+static AiSdk.Anthropic.AnthropicProvider.Default.get -> AiSdk.Anthropic.AnthropicProvider!
+static AiSdk.Anthropic.AnthropicSkill.Custom(string! skillId, string! version = "latest") -> AiSdk.Anthropic.AnthropicSkill!
+static AiSdk.Anthropic.AnthropicSkill.Excel.get -> AiSdk.Anthropic.AnthropicSkill!
+static AiSdk.Anthropic.AnthropicSkill.operator !=(AiSdk.Anthropic.AnthropicSkill? left, AiSdk.Anthropic.AnthropicSkill? right) -> bool
+static AiSdk.Anthropic.AnthropicSkill.operator ==(AiSdk.Anthropic.AnthropicSkill? left, AiSdk.Anthropic.AnthropicSkill? right) -> bool
+static AiSdk.Anthropic.AnthropicSkill.Pdf.get -> AiSdk.Anthropic.AnthropicSkill!
+static AiSdk.Anthropic.AnthropicSkill.PowerPoint.get -> AiSdk.Anthropic.AnthropicSkill!
+static AiSdk.Anthropic.AnthropicSkill.Word.get -> AiSdk.Anthropic.AnthropicSkill!
+static AiSdk.Anthropic.AnthropicSkillInfo.operator !=(AiSdk.Anthropic.AnthropicSkillInfo? left, AiSdk.Anthropic.AnthropicSkillInfo? right) -> bool
+static AiSdk.Anthropic.AnthropicSkillInfo.operator ==(AiSdk.Anthropic.AnthropicSkillInfo? left, AiSdk.Anthropic.AnthropicSkillInfo? right) -> bool
+static AiSdk.Anthropic.AnthropicSkills.GetContainerId(System.Collections.Generic.IEnumerable<AiSdk.ModelMessage!>! messages) -> string?
+static AiSdk.Anthropic.AnthropicSkills.GetGeneratedFileIds(AiSdk.GenerateTextResult! result) -> System.Collections.Generic.IReadOnlyList<string!>!
+static AiSdk.Anthropic.AnthropicSkills.Options(System.Collections.Generic.IEnumerable<AiSdk.Anthropic.AnthropicSkill!>! skills, string? containerId = null, AiSdk.ProviderOptions? baseOptions = null) -> AiSdk.ProviderOptions!
+static AiSdk.Anthropic.AnthropicSkillVersion.operator !=(AiSdk.Anthropic.AnthropicSkillVersion? left, AiSdk.Anthropic.AnthropicSkillVersion? right) -> bool
+static AiSdk.Anthropic.AnthropicSkillVersion.operator ==(AiSdk.Anthropic.AnthropicSkillVersion? left, AiSdk.Anthropic.AnthropicSkillVersion? right) -> bool
+static AiSdk.Anthropic.AnthropicTools.CodeExecution(string! version = "code_execution_20260521") -> AiSdk.Tool!
+static AiSdk.Anthropic.AnthropicTools.ServerTool(string! type, string! name, System.Text.Json.Nodes.JsonObject? extra = null) -> AiSdk.Tool!
+static AiSdk.Anthropic.AnthropicTools.WebFetch(int? maxUses = null, System.Collections.Generic.IEnumerable<string!>? allowedDomains = null, System.Collections.Generic.IEnumerable<string!>? blockedDomains = null, bool citations = false, int? maxContentTokens = null, string! version = "web_fetch_20260209") -> AiSdk.Tool!
+static AiSdk.Anthropic.AnthropicTools.WebSearch(int? maxUses = null, System.Collections.Generic.IEnumerable<string!>? allowedDomains = null, System.Collections.Generic.IEnumerable<string!>? blockedDomains = null, (string! City, string! Country)? userLocation = null, string! version = "web_search_20260209") -> AiSdk.Tool!

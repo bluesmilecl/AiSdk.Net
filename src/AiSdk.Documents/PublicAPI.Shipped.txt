@@ -1,0 +1,699 @@
+#nullable enable
+abstract AiSdk.Documents.Generation.DocBlock.<Clone>$() -> AiSdk.Documents.Generation.DocBlock!
+AiSdk.Documents.AttachmentConversionOptions
+AiSdk.Documents.AttachmentConversionOptions.AttachmentConversionOptions() -> void
+AiSdk.Documents.AttachmentConversionOptions.CacheSize.get -> int
+AiSdk.Documents.AttachmentConversionOptions.CacheSize.init -> void
+AiSdk.Documents.AttachmentConversionOptions.CompressionEmbeddings.get -> AiSdk.IEmbeddingModel?
+AiSdk.Documents.AttachmentConversionOptions.CompressionEmbeddings.init -> void
+AiSdk.Documents.AttachmentConversionOptions.DownloadUrls.get -> bool
+AiSdk.Documents.AttachmentConversionOptions.DownloadUrls.init -> void
+AiSdk.Documents.AttachmentConversionOptions.Format.get -> System.Func<AiSdk.Documents.DocumentConversionResult!, string!>!
+AiSdk.Documents.AttachmentConversionOptions.Format.init -> void
+AiSdk.Documents.AttachmentConversionOptions.MaxTokensPerAttachment.get -> int?
+AiSdk.Documents.AttachmentConversionOptions.MaxTokensPerAttachment.init -> void
+AiSdk.Documents.AttachmentConversionOptions.Native.get -> AiSdk.Documents.NativeAttachments
+AiSdk.Documents.AttachmentConversionOptions.Native.init -> void
+AiSdk.Documents.AttachmentConversionOptions.Summarizer.get -> AiSdk.ILanguageModel?
+AiSdk.Documents.AttachmentConversionOptions.Summarizer.init -> void
+AiSdk.Documents.Converters.AudioConverter
+AiSdk.Documents.Converters.AudioConverter.AudioConverter() -> void
+AiSdk.Documents.Converters.AudioConverter.CanConvert(string! mediaType) -> bool
+AiSdk.Documents.Converters.AudioConverter.ConvertAsync(AiSdk.Documents.DocumentSource! source, AiSdk.Documents.DocumentConversionContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Documents.DocumentConversionResult!>!
+AiSdk.Documents.Converters.DocxConverter
+AiSdk.Documents.Converters.DocxConverter.CanConvert(string! mediaType) -> bool
+AiSdk.Documents.Converters.DocxConverter.ConvertAsync(AiSdk.Documents.DocumentSource! source, AiSdk.Documents.DocumentConversionContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Documents.DocumentConversionResult!>!
+AiSdk.Documents.Converters.DocxConverter.DocxConverter() -> void
+AiSdk.Documents.Converters.HtmlConverter
+AiSdk.Documents.Converters.HtmlConverter.CanConvert(string! mediaType) -> bool
+AiSdk.Documents.Converters.HtmlConverter.ConvertAsync(AiSdk.Documents.DocumentSource! source, AiSdk.Documents.DocumentConversionContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Documents.DocumentConversionResult!>!
+AiSdk.Documents.Converters.HtmlConverter.HtmlConverter() -> void
+AiSdk.Documents.Converters.ImageConverter
+AiSdk.Documents.Converters.ImageConverter.CanConvert(string! mediaType) -> bool
+AiSdk.Documents.Converters.ImageConverter.ConvertAsync(AiSdk.Documents.DocumentSource! source, AiSdk.Documents.DocumentConversionContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Documents.DocumentConversionResult!>!
+AiSdk.Documents.Converters.ImageConverter.ImageConverter() -> void
+AiSdk.Documents.Converters.MarkdownTable
+AiSdk.Documents.Converters.PdfConverter
+AiSdk.Documents.Converters.PdfConverter.CanConvert(string! mediaType) -> bool
+AiSdk.Documents.Converters.PdfConverter.ConvertAsync(AiSdk.Documents.DocumentSource! source, AiSdk.Documents.DocumentConversionContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Documents.DocumentConversionResult!>!
+AiSdk.Documents.Converters.PdfConverter.PdfConverter() -> void
+AiSdk.Documents.Converters.PlainTextConverter
+AiSdk.Documents.Converters.PlainTextConverter.CanConvert(string! mediaType) -> bool
+AiSdk.Documents.Converters.PlainTextConverter.ConvertAsync(AiSdk.Documents.DocumentSource! source, AiSdk.Documents.DocumentConversionContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Documents.DocumentConversionResult!>!
+AiSdk.Documents.Converters.PlainTextConverter.PlainTextConverter() -> void
+AiSdk.Documents.Converters.PptxConverter
+AiSdk.Documents.Converters.PptxConverter.CanConvert(string! mediaType) -> bool
+AiSdk.Documents.Converters.PptxConverter.ConvertAsync(AiSdk.Documents.DocumentSource! source, AiSdk.Documents.DocumentConversionContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Documents.DocumentConversionResult!>!
+AiSdk.Documents.Converters.PptxConverter.PptxConverter() -> void
+AiSdk.Documents.Converters.VideoConverter
+AiSdk.Documents.Converters.VideoConverter.CanConvert(string! mediaType) -> bool
+AiSdk.Documents.Converters.VideoConverter.ConvertAsync(AiSdk.Documents.DocumentSource! source, AiSdk.Documents.DocumentConversionContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Documents.DocumentConversionResult!>!
+AiSdk.Documents.Converters.VideoConverter.VideoConverter() -> void
+AiSdk.Documents.Converters.XlsxConverter
+AiSdk.Documents.Converters.XlsxConverter.CanConvert(string! mediaType) -> bool
+AiSdk.Documents.Converters.XlsxConverter.ConvertAsync(AiSdk.Documents.DocumentSource! source, AiSdk.Documents.DocumentConversionContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Documents.DocumentConversionResult!>!
+AiSdk.Documents.Converters.XlsxConverter.XlsxConverter() -> void
+AiSdk.Documents.DocumentConversionContext
+AiSdk.Documents.DocumentConversionContext.AnalyzeImageAsync(byte[]! data, string! mediaType, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<(string! Markdown, AiSdk.Documents.PageTextSource Source)?>!
+AiSdk.Documents.DocumentConversionContext.CanAnalyzeImages.get -> bool
+AiSdk.Documents.DocumentConversionContext.Converter.get -> AiSdk.Documents.MarkdownConverter!
+AiSdk.Documents.DocumentConversionContext.DescribeImageAsync(byte[]! data, string! mediaType, string? instructions, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<string?>!
+AiSdk.Documents.DocumentConversionContext.DocumentConversionContext(AiSdk.Documents.MarkdownConverterOptions! options, AiSdk.Documents.MarkdownConverter! converter) -> void
+AiSdk.Documents.DocumentConversionContext.ImageAnalysesSkipped.get -> int
+AiSdk.Documents.DocumentConversionContext.ImageAnalysisLimitWarning() -> string?
+AiSdk.Documents.DocumentConversionContext.OcrAsync(byte[]! data, string! mediaType, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<AiSdk.OcrResult?>!
+AiSdk.Documents.DocumentConversionContext.Options.get -> AiSdk.Documents.MarkdownConverterOptions!
+AiSdk.Documents.DocumentConversionContext.OversizedImagesSkipped.get -> int
+AiSdk.Documents.DocumentConversionContext.OversizedImageWarning() -> string?
+AiSdk.Documents.DocumentConversionContext.RemainingImageAnalyses.get -> int
+AiSdk.Documents.DocumentConversionContext.ReserveImageAnalyses(int count = 1) -> int
+AiSdk.Documents.DocumentConversionProgress
+AiSdk.Documents.DocumentConversionProgress.<Clone>$() -> AiSdk.Documents.DocumentConversionProgress!
+AiSdk.Documents.DocumentConversionProgress.Deconstruct(out int Pages, out int OcrPages, out int OcrPagesDone) -> void
+AiSdk.Documents.DocumentConversionProgress.DocumentConversionProgress(int Pages, int OcrPages, int OcrPagesDone) -> void
+AiSdk.Documents.DocumentConversionProgress.Equals(AiSdk.Documents.DocumentConversionProgress? other) -> bool
+AiSdk.Documents.DocumentConversionProgress.OcrPages.get -> int
+AiSdk.Documents.DocumentConversionProgress.OcrPages.init -> void
+AiSdk.Documents.DocumentConversionProgress.OcrPagesDone.get -> int
+AiSdk.Documents.DocumentConversionProgress.OcrPagesDone.init -> void
+AiSdk.Documents.DocumentConversionProgress.Pages.get -> int
+AiSdk.Documents.DocumentConversionProgress.Pages.init -> void
+AiSdk.Documents.DocumentConversionResult
+AiSdk.Documents.DocumentConversionResult.<Clone>$() -> AiSdk.Documents.DocumentConversionResult!
+AiSdk.Documents.DocumentConversionResult.DocumentConversionResult() -> void
+AiSdk.Documents.DocumentConversionResult.Equals(AiSdk.Documents.DocumentConversionResult? other) -> bool
+AiSdk.Documents.DocumentConversionResult.EstimatedTokens.get -> int
+AiSdk.Documents.DocumentConversionResult.FileName.get -> string?
+AiSdk.Documents.DocumentConversionResult.FileName.init -> void
+AiSdk.Documents.DocumentConversionResult.Markdown.get -> string!
+AiSdk.Documents.DocumentConversionResult.Markdown.init -> void
+AiSdk.Documents.DocumentConversionResult.MediaType.get -> string!
+AiSdk.Documents.DocumentConversionResult.MediaType.init -> void
+AiSdk.Documents.DocumentConversionResult.Pages.get -> System.Collections.Generic.IReadOnlyList<AiSdk.Documents.DocumentPage!>!
+AiSdk.Documents.DocumentConversionResult.Pages.init -> void
+AiSdk.Documents.DocumentConversionResult.Title.get -> string?
+AiSdk.Documents.DocumentConversionResult.Title.init -> void
+AiSdk.Documents.DocumentConversionResult.ToVectorDocuments(string! idPrefix, int maxChars = 1500, int overlap = 150, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? metadata = null) -> System.Collections.Generic.IReadOnlyList<AiSdk.VectorDocument!>!
+AiSdk.Documents.DocumentConversionResult.UsedAi.get -> bool
+AiSdk.Documents.DocumentConversionResult.Warnings.get -> System.Collections.Generic.IReadOnlyList<string!>!
+AiSdk.Documents.DocumentConversionResult.Warnings.init -> void
+AiSdk.Documents.DocumentMiddlewares
+AiSdk.Documents.DocumentPage
+AiSdk.Documents.DocumentPage.<Clone>$() -> AiSdk.Documents.DocumentPage!
+AiSdk.Documents.DocumentPage.Deconstruct(out int Number, out string! Markdown, out AiSdk.Documents.PageTextSource Source) -> void
+AiSdk.Documents.DocumentPage.DocumentPage(int Number, string! Markdown, AiSdk.Documents.PageTextSource Source = AiSdk.Documents.PageTextSource.Text) -> void
+AiSdk.Documents.DocumentPage.Equals(AiSdk.Documents.DocumentPage? other) -> bool
+AiSdk.Documents.DocumentPage.Label.get -> string?
+AiSdk.Documents.DocumentPage.Label.init -> void
+AiSdk.Documents.DocumentPage.Markdown.get -> string!
+AiSdk.Documents.DocumentPage.Markdown.init -> void
+AiSdk.Documents.DocumentPage.Number.get -> int
+AiSdk.Documents.DocumentPage.Number.init -> void
+AiSdk.Documents.DocumentPage.Source.get -> AiSdk.Documents.PageTextSource
+AiSdk.Documents.DocumentPage.Source.init -> void
+AiSdk.Documents.DocumentSource
+AiSdk.Documents.DocumentSource.<Clone>$() -> AiSdk.Documents.DocumentSource!
+AiSdk.Documents.DocumentSource.Data.get -> byte[]!
+AiSdk.Documents.DocumentSource.DocumentSource(byte[]! data, string? mediaType = null, string? fileName = null) -> void
+AiSdk.Documents.DocumentSource.Equals(AiSdk.Documents.DocumentSource? other) -> bool
+AiSdk.Documents.DocumentSource.FileName.get -> string?
+AiSdk.Documents.DocumentSource.FilePath.get -> string?
+AiSdk.Documents.DocumentSource.FilePath.init -> void
+AiSdk.Documents.DocumentSource.MediaType.get -> string!
+AiSdk.Documents.DocumentSource.ReadText() -> string!
+AiSdk.Documents.DocumentTooLargeException
+AiSdk.Documents.DocumentTooLargeException.DocumentTooLargeException(long size, long limit, string? fileName = null) -> void
+AiSdk.Documents.DocumentTooLargeException.FileName.get -> string?
+AiSdk.Documents.DocumentTooLargeException.Limit.get -> long
+AiSdk.Documents.DocumentTooLargeException.Size.get -> long
+AiSdk.Documents.DocumentVectorStoreExtensions
+AiSdk.Documents.ExternalProcess
+AiSdk.Documents.ExternalProcess.Result
+AiSdk.Documents.ExternalProcess.Result.<Clone>$() -> AiSdk.Documents.ExternalProcess.Result!
+AiSdk.Documents.ExternalProcess.Result.Deconstruct(out int ExitCode, out byte[]! Output, out string! Error) -> void
+AiSdk.Documents.ExternalProcess.Result.Equals(AiSdk.Documents.ExternalProcess.Result? other) -> bool
+AiSdk.Documents.ExternalProcess.Result.Error.get -> string!
+AiSdk.Documents.ExternalProcess.Result.Error.init -> void
+AiSdk.Documents.ExternalProcess.Result.ExitCode.get -> int
+AiSdk.Documents.ExternalProcess.Result.ExitCode.init -> void
+AiSdk.Documents.ExternalProcess.Result.Output.get -> byte[]!
+AiSdk.Documents.ExternalProcess.Result.Output.init -> void
+AiSdk.Documents.ExternalProcess.Result.Result(int ExitCode, byte[]! Output, string! Error) -> void
+AiSdk.Documents.ExternalProcessOptions
+AiSdk.Documents.ExternalProcessOptions.AllowedEnvironmentVariables.get -> System.Collections.Generic.IReadOnlyCollection<string!>?
+AiSdk.Documents.ExternalProcessOptions.AllowedEnvironmentVariables.init -> void
+AiSdk.Documents.ExternalProcessOptions.CheckExecutable.get -> bool
+AiSdk.Documents.ExternalProcessOptions.CheckExecutable.init -> void
+AiSdk.Documents.ExternalProcessOptions.EnvironmentVariables.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string?>!
+AiSdk.Documents.ExternalProcessOptions.EnvironmentVariables.init -> void
+AiSdk.Documents.ExternalProcessOptions.ExternalProcessOptions() -> void
+AiSdk.Documents.ExternalProcessOptions.LimitOpenMpThreads.get -> bool
+AiSdk.Documents.ExternalProcessOptions.LimitOpenMpThreads.init -> void
+AiSdk.Documents.ExternalProcessOptions.MaxOutputBytes.get -> long
+AiSdk.Documents.ExternalProcessOptions.MaxOutputBytes.init -> void
+AiSdk.Documents.ExternalProcessOptions.Timeout.get -> System.TimeSpan?
+AiSdk.Documents.ExternalProcessOptions.Timeout.init -> void
+AiSdk.Documents.ExternalProcessOptions.WorkingDirectory.get -> string?
+AiSdk.Documents.ExternalProcessOptions.WorkingDirectory.init -> void
+AiSdk.Documents.ExternalProcessOptions.Wrapper.get -> string?
+AiSdk.Documents.ExternalProcessOptions.Wrapper.init -> void
+AiSdk.Documents.ExternalProcessOptions.WrapperArguments.get -> System.Collections.Generic.IReadOnlyList<string!>!
+AiSdk.Documents.ExternalProcessOptions.WrapperArguments.init -> void
+AiSdk.Documents.ExternalProcessRunner
+AiSdk.Documents.ExternalProcessRunner.CreateStartInfo(string! executable, System.Collections.Generic.IReadOnlyList<string!>! arguments, bool redirectInput = false) -> System.Diagnostics.ProcessStartInfo!
+AiSdk.Documents.ExternalProcessRunner.Exists(string! executable) -> bool
+AiSdk.Documents.ExternalProcessRunner.ExternalProcessRunner(AiSdk.Documents.ExternalProcessOptions? options = null) -> void
+AiSdk.Documents.ExternalProcessRunner.Options.get -> AiSdk.Documents.ExternalProcessOptions!
+AiSdk.Documents.ExternalProcessRunner.RunAsync(string! executable, System.Collections.Generic.IReadOnlyList<string!>! arguments, byte[]? input = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Documents.ExternalProcess.Result!>!
+AiSdk.Documents.ExternalProcessRunnerExtensions
+AiSdk.Documents.Generation.CellAlign
+AiSdk.Documents.Generation.CellAlign.Center = 1 -> AiSdk.Documents.Generation.CellAlign
+AiSdk.Documents.Generation.CellAlign.Left = 0 -> AiSdk.Documents.Generation.CellAlign
+AiSdk.Documents.Generation.CellAlign.Right = 2 -> AiSdk.Documents.Generation.CellAlign
+AiSdk.Documents.Generation.CodeBlockModel
+AiSdk.Documents.Generation.CodeBlockModel.Code.get -> string!
+AiSdk.Documents.Generation.CodeBlockModel.Code.init -> void
+AiSdk.Documents.Generation.CodeBlockModel.CodeBlockModel(string! Code, string? Language) -> void
+AiSdk.Documents.Generation.CodeBlockModel.Deconstruct(out string! Code, out string? Language) -> void
+AiSdk.Documents.Generation.CodeBlockModel.Equals(AiSdk.Documents.Generation.CodeBlockModel? other) -> bool
+AiSdk.Documents.Generation.CodeBlockModel.Language.get -> string?
+AiSdk.Documents.Generation.CodeBlockModel.Language.init -> void
+AiSdk.Documents.Generation.ColumnType
+AiSdk.Documents.Generation.ColumnType.Auto = 0 -> AiSdk.Documents.Generation.ColumnType
+AiSdk.Documents.Generation.ColumnType.Boolean = 8 -> AiSdk.Documents.Generation.ColumnType
+AiSdk.Documents.Generation.ColumnType.Currency = 4 -> AiSdk.Documents.Generation.ColumnType
+AiSdk.Documents.Generation.ColumnType.Date = 6 -> AiSdk.Documents.Generation.ColumnType
+AiSdk.Documents.Generation.ColumnType.DateTime = 7 -> AiSdk.Documents.Generation.ColumnType
+AiSdk.Documents.Generation.ColumnType.Integer = 3 -> AiSdk.Documents.Generation.ColumnType
+AiSdk.Documents.Generation.ColumnType.Number = 2 -> AiSdk.Documents.Generation.ColumnType
+AiSdk.Documents.Generation.ColumnType.Percent = 5 -> AiSdk.Documents.Generation.ColumnType
+AiSdk.Documents.Generation.ColumnType.Text = 1 -> AiSdk.Documents.Generation.ColumnType
+AiSdk.Documents.Generation.ColumnTypeJsonConverter
+AiSdk.Documents.Generation.ColumnTypeJsonConverter.ColumnTypeJsonConverter() -> void
+AiSdk.Documents.Generation.DocBlock
+AiSdk.Documents.Generation.DocBlock.DocBlock() -> void
+AiSdk.Documents.Generation.DocBlock.DocBlock(AiSdk.Documents.Generation.DocBlock! original) -> void
+AiSdk.Documents.Generation.DocumentGenerator
+AiSdk.Documents.Generation.DocumentStyleOptions
+AiSdk.Documents.Generation.DocumentStyleOptions.AccentColor.get -> string!
+AiSdk.Documents.Generation.DocumentStyleOptions.AccentColor.init -> void
+AiSdk.Documents.Generation.DocumentStyleOptions.Author.get -> string?
+AiSdk.Documents.Generation.DocumentStyleOptions.Author.init -> void
+AiSdk.Documents.Generation.DocumentStyleOptions.DocumentStyleOptions() -> void
+AiSdk.Documents.Generation.DocumentStyleOptions.FontFamily.get -> string!
+AiSdk.Documents.Generation.DocumentStyleOptions.FontFamily.init -> void
+AiSdk.Documents.Generation.DocumentStyleOptions.FontSize.get -> double
+AiSdk.Documents.Generation.DocumentStyleOptions.FontSize.init -> void
+AiSdk.Documents.Generation.DocumentStyleOptions.HeaderText.get -> string?
+AiSdk.Documents.Generation.DocumentStyleOptions.HeaderText.init -> void
+AiSdk.Documents.Generation.DocumentStyleOptions.Landscape.get -> bool
+AiSdk.Documents.Generation.DocumentStyleOptions.Landscape.init -> void
+AiSdk.Documents.Generation.DocumentStyleOptions.Language.get -> string!
+AiSdk.Documents.Generation.DocumentStyleOptions.Language.init -> void
+AiSdk.Documents.Generation.DocumentStyleOptions.MarginCm.get -> double
+AiSdk.Documents.Generation.DocumentStyleOptions.MarginCm.init -> void
+AiSdk.Documents.Generation.DocumentStyleOptions.PageNumbers.get -> bool
+AiSdk.Documents.Generation.DocumentStyleOptions.PageNumbers.init -> void
+AiSdk.Documents.Generation.DocumentStyleOptions.PaperSize.get -> AiSdk.Documents.Generation.PaperSize
+AiSdk.Documents.Generation.DocumentStyleOptions.PaperSize.init -> void
+AiSdk.Documents.Generation.DocumentStyleOptions.PdfFonts.get -> AiSdk.Documents.Generation.PdfFonts?
+AiSdk.Documents.Generation.DocumentStyleOptions.PdfFonts.init -> void
+AiSdk.Documents.Generation.DocumentStyleOptions.Subtitle.get -> string?
+AiSdk.Documents.Generation.DocumentStyleOptions.Subtitle.init -> void
+AiSdk.Documents.Generation.DocumentStyleOptions.Title.get -> string?
+AiSdk.Documents.Generation.DocumentStyleOptions.Title.init -> void
+AiSdk.Documents.Generation.DocumentStyleOptions.TitlePage.get -> bool
+AiSdk.Documents.Generation.DocumentStyleOptions.TitlePage.init -> void
+AiSdk.Documents.Generation.DocumentToolOptions
+AiSdk.Documents.Generation.DocumentToolOptions.AllowFormulas.get -> bool
+AiSdk.Documents.Generation.DocumentToolOptions.AllowFormulas.init -> void
+AiSdk.Documents.Generation.DocumentToolOptions.ArtifactOptions.get -> AiSdk.Artifacts.ArtifactToolOptions!
+AiSdk.Documents.Generation.DocumentToolOptions.ArtifactOptions.init -> void
+AiSdk.Documents.Generation.DocumentToolOptions.DocumentToolOptions() -> void
+AiSdk.Documents.Generation.DocumentToolOptions.Excel.get -> bool
+AiSdk.Documents.Generation.DocumentToolOptions.Excel.init -> void
+AiSdk.Documents.Generation.DocumentToolOptions.FormulaFilter.get -> System.Func<string!, bool>?
+AiSdk.Documents.Generation.DocumentToolOptions.FormulaFilter.init -> void
+AiSdk.Documents.Generation.DocumentToolOptions.Pdf.get -> bool
+AiSdk.Documents.Generation.DocumentToolOptions.Pdf.init -> void
+AiSdk.Documents.Generation.DocumentToolOptions.Store.get -> AiSdk.Artifacts.IArtifactStore!
+AiSdk.Documents.Generation.DocumentToolOptions.Store.init -> void
+AiSdk.Documents.Generation.DocumentToolOptions.Style.get -> AiSdk.Documents.Generation.DocumentStyleOptions!
+AiSdk.Documents.Generation.DocumentToolOptions.Style.init -> void
+AiSdk.Documents.Generation.DocumentToolOptions.Word.get -> bool
+AiSdk.Documents.Generation.DocumentToolOptions.Word.init -> void
+AiSdk.Documents.Generation.DocumentTools
+AiSdk.Documents.Generation.DocxWriter
+AiSdk.Documents.Generation.HeadingBlockModel
+AiSdk.Documents.Generation.HeadingBlockModel.Deconstruct(out int Level, out System.Collections.Generic.IReadOnlyList<AiSdk.Documents.Generation.TextRun!>! Runs) -> void
+AiSdk.Documents.Generation.HeadingBlockModel.Equals(AiSdk.Documents.Generation.HeadingBlockModel? other) -> bool
+AiSdk.Documents.Generation.HeadingBlockModel.HeadingBlockModel(int Level, System.Collections.Generic.IReadOnlyList<AiSdk.Documents.Generation.TextRun!>! Runs) -> void
+AiSdk.Documents.Generation.HeadingBlockModel.Level.get -> int
+AiSdk.Documents.Generation.HeadingBlockModel.Level.init -> void
+AiSdk.Documents.Generation.HeadingBlockModel.Runs.get -> System.Collections.Generic.IReadOnlyList<AiSdk.Documents.Generation.TextRun!>!
+AiSdk.Documents.Generation.HeadingBlockModel.Runs.init -> void
+AiSdk.Documents.Generation.ListItemModel
+AiSdk.Documents.Generation.ListItemModel.<Clone>$() -> AiSdk.Documents.Generation.ListItemModel!
+AiSdk.Documents.Generation.ListItemModel.Blocks.get -> System.Collections.Generic.IReadOnlyList<AiSdk.Documents.Generation.DocBlock!>!
+AiSdk.Documents.Generation.ListItemModel.Blocks.init -> void
+AiSdk.Documents.Generation.ListItemModel.Checked.get -> bool?
+AiSdk.Documents.Generation.ListItemModel.Checked.init -> void
+AiSdk.Documents.Generation.ListItemModel.Deconstruct(out System.Collections.Generic.IReadOnlyList<AiSdk.Documents.Generation.DocBlock!>! Blocks, out bool? Checked) -> void
+AiSdk.Documents.Generation.ListItemModel.Equals(AiSdk.Documents.Generation.ListItemModel? other) -> bool
+AiSdk.Documents.Generation.ListItemModel.ListItemModel(System.Collections.Generic.IReadOnlyList<AiSdk.Documents.Generation.DocBlock!>! Blocks, bool? Checked = null) -> void
+AiSdk.Documents.Generation.ListModel
+AiSdk.Documents.Generation.ListModel.Deconstruct(out bool Ordered, out int Start, out System.Collections.Generic.IReadOnlyList<AiSdk.Documents.Generation.ListItemModel!>! Items) -> void
+AiSdk.Documents.Generation.ListModel.Equals(AiSdk.Documents.Generation.ListModel? other) -> bool
+AiSdk.Documents.Generation.ListModel.Items.get -> System.Collections.Generic.IReadOnlyList<AiSdk.Documents.Generation.ListItemModel!>!
+AiSdk.Documents.Generation.ListModel.Items.init -> void
+AiSdk.Documents.Generation.ListModel.ListModel(bool Ordered, int Start, System.Collections.Generic.IReadOnlyList<AiSdk.Documents.Generation.ListItemModel!>! Items) -> void
+AiSdk.Documents.Generation.ListModel.Ordered.get -> bool
+AiSdk.Documents.Generation.ListModel.Ordered.init -> void
+AiSdk.Documents.Generation.ListModel.Start.get -> int
+AiSdk.Documents.Generation.ListModel.Start.init -> void
+AiSdk.Documents.Generation.MarkdownModel
+AiSdk.Documents.Generation.PageBreakModel
+AiSdk.Documents.Generation.PageBreakModel.Equals(AiSdk.Documents.Generation.PageBreakModel? other) -> bool
+AiSdk.Documents.Generation.PageBreakModel.PageBreakModel() -> void
+AiSdk.Documents.Generation.PaperSize
+AiSdk.Documents.Generation.PaperSize.A4 = 0 -> AiSdk.Documents.Generation.PaperSize
+AiSdk.Documents.Generation.PaperSize.Legal = 2 -> AiSdk.Documents.Generation.PaperSize
+AiSdk.Documents.Generation.PaperSize.Letter = 1 -> AiSdk.Documents.Generation.PaperSize
+AiSdk.Documents.Generation.ParagraphModel
+AiSdk.Documents.Generation.ParagraphModel.Deconstruct(out System.Collections.Generic.IReadOnlyList<AiSdk.Documents.Generation.TextRun!>! Runs) -> void
+AiSdk.Documents.Generation.ParagraphModel.Equals(AiSdk.Documents.Generation.ParagraphModel? other) -> bool
+AiSdk.Documents.Generation.ParagraphModel.ParagraphModel(System.Collections.Generic.IReadOnlyList<AiSdk.Documents.Generation.TextRun!>! Runs) -> void
+AiSdk.Documents.Generation.ParagraphModel.Runs.get -> System.Collections.Generic.IReadOnlyList<AiSdk.Documents.Generation.TextRun!>!
+AiSdk.Documents.Generation.ParagraphModel.Runs.init -> void
+AiSdk.Documents.Generation.PdfFonts
+AiSdk.Documents.Generation.PdfFonts.Bold.get -> byte[]!
+AiSdk.Documents.Generation.PdfFonts.Bold.init -> void
+AiSdk.Documents.Generation.PdfFonts.BoldItalic.get -> byte[]!
+AiSdk.Documents.Generation.PdfFonts.BoldItalic.init -> void
+AiSdk.Documents.Generation.PdfFonts.Italic.get -> byte[]!
+AiSdk.Documents.Generation.PdfFonts.Italic.init -> void
+AiSdk.Documents.Generation.PdfFonts.Mono.get -> byte[]!
+AiSdk.Documents.Generation.PdfFonts.Mono.init -> void
+AiSdk.Documents.Generation.PdfFonts.PdfFonts() -> void
+AiSdk.Documents.Generation.PdfFonts.Regular.get -> byte[]!
+AiSdk.Documents.Generation.PdfFonts.Regular.init -> void
+AiSdk.Documents.Generation.PdfWriter
+AiSdk.Documents.Generation.QuoteModel
+AiSdk.Documents.Generation.QuoteModel.Blocks.get -> System.Collections.Generic.IReadOnlyList<AiSdk.Documents.Generation.DocBlock!>!
+AiSdk.Documents.Generation.QuoteModel.Blocks.init -> void
+AiSdk.Documents.Generation.QuoteModel.Deconstruct(out System.Collections.Generic.IReadOnlyList<AiSdk.Documents.Generation.DocBlock!>! Blocks) -> void
+AiSdk.Documents.Generation.QuoteModel.Equals(AiSdk.Documents.Generation.QuoteModel? other) -> bool
+AiSdk.Documents.Generation.QuoteModel.QuoteModel(System.Collections.Generic.IReadOnlyList<AiSdk.Documents.Generation.DocBlock!>! Blocks) -> void
+AiSdk.Documents.Generation.RuleModel
+AiSdk.Documents.Generation.RuleModel.Equals(AiSdk.Documents.Generation.RuleModel? other) -> bool
+AiSdk.Documents.Generation.RuleModel.RuleModel() -> void
+AiSdk.Documents.Generation.SheetColumn
+AiSdk.Documents.Generation.SheetColumn.<Clone>$() -> AiSdk.Documents.Generation.SheetColumn!
+AiSdk.Documents.Generation.SheetColumn.Deconstruct(out string! Header, out AiSdk.Documents.Generation.ColumnType Type, out string? Format, out double? Width) -> void
+AiSdk.Documents.Generation.SheetColumn.Equals(AiSdk.Documents.Generation.SheetColumn? other) -> bool
+AiSdk.Documents.Generation.SheetColumn.Format.get -> string?
+AiSdk.Documents.Generation.SheetColumn.Format.init -> void
+AiSdk.Documents.Generation.SheetColumn.Header.get -> string!
+AiSdk.Documents.Generation.SheetColumn.Header.init -> void
+AiSdk.Documents.Generation.SheetColumn.SheetColumn(string! Header, AiSdk.Documents.Generation.ColumnType Type = AiSdk.Documents.Generation.ColumnType.Auto, string? Format = null, double? Width = null) -> void
+AiSdk.Documents.Generation.SheetColumn.Type.get -> AiSdk.Documents.Generation.ColumnType
+AiSdk.Documents.Generation.SheetColumn.Type.init -> void
+AiSdk.Documents.Generation.SheetColumn.Width.get -> double?
+AiSdk.Documents.Generation.SheetColumn.Width.init -> void
+AiSdk.Documents.Generation.SheetOptions
+AiSdk.Documents.Generation.SheetOptions.<Clone>$() -> AiSdk.Documents.Generation.SheetOptions!
+AiSdk.Documents.Generation.SheetOptions.AutoFilter.get -> bool
+AiSdk.Documents.Generation.SheetOptions.AutoFilter.init -> void
+AiSdk.Documents.Generation.SheetOptions.Equals(AiSdk.Documents.Generation.SheetOptions? other) -> bool
+AiSdk.Documents.Generation.SheetOptions.FreezeHeader.get -> bool
+AiSdk.Documents.Generation.SheetOptions.FreezeHeader.init -> void
+AiSdk.Documents.Generation.SheetOptions.SheetOptions() -> void
+AiSdk.Documents.Generation.SheetOptions.Totals.get -> bool
+AiSdk.Documents.Generation.SheetOptions.Totals.init -> void
+AiSdk.Documents.Generation.SpreadsheetBuilder
+AiSdk.Documents.Generation.SpreadsheetBuilder.AccentColor.get -> string!
+AiSdk.Documents.Generation.SpreadsheetBuilder.AccentColor.init -> void
+AiSdk.Documents.Generation.SpreadsheetBuilder.AddMarkdownTables(string! markdown, AiSdk.Documents.Generation.SheetOptions? options = null) -> AiSdk.Documents.Generation.SpreadsheetBuilder!
+AiSdk.Documents.Generation.SpreadsheetBuilder.AddSheet(string! name, System.Collections.Generic.IReadOnlyList<AiSdk.Documents.Generation.SheetColumn!>! columns, System.Collections.Generic.IEnumerable<System.Collections.Generic.IReadOnlyList<object?>!>! rows, AiSdk.Documents.Generation.SheetOptions? options = null) -> AiSdk.Documents.Generation.SpreadsheetBuilder!
+AiSdk.Documents.Generation.SpreadsheetBuilder.AddSheet<T>(string! name, System.Collections.Generic.IEnumerable<T>! items, AiSdk.Documents.Generation.SheetOptions? options = null) -> AiSdk.Documents.Generation.SpreadsheetBuilder!
+AiSdk.Documents.Generation.SpreadsheetBuilder.AllowFormulas.get -> bool
+AiSdk.Documents.Generation.SpreadsheetBuilder.AllowFormulas.init -> void
+AiSdk.Documents.Generation.SpreadsheetBuilder.Author.get -> string?
+AiSdk.Documents.Generation.SpreadsheetBuilder.Author.init -> void
+AiSdk.Documents.Generation.SpreadsheetBuilder.Build() -> byte[]!
+AiSdk.Documents.Generation.SpreadsheetBuilder.CurrencyFormat.get -> string!
+AiSdk.Documents.Generation.SpreadsheetBuilder.CurrencyFormat.init -> void
+AiSdk.Documents.Generation.SpreadsheetBuilder.DateFormat.get -> string!
+AiSdk.Documents.Generation.SpreadsheetBuilder.DateFormat.init -> void
+AiSdk.Documents.Generation.SpreadsheetBuilder.FormulaFilter.get -> System.Func<string!, bool>?
+AiSdk.Documents.Generation.SpreadsheetBuilder.FormulaFilter.init -> void
+AiSdk.Documents.Generation.SpreadsheetBuilder.SpreadsheetBuilder() -> void
+AiSdk.Documents.Generation.SpreadsheetBuilder.Title.get -> string?
+AiSdk.Documents.Generation.SpreadsheetBuilder.Title.init -> void
+AiSdk.Documents.Generation.TableModel
+AiSdk.Documents.Generation.TableModel.Align.get -> System.Collections.Generic.IReadOnlyList<AiSdk.Documents.Generation.CellAlign>!
+AiSdk.Documents.Generation.TableModel.Align.init -> void
+AiSdk.Documents.Generation.TableModel.Deconstruct(out System.Collections.Generic.IReadOnlyList<System.Collections.Generic.IReadOnlyList<System.Collections.Generic.IReadOnlyList<AiSdk.Documents.Generation.TextRun!>!>!>! Rows, out System.Collections.Generic.IReadOnlyList<AiSdk.Documents.Generation.CellAlign>! Align) -> void
+AiSdk.Documents.Generation.TableModel.Equals(AiSdk.Documents.Generation.TableModel? other) -> bool
+AiSdk.Documents.Generation.TableModel.Rows.get -> System.Collections.Generic.IReadOnlyList<System.Collections.Generic.IReadOnlyList<System.Collections.Generic.IReadOnlyList<AiSdk.Documents.Generation.TextRun!>!>!>!
+AiSdk.Documents.Generation.TableModel.Rows.init -> void
+AiSdk.Documents.Generation.TableModel.TableModel(System.Collections.Generic.IReadOnlyList<System.Collections.Generic.IReadOnlyList<System.Collections.Generic.IReadOnlyList<AiSdk.Documents.Generation.TextRun!>!>!>! Rows, System.Collections.Generic.IReadOnlyList<AiSdk.Documents.Generation.CellAlign>! Align) -> void
+AiSdk.Documents.Generation.TextRun
+AiSdk.Documents.Generation.TextRun.<Clone>$() -> AiSdk.Documents.Generation.TextRun!
+AiSdk.Documents.Generation.TextRun.Bold.get -> bool
+AiSdk.Documents.Generation.TextRun.Bold.init -> void
+AiSdk.Documents.Generation.TextRun.Code.get -> bool
+AiSdk.Documents.Generation.TextRun.Code.init -> void
+AiSdk.Documents.Generation.TextRun.Deconstruct(out string! Text, out bool Bold, out bool Italic, out bool Code, out string? Link, out bool Strike) -> void
+AiSdk.Documents.Generation.TextRun.Equals(AiSdk.Documents.Generation.TextRun? other) -> bool
+AiSdk.Documents.Generation.TextRun.Italic.get -> bool
+AiSdk.Documents.Generation.TextRun.Italic.init -> void
+AiSdk.Documents.Generation.TextRun.Link.get -> string?
+AiSdk.Documents.Generation.TextRun.Link.init -> void
+AiSdk.Documents.Generation.TextRun.Strike.get -> bool
+AiSdk.Documents.Generation.TextRun.Strike.init -> void
+AiSdk.Documents.Generation.TextRun.Text.get -> string!
+AiSdk.Documents.Generation.TextRun.Text.init -> void
+AiSdk.Documents.Generation.TextRun.TextRun(string! Text, bool Bold = false, bool Italic = false, bool Code = false, string? Link = null, bool Strike = false) -> void
+AiSdk.Documents.IDocumentConverter
+AiSdk.Documents.IDocumentConverter.CanConvert(string! mediaType) -> bool
+AiSdk.Documents.IDocumentConverter.ConvertAsync(AiSdk.Documents.DocumentSource! source, AiSdk.Documents.DocumentConversionContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Documents.DocumentConversionResult!>!
+AiSdk.Documents.IExternalProcessRunner
+AiSdk.Documents.IExternalProcessRunner.Exists(string! executable) -> bool
+AiSdk.Documents.IExternalProcessRunner.RunAsync(string! executable, System.Collections.Generic.IReadOnlyList<string!>! arguments, byte[]? input = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Documents.ExternalProcess.Result!>!
+AiSdk.Documents.IPdfRasterizer
+AiSdk.Documents.IPdfRasterizer.RenderAsync(byte[]! pdf, System.Collections.Generic.IReadOnlyList<int>! pages, int dpi = 200, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyDictionary<int, byte[]!>!>!
+AiSdk.Documents.IPdfRasterizer.RenderFileAsync(string! path, System.Collections.Generic.IReadOnlyList<int>! pages, int dpi = 200, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyDictionary<int, byte[]!>!>!
+AiSdk.Documents.MarkdownConverter
+AiSdk.Documents.MarkdownConverter.CanConvert(string! mediaType) -> bool
+AiSdk.Documents.MarkdownConverter.ConvertAsync(AiSdk.ContentPart! part, bool downloadUrls = false, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Documents.DocumentConversionResult!>!
+AiSdk.Documents.MarkdownConverter.ConvertAsync(AiSdk.Documents.DocumentSource! source, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Documents.DocumentConversionResult!>!
+AiSdk.Documents.MarkdownConverter.ConvertAsync(byte[]! data, string? mediaType = null, string? fileName = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Documents.DocumentConversionResult!>!
+AiSdk.Documents.MarkdownConverter.Converters.get -> System.Collections.Generic.IReadOnlyList<AiSdk.Documents.IDocumentConverter!>!
+AiSdk.Documents.MarkdownConverter.ConvertFileAsync(string! path, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Documents.DocumentConversionResult!>!
+AiSdk.Documents.MarkdownConverter.MarkdownConverter(AiSdk.Documents.MarkdownConverterOptions? options = null) -> void
+AiSdk.Documents.MarkdownConverter.Options.get -> AiSdk.Documents.MarkdownConverterOptions!
+AiSdk.Documents.MarkdownConverter.Use(AiSdk.Documents.IDocumentConverter! converter) -> AiSdk.Documents.MarkdownConverter!
+AiSdk.Documents.MarkdownConverterOptions
+AiSdk.Documents.MarkdownConverterOptions.FfmpegPath.get -> string!
+AiSdk.Documents.MarkdownConverterOptions.FfmpegPath.init -> void
+AiSdk.Documents.MarkdownConverterOptions.ImageDescriptionPrompt.get -> string!
+AiSdk.Documents.MarkdownConverterOptions.ImageDescriptionPrompt.init -> void
+AiSdk.Documents.MarkdownConverterOptions.IncludeHiddenSheets.get -> bool
+AiSdk.Documents.MarkdownConverterOptions.IncludeHiddenSheets.init -> void
+AiSdk.Documents.MarkdownConverterOptions.Language.get -> string?
+AiSdk.Documents.MarkdownConverterOptions.Language.init -> void
+AiSdk.Documents.MarkdownConverterOptions.MarkdownConverterOptions() -> void
+AiSdk.Documents.MarkdownConverterOptions.MaxConcurrency.get -> int
+AiSdk.Documents.MarkdownConverterOptions.MaxConcurrency.init -> void
+AiSdk.Documents.MarkdownConverterOptions.MaxEmbeddedImageBytes.get -> int
+AiSdk.Documents.MarkdownConverterOptions.MaxEmbeddedImageBytes.init -> void
+AiSdk.Documents.MarkdownConverterOptions.MaxHtmlBytes.get -> int
+AiSdk.Documents.MarkdownConverterOptions.MaxHtmlBytes.init -> void
+AiSdk.Documents.MarkdownConverterOptions.MaxInputBytes.get -> long
+AiSdk.Documents.MarkdownConverterOptions.MaxInputBytes.init -> void
+AiSdk.Documents.MarkdownConverterOptions.MaxMediaDuration.get -> System.TimeSpan
+AiSdk.Documents.MarkdownConverterOptions.MaxMediaDuration.init -> void
+AiSdk.Documents.MarkdownConverterOptions.MaxNestingDepth.get -> int
+AiSdk.Documents.MarkdownConverterOptions.MaxNestingDepth.init -> void
+AiSdk.Documents.MarkdownConverterOptions.MaxOcrDuration.get -> System.TimeSpan?
+AiSdk.Documents.MarkdownConverterOptions.MaxOcrDuration.init -> void
+AiSdk.Documents.MarkdownConverterOptions.MaxOcrPages.get -> int
+AiSdk.Documents.MarkdownConverterOptions.MaxOcrPages.init -> void
+AiSdk.Documents.MarkdownConverterOptions.MaxOfficePartChars.get -> long
+AiSdk.Documents.MarkdownConverterOptions.MaxOfficePartChars.init -> void
+AiSdk.Documents.MarkdownConverterOptions.MaxPdfPages.get -> int
+AiSdk.Documents.MarkdownConverterOptions.MaxPdfPages.init -> void
+AiSdk.Documents.MarkdownConverterOptions.MaxRasterPixels.get -> int
+AiSdk.Documents.MarkdownConverterOptions.MaxRasterPixels.init -> void
+AiSdk.Documents.MarkdownConverterOptions.MaxRowsPerSheet.get -> int
+AiSdk.Documents.MarkdownConverterOptions.MaxRowsPerSheet.init -> void
+AiSdk.Documents.MarkdownConverterOptions.MaxVideoFrames.get -> int
+AiSdk.Documents.MarkdownConverterOptions.MaxVideoFrames.init -> void
+AiSdk.Documents.MarkdownConverterOptions.MinEmbeddedImageBytes.get -> int
+AiSdk.Documents.MarkdownConverterOptions.MinEmbeddedImageBytes.init -> void
+AiSdk.Documents.MarkdownConverterOptions.Ocr.get -> AiSdk.IOcrEngine?
+AiSdk.Documents.MarkdownConverterOptions.Ocr.init -> void
+AiSdk.Documents.MarkdownConverterOptions.PdfMinCharsPerPage.get -> int
+AiSdk.Documents.MarkdownConverterOptions.PdfMinCharsPerPage.init -> void
+AiSdk.Documents.MarkdownConverterOptions.PdfOcr.get -> AiSdk.Documents.PdfOcrMode
+AiSdk.Documents.MarkdownConverterOptions.PdfOcr.init -> void
+AiSdk.Documents.MarkdownConverterOptions.PdfRasterizer.get -> AiSdk.Documents.IPdfRasterizer?
+AiSdk.Documents.MarkdownConverterOptions.PdfRasterizer.init -> void
+AiSdk.Documents.MarkdownConverterOptions.ProcessEmbeddedImages.get -> bool
+AiSdk.Documents.MarkdownConverterOptions.ProcessEmbeddedImages.init -> void
+AiSdk.Documents.MarkdownConverterOptions.ProcessRunner.get -> AiSdk.Documents.IExternalProcessRunner?
+AiSdk.Documents.MarkdownConverterOptions.ProcessRunner.init -> void
+AiSdk.Documents.MarkdownConverterOptions.Progress.get -> System.IProgress<AiSdk.Documents.DocumentConversionProgress!>?
+AiSdk.Documents.MarkdownConverterOptions.Progress.init -> void
+AiSdk.Documents.MarkdownConverterOptions.Transcription.get -> AiSdk.ITranscriptionModel?
+AiSdk.Documents.MarkdownConverterOptions.Transcription.init -> void
+AiSdk.Documents.MarkdownConverterOptions.UrlDownload.get -> AiSdk.Documents.UrlDownloadOptions!
+AiSdk.Documents.MarkdownConverterOptions.UrlDownload.init -> void
+AiSdk.Documents.MarkdownConverterOptions.VideoFrameInterval.get -> System.TimeSpan
+AiSdk.Documents.MarkdownConverterOptions.VideoFrameInterval.init -> void
+AiSdk.Documents.MarkdownConverterOptions.VisionModel.get -> AiSdk.ILanguageModel?
+AiSdk.Documents.MarkdownConverterOptions.VisionModel.init -> void
+AiSdk.Documents.MediaTypes
+AiSdk.Documents.NativeAttachments
+AiSdk.Documents.NativeAttachments.All = AiSdk.Documents.NativeAttachments.Images | AiSdk.Documents.NativeAttachments.Pdf | AiSdk.Documents.NativeAttachments.Audio | AiSdk.Documents.NativeAttachments.Video -> AiSdk.Documents.NativeAttachments
+AiSdk.Documents.NativeAttachments.Audio = 4 -> AiSdk.Documents.NativeAttachments
+AiSdk.Documents.NativeAttachments.Images = 1 -> AiSdk.Documents.NativeAttachments
+AiSdk.Documents.NativeAttachments.None = 0 -> AiSdk.Documents.NativeAttachments
+AiSdk.Documents.NativeAttachments.Pdf = 2 -> AiSdk.Documents.NativeAttachments
+AiSdk.Documents.NativeAttachments.Video = 8 -> AiSdk.Documents.NativeAttachments
+AiSdk.Documents.PageTextSource
+AiSdk.Documents.PageTextSource.Ocr = 1 -> AiSdk.Documents.PageTextSource
+AiSdk.Documents.PageTextSource.Text = 0 -> AiSdk.Documents.PageTextSource
+AiSdk.Documents.PageTextSource.Transcript = 3 -> AiSdk.Documents.PageTextSource
+AiSdk.Documents.PageTextSource.Vision = 2 -> AiSdk.Documents.PageTextSource
+AiSdk.Documents.PdfOcrMode
+AiSdk.Documents.PdfOcrMode.Always = 2 -> AiSdk.Documents.PdfOcrMode
+AiSdk.Documents.PdfOcrMode.Auto = 0 -> AiSdk.Documents.PdfOcrMode
+AiSdk.Documents.PdfOcrMode.Never = 1 -> AiSdk.Documents.PdfOcrMode
+AiSdk.Documents.PdftoppmRasterizer
+AiSdk.Documents.PdftoppmRasterizer.MaxPagesPerProcess.get -> int
+AiSdk.Documents.PdftoppmRasterizer.MaxPagesPerProcess.init -> void
+AiSdk.Documents.PdftoppmRasterizer.MaxParallelism.get -> int
+AiSdk.Documents.PdftoppmRasterizer.MaxParallelism.init -> void
+AiSdk.Documents.PdftoppmRasterizer.MaxPixels.get -> int
+AiSdk.Documents.PdftoppmRasterizer.MaxPixels.init -> void
+AiSdk.Documents.PdftoppmRasterizer.PdftoppmRasterizer(string! executable = "pdftoppm", AiSdk.Documents.IExternalProcessRunner? runner = null) -> void
+AiSdk.Documents.PdftoppmRasterizer.RenderAsync(byte[]! pdf, System.Collections.Generic.IReadOnlyList<int>! pages, int dpi = 200, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyDictionary<int, byte[]!>!>!
+AiSdk.Documents.PdftoppmRasterizer.RenderFileAsync(string! path, System.Collections.Generic.IReadOnlyList<int>! pages, int dpi = 200, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyDictionary<int, byte[]!>!>!
+AiSdk.Documents.TesseractOcr
+AiSdk.Documents.TesseractOcr.IsAvailable.get -> bool
+AiSdk.Documents.TesseractOcr.Name.get -> string!
+AiSdk.Documents.TesseractOcr.RecognizeAsync(AiSdk.OcrRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.OcrResult!>!
+AiSdk.Documents.TesseractOcr.Supports(string! mediaType) -> bool
+AiSdk.Documents.TesseractOcr.TesseractOcr(string? languages = null, string! executable = "tesseract", int? pageSegmentationMode = null, AiSdk.Documents.IExternalProcessRunner? runner = null) -> void
+AiSdk.Documents.UrlDownloader
+AiSdk.Documents.UrlDownloadException
+AiSdk.Documents.UrlDownloadException.UrlDownloadException(string! message, System.Exception? inner = null) -> void
+AiSdk.Documents.UrlDownloadOptions
+AiSdk.Documents.UrlDownloadOptions.AddressValidator.get -> System.Func<System.Net.IPAddress!, bool>?
+AiSdk.Documents.UrlDownloadOptions.AddressValidator.init -> void
+AiSdk.Documents.UrlDownloadOptions.AllowPrivateNetworks.get -> bool
+AiSdk.Documents.UrlDownloadOptions.AllowPrivateNetworks.init -> void
+AiSdk.Documents.UrlDownloadOptions.MaxBytes.get -> long
+AiSdk.Documents.UrlDownloadOptions.MaxBytes.init -> void
+AiSdk.Documents.UrlDownloadOptions.MaxRedirects.get -> int
+AiSdk.Documents.UrlDownloadOptions.MaxRedirects.init -> void
+AiSdk.Documents.UrlDownloadOptions.Timeout.get -> System.TimeSpan
+AiSdk.Documents.UrlDownloadOptions.Timeout.init -> void
+AiSdk.Documents.UrlDownloadOptions.UrlDownloadOptions() -> void
+AiSdk.Documents.UrlDownloadOptions.UrlValidator.get -> System.Func<System.Uri!, bool>?
+AiSdk.Documents.UrlDownloadOptions.UrlValidator.init -> void
+AiSdk.Documents.UrlDownloadResult
+AiSdk.Documents.UrlDownloadResult.<Clone>$() -> AiSdk.Documents.UrlDownloadResult!
+AiSdk.Documents.UrlDownloadResult.Data.get -> byte[]!
+AiSdk.Documents.UrlDownloadResult.Data.init -> void
+AiSdk.Documents.UrlDownloadResult.Deconstruct(out byte[]! Data, out string? MediaType, out System.Uri! Url) -> void
+AiSdk.Documents.UrlDownloadResult.Equals(AiSdk.Documents.UrlDownloadResult? other) -> bool
+AiSdk.Documents.UrlDownloadResult.MediaType.get -> string?
+AiSdk.Documents.UrlDownloadResult.MediaType.init -> void
+AiSdk.Documents.UrlDownloadResult.Url.get -> System.Uri!
+AiSdk.Documents.UrlDownloadResult.Url.init -> void
+AiSdk.Documents.UrlDownloadResult.UrlDownloadResult(byte[]! Data, string? MediaType, System.Uri! Url) -> void
+const AiSdk.Documents.Converters.DocxConverter.MaxTableColumns = 63 -> int
+const AiSdk.Documents.Converters.HtmlConverter.DefaultMaxDepth = 128 -> int
+const AiSdk.Documents.Converters.MarkdownTable.DefaultMaxCells = 1000000 -> int
+const AiSdk.Documents.Converters.PdfConverter.OcrDpi = 200 -> int
+const AiSdk.Documents.Converters.PlainTextConverter.MaxCsvColumns = 16384 -> int
+const AiSdk.Documents.Converters.VideoConverter.AllowedFormats = "mov,mp4,m4a,3gp,3g2,mj2,matroska,webm,avi,asf,flv,mpegts,mpeg,ogg,mp3,wav,aac,flac,m4v,h264,hevc" -> string!
+const AiSdk.Documents.Converters.XlsxConverter.MaxColumns = 16384 -> int
+const AiSdk.Documents.Converters.XlsxConverter.MaxRows = 1048576 -> int
+const AiSdk.Documents.ExternalProcessRunner.MaxErrorBytes = 65536 -> int
+const AiSdk.Documents.Generation.DocumentGenerator.DocxMediaType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document" -> string!
+const AiSdk.Documents.Generation.DocumentGenerator.PdfMediaType = "application/pdf" -> string!
+const AiSdk.Documents.Generation.DocumentGenerator.XlsxMediaType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" -> string!
+const AiSdk.Documents.MediaTypes.Csv = "text/csv" -> string!
+const AiSdk.Documents.MediaTypes.Docx = "application/vnd.openxmlformats-officedocument.wordprocessingml.document" -> string!
+const AiSdk.Documents.MediaTypes.Html = "text/html" -> string!
+const AiSdk.Documents.MediaTypes.Json = "application/json" -> string!
+const AiSdk.Documents.MediaTypes.Markdown = "text/markdown" -> string!
+const AiSdk.Documents.MediaTypes.Pdf = "application/pdf" -> string!
+const AiSdk.Documents.MediaTypes.PlainText = "text/plain" -> string!
+const AiSdk.Documents.MediaTypes.Pptx = "application/vnd.openxmlformats-officedocument.presentationml.presentation" -> string!
+const AiSdk.Documents.MediaTypes.Xlsx = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" -> string!
+override AiSdk.Documents.DocumentConversionProgress.Equals(object? obj) -> bool
+override AiSdk.Documents.DocumentConversionProgress.GetHashCode() -> int
+override AiSdk.Documents.DocumentConversionProgress.ToString() -> string!
+override AiSdk.Documents.DocumentConversionResult.Equals(object? obj) -> bool
+override AiSdk.Documents.DocumentConversionResult.GetHashCode() -> int
+override AiSdk.Documents.DocumentConversionResult.ToString() -> string!
+override AiSdk.Documents.DocumentPage.Equals(object? obj) -> bool
+override AiSdk.Documents.DocumentPage.GetHashCode() -> int
+override AiSdk.Documents.DocumentPage.ToString() -> string!
+override AiSdk.Documents.DocumentSource.Equals(object? obj) -> bool
+override AiSdk.Documents.DocumentSource.GetHashCode() -> int
+override AiSdk.Documents.DocumentSource.ToString() -> string!
+override AiSdk.Documents.ExternalProcess.Result.Equals(object? obj) -> bool
+override AiSdk.Documents.ExternalProcess.Result.GetHashCode() -> int
+override AiSdk.Documents.ExternalProcess.Result.ToString() -> string!
+override AiSdk.Documents.Generation.CodeBlockModel.<Clone>$() -> AiSdk.Documents.Generation.CodeBlockModel!
+override AiSdk.Documents.Generation.CodeBlockModel.Equals(object? obj) -> bool
+override AiSdk.Documents.Generation.CodeBlockModel.GetHashCode() -> int
+override AiSdk.Documents.Generation.CodeBlockModel.ToString() -> string!
+override AiSdk.Documents.Generation.DocBlock.Equals(object? obj) -> bool
+override AiSdk.Documents.Generation.DocBlock.GetHashCode() -> int
+override AiSdk.Documents.Generation.DocBlock.ToString() -> string!
+override AiSdk.Documents.Generation.HeadingBlockModel.<Clone>$() -> AiSdk.Documents.Generation.HeadingBlockModel!
+override AiSdk.Documents.Generation.HeadingBlockModel.Equals(object? obj) -> bool
+override AiSdk.Documents.Generation.HeadingBlockModel.GetHashCode() -> int
+override AiSdk.Documents.Generation.HeadingBlockModel.ToString() -> string!
+override AiSdk.Documents.Generation.ListItemModel.Equals(object? obj) -> bool
+override AiSdk.Documents.Generation.ListItemModel.GetHashCode() -> int
+override AiSdk.Documents.Generation.ListItemModel.ToString() -> string!
+override AiSdk.Documents.Generation.ListModel.<Clone>$() -> AiSdk.Documents.Generation.ListModel!
+override AiSdk.Documents.Generation.ListModel.Equals(object? obj) -> bool
+override AiSdk.Documents.Generation.ListModel.GetHashCode() -> int
+override AiSdk.Documents.Generation.ListModel.ToString() -> string!
+override AiSdk.Documents.Generation.PageBreakModel.<Clone>$() -> AiSdk.Documents.Generation.PageBreakModel!
+override AiSdk.Documents.Generation.PageBreakModel.Equals(object? obj) -> bool
+override AiSdk.Documents.Generation.PageBreakModel.GetHashCode() -> int
+override AiSdk.Documents.Generation.PageBreakModel.ToString() -> string!
+override AiSdk.Documents.Generation.ParagraphModel.<Clone>$() -> AiSdk.Documents.Generation.ParagraphModel!
+override AiSdk.Documents.Generation.ParagraphModel.Equals(object? obj) -> bool
+override AiSdk.Documents.Generation.ParagraphModel.GetHashCode() -> int
+override AiSdk.Documents.Generation.ParagraphModel.ToString() -> string!
+override AiSdk.Documents.Generation.QuoteModel.<Clone>$() -> AiSdk.Documents.Generation.QuoteModel!
+override AiSdk.Documents.Generation.QuoteModel.Equals(object? obj) -> bool
+override AiSdk.Documents.Generation.QuoteModel.GetHashCode() -> int
+override AiSdk.Documents.Generation.QuoteModel.ToString() -> string!
+override AiSdk.Documents.Generation.RuleModel.<Clone>$() -> AiSdk.Documents.Generation.RuleModel!
+override AiSdk.Documents.Generation.RuleModel.Equals(object? obj) -> bool
+override AiSdk.Documents.Generation.RuleModel.GetHashCode() -> int
+override AiSdk.Documents.Generation.RuleModel.ToString() -> string!
+override AiSdk.Documents.Generation.SheetColumn.Equals(object? obj) -> bool
+override AiSdk.Documents.Generation.SheetColumn.GetHashCode() -> int
+override AiSdk.Documents.Generation.SheetColumn.ToString() -> string!
+override AiSdk.Documents.Generation.SheetOptions.Equals(object? obj) -> bool
+override AiSdk.Documents.Generation.SheetOptions.GetHashCode() -> int
+override AiSdk.Documents.Generation.SheetOptions.ToString() -> string!
+override AiSdk.Documents.Generation.TableModel.<Clone>$() -> AiSdk.Documents.Generation.TableModel!
+override AiSdk.Documents.Generation.TableModel.Equals(object? obj) -> bool
+override AiSdk.Documents.Generation.TableModel.GetHashCode() -> int
+override AiSdk.Documents.Generation.TableModel.ToString() -> string!
+override AiSdk.Documents.Generation.TextRun.Equals(object? obj) -> bool
+override AiSdk.Documents.Generation.TextRun.GetHashCode() -> int
+override AiSdk.Documents.Generation.TextRun.ToString() -> string!
+override AiSdk.Documents.UrlDownloadResult.Equals(object? obj) -> bool
+override AiSdk.Documents.UrlDownloadResult.GetHashCode() -> int
+override AiSdk.Documents.UrlDownloadResult.ToString() -> string!
+override sealed AiSdk.Documents.Generation.CodeBlockModel.Equals(AiSdk.Documents.Generation.DocBlock? other) -> bool
+override sealed AiSdk.Documents.Generation.HeadingBlockModel.Equals(AiSdk.Documents.Generation.DocBlock? other) -> bool
+override sealed AiSdk.Documents.Generation.ListModel.Equals(AiSdk.Documents.Generation.DocBlock? other) -> bool
+override sealed AiSdk.Documents.Generation.PageBreakModel.Equals(AiSdk.Documents.Generation.DocBlock? other) -> bool
+override sealed AiSdk.Documents.Generation.ParagraphModel.Equals(AiSdk.Documents.Generation.DocBlock? other) -> bool
+override sealed AiSdk.Documents.Generation.QuoteModel.Equals(AiSdk.Documents.Generation.DocBlock? other) -> bool
+override sealed AiSdk.Documents.Generation.RuleModel.Equals(AiSdk.Documents.Generation.DocBlock? other) -> bool
+override sealed AiSdk.Documents.Generation.TableModel.Equals(AiSdk.Documents.Generation.DocBlock? other) -> bool
+static AiSdk.Documents.AttachmentConversionOptions.DefaultFormat(AiSdk.Documents.DocumentConversionResult! result) -> string!
+static AiSdk.Documents.Converters.HtmlConverter.ToMarkdown(string! html) -> string!
+static AiSdk.Documents.Converters.HtmlConverter.ToMarkdown(string! html, int maxDepth, System.Collections.Generic.ICollection<string!>? warnings = null) -> string!
+static AiSdk.Documents.Converters.MarkdownTable.Build(System.Collections.Generic.IReadOnlyList<System.Collections.Generic.IReadOnlyList<string!>!>! rows) -> string!
+static AiSdk.Documents.Converters.MarkdownTable.Build(System.Collections.Generic.IReadOnlyList<System.Collections.Generic.IReadOnlyList<string!>!>! rows, int maxCells, out bool truncated) -> string!
+static AiSdk.Documents.Converters.MarkdownTable.Escape(string! value) -> string!
+static AiSdk.Documents.Converters.PlainTextConverter.CsvToTable(string! text, char separator, int maxRows, System.Collections.Generic.List<string!>? warnings = null) -> string!
+static AiSdk.Documents.Converters.VideoConverter.FramePrompt.get -> string!
+static AiSdk.Documents.DocumentConversionProgress.operator !=(AiSdk.Documents.DocumentConversionProgress? left, AiSdk.Documents.DocumentConversionProgress? right) -> bool
+static AiSdk.Documents.DocumentConversionProgress.operator ==(AiSdk.Documents.DocumentConversionProgress? left, AiSdk.Documents.DocumentConversionProgress? right) -> bool
+static AiSdk.Documents.DocumentConversionResult.FromPages(AiSdk.Documents.DocumentSource! source, System.Collections.Generic.IReadOnlyList<AiSdk.Documents.DocumentPage!>! pages, string? title = null, System.Collections.Generic.IReadOnlyList<string!>? warnings = null, string! separator = "\n\n") -> AiSdk.Documents.DocumentConversionResult!
+static AiSdk.Documents.DocumentConversionResult.operator !=(AiSdk.Documents.DocumentConversionResult? left, AiSdk.Documents.DocumentConversionResult? right) -> bool
+static AiSdk.Documents.DocumentConversionResult.operator ==(AiSdk.Documents.DocumentConversionResult? left, AiSdk.Documents.DocumentConversionResult? right) -> bool
+static AiSdk.Documents.DocumentMiddlewares.ConvertAttachments(AiSdk.Documents.MarkdownConverter! converter, AiSdk.Documents.AttachmentConversionOptions? options = null) -> AiSdk.ILanguageModelMiddleware!
+static AiSdk.Documents.DocumentPage.operator !=(AiSdk.Documents.DocumentPage? left, AiSdk.Documents.DocumentPage? right) -> bool
+static AiSdk.Documents.DocumentPage.operator ==(AiSdk.Documents.DocumentPage? left, AiSdk.Documents.DocumentPage? right) -> bool
+static AiSdk.Documents.DocumentSource.FromBytes(byte[]! data, string? mediaType = null, string? fileName = null) -> AiSdk.Documents.DocumentSource!
+static AiSdk.Documents.DocumentSource.FromFileAsync(string! path, string? mediaType = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Documents.DocumentSource!>!
+static AiSdk.Documents.DocumentSource.FromStreamAsync(System.IO.Stream! stream, string? mediaType = null, string? fileName = null, long maxBytes = 9223372036854775807, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Documents.DocumentSource!>!
+static AiSdk.Documents.DocumentSource.FromText(string! text, string! mediaType = "text/plain", string? fileName = null) -> AiSdk.Documents.DocumentSource!
+static AiSdk.Documents.DocumentSource.operator !=(AiSdk.Documents.DocumentSource? left, AiSdk.Documents.DocumentSource? right) -> bool
+static AiSdk.Documents.DocumentSource.operator ==(AiSdk.Documents.DocumentSource? left, AiSdk.Documents.DocumentSource? right) -> bool
+static AiSdk.Documents.DocumentVectorStoreExtensions.IngestAsync(this AiSdk.IVectorStore! store, AiSdk.Documents.MarkdownConverter! converter, AiSdk.Documents.DocumentSource! source, string? id = null, int maxChars = 1500, int overlap = 150, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? metadata = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Documents.DocumentConversionResult!>!
+static AiSdk.Documents.ExternalProcess.Exists(string! executable) -> bool
+static AiSdk.Documents.ExternalProcess.Result.operator !=(AiSdk.Documents.ExternalProcess.Result? left, AiSdk.Documents.ExternalProcess.Result? right) -> bool
+static AiSdk.Documents.ExternalProcess.Result.operator ==(AiSdk.Documents.ExternalProcess.Result? left, AiSdk.Documents.ExternalProcess.Result? right) -> bool
+static AiSdk.Documents.ExternalProcess.RunAsync(string! executable, System.Collections.Generic.IEnumerable<string!>! arguments, byte[]? input = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Documents.ExternalProcess.Result!>!
+static AiSdk.Documents.ExternalProcess.RunCheckedAsync(string! executable, System.Collections.Generic.IEnumerable<string!>! arguments, byte[]? input = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+static AiSdk.Documents.ExternalProcess.Runner.get -> AiSdk.Documents.IExternalProcessRunner!
+static AiSdk.Documents.ExternalProcess.Runner.set -> void
+static AiSdk.Documents.ExternalProcessOptions.CommonEnvironmentVariables.get -> System.Collections.Generic.IReadOnlyList<string!>!
+static AiSdk.Documents.ExternalProcessRunnerExtensions.RunCheckedAsync(this AiSdk.Documents.IExternalProcessRunner! runner, string! executable, System.Collections.Generic.IReadOnlyList<string!>! arguments, byte[]? input = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+static AiSdk.Documents.Generation.CodeBlockModel.operator !=(AiSdk.Documents.Generation.CodeBlockModel? left, AiSdk.Documents.Generation.CodeBlockModel? right) -> bool
+static AiSdk.Documents.Generation.CodeBlockModel.operator ==(AiSdk.Documents.Generation.CodeBlockModel? left, AiSdk.Documents.Generation.CodeBlockModel? right) -> bool
+static AiSdk.Documents.Generation.DocBlock.operator !=(AiSdk.Documents.Generation.DocBlock? left, AiSdk.Documents.Generation.DocBlock? right) -> bool
+static AiSdk.Documents.Generation.DocBlock.operator ==(AiSdk.Documents.Generation.DocBlock? left, AiSdk.Documents.Generation.DocBlock? right) -> bool
+static AiSdk.Documents.Generation.DocumentGenerator.ToDocx(string! markdown, AiSdk.Documents.Generation.DocumentStyleOptions? options = null) -> byte[]!
+static AiSdk.Documents.Generation.DocumentGenerator.ToPdf(string! markdown, AiSdk.Documents.Generation.DocumentStyleOptions? options = null) -> byte[]!
+static AiSdk.Documents.Generation.DocumentGenerator.ToXlsx(string! markdownTables, AiSdk.Documents.Generation.SheetOptions? options = null) -> byte[]!
+static AiSdk.Documents.Generation.DocumentGenerator.ToXlsx<T>(System.Collections.Generic.IEnumerable<T>! items, string? sheetName = null, AiSdk.Documents.Generation.SheetOptions? options = null) -> byte[]!
+static AiSdk.Documents.Generation.DocumentTools.Create(AiSdk.Documents.Generation.DocumentToolOptions! options) -> System.Collections.Generic.IReadOnlyList<AiSdk.Tool!>!
+static AiSdk.Documents.Generation.DocumentTools.Instructions.get -> string!
+static AiSdk.Documents.Generation.DocxWriter.FromMarkdown(string! markdown, AiSdk.Documents.Generation.DocumentStyleOptions? options = null) -> byte[]!
+static AiSdk.Documents.Generation.DocxWriter.Write(System.Collections.Generic.IReadOnlyList<AiSdk.Documents.Generation.DocBlock!>! blocks, AiSdk.Documents.Generation.DocumentStyleOptions? options = null) -> byte[]!
+static AiSdk.Documents.Generation.HeadingBlockModel.operator !=(AiSdk.Documents.Generation.HeadingBlockModel? left, AiSdk.Documents.Generation.HeadingBlockModel? right) -> bool
+static AiSdk.Documents.Generation.HeadingBlockModel.operator ==(AiSdk.Documents.Generation.HeadingBlockModel? left, AiSdk.Documents.Generation.HeadingBlockModel? right) -> bool
+static AiSdk.Documents.Generation.ListItemModel.operator !=(AiSdk.Documents.Generation.ListItemModel? left, AiSdk.Documents.Generation.ListItemModel? right) -> bool
+static AiSdk.Documents.Generation.ListItemModel.operator ==(AiSdk.Documents.Generation.ListItemModel? left, AiSdk.Documents.Generation.ListItemModel? right) -> bool
+static AiSdk.Documents.Generation.ListModel.operator !=(AiSdk.Documents.Generation.ListModel? left, AiSdk.Documents.Generation.ListModel? right) -> bool
+static AiSdk.Documents.Generation.ListModel.operator ==(AiSdk.Documents.Generation.ListModel? left, AiSdk.Documents.Generation.ListModel? right) -> bool
+static AiSdk.Documents.Generation.MarkdownModel.IsSafeLink(string? url, out System.Uri? uri) -> bool
+static AiSdk.Documents.Generation.MarkdownModel.Parse(string! markdown) -> System.Collections.Generic.IReadOnlyList<AiSdk.Documents.Generation.DocBlock!>!
+static AiSdk.Documents.Generation.PageBreakModel.operator !=(AiSdk.Documents.Generation.PageBreakModel? left, AiSdk.Documents.Generation.PageBreakModel? right) -> bool
+static AiSdk.Documents.Generation.PageBreakModel.operator ==(AiSdk.Documents.Generation.PageBreakModel? left, AiSdk.Documents.Generation.PageBreakModel? right) -> bool
+static AiSdk.Documents.Generation.ParagraphModel.operator !=(AiSdk.Documents.Generation.ParagraphModel? left, AiSdk.Documents.Generation.ParagraphModel? right) -> bool
+static AiSdk.Documents.Generation.ParagraphModel.operator ==(AiSdk.Documents.Generation.ParagraphModel? left, AiSdk.Documents.Generation.ParagraphModel? right) -> bool
+static AiSdk.Documents.Generation.PdfFonts.Default.get -> AiSdk.Documents.Generation.PdfFonts!
+static AiSdk.Documents.Generation.PdfFonts.FromSingle(byte[]! font, byte[]? mono = null) -> AiSdk.Documents.Generation.PdfFonts!
+static AiSdk.Documents.Generation.PdfWriter.FromMarkdown(string! markdown, AiSdk.Documents.Generation.DocumentStyleOptions? options = null) -> byte[]!
+static AiSdk.Documents.Generation.PdfWriter.Write(System.Collections.Generic.IReadOnlyList<AiSdk.Documents.Generation.DocBlock!>! blocks, AiSdk.Documents.Generation.DocumentStyleOptions? options = null) -> byte[]!
+static AiSdk.Documents.Generation.QuoteModel.operator !=(AiSdk.Documents.Generation.QuoteModel? left, AiSdk.Documents.Generation.QuoteModel? right) -> bool
+static AiSdk.Documents.Generation.QuoteModel.operator ==(AiSdk.Documents.Generation.QuoteModel? left, AiSdk.Documents.Generation.QuoteModel? right) -> bool
+static AiSdk.Documents.Generation.RuleModel.operator !=(AiSdk.Documents.Generation.RuleModel? left, AiSdk.Documents.Generation.RuleModel? right) -> bool
+static AiSdk.Documents.Generation.RuleModel.operator ==(AiSdk.Documents.Generation.RuleModel? left, AiSdk.Documents.Generation.RuleModel? right) -> bool
+static AiSdk.Documents.Generation.SheetColumn.operator !=(AiSdk.Documents.Generation.SheetColumn? left, AiSdk.Documents.Generation.SheetColumn? right) -> bool
+static AiSdk.Documents.Generation.SheetColumn.operator ==(AiSdk.Documents.Generation.SheetColumn? left, AiSdk.Documents.Generation.SheetColumn? right) -> bool
+static AiSdk.Documents.Generation.SheetOptions.operator !=(AiSdk.Documents.Generation.SheetOptions? left, AiSdk.Documents.Generation.SheetOptions? right) -> bool
+static AiSdk.Documents.Generation.SheetOptions.operator ==(AiSdk.Documents.Generation.SheetOptions? left, AiSdk.Documents.Generation.SheetOptions? right) -> bool
+static AiSdk.Documents.Generation.SpreadsheetBuilder.IsSafeFormula(string! formula) -> bool
+static AiSdk.Documents.Generation.TableModel.operator !=(AiSdk.Documents.Generation.TableModel? left, AiSdk.Documents.Generation.TableModel? right) -> bool
+static AiSdk.Documents.Generation.TableModel.operator ==(AiSdk.Documents.Generation.TableModel? left, AiSdk.Documents.Generation.TableModel? right) -> bool
+static AiSdk.Documents.Generation.TextRun.operator !=(AiSdk.Documents.Generation.TextRun? left, AiSdk.Documents.Generation.TextRun? right) -> bool
+static AiSdk.Documents.Generation.TextRun.operator ==(AiSdk.Documents.Generation.TextRun? left, AiSdk.Documents.Generation.TextRun? right) -> bool
+static AiSdk.Documents.MediaTypes.Detect(System.ReadOnlySpan<byte> data, string? fileName = null) -> string!
+static AiSdk.Documents.MediaTypes.ExtensionFor(string! mediaType) -> string!
+static AiSdk.Documents.MediaTypes.FromExtension(string? fileName) -> string?
+static AiSdk.Documents.MediaTypes.IsAudio(string! mediaType) -> bool
+static AiSdk.Documents.MediaTypes.IsImage(string! mediaType) -> bool
+static AiSdk.Documents.MediaTypes.IsVideo(string! mediaType) -> bool
+static AiSdk.Documents.MediaTypes.Normalize(string! mediaType) -> string!
+static AiSdk.Documents.PdftoppmRasterizer.TryCreate(string! executable = "pdftoppm", AiSdk.Documents.IExternalProcessRunner? runner = null) -> AiSdk.Documents.PdftoppmRasterizer?
+static AiSdk.Documents.UrlDownloader.DownloadAsync(System.Uri! url, AiSdk.Documents.UrlDownloadOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Documents.UrlDownloadResult!>!
+static AiSdk.Documents.UrlDownloader.IsPublicAddress(System.Net.IPAddress! address) -> bool
+static AiSdk.Documents.UrlDownloadResult.operator !=(AiSdk.Documents.UrlDownloadResult? left, AiSdk.Documents.UrlDownloadResult? right) -> bool
+static AiSdk.Documents.UrlDownloadResult.operator ==(AiSdk.Documents.UrlDownloadResult? left, AiSdk.Documents.UrlDownloadResult? right) -> bool
+virtual AiSdk.Documents.Generation.DocBlock.EqualityContract.get -> System.Type!
+virtual AiSdk.Documents.Generation.DocBlock.Equals(AiSdk.Documents.Generation.DocBlock? other) -> bool
+virtual AiSdk.Documents.Generation.DocBlock.PrintMembers(System.Text.StringBuilder! builder) -> bool

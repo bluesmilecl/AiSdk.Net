@@ -1,0 +1,30 @@
+#nullable enable
+AiSdk.Workflows.Postgres.PostgresWorkflowBuilderExtensions
+AiSdk.Workflows.Postgres.PostgresWorkflowStore
+AiSdk.Workflows.Postgres.PostgresWorkflowStore.DeleteAutomationAsync(string! id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+AiSdk.Workflows.Postgres.PostgresWorkflowStore.DeleteFinishedRunsAsync(System.DateTimeOffset finishedBefore, int limit = 1000, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+AiSdk.Workflows.Postgres.PostgresWorkflowStore.Dispose() -> void
+AiSdk.Workflows.Postgres.PostgresWorkflowStore.DisposeAsync() -> System.Threading.Tasks.ValueTask
+AiSdk.Workflows.Postgres.PostgresWorkflowStore.EnsureSchemaAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+AiSdk.Workflows.Postgres.PostgresWorkflowStore.GetAutomationAsync(string! id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Workflows.Automation?>!
+AiSdk.Workflows.Postgres.PostgresWorkflowStore.GetRunAsync(string! id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Workflows.WorkflowRun?>!
+AiSdk.Workflows.Postgres.PostgresWorkflowStore.ListAutomationsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.Workflows.Automation!>!>!
+AiSdk.Workflows.Postgres.PostgresWorkflowStore.ListDueAutomationsAsync(System.DateTimeOffset now, int limit = 100, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.Workflows.Automation!>!>!
+AiSdk.Workflows.Postgres.PostgresWorkflowStore.ListDueRunsAsync(System.DateTimeOffset now, int limit = 100, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.Workflows.WorkflowRun!>!>!
+AiSdk.Workflows.Postgres.PostgresWorkflowStore.ListRunsAsync(AiSdk.Workflows.WorkflowStatus? status = null, string? workflowName = null, int limit = 100, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.Workflows.WorkflowRun!>!>!
+AiSdk.Workflows.Postgres.PostgresWorkflowStore.ListRunsWaitingForEventAsync(string! eventName, string? key, int limit = 100, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.Workflows.WorkflowRun!>!>!
+AiSdk.Workflows.Postgres.PostgresWorkflowStore.PostgresWorkflowStore(Npgsql.NpgsqlDataSource! dataSource, AiSdk.Workflows.Postgres.PostgresWorkflowStoreOptions? options = null) -> void
+AiSdk.Workflows.Postgres.PostgresWorkflowStore.SaveAutomationAsync(AiSdk.Workflows.Automation! automation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Workflows.Automation!>!
+AiSdk.Workflows.Postgres.PostgresWorkflowStore.SaveRunAsync(AiSdk.Workflows.WorkflowRun! run, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+AiSdk.Workflows.Postgres.PostgresWorkflowStoreOptions
+AiSdk.Workflows.Postgres.PostgresWorkflowStoreOptions.CreateIfNotExists.get -> bool
+AiSdk.Workflows.Postgres.PostgresWorkflowStoreOptions.CreateIfNotExists.init -> void
+AiSdk.Workflows.Postgres.PostgresWorkflowStoreOptions.PostgresWorkflowStoreOptions() -> void
+AiSdk.Workflows.Postgres.PostgresWorkflowStoreOptions.Schema.get -> string!
+AiSdk.Workflows.Postgres.PostgresWorkflowStoreOptions.Schema.init -> void
+AiSdk.Workflows.Postgres.PostgresWorkflowStoreOptions.TablePrefix.get -> string!
+AiSdk.Workflows.Postgres.PostgresWorkflowStoreOptions.TablePrefix.init -> void
+static AiSdk.Workflows.Postgres.PostgresWorkflowBuilderExtensions.UsePostgresStore(this AiSdk.Workflows.WorkflowBuilder! builder, AiSdk.Workflows.Postgres.PostgresWorkflowStoreOptions? options = null) -> AiSdk.Workflows.WorkflowBuilder!
+static AiSdk.Workflows.Postgres.PostgresWorkflowBuilderExtensions.UsePostgresStore(this AiSdk.Workflows.WorkflowBuilder! builder, Npgsql.NpgsqlDataSource! dataSource, AiSdk.Workflows.Postgres.PostgresWorkflowStoreOptions? options = null) -> AiSdk.Workflows.WorkflowBuilder!
+static AiSdk.Workflows.Postgres.PostgresWorkflowBuilderExtensions.UsePostgresStore(this AiSdk.Workflows.WorkflowBuilder! builder, string! connectionString, AiSdk.Workflows.Postgres.PostgresWorkflowStoreOptions? options = null) -> AiSdk.Workflows.WorkflowBuilder!
+static AiSdk.Workflows.Postgres.PostgresWorkflowStore.Create(string! connectionString, AiSdk.Workflows.Postgres.PostgresWorkflowStoreOptions? options = null) -> AiSdk.Workflows.Postgres.PostgresWorkflowStore!

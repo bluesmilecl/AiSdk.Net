@@ -1,0 +1,68 @@
+#nullable enable
+AiSdk.AspNetCore.ArtifactEndpointOptions
+AiSdk.AspNetCore.ArtifactEndpointOptions.ArtifactEndpointOptions() -> void
+AiSdk.AspNetCore.ArtifactEndpointOptions.CanAccess.get -> System.Func<Microsoft.AspNetCore.Http.HttpContext!, AiSdk.Artifacts.Artifact!, System.Threading.Tasks.ValueTask<bool>>?
+AiSdk.AspNetCore.ArtifactEndpointOptions.CanAccess.init -> void
+AiSdk.AspNetCore.ArtifactEndpoints
+AiSdk.AspNetCore.EndpointSecurity
+AiSdk.AspNetCore.EndpointSecurityOptions
+AiSdk.AspNetCore.EndpointSecurityOptions.AllowAnonymous.get -> bool
+AiSdk.AspNetCore.EndpointSecurityOptions.AllowAnonymous.init -> void
+AiSdk.AspNetCore.EndpointSecurityOptions.AuthorizationPolicies.get -> System.Collections.Generic.IReadOnlyList<string!>!
+AiSdk.AspNetCore.EndpointSecurityOptions.AuthorizationPolicies.init -> void
+AiSdk.AspNetCore.EndpointSecurityOptions.EndpointSecurityOptions() -> void
+AiSdk.AspNetCore.EndpointSecurityOptions.ResolveUser.get -> System.Func<Microsoft.AspNetCore.Http.HttpContext!, string?>!
+AiSdk.AspNetCore.EndpointSecurityOptions.ResolveUser.init -> void
+AiSdk.AspNetCore.SkillEndpointOptions
+AiSdk.AspNetCore.SkillEndpointOptions.SkillEndpointOptions() -> void
+AiSdk.AspNetCore.SkillEndpoints
+AiSdk.AspNetCore.StreamResultExtensions
+AiSdk.AspNetCore.ToolApprovalProtection
+AiSdk.AspNetCore.UIMessageStreamResults
+AiSdk.AspNetCore.WorkflowEndpointOptions
+AiSdk.AspNetCore.WorkflowEndpointOptions.CanAccessAutomation.get -> System.Func<Microsoft.AspNetCore.Http.HttpContext!, AiSdk.Workflows.Automation!, System.Threading.Tasks.ValueTask<bool>>?
+AiSdk.AspNetCore.WorkflowEndpointOptions.CanAccessAutomation.init -> void
+AiSdk.AspNetCore.WorkflowEndpointOptions.CanAccessRun.get -> System.Func<Microsoft.AspNetCore.Http.HttpContext!, AiSdk.Workflows.WorkflowRun!, System.Threading.Tasks.ValueTask<bool>>?
+AiSdk.AspNetCore.WorkflowEndpointOptions.CanAccessRun.init -> void
+AiSdk.AspNetCore.WorkflowEndpointOptions.CanSendEvent.get -> System.Func<Microsoft.AspNetCore.Http.HttpContext!, AiSdk.AspNetCore.WorkflowEventRequest!, System.Threading.Tasks.ValueTask<bool>>?
+AiSdk.AspNetCore.WorkflowEndpointOptions.CanSendEvent.init -> void
+AiSdk.AspNetCore.WorkflowEndpointOptions.CanStart.get -> System.Func<Microsoft.AspNetCore.Http.HttpContext!, string!, System.Threading.Tasks.ValueTask<bool>>?
+AiSdk.AspNetCore.WorkflowEndpointOptions.CanStart.init -> void
+AiSdk.AspNetCore.WorkflowEndpointOptions.MapWebhooks.get -> bool
+AiSdk.AspNetCore.WorkflowEndpointOptions.MapWebhooks.init -> void
+AiSdk.AspNetCore.WorkflowEndpointOptions.WorkflowEndpointOptions() -> void
+AiSdk.AspNetCore.WorkflowEndpoints
+AiSdk.AspNetCore.WorkflowEventRequest
+AiSdk.AspNetCore.WorkflowEventRequest.<Clone>$() -> AiSdk.AspNetCore.WorkflowEventRequest!
+AiSdk.AspNetCore.WorkflowEventRequest.Deconstruct(out string! EventName, out string? Key, out System.Text.Json.JsonElement Payload, out System.Collections.Generic.IReadOnlyList<AiSdk.Workflows.WorkflowRun!>! WaitingRuns) -> void
+AiSdk.AspNetCore.WorkflowEventRequest.Equals(AiSdk.AspNetCore.WorkflowEventRequest? other) -> bool
+AiSdk.AspNetCore.WorkflowEventRequest.EventName.get -> string!
+AiSdk.AspNetCore.WorkflowEventRequest.EventName.init -> void
+AiSdk.AspNetCore.WorkflowEventRequest.Key.get -> string?
+AiSdk.AspNetCore.WorkflowEventRequest.Key.init -> void
+AiSdk.AspNetCore.WorkflowEventRequest.Payload.get -> System.Text.Json.JsonElement
+AiSdk.AspNetCore.WorkflowEventRequest.Payload.init -> void
+AiSdk.AspNetCore.WorkflowEventRequest.WaitingRuns.get -> System.Collections.Generic.IReadOnlyList<AiSdk.Workflows.WorkflowRun!>!
+AiSdk.AspNetCore.WorkflowEventRequest.WaitingRuns.init -> void
+AiSdk.AspNetCore.WorkflowEventRequest.WorkflowEventRequest(string! EventName, string? Key, System.Text.Json.JsonElement Payload, System.Collections.Generic.IReadOnlyList<AiSdk.Workflows.WorkflowRun!>! WaitingRuns) -> void
+const AiSdk.AspNetCore.WorkflowEndpoints.MaxRequestBodyBytes = 1048576 -> int
+const AiSdk.AspNetCore.WorkflowEndpoints.UserTriggerPrefix = "user:" -> string!
+override AiSdk.AspNetCore.WorkflowEventRequest.Equals(object? obj) -> bool
+override AiSdk.AspNetCore.WorkflowEventRequest.GetHashCode() -> int
+override AiSdk.AspNetCore.WorkflowEventRequest.ToString() -> string!
+static AiSdk.AspNetCore.ArtifactEndpoints.MapArtifacts(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder! endpoints, string! prefix = "/artifacts", AiSdk.Artifacts.IArtifactStore? store = null, AiSdk.AspNetCore.ArtifactEndpointOptions? options = null) -> Microsoft.AspNetCore.Routing.RouteGroupBuilder!
+static AiSdk.AspNetCore.EndpointSecurity.GetUserId(Microsoft.AspNetCore.Http.HttpContext! http) -> string?
+static AiSdk.AspNetCore.SkillEndpoints.MapSkills(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder! endpoints, string! prefix = "/skills", AiSdk.Skills.SkillLibrary? library = null, AiSdk.AspNetCore.SkillEndpointOptions? options = null) -> Microsoft.AspNetCore.Routing.RouteGroupBuilder!
+static AiSdk.AspNetCore.StreamResultExtensions.ToResumableUIMessageStreamResult(this AiSdk.StreamTextResult! result, AiSdk.UI.IResumableStreamStore! store, string! chatId, string? messageId = null, System.Func<System.Exception!, string!>? onError = null, string? owner = null, AiSdk.UI.ToolApprovalProtector? toolApprovals = null) -> Microsoft.AspNetCore.Http.IResult!
+static AiSdk.AspNetCore.StreamResultExtensions.ToTextStreamResult(this AiSdk.StreamTextResult! result) -> Microsoft.AspNetCore.Http.IResult!
+static AiSdk.AspNetCore.StreamResultExtensions.ToUIMessageStreamResult(this AiSdk.StreamTextResult! result, string? messageId = null, System.Func<System.Exception!, string!>? onError = null, AiSdk.UI.ToolApprovalProtector? toolApprovals = null) -> Microsoft.AspNetCore.Http.IResult!
+static AiSdk.AspNetCore.StreamResultExtensions.WriteUIMessageStreamAsync(this Microsoft.AspNetCore.Http.HttpResponse! response, AiSdk.StreamTextResult! result, string? messageId = null, System.Func<System.Exception!, string!>? onError = null, AiSdk.UI.ToolApprovalProtector? toolApprovals = null) -> System.Threading.Tasks.Task!
+static AiSdk.AspNetCore.ToolApprovalProtection.ForChat(Microsoft.AspNetCore.Http.HttpContext! http, string! chatId, string? owner = null, System.TimeSpan? lifetime = null) -> AiSdk.UI.ToolApprovalProtector!
+static AiSdk.AspNetCore.UIMessageStreamResults.Create(System.Func<AiSdk.UI.UIMessageStreamWriter!, System.Threading.Tasks.Task!>! execute, string? messageId = null, System.Func<System.Exception!, string!>? onError = null) -> Microsoft.AspNetCore.Http.IResult!
+static AiSdk.AspNetCore.UIMessageStreamResults.Resumable(AiSdk.UI.IResumableStreamStore! store, string! chatId, System.Collections.Generic.IAsyncEnumerable<System.Text.Json.Nodes.JsonObject!>! chunks, string? owner = null) -> Microsoft.AspNetCore.Http.IResult!
+static AiSdk.AspNetCore.UIMessageStreamResults.Resume(AiSdk.UI.IResumableStreamStore! store, string! chatId, string? owner = null) -> Microsoft.AspNetCore.Http.IResult!
+static AiSdk.AspNetCore.WorkflowEndpoints.GetRunOwnerAsync(AiSdk.Workflows.WorkflowEngine! engine, AiSdk.Workflows.WorkflowRun! run, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
+static AiSdk.AspNetCore.WorkflowEndpoints.MapWorkflows(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder! endpoints, string! prefix = "/workflows", AiSdk.AspNetCore.WorkflowEndpointOptions? options = null) -> Microsoft.AspNetCore.Routing.RouteGroupBuilder!
+static AiSdk.AspNetCore.WorkflowEndpoints.MapWorkflowWebhooks(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder! endpoints, string! prefix = "/workflows") -> Microsoft.AspNetCore.Routing.RouteGroupBuilder!
+static AiSdk.AspNetCore.WorkflowEventRequest.operator !=(AiSdk.AspNetCore.WorkflowEventRequest? left, AiSdk.AspNetCore.WorkflowEventRequest? right) -> bool
+static AiSdk.AspNetCore.WorkflowEventRequest.operator ==(AiSdk.AspNetCore.WorkflowEventRequest? left, AiSdk.AspNetCore.WorkflowEventRequest? right) -> bool

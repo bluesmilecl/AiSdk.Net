@@ -1,0 +1,23 @@
+#nullable enable
+AiSdk.Extensions.DependencyInjection.AiSdkBuilder
+AiSdk.Extensions.DependencyInjection.AiSdkBuilder.AddAgent(string! key, System.Func<System.IServiceProvider!, AiSdk.AgentSettings!>! settings) -> AiSdk.Extensions.DependencyInjection.AiSdkBuilder!
+AiSdk.Extensions.DependencyInjection.AiSdkBuilder.AddAgent<TAgent>(Microsoft.Extensions.DependencyInjection.ServiceLifetime lifetime = Microsoft.Extensions.DependencyInjection.ServiceLifetime.Scoped) -> AiSdk.Extensions.DependencyInjection.AiSdkBuilder!
+AiSdk.Extensions.DependencyInjection.AiSdkBuilder.AddAlias(string! alias, string! target) -> AiSdk.Extensions.DependencyInjection.AiSdkBuilder!
+AiSdk.Extensions.DependencyInjection.AiSdkBuilder.AddAnthropic(System.Action<AiSdk.Anthropic.AnthropicProviderOptions!>? configure = null) -> AiSdk.Extensions.DependencyInjection.AiSdkBuilder!
+AiSdk.Extensions.DependencyInjection.AiSdkBuilder.AddBedrock(System.Action<AiSdk.Bedrock.BedrockProviderOptions!>? configure = null) -> AiSdk.Extensions.DependencyInjection.AiSdkBuilder!
+AiSdk.Extensions.DependencyInjection.AiSdkBuilder.AddCohere(System.Action<AiSdk.Cohere.CohereProviderOptions!>? configure = null) -> AiSdk.Extensions.DependencyInjection.AiSdkBuilder!
+AiSdk.Extensions.DependencyInjection.AiSdkBuilder.AddConversationStore<TStore>() -> AiSdk.Extensions.DependencyInjection.AiSdkBuilder!
+AiSdk.Extensions.DependencyInjection.AiSdkBuilder.AddDefaultEmbeddingModel(string! modelId) -> AiSdk.Extensions.DependencyInjection.AiSdkBuilder!
+AiSdk.Extensions.DependencyInjection.AiSdkBuilder.AddDefaultModel(string! modelId, params AiSdk.ILanguageModelMiddleware![]! middleware) -> AiSdk.Extensions.DependencyInjection.AiSdkBuilder!
+AiSdk.Extensions.DependencyInjection.AiSdkBuilder.AddDefaultRerankingModel(string! modelId) -> AiSdk.Extensions.DependencyInjection.AiSdkBuilder!
+AiSdk.Extensions.DependencyInjection.AiSdkBuilder.AddFallback(string! alias, params string![]! modelIds) -> AiSdk.Extensions.DependencyInjection.AiSdkBuilder!
+AiSdk.Extensions.DependencyInjection.AiSdkBuilder.AddGoogle(System.Action<AiSdk.Google.GoogleProviderOptions!>? configure = null) -> AiSdk.Extensions.DependencyInjection.AiSdkBuilder!
+AiSdk.Extensions.DependencyInjection.AiSdkBuilder.AddMistral(System.Action<AiSdk.Mistral.MistralProviderOptions!>? configure = null) -> AiSdk.Extensions.DependencyInjection.AiSdkBuilder!
+AiSdk.Extensions.DependencyInjection.AiSdkBuilder.AddOpenAI(System.Action<AiSdk.OpenAI.OpenAIProviderOptions!>? configure = null) -> AiSdk.Extensions.DependencyInjection.AiSdkBuilder!
+AiSdk.Extensions.DependencyInjection.AiSdkBuilder.AddProvider(string! name, System.Func<System.IServiceProvider!, AiSdk.IProvider!>! factory) -> AiSdk.Extensions.DependencyInjection.AiSdkBuilder!
+AiSdk.Extensions.DependencyInjection.AiSdkBuilder.AddResumableStreams(AiSdk.UI.IResumableStreamStore? store = null) -> AiSdk.Extensions.DependencyInjection.AiSdkBuilder!
+AiSdk.Extensions.DependencyInjection.AiSdkBuilder.AddSkills(params string![]! directories) -> AiSdk.Extensions.DependencyInjection.AiSdkBuilder!
+AiSdk.Extensions.DependencyInjection.AiSdkBuilder.AddSkills(System.Action<AiSdk.Skills.SkillLibrary!>! configure) -> AiSdk.Extensions.DependencyInjection.AiSdkBuilder!
+AiSdk.Extensions.DependencyInjection.AiSdkBuilder.Services.get -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+AiSdk.Extensions.DependencyInjection.ServiceCollectionExtensions
+static AiSdk.Extensions.DependencyInjection.ServiceCollectionExtensions.AddAiSdk(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<AiSdk.Extensions.DependencyInjection.AiSdkBuilder!>! configure) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

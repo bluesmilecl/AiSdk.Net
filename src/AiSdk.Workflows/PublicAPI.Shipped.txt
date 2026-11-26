@@ -1,0 +1,494 @@
+#nullable enable
+abstract AiSdk.Workflows.AutomationTrigger.<Clone>$() -> AiSdk.Workflows.AutomationTrigger!
+abstract AiSdk.Workflows.AutomationTrigger.Describe() -> string!
+AiSdk.Workflows.AgentTaskInput
+AiSdk.Workflows.AgentTaskInput.<Clone>$() -> AiSdk.Workflows.AgentTaskInput!
+AiSdk.Workflows.AgentTaskInput.AgentTaskInput(string! Task, string! Prompt, string? Owner = null) -> void
+AiSdk.Workflows.AgentTaskInput.Deconstruct(out string! Task, out string! Prompt, out string? Owner) -> void
+AiSdk.Workflows.AgentTaskInput.Equals(AiSdk.Workflows.AgentTaskInput? other) -> bool
+AiSdk.Workflows.AgentTaskInput.Owner.get -> string?
+AiSdk.Workflows.AgentTaskInput.Owner.init -> void
+AiSdk.Workflows.AgentTaskInput.Prompt.get -> string!
+AiSdk.Workflows.AgentTaskInput.Prompt.init -> void
+AiSdk.Workflows.AgentTaskInput.Task.get -> string!
+AiSdk.Workflows.AgentTaskInput.Task.init -> void
+AiSdk.Workflows.AgentTaskOptions
+AiSdk.Workflows.AgentTaskOptions.Agent.get -> System.Func<System.IServiceProvider?, AiSdk.IAgent!>!
+AiSdk.Workflows.AgentTaskOptions.Agent.init -> void
+AiSdk.Workflows.AgentTaskOptions.AgentTaskOptions() -> void
+AiSdk.Workflows.AgentTaskOptions.DefaultTimeZone.get -> string?
+AiSdk.Workflows.AgentTaskOptions.DefaultTimeZone.init -> void
+AiSdk.Workflows.AgentTaskOptions.MaxTasksPerOwner.get -> int
+AiSdk.Workflows.AgentTaskOptions.MaxTasksPerOwner.init -> void
+AiSdk.Workflows.AgentTaskOptions.MinimumInterval.get -> System.TimeSpan
+AiSdk.Workflows.AgentTaskOptions.MinimumInterval.init -> void
+AiSdk.Workflows.AgentTaskOptions.OnCompleted.get -> System.Func<AiSdk.Workflows.AgentTaskResult!, System.IServiceProvider?, System.Threading.CancellationToken, System.Threading.Tasks.Task!>?
+AiSdk.Workflows.AgentTaskOptions.OnCompleted.init -> void
+AiSdk.Workflows.AgentTaskOptions.OwnerKey.get -> string!
+AiSdk.Workflows.AgentTaskOptions.OwnerKey.init -> void
+AiSdk.Workflows.AgentTaskResult
+AiSdk.Workflows.AgentTaskResult.<Clone>$() -> AiSdk.Workflows.AgentTaskResult!
+AiSdk.Workflows.AgentTaskResult.AgentTaskResult(string! Task, string! Prompt, string! Text, string? Owner, string! RunId) -> void
+AiSdk.Workflows.AgentTaskResult.Deconstruct(out string! Task, out string! Prompt, out string! Text, out string? Owner, out string! RunId) -> void
+AiSdk.Workflows.AgentTaskResult.Equals(AiSdk.Workflows.AgentTaskResult? other) -> bool
+AiSdk.Workflows.AgentTaskResult.Owner.get -> string?
+AiSdk.Workflows.AgentTaskResult.Owner.init -> void
+AiSdk.Workflows.AgentTaskResult.Prompt.get -> string!
+AiSdk.Workflows.AgentTaskResult.Prompt.init -> void
+AiSdk.Workflows.AgentTaskResult.RunId.get -> string!
+AiSdk.Workflows.AgentTaskResult.RunId.init -> void
+AiSdk.Workflows.AgentTaskResult.Task.get -> string!
+AiSdk.Workflows.AgentTaskResult.Task.init -> void
+AiSdk.Workflows.AgentTaskResult.Text.get -> string!
+AiSdk.Workflows.AgentTaskResult.Text.init -> void
+AiSdk.Workflows.AgentTasks
+AiSdk.Workflows.Automation
+AiSdk.Workflows.Automation.<Clone>$() -> AiSdk.Workflows.Automation!
+AiSdk.Workflows.Automation.Automation() -> void
+AiSdk.Workflows.Automation.ConsecutiveFailures.get -> int
+AiSdk.Workflows.Automation.ConsecutiveFailures.init -> void
+AiSdk.Workflows.Automation.CreatedAt.get -> System.DateTimeOffset
+AiSdk.Workflows.Automation.CreatedAt.init -> void
+AiSdk.Workflows.Automation.Enabled.get -> bool
+AiSdk.Workflows.Automation.Enabled.init -> void
+AiSdk.Workflows.Automation.Equals(AiSdk.Workflows.Automation? other) -> bool
+AiSdk.Workflows.Automation.Id.get -> string!
+AiSdk.Workflows.Automation.Id.init -> void
+AiSdk.Workflows.Automation.Input.get -> System.Text.Json.JsonElement?
+AiSdk.Workflows.Automation.Input.init -> void
+AiSdk.Workflows.Automation.LastError.get -> string?
+AiSdk.Workflows.Automation.LastError.init -> void
+AiSdk.Workflows.Automation.LastRunAt.get -> System.DateTimeOffset?
+AiSdk.Workflows.Automation.LastRunAt.init -> void
+AiSdk.Workflows.Automation.LastRunId.get -> string?
+AiSdk.Workflows.Automation.LastRunId.init -> void
+AiSdk.Workflows.Automation.Metadata.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>?
+AiSdk.Workflows.Automation.Metadata.init -> void
+AiSdk.Workflows.Automation.Name.get -> string!
+AiSdk.Workflows.Automation.Name.init -> void
+AiSdk.Workflows.Automation.NextRunAt.get -> System.DateTimeOffset?
+AiSdk.Workflows.Automation.NextRunAt.init -> void
+AiSdk.Workflows.Automation.Owner.get -> string?
+AiSdk.Workflows.Automation.Owner.init -> void
+AiSdk.Workflows.Automation.Trigger.get -> AiSdk.Workflows.AutomationTrigger!
+AiSdk.Workflows.Automation.Trigger.init -> void
+AiSdk.Workflows.Automation.Version.get -> long
+AiSdk.Workflows.Automation.Version.init -> void
+AiSdk.Workflows.Automation.Workflow.get -> string!
+AiSdk.Workflows.Automation.Workflow.init -> void
+AiSdk.Workflows.AutomationTrigger
+AiSdk.Workflows.AutomationTrigger.AutomationTrigger() -> void
+AiSdk.Workflows.AutomationTrigger.AutomationTrigger(AiSdk.Workflows.AutomationTrigger! original) -> void
+AiSdk.Workflows.CronTrigger
+AiSdk.Workflows.CronTrigger.CronTrigger(string! Expression, string? TimeZone = null) -> void
+AiSdk.Workflows.CronTrigger.Deconstruct(out string! Expression, out string? TimeZone) -> void
+AiSdk.Workflows.CronTrigger.Equals(AiSdk.Workflows.CronTrigger? other) -> bool
+AiSdk.Workflows.CronTrigger.Expression.get -> string!
+AiSdk.Workflows.CronTrigger.Expression.init -> void
+AiSdk.Workflows.CronTrigger.TimeZone.get -> string?
+AiSdk.Workflows.CronTrigger.TimeZone.init -> void
+AiSdk.Workflows.EventTrigger
+AiSdk.Workflows.EventTrigger.Deconstruct(out string! EventName, out System.Collections.Generic.IReadOnlyDictionary<string!, string!>? Match) -> void
+AiSdk.Workflows.EventTrigger.Equals(AiSdk.Workflows.EventTrigger? other) -> bool
+AiSdk.Workflows.EventTrigger.EventName.get -> string!
+AiSdk.Workflows.EventTrigger.EventName.init -> void
+AiSdk.Workflows.EventTrigger.EventTrigger(string! EventName, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? Match = null) -> void
+AiSdk.Workflows.EventTrigger.Match.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>?
+AiSdk.Workflows.EventTrigger.Match.init -> void
+AiSdk.Workflows.EventTrigger.Matches(string! eventName, System.Text.Json.JsonElement payload) -> bool
+AiSdk.Workflows.EventWait
+AiSdk.Workflows.EventWait.<Clone>$() -> AiSdk.Workflows.EventWait!
+AiSdk.Workflows.EventWait.Deconstruct(out string! EventName, out string? Key, out string! StepKey, out System.DateTimeOffset? TimeoutAt) -> void
+AiSdk.Workflows.EventWait.Equals(AiSdk.Workflows.EventWait? other) -> bool
+AiSdk.Workflows.EventWait.EventName.get -> string!
+AiSdk.Workflows.EventWait.EventName.init -> void
+AiSdk.Workflows.EventWait.EventWait(string! EventName, string? Key = null, string! StepKey = "", System.DateTimeOffset? TimeoutAt = null) -> void
+AiSdk.Workflows.EventWait.Key.get -> string?
+AiSdk.Workflows.EventWait.Key.init -> void
+AiSdk.Workflows.EventWait.StepKey.get -> string!
+AiSdk.Workflows.EventWait.StepKey.init -> void
+AiSdk.Workflows.EventWait.TimeoutAt.get -> System.DateTimeOffset?
+AiSdk.Workflows.EventWait.TimeoutAt.init -> void
+AiSdk.Workflows.FileSystemWorkflowStore
+AiSdk.Workflows.FileSystemWorkflowStore.DeleteAutomationAsync(string! id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+AiSdk.Workflows.FileSystemWorkflowStore.DeleteFinishedRunsAsync(System.DateTimeOffset finishedBefore, int limit = 1000, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+AiSdk.Workflows.FileSystemWorkflowStore.Dispose() -> void
+AiSdk.Workflows.FileSystemWorkflowStore.FileSystemWorkflowStore(string! directory) -> void
+AiSdk.Workflows.FileSystemWorkflowStore.GetAutomationAsync(string! id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Workflows.Automation?>!
+AiSdk.Workflows.FileSystemWorkflowStore.GetRunAsync(string! id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Workflows.WorkflowRun?>!
+AiSdk.Workflows.FileSystemWorkflowStore.ListAutomationsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.Workflows.Automation!>!>!
+AiSdk.Workflows.FileSystemWorkflowStore.ListDueAutomationsAsync(System.DateTimeOffset now, int limit = 100, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.Workflows.Automation!>!>!
+AiSdk.Workflows.FileSystemWorkflowStore.ListDueRunsAsync(System.DateTimeOffset now, int limit = 100, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.Workflows.WorkflowRun!>!>!
+AiSdk.Workflows.FileSystemWorkflowStore.ListRunsAsync(AiSdk.Workflows.WorkflowStatus? status = null, string? workflowName = null, int limit = 100, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.Workflows.WorkflowRun!>!>!
+AiSdk.Workflows.FileSystemWorkflowStore.ListRunsWaitingForEventAsync(string! eventName, string? key, int limit = 100, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.Workflows.WorkflowRun!>!>!
+AiSdk.Workflows.FileSystemWorkflowStore.SaveAutomationAsync(AiSdk.Workflows.Automation! automation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Workflows.Automation!>!
+AiSdk.Workflows.FileSystemWorkflowStore.SaveRunAsync(AiSdk.Workflows.WorkflowRun! run, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+AiSdk.Workflows.InMemoryWorkflowStore
+AiSdk.Workflows.InMemoryWorkflowStore.DeleteAutomationAsync(string! id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+AiSdk.Workflows.InMemoryWorkflowStore.DeleteFinishedRunsAsync(System.DateTimeOffset finishedBefore, int limit = 1000, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+AiSdk.Workflows.InMemoryWorkflowStore.GetAutomationAsync(string! id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Workflows.Automation?>!
+AiSdk.Workflows.InMemoryWorkflowStore.GetRunAsync(string! id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Workflows.WorkflowRun?>!
+AiSdk.Workflows.InMemoryWorkflowStore.InMemoryWorkflowStore(int maxFinishedRuns = 10000) -> void
+AiSdk.Workflows.InMemoryWorkflowStore.ListAutomationsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.Workflows.Automation!>!>!
+AiSdk.Workflows.InMemoryWorkflowStore.ListDueAutomationsAsync(System.DateTimeOffset now, int limit = 100, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.Workflows.Automation!>!>!
+AiSdk.Workflows.InMemoryWorkflowStore.ListDueRunsAsync(System.DateTimeOffset now, int limit = 100, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.Workflows.WorkflowRun!>!>!
+AiSdk.Workflows.InMemoryWorkflowStore.ListRunsAsync(AiSdk.Workflows.WorkflowStatus? status = null, string? workflowName = null, int limit = 100, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.Workflows.WorkflowRun!>!>!
+AiSdk.Workflows.InMemoryWorkflowStore.ListRunsWaitingForEventAsync(string! eventName, string? key, int limit = 100, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.Workflows.WorkflowRun!>!>!
+AiSdk.Workflows.InMemoryWorkflowStore.MaxFinishedRuns.get -> int
+AiSdk.Workflows.InMemoryWorkflowStore.SaveAutomationAsync(AiSdk.Workflows.Automation! automation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Workflows.Automation!>!
+AiSdk.Workflows.InMemoryWorkflowStore.SaveRunAsync(AiSdk.Workflows.WorkflowRun! run, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+AiSdk.Workflows.IntervalTrigger
+AiSdk.Workflows.IntervalTrigger.Deconstruct(out System.TimeSpan Every) -> void
+AiSdk.Workflows.IntervalTrigger.Equals(AiSdk.Workflows.IntervalTrigger? other) -> bool
+AiSdk.Workflows.IntervalTrigger.Every.get -> System.TimeSpan
+AiSdk.Workflows.IntervalTrigger.Every.init -> void
+AiSdk.Workflows.IntervalTrigger.IntervalTrigger(System.TimeSpan Every) -> void
+AiSdk.Workflows.IWorkflow
+AiSdk.Workflows.IWorkflow.Description.get -> string?
+AiSdk.Workflows.IWorkflow.ExecuteAsync(AiSdk.Workflows.WorkflowContext! context, System.Text.Json.JsonElement input) -> System.Threading.Tasks.Task<object?>!
+AiSdk.Workflows.IWorkflow.Name.get -> string!
+AiSdk.Workflows.IWorkflowStore
+AiSdk.Workflows.IWorkflowStore.DeleteAutomationAsync(string! id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+AiSdk.Workflows.IWorkflowStore.DeleteFinishedRunsAsync(System.DateTimeOffset finishedBefore, int limit = 1000, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+AiSdk.Workflows.IWorkflowStore.GetAutomationAsync(string! id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Workflows.Automation?>!
+AiSdk.Workflows.IWorkflowStore.GetRunAsync(string! id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Workflows.WorkflowRun?>!
+AiSdk.Workflows.IWorkflowStore.ListAutomationsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.Workflows.Automation!>!>!
+AiSdk.Workflows.IWorkflowStore.ListDueAutomationsAsync(System.DateTimeOffset now, int limit = 100, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.Workflows.Automation!>!>!
+AiSdk.Workflows.IWorkflowStore.ListDueRunsAsync(System.DateTimeOffset now, int limit = 100, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.Workflows.WorkflowRun!>!>!
+AiSdk.Workflows.IWorkflowStore.ListRunsAsync(AiSdk.Workflows.WorkflowStatus? status = null, string? workflowName = null, int limit = 100, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.Workflows.WorkflowRun!>!>!
+AiSdk.Workflows.IWorkflowStore.ListRunsWaitingForEventAsync(string! eventName, string? key, int limit = 100, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.Workflows.WorkflowRun!>!>!
+AiSdk.Workflows.IWorkflowStore.SaveAutomationAsync(AiSdk.Workflows.Automation! automation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Workflows.Automation!>!
+AiSdk.Workflows.IWorkflowStore.SaveRunAsync(AiSdk.Workflows.WorkflowRun! run, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+AiSdk.Workflows.NonRetryableException
+AiSdk.Workflows.NonRetryableException.NonRetryableException(string! message, System.Exception? inner = null) -> void
+AiSdk.Workflows.OnceTrigger
+AiSdk.Workflows.OnceTrigger.At.get -> System.DateTimeOffset
+AiSdk.Workflows.OnceTrigger.At.init -> void
+AiSdk.Workflows.OnceTrigger.Deconstruct(out System.DateTimeOffset At) -> void
+AiSdk.Workflows.OnceTrigger.Equals(AiSdk.Workflows.OnceTrigger? other) -> bool
+AiSdk.Workflows.OnceTrigger.OnceTrigger(System.DateTimeOffset At) -> void
+AiSdk.Workflows.StepOptions
+AiSdk.Workflows.StepOptions.<Clone>$() -> AiSdk.Workflows.StepOptions!
+AiSdk.Workflows.StepOptions.BackoffFactor.get -> double
+AiSdk.Workflows.StepOptions.BackoffFactor.init -> void
+AiSdk.Workflows.StepOptions.Equals(AiSdk.Workflows.StepOptions? other) -> bool
+AiSdk.Workflows.StepOptions.InitialDelay.get -> System.TimeSpan
+AiSdk.Workflows.StepOptions.InitialDelay.init -> void
+AiSdk.Workflows.StepOptions.MaxAttempts.get -> int
+AiSdk.Workflows.StepOptions.MaxAttempts.init -> void
+AiSdk.Workflows.StepOptions.ShouldRetry.get -> System.Func<System.Exception!, bool>?
+AiSdk.Workflows.StepOptions.ShouldRetry.init -> void
+AiSdk.Workflows.StepOptions.StepOptions() -> void
+AiSdk.Workflows.StepOptions.Timeout.get -> System.TimeSpan?
+AiSdk.Workflows.StepOptions.Timeout.init -> void
+AiSdk.Workflows.StepRecord
+AiSdk.Workflows.StepRecord.<Clone>$() -> AiSdk.Workflows.StepRecord!
+AiSdk.Workflows.StepRecord.Attempts.get -> int
+AiSdk.Workflows.StepRecord.Attempts.init -> void
+AiSdk.Workflows.StepRecord.CompletedAt.get -> System.DateTimeOffset
+AiSdk.Workflows.StepRecord.CompletedAt.init -> void
+AiSdk.Workflows.StepRecord.Deconstruct(out string! Name, out System.Text.Json.JsonElement? Output, out int Attempts, out System.DateTimeOffset CompletedAt) -> void
+AiSdk.Workflows.StepRecord.Equals(AiSdk.Workflows.StepRecord? other) -> bool
+AiSdk.Workflows.StepRecord.Name.get -> string!
+AiSdk.Workflows.StepRecord.Name.init -> void
+AiSdk.Workflows.StepRecord.Output.get -> System.Text.Json.JsonElement?
+AiSdk.Workflows.StepRecord.Output.init -> void
+AiSdk.Workflows.StepRecord.StepRecord(string! Name, System.Text.Json.JsonElement? Output = null, int Attempts = 1, System.DateTimeOffset CompletedAt = default(System.DateTimeOffset)) -> void
+AiSdk.Workflows.StepRecord.TimedOut.get -> bool
+AiSdk.Workflows.StepRecord.TimedOut.init -> void
+AiSdk.Workflows.WebhookRequest
+AiSdk.Workflows.WebhookRequest.<Clone>$() -> AiSdk.Workflows.WebhookRequest!
+AiSdk.Workflows.WebhookRequest.Body.get -> System.ReadOnlyMemory<byte>
+AiSdk.Workflows.WebhookRequest.Body.init -> void
+AiSdk.Workflows.WebhookRequest.Deconstruct(out System.ReadOnlyMemory<byte> Body) -> void
+AiSdk.Workflows.WebhookRequest.DeliveryId.get -> string?
+AiSdk.Workflows.WebhookRequest.DeliveryId.init -> void
+AiSdk.Workflows.WebhookRequest.Equals(AiSdk.Workflows.WebhookRequest? other) -> bool
+AiSdk.Workflows.WebhookRequest.Secret.get -> string?
+AiSdk.Workflows.WebhookRequest.Secret.init -> void
+AiSdk.Workflows.WebhookRequest.Signature.get -> string?
+AiSdk.Workflows.WebhookRequest.Signature.init -> void
+AiSdk.Workflows.WebhookRequest.Timestamp.get -> string?
+AiSdk.Workflows.WebhookRequest.Timestamp.init -> void
+AiSdk.Workflows.WebhookRequest.WebhookRequest(System.ReadOnlyMemory<byte> Body) -> void
+AiSdk.Workflows.WebhookSignature
+AiSdk.Workflows.WebhookTrigger
+AiSdk.Workflows.WebhookTrigger.AllowUnauthenticated.get -> bool
+AiSdk.Workflows.WebhookTrigger.AllowUnauthenticated.init -> void
+AiSdk.Workflows.WebhookTrigger.Deconstruct(out string? Secret) -> void
+AiSdk.Workflows.WebhookTrigger.Equals(AiSdk.Workflows.WebhookTrigger? other) -> bool
+AiSdk.Workflows.WebhookTrigger.Secret.get -> string?
+AiSdk.Workflows.WebhookTrigger.Secret.init -> void
+AiSdk.Workflows.WebhookTrigger.Verification.get -> AiSdk.Workflows.WebhookVerification
+AiSdk.Workflows.WebhookTrigger.Verification.init -> void
+AiSdk.Workflows.WebhookTrigger.WebhookTrigger(string? Secret = null) -> void
+AiSdk.Workflows.WebhookVerification
+AiSdk.Workflows.WebhookVerification.BodySignature = 1 -> AiSdk.Workflows.WebhookVerification
+AiSdk.Workflows.WebhookVerification.SharedSecret = 2 -> AiSdk.Workflows.WebhookVerification
+AiSdk.Workflows.WebhookVerification.TimestampedSignature = 0 -> AiSdk.Workflows.WebhookVerification
+AiSdk.Workflows.Workflow
+AiSdk.Workflows.Workflow<TInput, TOutput>
+AiSdk.Workflows.Workflow<TInput, TOutput>.Description.get -> string?
+AiSdk.Workflows.Workflow<TInput, TOutput>.ExecuteAsync(AiSdk.Workflows.WorkflowContext! context, System.Text.Json.JsonElement input) -> System.Threading.Tasks.Task<object?>!
+AiSdk.Workflows.Workflow<TInput, TOutput>.Name.get -> string!
+AiSdk.Workflows.Workflow<TInput, TOutput>.Workflow(string! name, System.Func<AiSdk.Workflows.WorkflowContext!, TInput, System.Threading.Tasks.Task<TOutput>!>! run, string? description = null) -> void
+AiSdk.Workflows.WorkflowBuilder
+AiSdk.Workflows.WorkflowBuilder.AddAutomation(AiSdk.Workflows.Automation! automation) -> AiSdk.Workflows.WorkflowBuilder!
+AiSdk.Workflows.WorkflowBuilder.AddWorkflow(AiSdk.Workflows.IWorkflow! workflow) -> AiSdk.Workflows.WorkflowBuilder!
+AiSdk.Workflows.WorkflowBuilder.AddWorkflow(System.Func<System.IServiceProvider!, AiSdk.Workflows.IWorkflow!>! factory) -> AiSdk.Workflows.WorkflowBuilder!
+AiSdk.Workflows.WorkflowBuilder.ConfigureEngine(System.Action<AiSdk.Workflows.WorkflowEngine!, System.IServiceProvider!>! configure) -> AiSdk.Workflows.WorkflowBuilder!
+AiSdk.Workflows.WorkflowBuilder.Options.get -> AiSdk.Workflows.WorkflowEngineOptions!
+AiSdk.Workflows.WorkflowBuilder.Options.set -> void
+AiSdk.Workflows.WorkflowBuilder.TickInterval.get -> System.TimeSpan
+AiSdk.Workflows.WorkflowBuilder.TickInterval.set -> void
+AiSdk.Workflows.WorkflowBuilder.UseFileSystemStore(string! directory) -> AiSdk.Workflows.WorkflowBuilder!
+AiSdk.Workflows.WorkflowBuilder.UseStore(AiSdk.Workflows.IWorkflowStore! store) -> AiSdk.Workflows.WorkflowBuilder!
+AiSdk.Workflows.WorkflowBuilder.UseStore(System.Func<System.IServiceProvider!, AiSdk.Workflows.IWorkflowStore!>! factory) -> AiSdk.Workflows.WorkflowBuilder!
+AiSdk.Workflows.WorkflowBuilder.WorkflowBuilder() -> void
+AiSdk.Workflows.WorkflowConcurrencyException
+AiSdk.Workflows.WorkflowConcurrencyException.WorkflowConcurrencyException(string! message) -> void
+AiSdk.Workflows.WorkflowContext
+AiSdk.Workflows.WorkflowContext.CancellationToken.get -> System.Threading.CancellationToken
+AiSdk.Workflows.WorkflowContext.Log(string! message) -> void
+AiSdk.Workflows.WorkflowContext.RunAgentAsync(AiSdk.IAgent! agent, string! prompt, string? stepName = null, AiSdk.Workflows.StepOptions? options = null, System.Collections.Generic.IReadOnlyDictionary<string!, object?>? context = null) -> System.Threading.Tasks.Task<string!>!
+AiSdk.Workflows.WorkflowContext.RunAsync(AiSdk.IOrchestrationNode! node, string! input, string? stepName = null, AiSdk.Workflows.StepOptions? options = null) -> System.Threading.Tasks.Task<string!>!
+AiSdk.Workflows.WorkflowContext.RunId.get -> string!
+AiSdk.Workflows.WorkflowContext.Services.get -> System.IServiceProvider?
+AiSdk.Workflows.WorkflowContext.SleepAsync(string! name, System.TimeSpan duration) -> System.Threading.Tasks.Task!
+AiSdk.Workflows.WorkflowContext.SleepUntilAsync(string! name, System.DateTimeOffset until) -> System.Threading.Tasks.Task!
+AiSdk.Workflows.WorkflowContext.StepAsync(string! name, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task!>! run, AiSdk.Workflows.StepOptions? options = null) -> System.Threading.Tasks.Task!
+AiSdk.Workflows.WorkflowContext.StepAsync<T>(string! name, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<T>!>! run, AiSdk.Workflows.StepOptions? options = null) -> System.Threading.Tasks.Task<T>!
+AiSdk.Workflows.WorkflowContext.TriggeredBy.get -> string?
+AiSdk.Workflows.WorkflowContext.WaitForEventAsync<T>(string! eventName, string? key = null, System.TimeSpan? timeout = null) -> System.Threading.Tasks.Task<T?>!
+AiSdk.Workflows.WorkflowContext.WorkflowName.get -> string!
+AiSdk.Workflows.WorkflowEngine
+AiSdk.Workflows.WorkflowEngine.AddAutomationAsync(AiSdk.Workflows.Automation! automation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Workflows.Automation!>!
+AiSdk.Workflows.WorkflowEngine.CancelAsync(string! runId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Workflows.WorkflowRun!>!
+AiSdk.Workflows.WorkflowEngine.Dispose() -> void
+AiSdk.Workflows.WorkflowEngine.GetRunAsync(string! runId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Workflows.WorkflowRun?>!
+AiSdk.Workflows.WorkflowEngine.InstanceId.get -> string!
+AiSdk.Workflows.WorkflowEngine.ListAutomationsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.Workflows.Automation!>!>!
+AiSdk.Workflows.WorkflowEngine.PurgeRunsAsync(System.DateTimeOffset finishedBefore, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+AiSdk.Workflows.WorkflowEngine.RecoverAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+AiSdk.Workflows.WorkflowEngine.Register(AiSdk.Workflows.IWorkflow! workflow) -> AiSdk.Workflows.WorkflowEngine!
+AiSdk.Workflows.WorkflowEngine.Register(params AiSdk.Workflows.IWorkflow![]! workflows) -> AiSdk.Workflows.WorkflowEngine!
+AiSdk.Workflows.WorkflowEngine.RemoveAutomationAsync(string! id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+AiSdk.Workflows.WorkflowEngine.ResumeAsync(string! runId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Workflows.WorkflowRun!>!
+AiSdk.Workflows.WorkflowEngine.RetryAsync(string! runId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Workflows.WorkflowRun!>!
+AiSdk.Workflows.WorkflowEngine.RunAutomationNowAsync(string! id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Workflows.WorkflowRun!>!
+AiSdk.Workflows.WorkflowEngine.SendEventAsync(string! eventName, object? payload = null, string? key = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string!>!>!
+AiSdk.Workflows.WorkflowEngine.SendEventToRunsAsync(string! eventName, System.Collections.Generic.IEnumerable<string!>! runIds, object? payload = null, string? key = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string!>!>!
+AiSdk.Workflows.WorkflowEngine.Services.get -> System.IServiceProvider?
+AiSdk.Workflows.WorkflowEngine.SetAutomationEnabledAsync(string! id, bool enabled, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Workflows.Automation?>!
+AiSdk.Workflows.WorkflowEngine.StartAsync<TInput>(string! workflowName, TInput input, string? runId = null, string? triggeredBy = null, bool wait = true, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Workflows.WorkflowRun!>!
+AiSdk.Workflows.WorkflowEngine.Store.get -> AiSdk.Workflows.IWorkflowStore!
+AiSdk.Workflows.WorkflowEngine.TickAsync(System.DateTimeOffset? now = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+AiSdk.Workflows.WorkflowEngine.TriggerWebhookAsync(string! automationId, AiSdk.Workflows.WebhookRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Workflows.WorkflowRun!>!
+AiSdk.Workflows.WorkflowEngine.TriggerWebhookAsync(string! automationId, System.ReadOnlyMemory<byte> body, string? secretHeader = null, string? signatureHeader = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<AiSdk.Workflows.WorkflowRun!>!
+AiSdk.Workflows.WorkflowEngine.WhenIdleAsync() -> System.Threading.Tasks.Task!
+AiSdk.Workflows.WorkflowEngine.WorkflowEngine(AiSdk.Workflows.IWorkflowStore? store = null, System.IServiceProvider? services = null, AiSdk.Workflows.WorkflowEngineOptions? options = null) -> void
+AiSdk.Workflows.WorkflowEngine.Workflows.get -> System.Collections.Generic.IReadOnlyCollection<AiSdk.Workflows.IWorkflow!>!
+AiSdk.Workflows.WorkflowEngineOptions
+AiSdk.Workflows.WorkflowEngineOptions.AutomationRetryDelay.get -> System.TimeSpan
+AiSdk.Workflows.WorkflowEngineOptions.AutomationRetryDelay.init -> void
+AiSdk.Workflows.WorkflowEngineOptions.BatchSize.get -> int
+AiSdk.Workflows.WorkflowEngineOptions.BatchSize.init -> void
+AiSdk.Workflows.WorkflowEngineOptions.InstanceId.get -> string!
+AiSdk.Workflows.WorkflowEngineOptions.InstanceId.init -> void
+AiSdk.Workflows.WorkflowEngineOptions.LeaseDuration.get -> System.TimeSpan
+AiSdk.Workflows.WorkflowEngineOptions.LeaseDuration.init -> void
+AiSdk.Workflows.WorkflowEngineOptions.MaxAutomationFailures.get -> int
+AiSdk.Workflows.WorkflowEngineOptions.MaxAutomationFailures.init -> void
+AiSdk.Workflows.WorkflowEngineOptions.MaxAutomationRetryDelay.get -> System.TimeSpan
+AiSdk.Workflows.WorkflowEngineOptions.MaxAutomationRetryDelay.init -> void
+AiSdk.Workflows.WorkflowEngineOptions.MaxConcurrency.get -> int
+AiSdk.Workflows.WorkflowEngineOptions.MaxConcurrency.init -> void
+AiSdk.Workflows.WorkflowEngineOptions.OnError.get -> System.Action<System.Exception!, string!>?
+AiSdk.Workflows.WorkflowEngineOptions.OnError.init -> void
+AiSdk.Workflows.WorkflowEngineOptions.OnRunChanged.get -> System.Func<AiSdk.Workflows.WorkflowRun!, System.Threading.Tasks.Task!>?
+AiSdk.Workflows.WorkflowEngineOptions.OnRunChanged.init -> void
+AiSdk.Workflows.WorkflowEngineOptions.RunRetention.get -> System.TimeSpan?
+AiSdk.Workflows.WorkflowEngineOptions.RunRetention.init -> void
+AiSdk.Workflows.WorkflowEngineOptions.TimeProvider.get -> System.TimeProvider!
+AiSdk.Workflows.WorkflowEngineOptions.TimeProvider.init -> void
+AiSdk.Workflows.WorkflowEngineOptions.WebhookDeliveryCacheSize.get -> int
+AiSdk.Workflows.WorkflowEngineOptions.WebhookDeliveryCacheSize.init -> void
+AiSdk.Workflows.WorkflowEngineOptions.WebhookTolerance.get -> System.TimeSpan
+AiSdk.Workflows.WorkflowEngineOptions.WebhookTolerance.init -> void
+AiSdk.Workflows.WorkflowEngineOptions.WorkflowEngineOptions() -> void
+AiSdk.Workflows.WorkflowHostedService
+AiSdk.Workflows.WorkflowHostedService.WorkflowHostedService(AiSdk.Workflows.WorkflowEngine! engine, AiSdk.Workflows.WorkflowBuilder! builder) -> void
+AiSdk.Workflows.WorkflowRun
+AiSdk.Workflows.WorkflowRun.CompletedAt.get -> System.DateTimeOffset?
+AiSdk.Workflows.WorkflowRun.CompletedAt.set -> void
+AiSdk.Workflows.WorkflowRun.CreatedAt.get -> System.DateTimeOffset
+AiSdk.Workflows.WorkflowRun.CreatedAt.init -> void
+AiSdk.Workflows.WorkflowRun.Error.get -> string?
+AiSdk.Workflows.WorkflowRun.Error.set -> void
+AiSdk.Workflows.WorkflowRun.Executions.get -> int
+AiSdk.Workflows.WorkflowRun.Executions.set -> void
+AiSdk.Workflows.WorkflowRun.GetOutput<T>() -> T?
+AiSdk.Workflows.WorkflowRun.Id.get -> string!
+AiSdk.Workflows.WorkflowRun.Id.init -> void
+AiSdk.Workflows.WorkflowRun.Input.get -> System.Text.Json.JsonElement
+AiSdk.Workflows.WorkflowRun.Input.init -> void
+AiSdk.Workflows.WorkflowRun.IsFinished.get -> bool
+AiSdk.Workflows.WorkflowRun.LeaseExpiresAt.get -> System.DateTimeOffset?
+AiSdk.Workflows.WorkflowRun.LeaseExpiresAt.set -> void
+AiSdk.Workflows.WorkflowRun.LeaseOwner.get -> string?
+AiSdk.Workflows.WorkflowRun.LeaseOwner.set -> void
+AiSdk.Workflows.WorkflowRun.Logs.get -> System.Collections.Generic.List<string!>!
+AiSdk.Workflows.WorkflowRun.Logs.init -> void
+AiSdk.Workflows.WorkflowRun.Output.get -> System.Text.Json.JsonElement?
+AiSdk.Workflows.WorkflowRun.Output.set -> void
+AiSdk.Workflows.WorkflowRun.ResumeAt.get -> System.DateTimeOffset?
+AiSdk.Workflows.WorkflowRun.ResumeAt.set -> void
+AiSdk.Workflows.WorkflowRun.Status.get -> AiSdk.Workflows.WorkflowStatus
+AiSdk.Workflows.WorkflowRun.Status.set -> void
+AiSdk.Workflows.WorkflowRun.Steps.get -> System.Collections.Generic.Dictionary<string!, AiSdk.Workflows.StepRecord!>!
+AiSdk.Workflows.WorkflowRun.Steps.init -> void
+AiSdk.Workflows.WorkflowRun.TriggeredBy.get -> string?
+AiSdk.Workflows.WorkflowRun.TriggeredBy.init -> void
+AiSdk.Workflows.WorkflowRun.UpdatedAt.get -> System.DateTimeOffset
+AiSdk.Workflows.WorkflowRun.UpdatedAt.set -> void
+AiSdk.Workflows.WorkflowRun.Version.get -> long
+AiSdk.Workflows.WorkflowRun.Version.set -> void
+AiSdk.Workflows.WorkflowRun.Waiting.get -> AiSdk.Workflows.EventWait?
+AiSdk.Workflows.WorkflowRun.Waiting.set -> void
+AiSdk.Workflows.WorkflowRun.WorkflowName.get -> string!
+AiSdk.Workflows.WorkflowRun.WorkflowName.init -> void
+AiSdk.Workflows.WorkflowRun.WorkflowRun() -> void
+AiSdk.Workflows.WorkflowRunQueries
+AiSdk.Workflows.WorkflowServiceCollectionExtensions
+AiSdk.Workflows.WorkflowStatus
+AiSdk.Workflows.WorkflowStatus.Cancelled = 6 -> AiSdk.Workflows.WorkflowStatus
+AiSdk.Workflows.WorkflowStatus.Completed = 4 -> AiSdk.Workflows.WorkflowStatus
+AiSdk.Workflows.WorkflowStatus.Failed = 5 -> AiSdk.Workflows.WorkflowStatus
+AiSdk.Workflows.WorkflowStatus.Pending = 0 -> AiSdk.Workflows.WorkflowStatus
+AiSdk.Workflows.WorkflowStatus.Running = 1 -> AiSdk.Workflows.WorkflowStatus
+AiSdk.Workflows.WorkflowStatus.Sleeping = 2 -> AiSdk.Workflows.WorkflowStatus
+AiSdk.Workflows.WorkflowStatus.WaitingForEvent = 3 -> AiSdk.Workflows.WorkflowStatus
+AiSdk.Workflows.WorkflowSuspendedException
+AiSdk.Workflows.WorkflowSuspendedException.ResumeAt.get -> System.DateTimeOffset?
+AiSdk.Workflows.WorkflowSuspendedException.Status.get -> AiSdk.Workflows.WorkflowStatus
+const AiSdk.Workflows.AgentTasks.WorkflowName = "agent-task" -> string!
+const AiSdk.Workflows.WebhookSignature.DeliveryIdHeader = "X-Webhook-Id" -> string!
+const AiSdk.Workflows.WebhookSignature.GitHubDeliveryHeader = "X-GitHub-Delivery" -> string!
+const AiSdk.Workflows.WebhookSignature.GitHubSignatureHeader = "X-Hub-Signature-256" -> string!
+const AiSdk.Workflows.WebhookSignature.SecretHeader = "X-Webhook-Secret" -> string!
+const AiSdk.Workflows.WebhookSignature.SignatureHeader = "X-Signature-256" -> string!
+const AiSdk.Workflows.WebhookSignature.TimestampHeader = "X-Webhook-Timestamp" -> string!
+const AiSdk.Workflows.WebhookTrigger.MinimumSecretLength = 16 -> int
+override AiSdk.Workflows.AgentTaskInput.Equals(object? obj) -> bool
+override AiSdk.Workflows.AgentTaskInput.GetHashCode() -> int
+override AiSdk.Workflows.AgentTaskInput.ToString() -> string!
+override AiSdk.Workflows.AgentTaskResult.Equals(object? obj) -> bool
+override AiSdk.Workflows.AgentTaskResult.GetHashCode() -> int
+override AiSdk.Workflows.AgentTaskResult.ToString() -> string!
+override AiSdk.Workflows.Automation.Equals(object? obj) -> bool
+override AiSdk.Workflows.Automation.GetHashCode() -> int
+override AiSdk.Workflows.Automation.ToString() -> string!
+override AiSdk.Workflows.AutomationTrigger.Equals(object? obj) -> bool
+override AiSdk.Workflows.AutomationTrigger.GetHashCode() -> int
+override AiSdk.Workflows.AutomationTrigger.ToString() -> string!
+override AiSdk.Workflows.CronTrigger.<Clone>$() -> AiSdk.Workflows.CronTrigger!
+override AiSdk.Workflows.CronTrigger.Describe() -> string!
+override AiSdk.Workflows.CronTrigger.Equals(object? obj) -> bool
+override AiSdk.Workflows.CronTrigger.GetHashCode() -> int
+override AiSdk.Workflows.CronTrigger.NextOccurrence(System.DateTimeOffset after, System.DateTimeOffset? lastRun) -> System.DateTimeOffset?
+override AiSdk.Workflows.CronTrigger.ToString() -> string!
+override AiSdk.Workflows.CronTrigger.Validate() -> void
+override AiSdk.Workflows.EventTrigger.<Clone>$() -> AiSdk.Workflows.EventTrigger!
+override AiSdk.Workflows.EventTrigger.Describe() -> string!
+override AiSdk.Workflows.EventTrigger.Equals(object? obj) -> bool
+override AiSdk.Workflows.EventTrigger.GetHashCode() -> int
+override AiSdk.Workflows.EventTrigger.ToString() -> string!
+override AiSdk.Workflows.EventWait.Equals(object? obj) -> bool
+override AiSdk.Workflows.EventWait.GetHashCode() -> int
+override AiSdk.Workflows.EventWait.ToString() -> string!
+override AiSdk.Workflows.IntervalTrigger.<Clone>$() -> AiSdk.Workflows.IntervalTrigger!
+override AiSdk.Workflows.IntervalTrigger.Describe() -> string!
+override AiSdk.Workflows.IntervalTrigger.Equals(object? obj) -> bool
+override AiSdk.Workflows.IntervalTrigger.GetHashCode() -> int
+override AiSdk.Workflows.IntervalTrigger.NextOccurrence(System.DateTimeOffset after, System.DateTimeOffset? lastRun) -> System.DateTimeOffset?
+override AiSdk.Workflows.IntervalTrigger.ToString() -> string!
+override AiSdk.Workflows.IntervalTrigger.Validate() -> void
+override AiSdk.Workflows.OnceTrigger.<Clone>$() -> AiSdk.Workflows.OnceTrigger!
+override AiSdk.Workflows.OnceTrigger.Describe() -> string!
+override AiSdk.Workflows.OnceTrigger.Equals(object? obj) -> bool
+override AiSdk.Workflows.OnceTrigger.GetHashCode() -> int
+override AiSdk.Workflows.OnceTrigger.NextOccurrence(System.DateTimeOffset after, System.DateTimeOffset? lastRun) -> System.DateTimeOffset?
+override AiSdk.Workflows.OnceTrigger.ToString() -> string!
+override AiSdk.Workflows.StepOptions.Equals(object? obj) -> bool
+override AiSdk.Workflows.StepOptions.GetHashCode() -> int
+override AiSdk.Workflows.StepOptions.ToString() -> string!
+override AiSdk.Workflows.StepRecord.Equals(object? obj) -> bool
+override AiSdk.Workflows.StepRecord.GetHashCode() -> int
+override AiSdk.Workflows.StepRecord.ToString() -> string!
+override AiSdk.Workflows.WebhookRequest.Equals(object? obj) -> bool
+override AiSdk.Workflows.WebhookRequest.GetHashCode() -> int
+override AiSdk.Workflows.WebhookRequest.ToString() -> string!
+override AiSdk.Workflows.WebhookTrigger.<Clone>$() -> AiSdk.Workflows.WebhookTrigger!
+override AiSdk.Workflows.WebhookTrigger.Describe() -> string!
+override AiSdk.Workflows.WebhookTrigger.Equals(object? obj) -> bool
+override AiSdk.Workflows.WebhookTrigger.GetHashCode() -> int
+override AiSdk.Workflows.WebhookTrigger.ToString() -> string!
+override AiSdk.Workflows.WebhookTrigger.Validate() -> void
+override AiSdk.Workflows.WorkflowHostedService.StopAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+override sealed AiSdk.Workflows.CronTrigger.Equals(AiSdk.Workflows.AutomationTrigger? other) -> bool
+override sealed AiSdk.Workflows.EventTrigger.Equals(AiSdk.Workflows.AutomationTrigger? other) -> bool
+override sealed AiSdk.Workflows.IntervalTrigger.Equals(AiSdk.Workflows.AutomationTrigger? other) -> bool
+override sealed AiSdk.Workflows.OnceTrigger.Equals(AiSdk.Workflows.AutomationTrigger? other) -> bool
+override sealed AiSdk.Workflows.WebhookTrigger.Equals(AiSdk.Workflows.AutomationTrigger? other) -> bool
+static AiSdk.Workflows.AgentTaskInput.operator !=(AiSdk.Workflows.AgentTaskInput? left, AiSdk.Workflows.AgentTaskInput? right) -> bool
+static AiSdk.Workflows.AgentTaskInput.operator ==(AiSdk.Workflows.AgentTaskInput? left, AiSdk.Workflows.AgentTaskInput? right) -> bool
+static AiSdk.Workflows.AgentTaskResult.operator !=(AiSdk.Workflows.AgentTaskResult? left, AiSdk.Workflows.AgentTaskResult? right) -> bool
+static AiSdk.Workflows.AgentTaskResult.operator ==(AiSdk.Workflows.AgentTaskResult? left, AiSdk.Workflows.AgentTaskResult? right) -> bool
+static AiSdk.Workflows.AgentTasks.AddAgentTasks(this AiSdk.Workflows.WorkflowEngine! engine, AiSdk.Workflows.AgentTaskOptions! options) -> AiSdk.Workflows.WorkflowEngine!
+static AiSdk.Workflows.AgentTasks.CreateTools(AiSdk.Workflows.WorkflowEngine! engine, AiSdk.Workflows.AgentTaskOptions! options) -> System.Collections.Generic.IReadOnlyList<AiSdk.Tool!>!
+static AiSdk.Workflows.AgentTasks.Instructions.get -> string!
+static AiSdk.Workflows.AgentTasks.ValidateFrequency(AiSdk.Workflows.AutomationTrigger! trigger, System.TimeSpan minimum) -> void
+static AiSdk.Workflows.Automation.Create<TInput>(string! name, AiSdk.Workflows.AutomationTrigger! trigger, string! workflow, TInput input, string? id = null) -> AiSdk.Workflows.Automation!
+static AiSdk.Workflows.Automation.operator !=(AiSdk.Workflows.Automation? left, AiSdk.Workflows.Automation? right) -> bool
+static AiSdk.Workflows.Automation.operator ==(AiSdk.Workflows.Automation? left, AiSdk.Workflows.Automation? right) -> bool
+static AiSdk.Workflows.AutomationTrigger.operator !=(AiSdk.Workflows.AutomationTrigger? left, AiSdk.Workflows.AutomationTrigger? right) -> bool
+static AiSdk.Workflows.AutomationTrigger.operator ==(AiSdk.Workflows.AutomationTrigger? left, AiSdk.Workflows.AutomationTrigger? right) -> bool
+static AiSdk.Workflows.CronTrigger.operator !=(AiSdk.Workflows.CronTrigger? left, AiSdk.Workflows.CronTrigger? right) -> bool
+static AiSdk.Workflows.CronTrigger.operator ==(AiSdk.Workflows.CronTrigger? left, AiSdk.Workflows.CronTrigger? right) -> bool
+static AiSdk.Workflows.CronTrigger.Parse(string! expression) -> Cronos.CronExpression!
+static AiSdk.Workflows.EventTrigger.operator !=(AiSdk.Workflows.EventTrigger? left, AiSdk.Workflows.EventTrigger? right) -> bool
+static AiSdk.Workflows.EventTrigger.operator ==(AiSdk.Workflows.EventTrigger? left, AiSdk.Workflows.EventTrigger? right) -> bool
+static AiSdk.Workflows.EventWait.operator !=(AiSdk.Workflows.EventWait? left, AiSdk.Workflows.EventWait? right) -> bool
+static AiSdk.Workflows.EventWait.operator ==(AiSdk.Workflows.EventWait? left, AiSdk.Workflows.EventWait? right) -> bool
+static AiSdk.Workflows.IntervalTrigger.operator !=(AiSdk.Workflows.IntervalTrigger? left, AiSdk.Workflows.IntervalTrigger? right) -> bool
+static AiSdk.Workflows.IntervalTrigger.operator ==(AiSdk.Workflows.IntervalTrigger? left, AiSdk.Workflows.IntervalTrigger? right) -> bool
+static AiSdk.Workflows.OnceTrigger.operator !=(AiSdk.Workflows.OnceTrigger? left, AiSdk.Workflows.OnceTrigger? right) -> bool
+static AiSdk.Workflows.OnceTrigger.operator ==(AiSdk.Workflows.OnceTrigger? left, AiSdk.Workflows.OnceTrigger? right) -> bool
+static AiSdk.Workflows.StepOptions.Default.get -> AiSdk.Workflows.StepOptions!
+static AiSdk.Workflows.StepOptions.NoRetry.get -> AiSdk.Workflows.StepOptions!
+static AiSdk.Workflows.StepOptions.operator !=(AiSdk.Workflows.StepOptions? left, AiSdk.Workflows.StepOptions? right) -> bool
+static AiSdk.Workflows.StepOptions.operator ==(AiSdk.Workflows.StepOptions? left, AiSdk.Workflows.StepOptions? right) -> bool
+static AiSdk.Workflows.StepRecord.operator !=(AiSdk.Workflows.StepRecord? left, AiSdk.Workflows.StepRecord? right) -> bool
+static AiSdk.Workflows.StepRecord.operator ==(AiSdk.Workflows.StepRecord? left, AiSdk.Workflows.StepRecord? right) -> bool
+static AiSdk.Workflows.WebhookRequest.FromHeaders(System.ReadOnlyMemory<byte> body, System.Func<string!, string?>! header) -> AiSdk.Workflows.WebhookRequest!
+static AiSdk.Workflows.WebhookRequest.operator !=(AiSdk.Workflows.WebhookRequest? left, AiSdk.Workflows.WebhookRequest? right) -> bool
+static AiSdk.Workflows.WebhookRequest.operator ==(AiSdk.Workflows.WebhookRequest? left, AiSdk.Workflows.WebhookRequest? right) -> bool
+static AiSdk.Workflows.WebhookSignature.CreateSecret() -> string!
+static AiSdk.Workflows.WebhookSignature.Matches(string! expected, string? received) -> bool
+static AiSdk.Workflows.WebhookSignature.Sign(string! secret, long timestamp, System.ReadOnlySpan<byte> body) -> string!
+static AiSdk.Workflows.WebhookSignature.SignBody(string! secret, System.ReadOnlySpan<byte> body) -> string!
+static AiSdk.Workflows.WebhookTrigger.operator !=(AiSdk.Workflows.WebhookTrigger? left, AiSdk.Workflows.WebhookTrigger? right) -> bool
+static AiSdk.Workflows.WebhookTrigger.operator ==(AiSdk.Workflows.WebhookTrigger? left, AiSdk.Workflows.WebhookTrigger? right) -> bool
+static AiSdk.Workflows.Workflow.Create<TInput, TOutput>(string! name, System.Func<AiSdk.Workflows.WorkflowContext!, TInput, System.Threading.Tasks.Task<TOutput>!>! run, string? description = null) -> AiSdk.Workflows.Workflow<TInput, TOutput>!
+static AiSdk.Workflows.WorkflowEngine.VerifyWebhook(string! secret, System.ReadOnlySpan<byte> body, string? secretHeader, string? signatureHeader) -> bool
+static AiSdk.Workflows.WorkflowRunQueries.DueAt(AiSdk.Workflows.WorkflowRun! run) -> System.DateTimeOffset
+static AiSdk.Workflows.WorkflowRunQueries.FinishedAt(AiSdk.Workflows.WorkflowRun! run) -> System.DateTimeOffset
+static AiSdk.Workflows.WorkflowRunQueries.IsDue(AiSdk.Workflows.Automation! automation, System.DateTimeOffset now) -> bool
+static AiSdk.Workflows.WorkflowRunQueries.IsDue(AiSdk.Workflows.WorkflowRun! run, System.DateTimeOffset now) -> bool
+static AiSdk.Workflows.WorkflowRunQueries.IsWaitingFor(AiSdk.Workflows.WorkflowRun! run, string! eventName, string? key) -> bool
+static AiSdk.Workflows.WorkflowServiceCollectionExtensions.AddAiSdkWorkflows(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<AiSdk.Workflows.WorkflowBuilder!>! configure) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+virtual AiSdk.Workflows.AutomationTrigger.EqualityContract.get -> System.Type!
+virtual AiSdk.Workflows.AutomationTrigger.Equals(AiSdk.Workflows.AutomationTrigger? other) -> bool
+virtual AiSdk.Workflows.AutomationTrigger.NextOccurrence(System.DateTimeOffset after, System.DateTimeOffset? lastRun) -> System.DateTimeOffset?
+virtual AiSdk.Workflows.AutomationTrigger.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual AiSdk.Workflows.AutomationTrigger.Validate() -> void

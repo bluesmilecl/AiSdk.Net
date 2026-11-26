@@ -1,0 +1,40 @@
+#nullable enable
+AiSdk.PgVector.PgVectorDistance
+AiSdk.PgVector.PgVectorDistance.Cosine = 0 -> AiSdk.PgVector.PgVectorDistance
+AiSdk.PgVector.PgVectorDistance.Euclidean = 1 -> AiSdk.PgVector.PgVectorDistance
+AiSdk.PgVector.PgVectorDistance.InnerProduct = 2 -> AiSdk.PgVector.PgVectorDistance
+AiSdk.PgVector.PgVectorFilteredSearch
+AiSdk.PgVector.PgVectorFilteredSearch.Approximate = 1 -> AiSdk.PgVector.PgVectorFilteredSearch
+AiSdk.PgVector.PgVectorFilteredSearch.Auto = 0 -> AiSdk.PgVector.PgVectorFilteredSearch
+AiSdk.PgVector.PgVectorFilteredSearch.Exact = 2 -> AiSdk.PgVector.PgVectorFilteredSearch
+AiSdk.PgVector.PgVectorFilterTranslator
+AiSdk.PgVector.PgVectorStore
+AiSdk.PgVector.PgVectorStore.CountAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<long>!
+AiSdk.PgVector.PgVectorStore.DeleteAsync(System.Collections.Generic.IEnumerable<string!>! ids, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+AiSdk.PgVector.PgVectorStore.DeleteWhereAsync(AiSdk.VectorFilter! filter, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+AiSdk.PgVector.PgVectorStore.DisposeAsync() -> System.Threading.Tasks.ValueTask
+AiSdk.PgVector.PgVectorStore.EnsureCreatedAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+AiSdk.PgVector.PgVectorStore.HybridSearchAsync(string! query, int topK = 5, AiSdk.VectorFilter? filter = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.VectorSearchResult!>!>!
+AiSdk.PgVector.PgVectorStore.PgVectorStore(Npgsql.NpgsqlDataSource! dataSource, AiSdk.IEmbeddingModel! embeddings, AiSdk.PgVector.PgVectorStoreOptions! options) -> void
+AiSdk.PgVector.PgVectorStore.SearchAsync(string! query, int topK = 5, AiSdk.VectorFilter? filter = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<AiSdk.VectorSearchResult!>!>!
+AiSdk.PgVector.PgVectorStore.UpsertAsync(System.Collections.Generic.IEnumerable<AiSdk.VectorDocument!>! documents, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+AiSdk.PgVector.PgVectorStoreOptions
+AiSdk.PgVector.PgVectorStoreOptions.CreateIfNotExists.get -> bool
+AiSdk.PgVector.PgVectorStoreOptions.CreateIfNotExists.init -> void
+AiSdk.PgVector.PgVectorStoreOptions.Dimensions.get -> int
+AiSdk.PgVector.PgVectorStoreOptions.Dimensions.init -> void
+AiSdk.PgVector.PgVectorStoreOptions.Distance.get -> AiSdk.PgVector.PgVectorDistance
+AiSdk.PgVector.PgVectorStoreOptions.Distance.init -> void
+AiSdk.PgVector.PgVectorStoreOptions.FilteredSearch.get -> AiSdk.PgVector.PgVectorFilteredSearch
+AiSdk.PgVector.PgVectorStoreOptions.FilteredSearch.init -> void
+AiSdk.PgVector.PgVectorStoreOptions.PgVectorStoreOptions() -> void
+AiSdk.PgVector.PgVectorStoreOptions.RrfK.get -> int
+AiSdk.PgVector.PgVectorStoreOptions.RrfK.init -> void
+AiSdk.PgVector.PgVectorStoreOptions.Schema.get -> string!
+AiSdk.PgVector.PgVectorStoreOptions.Schema.init -> void
+AiSdk.PgVector.PgVectorStoreOptions.Table.get -> string!
+AiSdk.PgVector.PgVectorStoreOptions.Table.init -> void
+AiSdk.PgVector.PgVectorStoreOptions.TextSearchConfig.get -> string!
+AiSdk.PgVector.PgVectorStoreOptions.TextSearchConfig.init -> void
+static AiSdk.PgVector.PgVectorFilterTranslator.Translate(AiSdk.VectorFilter! filter, System.Collections.Generic.List<object!>! parameters) -> string!
+static AiSdk.PgVector.PgVectorStore.Create(string! connectionString, AiSdk.IEmbeddingModel! embeddings, AiSdk.PgVector.PgVectorStoreOptions! options) -> AiSdk.PgVector.PgVectorStore!
