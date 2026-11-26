@@ -47,7 +47,7 @@ namespaces cortos: `using AiSdk;`, `using AiSdk.OpenAI;`.
 <summary><b>¿Está listo para producción?</b></summary>
 
 Sí. La versión 1.0 congela la API pública (controlada con analizadores de API pública) y sigue el Versionado
-Semántico: no habrá cambios incompatibles hasta la 2.0. Trae más de 500 pruebas unitarias, pruebas de integración con
+Semántico: no habrá cambios incompatibles hasta la 2.0. Trae más de 550 pruebas unitarias, pruebas de integración con
 PostgreSQL y pruebas en vivo. Ver [Versiones y compatibilidad](es-Calidad#versiones-y-compatibilidad) y las notas de
 versión en `CHANGELOG.md`.
 </details>

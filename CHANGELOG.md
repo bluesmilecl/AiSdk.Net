@@ -6,7 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-26
+
+First stable release. The public API is frozen and tracked with public API analyzers, and the project follows
+Semantic Versioning from now on: no breaking changes until 2.0 (see
+[Versioning and compatibility](https://github.com/bluesmilecl/AiSdk.Net/wiki/Quality#versioning-and-compatibility)).
+This release also brings English documentation and messages (with Spanish by culture), OpenTelemetry GenAI telemetry
+and the reverse Microsoft.Extensions.AI interop. Upgrading from 0.3: read **Changed**; every breaking change has a
+one-line migration note.
+
 ### Added
+- **Public API tracking:** every package ships `PublicAPI.Shipped.txt` (5,010 members) checked by
+  `Microsoft.CodeAnalysis.PublicApiAnalyzers`; an unannounced public change does not compile.
+- **Localized messages:** exceptions, warnings, HTTP problem details and the texts the model receives (tool denials,
+  approval errors, prompts of orchestration, context compression, skills, artifacts, OCR and document tools) come from
+  `.resx` resources: English by default, Spanish when `CultureInfo.CurrentUICulture` is `es*` (satellite assemblies
+  inside the packages). Spanish texts are unchanged from 0.3.
+- `LocalizedDescriptionAttribute`: a `DescriptionAttribute` read from resources with the current UI culture, used for
+  the SDK's own tool and schema descriptions and available for yours.
+- `VisionModelOcr.IsNoTextReply`: recognizes the "no text" answer in English and Spanish.
 - **Reverse interop with Microsoft.Extensions.AI** in `AiSdk.Net.Extensions.AI`: `model.AsIChatClient()` exposes any
   `ILanguageModel` as an `IChatClient` (`LanguageModelChatClient`) and `embeddingModel.AsIEmbeddingGenerator()` exposes
   any `IEmbeddingModel` as an `IEmbeddingGenerator<string, Embedding<float>>` (`EmbeddingModelGenerator`, batched by
@@ -33,6 +51,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
   `chat {model}` spans in streaming too (with `gen_ai.request.stream` and `gen_ai.response.time_to_first_chunk`).
 
 ### Changed
+- **XML documentation in English** (IntelliSense and nuget.org) in all packages.
+- **Breaking: messages are English by default.** Code or tests that compare SDK message texts in Spanish must set a
+  Spanish UI culture (for example `CultureInfo.DefaultThreadCurrentUICulture = new("es-CL")` or
+  `app.UseRequestLocalization(...)`) or compare the English text. Message texts are not part of the API contract.
+- **Breaking: localized instructions are properties instead of constants:** `SupervisorOrchestration.DefaultInstructions`,
+  `VisionModelOcr.DefaultInstructions`, `ArtifactTools.Instructions`, `SkillAuthoringTools.Instructions`,
+  `SkillGenerator.AuthoringGuide`, `DocumentTools.Instructions`, `VideoConverter.FramePrompt` and
+  `AgentTasks.Instructions`. Migration: recompile; they can no longer be used where a constant is required.
+- **Breaking:** `AiTelemetry` moved from `AiSdk.Internal` to `AiSdk`. Migration: `using AiSdk;`.
+- **Breaking:** `McpRequestRejectedException(string? message = null)` (null uses the localized text),
+  `VectorStoreExtensions.AsTool(..., string? description = null, ...)` (null uses the localized description) and
+  `DocumentGenerator.ToXlsx<T>(..., string? sheetName = null)` ("Data" or "Datos" by culture). Migration: recompile.
 - **Breaking: telemetry follows the OpenTelemetry semantic conventions for generative AI** (span names and attributes of
   semantic-conventions v1.41.0 and semantic-conventions-genai v0.1.0). The `ai.*` spans and attributes are gone:
 

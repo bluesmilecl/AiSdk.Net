@@ -47,7 +47,7 @@ namespaces: `using AiSdk;`, `using AiSdk.OpenAI;`.
 <summary><b>Is it production ready?</b></summary>
 
 Yes. Version 1.0 freezes the public API (tracked with public API analyzers) and follows Semantic Versioning: no
-breaking changes until 2.0. It ships with 500+ unit tests, integration tests against PostgreSQL and live tests. See
+breaking changes until 2.0. It ships with 550+ unit tests, integration tests against PostgreSQL and live tests. See
 [Versioning and compatibility](Quality#versioning-and-compatibility) and the release notes in `CHANGELOG.md`.
 </details>
 

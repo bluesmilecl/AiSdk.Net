@@ -43,7 +43,7 @@ DeepSeek…) and anything in Microsoft.Extensions.AI.
 <td width="33%" valign="top">
 
 ### 🏗️ Built for production
-Durable workflows, OpenTelemetry, retries and fallbacks, analyzers with zero warnings, 450+ tests and
+Durable workflows, OpenTelemetry, retries and fallbacks, analyzers with zero warnings, 550+ tests and
 live tests against real APIs.
 
 </td>
@@ -164,7 +164,7 @@ The full guide lives in the **[wiki](https://github.com/bluesmilecl/AiSdk.Net/wi
 ## 🧪 Quality
 
 - ✅ **0 warnings** with `AnalysisLevel=latest-recommended` and warnings as errors
-- ✅ **450+ unit tests** (xunit.v3), integration tests against PostgreSQL + pgvector and **live tests** against real APIs, skipped when no key or database is set
+- ✅ **550+ unit tests** (xunit.v3), integration tests against PostgreSQL + pgvector and **live tests** against real APIs, skipped when no key or database is set
 - ✅ Central Package Management, layered `Directory.Build.props`, Source Link and symbol packages
 - ✅ NuGet **trusted publishing** (OIDC), no long-lived API keys
 
