@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using AiSdk.Resources;
+using System.Globalization;
 
 namespace AiSdk.Internal;
 
@@ -26,7 +28,7 @@ internal static class Retry
                         throw;
                     }
 
-                    throw new RetryException($"Falló tras {attempt + 1} intentos: {ex.Message}", errors);
+                    throw new RetryException(string.Format(CultureInfo.CurrentCulture, Strings.Retry_Exhausted, attempt + 1, ex.Message), errors);
                 }
 
                 if (!TryGetDelay(attempt, ex, maxRetryAfter ?? DefaultMaxRetryAfter, out var delay))
@@ -38,7 +40,7 @@ internal static class Retry
                         throw;
                     }
 
-                    throw new RetryException($"Falló tras {attempt + 1} intentos; el servidor pidió esperar {delay.TotalSeconds:0} s antes de reintentar: {ex.Message}", errors);
+                    throw new RetryException(string.Format(CultureInfo.CurrentCulture, Strings.Retry_ExhaustedRetryAfter, attempt + 1, delay.TotalSeconds, ex.Message), errors);
                 }
 
                 await Task.Delay(delay, cancellationToken).ConfigureAwait(false);

@@ -3,6 +3,8 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using AiSdk.Internal;
+using AiSdk.Resources;
+using System.Globalization;
 
 namespace AiSdk;
 
@@ -143,7 +145,7 @@ public sealed class Tool
             {
                 try
                 {
-                    return input.Deserialize<TInput>(options) is null ? "La entrada es nula." : null;
+                    return input.Deserialize<TInput>(options) is null ? Strings.Tool_InputIsNull : null;
                 }
                 catch (Exception ex) when (ex is JsonException or NotSupportedException or InvalidOperationException)
                 {
@@ -153,7 +155,7 @@ public sealed class Tool
             Execute = async (input, ctx, ct) =>
             {
                 var typed = input.Deserialize<TInput>(options)
-                    ?? throw new JsonException($"La entrada de la herramienta '{name}' es nula.");
+                    ?? throw new JsonException(string.Format(CultureInfo.CurrentCulture, Strings.Tool_ToolInputIsNull, name));
                 return await execute(typed, ctx, ct).ConfigureAwait(false);
             },
         };
@@ -242,7 +244,7 @@ public sealed class Tool
                 }
                 else
                 {
-                    throw new JsonException($"Falta el parámetro requerido '{PropertyName(p, options)}'.");
+                    throw new JsonException(string.Format(CultureInfo.CurrentCulture, Strings.Tool_MissingRequiredParameter, PropertyName(p, options)));
                 }
             }
 

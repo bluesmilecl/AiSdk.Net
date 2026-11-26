@@ -102,7 +102,7 @@ public sealed class HttpHardeningTests
             {
             }
         });
-        Assert.Contains("JSON inválido", error.Message);
+        Assert.Contains("invalid JSON", error.Message);
     }
 
     [Fact]

@@ -97,4 +97,20 @@ Write complete, well-structured content. After generating, provide the link and 
   <data name="Tools_CreateWordDocument" xml:space="preserve"><value>Generates an editable Word document (.docx) from Markdown.</value></data>
   <data name="Tools_CreatePdf" xml:space="preserve"><value>Generates a PDF from Markdown (reports, letters, contracts, quotes).</value></data>
   <data name="Tools_CreateSpreadsheet" xml:space="preserve"><value>Generates an Excel file (.xlsx) with one or more sheets, typed columns, formats, filters and totals.</value></data>
+  <data name="DocParam_FileName" xml:space="preserve"><value>File name without extension, e.g. sales-report-q3.</value></data>
+  <data name="DocParam_Markdown" xml:space="preserve"><value>Full content in Markdown.</value></data>
+  <data name="DocParam_Title" xml:space="preserve"><value>Document title.</value></data>
+  <data name="DocParam_Subtitle" xml:space="preserve"><value>Subtitle (title page).</value></data>
+  <data name="DocParam_TitlePage" xml:space="preserve"><value>Adds a title page with title, subtitle and date.</value></data>
+  <data name="DocParam_Landscape" xml:space="preserve"><value>Landscape orientation (wide tables).</value></data>
+  <data name="SheetParam_ColumnHeader" xml:space="preserve"><value>Column header.</value></data>
+  <data name="SheetParam_ColumnType" xml:space="preserve"><value>Type: auto, text, number, integer, currency, percent, date, dateTime or boolean.</value></data>
+  <data name="SheetParam_ColumnFormat" xml:space="preserve"><value>Optional Excel format, e.g. "#,##0.00" or "dd/mm/yyyy".</value></data>
+  <data name="SheetParam_Name" xml:space="preserve"><value>Sheet name (max. 31 characters).</value></data>
+  <data name="SheetParam_Columns" xml:space="preserve"><value>Columns in order.</value></data>
+  <data name="SheetParam_Rows" xml:space="preserve"><value>Rows: arrays with one value per column (numbers as numbers, ISO dates yyyy-MM-dd, calculation formulas starting with =).</value></data>
+  <data name="SheetParam_Totals" xml:space="preserve"><value>Adds a totals row with SUM in numeric columns.</value></data>
+  <data name="WorkbookParam_FileName" xml:space="preserve"><value>File name without extension.</value></data>
+  <data name="WorkbookParam_Sheets" xml:space="preserve"><value>Workbook sheets.</value></data>
+  <data name="WorkbookParam_Title" xml:space="preserve"><value>Workbook title.</value></data>
 </root>

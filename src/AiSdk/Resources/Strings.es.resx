@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="Model_AtLeastOneRequired" xml:space="preserve"><value>Se necesita al menos un modelo.</value></data>
+  <data name="Model_TokenCountingNotSupported" xml:space="preserve"><value>El modelo '{0}:{1}' no permite contar tokens.</value></data>
+  <data name="Common_Unreachable" xml:space="preserve"><value>Inalcanzable.</value></data>
+  <data name="Registry_NoEmbeddingModels" xml:space="preserve"><value>El proveedor '{0}' no ofrece modelos de embeddings.</value></data>
+  <data name="Registry_NoImageModels" xml:space="preserve"><value>El proveedor '{0}' no ofrece modelos de imágenes.</value></data>
+  <data name="Registry_NoSpeechModels" xml:space="preserve"><value>El proveedor '{0}' no ofrece modelos de voz.</value></data>
+  <data name="Registry_NoTranscriptionModels" xml:space="preserve"><value>El proveedor '{0}' no ofrece modelos de transcripción.</value></data>
+  <data name="Registry_NoRerankingModels" xml:space="preserve"><value>El proveedor '{0}' no ofrece modelos de reranking.</value></data>
+  <data name="Registry_AliasCycle" xml:space="preserve"><value>Ciclo de alias de modelos: {0} → {1}.</value></data>
+  <data name="Registry_InvalidId" xml:space="preserve"><value>Identificador inválido '{0}'. Usa el formato 'proveedor{1}modelo'.</value></data>
+  <data name="Registry_ProviderNotRegistered" xml:space="preserve"><value>Proveedor '{0}' no registrado. Registrados: {1}.</value></data>
+  <data name="Mock_NoResponsesLeft" xml:space="preserve"><value>MockLanguageModel: no quedan respuestas configuradas.</value></data>
+  <data name="Generation_PromptOrMessagesRequired" xml:space="preserve"><value>Debe indicarse Prompt o Messages.</value></data>
+  <data name="Output_ParseFailed" xml:space="preserve"><value>No se pudo interpretar la respuesta del modelo según el esquema solicitado.</value></data>
+  <data name="Output_WrongType" xml:space="preserve"><value>Output no es de tipo {0}.</value></data>
+  <data name="Output_NotConfigured" xml:space="preserve"><value>No se configuró una salida estructurada (Output).</value></data>
+  <data name="Image_NoneGenerated" xml:space="preserve"><value>El modelo no generó ninguna imagen.</value></data>
+  <data name="Speech_NoAudio" xml:space="preserve"><value>El modelo no generó audio.</value></data>
+  <data name="Embedding_VectorLengthMismatch" xml:space="preserve"><value>Los vectores deben tener la misma longitud.</value></data>
+  <data name="Ocr_DefaultInstructions" xml:space="preserve"><value>Transcribe todo el texto visible de la imagen a Markdown, respetando el orden de lectura. Usa encabezados, listas y tablas Markdown cuando correspondan. No traduzcas, no resumas ni agregues comentarios. Si no hay texto, responde exactamente: (sin texto)</value></data>
+  <data name="Tool_Unknown" xml:space="preserve"><value>Herramienta desconocida '{0}'. Disponibles: {1}.</value></data>
+  <data name="Tool_InvalidJsonInput" xml:space="preserve"><value>La entrada de la herramienta no es JSON válido.</value></data>
+  <data name="Tool_InvalidInput" xml:space="preserve"><value>Entrada inválida: {0}</value></data>
+  <data name="Tool_InputIsNull" xml:space="preserve"><value>La entrada es nula.</value></data>
+  <data name="Tool_ToolInputIsNull" xml:space="preserve"><value>La entrada de la herramienta '{0}' es nula.</value></data>
+  <data name="Tool_MissingRequiredParameter" xml:space="preserve"><value>Falta el parámetro requerido '{0}'.</value></data>
+  <data name="Tool_Denied" xml:space="preserve"><value>El usuario denegó la ejecución de la herramienta.</value></data>
+  <data name="Tool_DeniedWithReason" xml:space="preserve"><value>El usuario denegó la ejecución de la herramienta. Motivo: {0}</value></data>
+  <data name="Repair_Prompt" xml:space="preserve"><value>El modelo intentó llamar a la herramienta "{0}" con una entrada inválida.
+Error: {1}
+
+Entrada original:
+{2}
+
+Esquema JSON de la entrada:
+{3}
+
+Devuelve únicamente la entrada corregida como un objeto JSON que cumpla el esquema,
+conservando la intención original.</value></data>
+  <data name="Approval_NoHandler" xml:space="preserve"><value>La herramienta '{0}' requiere aprobación y no hay un manejador de aprobación configurado (OnToolApproval); no se ejecutó.</value></data>
+  <data name="Approval_AmbiguousCallId" xml:space="preserve"><value>Hay más de una llamada distinta con este id en el historial; no se ejecutó ninguna.</value></data>
+  <data name="Approval_NoValidDecision" xml:space="preserve"><value>La llamada requería aprobación y no hubo una decisión válida al reanudar; no se ejecutó.</value></data>
+  <data name="Approval_MessagesMustEndWithAssistant" xml:space="preserve"><value>ToolApprovals requiere que los mensajes terminen en el mensaje del asistente con las llamadas pendientes (opcionalmente seguido de resultados de herramientas).</value></data>
+  <data name="Approval_KeyTooShort" xml:space="preserve"><value>La clave debe tener al menos 32 bytes (256 bits) aleatorios.</value></data>
+  <data name="UI_ApprovalWithoutProtector" xml:space="preserve"><value>La herramienta requiere aprobación, pero el stream UI no tiene un ToolApprovalProtector (toolApprovals) para pedirla; no se ejecutó.</value></data>
+  <data name="UI_DefaultErrorText" xml:space="preserve"><value>Se produjo un error.</value></data>
+  <data name="Agent_DelegateDescription" xml:space="preserve"><value>Delega una tarea al agente {0}.</value></data>
+  <data name="Agent_UnresolvedCalls" xml:space="preserve"><value>El agente '{0}' se detuvo con llamadas sin resolver ({1}): requieren aprobación o son herramientas de cliente, y no se pueden reanudar desde aquí. Configure OnToolApproval en el agente principal o en este agente.</value></data>
+  <data name="Agent_Param_Task" xml:space="preserve"><value>Descripción completa de la tarea a realizar.</value></data>
+  <data name="Session_AbandonedCall" xml:space="preserve"><value>La llamada no se completó: la conversación continuó sin su resultado.</value></data>
+  <data name="Session_NoPendingApprovals" xml:space="preserve"><value>La conversación '{0}' no tiene llamadas pendientes de aprobación.</value></data>
+  <data name="Orchestration_DelegateDescription" xml:space="preserve"><value>Delega una tarea a {0}.</value></data>
+  <data name="Orchestration_Param_Task" xml:space="preserve"><value>Descripción completa y autocontenida de la tarea.</value></data>
+  <data name="Orchestration_SequentialStepInput" xml:space="preserve"><value>Tarea original:
+{0}
+
+Resultado del paso anterior:
+{1}</value></data>
+  <data name="Orchestration_AggregatorInput" xml:space="preserve"><value>Tarea original:
+{0}
+
+Respuestas de los especialistas:
+
+{1}</value></data>
+  <data name="Router_Param_Route" xml:space="preserve"><value>Nombre exacto de la ruta elegida.</value></data>
+  <data name="Router_Param_Reason" xml:space="preserve"><value>Motivo breve.</value></data>
+  <data name="Router_NoDescription" xml:space="preserve"><value>(sin descripción)</value></data>
+  <data name="Router_System" xml:space="preserve"><value>Elige la ruta más adecuada para la solicitud del usuario.
+Rutas disponibles:
+{0}
+{1}</value></data>
+  <data name="Router_UnknownRoute" xml:space="preserve"><value>El router eligió una ruta inexistente: '{0}'.</value></data>
+  <data name="Supervisor_DefaultInstructions" xml:space="preserve"><value>Eres un supervisor que coordina a un equipo de especialistas. Descompón la tarea, delega cada subtarea al especialista adecuado con instrucciones completas y autocontenidas (no ven la conversación), delega en paralelo cuando las subtareas sean independientes, revisa los resultados y entrega la respuesta final integrada.</value></data>
+  <data name="Supervisor_Instructions" xml:space="preserve"><value>{0}
+
+Especialistas:
+{1}</value></data>
+  <data name="Handoff_Param_Reason" xml:space="preserve"><value>Motivo del traspaso y contexto relevante para el siguiente agente.</value></data>
+  <data name="Handoff_ToolDescription" xml:space="preserve"><value>Transfiere la conversación al agente {0}. {1}</value></data>
+  <data name="Handoff_Transferred" xml:space="preserve"><value>Conversación transferida a {0}.</value></data>
+  <data name="Evaluator_Param_Approved" xml:space="preserve"><value>True si el resultado cumple todos los criterios.</value></data>
+  <data name="Evaluator_Param_Score" xml:space="preserve"><value>Puntaje de 0 a 10.</value></data>
+  <data name="Evaluator_Param_Feedback" xml:space="preserve"><value>Correcciones concretas y accionables; vacío si está aprobado.</value></data>
+  <data name="Evaluator_RevisionPrompt" xml:space="preserve"><value>{0}
+
+Tu versión anterior:
+{1}
+
+Corrige según esta evaluación:
+{2}</value></data>
+  <data name="Evaluator_System" xml:space="preserve"><value>Eres un evaluador exigente. Evalúa el resultado contra estos criterios:
+{0}</value></data>
+  <data name="Evaluator_Prompt" xml:space="preserve"><value>Tarea:
+{0}
+
+Resultado a evaluar:
+{1}</value></data>
+  <data name="Logging_Generate" xml:space="preserve"><value>[{0}:{1}] generate: {2} mensajes, {3} herramientas</value></data>
+  <data name="Logging_Stream" xml:space="preserve"><value>[{0}:{1}] stream: {2} mensajes, {3} herramientas</value></data>
+  <data name="Retry_Exhausted" xml:space="preserve"><value>Falló tras {0} intentos: {1}</value></data>
+  <data name="Retry_ExhaustedRetryAfter" xml:space="preserve"><value>Falló tras {0} intentos; el servidor pidió esperar {1:0} s antes de reintentar: {2}</value></data>
+  <data name="Http_MissingApiKey" xml:space="preserve"><value>Falta la API key de {0}. Pásala en las opciones o define la variable de entorno {1}.</value></data>
+  <data name="Http_InvalidJsonResponse" xml:space="preserve"><value>Respuesta JSON inválida del proveedor.</value></data>
+  <data name="Http_SseEventTooLarge" xml:space="preserve"><value>Evento SSE demasiado grande (más de {0} caracteres).</value></data>
+  <data name="Http_StreamInvalidJson" xml:space="preserve"><value>El stream de {0} envió un evento con JSON inválido: {1}</value></data>
+  <data name="Http_SseLineTooLarge" xml:space="preserve"><value>Línea SSE demasiado grande (más de {0} caracteres).</value></data>
+  <data name="Http_StreamIdleTimeout" xml:space="preserve"><value>El stream no envió datos en {0:0} s.</value></data>
+  <data name="Compression_SummaryInstructions" xml:space="preserve"><value>Resume la conversación anterior para que un asistente pueda continuarla sin perder contexto. Conserva datos concretos (nombres, cifras, fechas, ids, decisiones, preferencias del usuario, resultados de herramientas y tareas pendientes). Escribe en el idioma de la conversación, en viñetas concisas.</value></data>
+  <data name="Compression_OmittedMessages" xml:space="preserve"><value>[Se omitieron {0} mensajes anteriores de la conversación para ajustarse al contexto.]</value></data>
+  <data name="Compression_PreviousConversationSummary" xml:space="preserve"><value>Resumen de la conversación anterior:
+{0}</value></data>
+  <data name="Compression_ToolResultTrimmed" xml:space="preserve"><value>… [resultado recortado]</value></data>
+  <data name="Compression_IncrementalInput" xml:space="preserve"><value>Resumen previo:
+{0}
+
+Mensajes nuevos:
+{1}</value></data>
+  <data name="Compression_RenderToolCall" xml:space="preserve"><value>[llamada a {0}: {1}]</value></data>
+  <data name="Compression_RenderToolResult" xml:space="preserve"><value>[resultado de {0}: {1}]</value></data>
+  <data name="Compression_RenderImage" xml:space="preserve"><value>[imagen]</value></data>
+  <data name="Compression_RenderFile" xml:space="preserve"><value>[archivo {0}]</value></data>
+  <data name="Summarize_Instructions" xml:space="preserve"><value>Resume el siguiente texto en Markdown en un máximo aproximado de {0} tokens. Conserva cifras, nombres, fechas, definiciones y conclusiones; no inventes nada. Responde solo con el resumen.</value></data>
+  <data name="Summarize_Focus" xml:space="preserve"><value>Prioriza: {0}.</value></data>
+  <data name="Knowledge_ToolDescription" xml:space="preserve"><value>Busca información relevante en la base de conocimiento. Úsala antes de responder preguntas sobre los documentos.</value></data>
+  <data name="Knowledge_Param_Query" xml:space="preserve"><value>Consulta de búsqueda en lenguaje natural.</value></data>
+  <data name="Artifact_Instructions" xml:space="preserve"><value>Puedes crear artifacts: contenido sustancial y autocontenido que el usuario querrá ver, reutilizar o modificar
+(páginas o apps HTML, documentos Markdown largos, código de más de ~15 líneas, diagramas SVG o Mermaid,
+componentes React). No uses artifacts para respuestas cortas, explicaciones o fragmentos breves.
+- Usa create_artifact una vez por pieza; para cambios pequeños usa update_artifact con un reemplazo exacto,
+  y rewrite_artifact solo si cambia la mayor parte.
+- HTML: un único archivo con CSS y JS en línea; diseño responsive y accesible.
+- React: un componente con export default, sin props obligatorias, con Tailwind para estilos.
+- Tras crear o editar, resume en una o dos frases qué hiciste; no repitas el contenido en el chat.</value></data>
+  <data name="Artifact_InvalidId" xml:space="preserve"><value>Id de artifact inválido: '{0}'.</value></data>
+  <data name="Artifact_ContentTooLong" xml:space="preserve"><value>El contenido supera el máximo de {0} caracteres.</value></data>
+  <data name="Artifact_NotFoundInConversation" xml:space="preserve"><value>No existe el artifact '{0}' en esta conversación.</value></data>
+  <data name="Artifact_CreateDescription" xml:space="preserve"><value>Crea un artifact nuevo. Tipos: {0}.</value></data>
+  <data name="Artifact_TypeNotAllowed" xml:space="preserve"><value>Tipo no permitido: '{0}'. Use uno de: {1}.</value></data>
+  <data name="Artifact_UpdateDescription" xml:space="preserve"><value>Edita un artifact reemplazando un fragmento exacto (oldStr debe aparecer una sola vez). Úsalo para cambios pequeños.</value></data>
+  <data name="Artifact_OldStrNotFound" xml:space="preserve"><value>oldStr no aparece en el artifact. Copia el texto exacto (incluidos espacios) o usa rewrite_artifact.</value></data>
+  <data name="Artifact_OldStrNotUnique" xml:space="preserve"><value>oldStr aparece más de una vez; incluye más contexto para que sea único.</value></data>
+  <data name="Artifact_RewriteDescription" xml:space="preserve"><value>Reemplaza todo el contenido de un artifact existente (nueva versión).</value></data>
+  <data name="Artifact_ReadDescription" xml:space="preserve"><value>Lee el contenido actual (o una versión) de un artifact.</value></data>
+  <data name="Artifact_VersionNotFound" xml:space="preserve"><value>No existe la versión {0}.</value></data>
+  <data name="Artifact_BinaryFileContent" xml:space="preserve"><value>[archivo binario {0}, {1} bytes]</value></data>
+  <data name="Artifact_ListDescription" xml:space="preserve"><value>Lista los artifacts de la conversación.</value></data>
+  <data name="Artifact_ScopeRequired" xml:space="preserve"><value>Los artifacts necesitan el id de conversación ('{0}') o de usuario ('{1}') en el contexto de ejecución.</value></data>
+  <data name="Artifact_Param_Title" xml:space="preserve"><value>Título breve.</value></data>
+  <data name="Artifact_Param_Type" xml:space="preserve"><value>Tipo: html, markdown, code, svg, mermaid, react, json o csv.</value></data>
+  <data name="Artifact_Param_Content" xml:space="preserve"><value>Contenido completo.</value></data>
+  <data name="Artifact_Param_Language" xml:space="preserve"><value>Lenguaje si type es code (csharp, python, sql...).</value></data>
+  <data name="Artifact_Param_Id" xml:space="preserve"><value>Id opcional en kebab-case.</value></data>
+  <data name="Artifact_Param_ArtifactId" xml:space="preserve"><value>Id del artifact.</value></data>
+  <data name="Artifact_Param_OldStr" xml:space="preserve"><value>Texto exacto a reemplazar (único).</value></data>
+  <data name="Artifact_Param_NewStr" xml:space="preserve"><value>Texto nuevo.</value></data>
+  <data name="Artifact_Param_NewContent" xml:space="preserve"><value>Contenido completo nuevo.</value></data>
+  <data name="Artifact_Param_NewTitle" xml:space="preserve"><value>Título nuevo (opcional).</value></data>
+  <data name="Artifact_Param_Version" xml:space="preserve"><value>Versión (opcional; por defecto la última).</value></data>
+  <data name="Skill_NotFound" xml:space="preserve"><value>No existe la skill '{0}'.</value></data>
+  <data name="Skill_NotFoundAvailable" xml:space="preserve"><value>No existe la skill '{0}'. Disponibles: {1}.</value></data>
+  <data name="Skill_LoadDescription" xml:space="preserve"><value>Carga las instrucciones completas de una skill del catálogo &lt;available_skills&gt;. Úsala antes de realizar una tarea que coincida con su descripción.</value></data>
+  <data name="Skill_UserInvocableOnly" xml:space="preserve"><value>La skill '{0}' solo puede invocarla el usuario.</value></data>
+  <data name="Skill_FilesHeader" xml:space="preserve"><value>Archivos de la skill (léelos con read_skill_file solo si los necesitas):</value></data>
+  <data name="Skill_Compatibility" xml:space="preserve"><value>Compatibilidad: {0}</value></data>
+  <data name="Skill_ReadFileDescription" xml:space="preserve"><value>Lee un archivo de una skill (p. ej. references/guia.md o assets/plantilla.html).</value></data>
+  <data name="Skill_FileNotFound" xml:space="preserve"><value>La skill '{0}' no tiene el archivo '{1}'. Archivos: {2}.</value></data>
+  <data name="Skill_BinaryFile" xml:space="preserve"><value>[Archivo binario '{0}' de {1} bytes; no se puede mostrar como texto.]</value></data>
+  <data name="Skill_FileTruncated" xml:space="preserve"><value>[… recortado: {0} caracteres más]</value></data>
+  <data name="Skill_RunScriptDescription" xml:space="preserve"><value>Ejecuta un script incluido en una skill (scripts/...) y devuelve su salida.</value></data>
+  <data name="Skill_UntrustedScripts" xml:space="preserve"><value>La skill '{0}' no es de confianza: sus scripts están deshabilitados.</value></data>
+  <data name="Skill_Param_Name" xml:space="preserve"><value>Nombre de la skill.</value></data>
+  <data name="Skill_Param_Path" xml:space="preserve"><value>Ruta relativa dentro de la skill.</value></data>
+  <data name="Skill_Param_Script" xml:space="preserve"><value>Ruta del script, p. ej. scripts/convertir.py.</value></data>
+  <data name="Skill_Param_Arguments" xml:space="preserve"><value>Argumentos de línea de comandos.</value></data>
+  <data name="Skill_NoInterpreter" xml:space="preserve"><value>No hay intérprete configurado para '{0}'.</value></data>
+  <data name="Skill_ScriptNotFound" xml:space="preserve"><value>La skill '{0}' no tiene el script '{1}'.</value></data>
+  <data name="Skill_ProcessStartFailed" xml:space="preserve"><value>No se pudo iniciar '{0}'.</value></data>
+  <data name="Skill_ScriptTimeout" xml:space="preserve"><value>[El script superó el tiempo límite de {0:0} s y se detuvo.]</value></data>
+  <data name="Skill_OutputTruncated" xml:space="preserve"><value>[… salida recortada: {0} caracteres más]</value></data>
+  <data name="Skill_DirectoryNotFound" xml:space="preserve"><value>No existe la carpeta de skills '{0}'.</value></data>
+  <data name="Skill_MarkdownTooLarge" xml:space="preserve"><value>El SKILL.md supera el tamaño máximo ({0} bytes).</value></data>
+  <data name="Skill_MarkdownEmpty" xml:space="preserve"><value>El SKILL.md está vacío.</value></data>
+  <data name="Skill_TooManyFiles" xml:space="preserve"><value>La skill tiene más de {0} archivos.</value></data>
+  <data name="Skill_GitHubRepositoryFormat" xml:space="preserve"><value>Use el formato 'propietario/repositorio'.</value></data>
+  <data name="Skill_GitHubNotFound" xml:space="preserve"><value>No se encontró {0}@{1} en GitHub (¿repositorio privado o rama inexistente?).</value></data>
+  <data name="Skill_GitHubZipTooLarge" xml:space="preserve"><value>El ZIP de {0}@{1} supera el tamaño máximo de {2} bytes (SkillLoadOptions.MaxArchiveBytes).</value></data>
+  <data name="Skill_AcceptedNonStrict" xml:space="preserve"><value>{0}: aceptada en modo no estricto: {1}</value></data>
+  <data name="Skill_Duplicate" xml:space="preserve"><value>Ya hay una skill '{0}'; se conserva la primera. Use SkillLoadOptions.ReplaceExisting para reemplazarla.</value></data>
+  <data name="Skill_DuplicateFrom" xml:space="preserve"><value>Ya hay una skill '{0}' (de {1}); se conserva la primera. Use SkillLoadOptions.ReplaceExisting para reemplazarla.</value></data>
+  <data name="Skill_ProvenanceNote" xml:space="preserve"><value>Skill no confiable: revísela y borre este archivo para confiar en ella.</value></data>
+  <data name="Skill_WriteThroughLink" xml:space="preserve"><value>No se escribe la skill a través del enlace '{0}'.</value></data>
+  <data name="Skill_SystemPrompt" xml:space="preserve"><value>Tienes skills: paquetes de instrucciones y recursos para tareas especializadas. Cuando una tarea coincida
+con la descripción de una skill, actívala con load_skill ANTES de responder y sigue sus instrucciones.
+Lee los archivos que mencione (references/, assets/) con read_skill_file solo cuando los necesites.
+No inventes el contenido de una skill que no cargaste.
+
+{0}</value></data>
+  <data name="Skill_NoFrontmatter" xml:space="preserve"><value>SKILL.md no tiene frontmatter YAML (--- name/description ---).</value></data>
+  <data name="Skill_MissingName" xml:space="preserve"><value>Falta 'name' en el frontmatter de SKILL.md.</value></data>
+  <data name="Skill_MissingDescription" xml:space="preserve"><value>Falta 'description' en el frontmatter de SKILL.md.</value></data>
+  <data name="Skill_InvalidPath" xml:space="preserve"><value>Ruta inválida dentro de la skill: '{0}'.</value></data>
+  <data name="Skill_FileTooLarge" xml:space="preserve"><value>El archivo '{0}' de la skill supera el tamaño máximo ({1} bytes).</value></data>
+  <data name="Skill_ZipTooLarge" xml:space="preserve"><value>El ZIP supera el tamaño máximo de {0} bytes.</value></data>
+  <data name="Skill_ZipExtractedTooLarge" xml:space="preserve"><value>El ZIP supera el máximo de {0} bytes descomprimidos.</value></data>
+  <data name="Skill_ArchivedSkillTooLarge" xml:space="preserve"><value>La skill en '{0}' supera los límites de tamaño ({1}).</value></data>
+  <data name="Skill_ArchivedMarkdownTooLarge" xml:space="preserve"><value>El SKILL.md de '{0}' supera el tamaño máximo.</value></data>
+  <data name="SkillMarkdown_FrontmatterNotClosed" xml:space="preserve"><value>El frontmatter de SKILL.md no está cerrado con '---'.</value></data>
+  <data name="SkillMarkdown_InvalidLine" xml:space="preserve"><value>Línea de frontmatter inválida: '{0}'.</value></data>
+  <data name="SkillMarkdown_InvalidList" xml:space="preserve"><value>Lista inválida en el frontmatter ('{0}'): todas las líneas deben empezar con '-'.</value></data>
+  <data name="SkillValidation_Invalid" xml:space="preserve"><value>La skill '{0}' no es válida:
+- {1}</value></data>
+  <data name="SkillValidation_NameFolderMismatch" xml:space="preserve"><value>El nombre '{0}' no coincide con la carpeta '{1}'.</value></data>
+  <data name="SkillValidation_MissingDescription" xml:space="preserve"><value>Falta la descripción: el modelo la usa para decidir cuándo activar la skill.</value></data>
+  <data name="SkillValidation_DescriptionTooLong" xml:space="preserve"><value>La descripción tiene {0} caracteres; el máximo es {1}.</value></data>
+  <data name="SkillValidation_DescriptionTooShort" xml:space="preserve"><value>La descripción tiene {0} caracteres; el mínimo es {1}.</value></data>
+  <data name="SkillValidation_DescriptionXmlTags" xml:space="preserve"><value>La descripción no puede contener etiquetas XML (p. ej. &lt;tag&gt;); Claude las rechaza.</value></data>
+  <data name="SkillValidation_CompatibilityLength" xml:space="preserve"><value>'compatibility' debe tener entre 1 y {0} caracteres.</value></data>
+  <data name="SkillValidation_ReferenceOutside" xml:space="preserve"><value>La referencia '{0}' sale de la carpeta de la skill; use rutas relativas.</value></data>
+  <data name="SkillValidation_ReferenceTooDeep" xml:space="preserve"><value>La referencia '{0}' tiene más de un nivel de carpetas desde SKILL.md.</value></data>
+  <data name="SkillValidation_ReferenceMissing" xml:space="preserve"><value>La referencia '{0}' no existe en los archivos de la skill.</value></data>
+  <data name="SkillValidation_InstructionsTooLong" xml:space="preserve"><value>Las instrucciones tienen ~{0} tokens; las skills muy largas rinden peor. Divídala o mueva detalle a references/.</value></data>
+  <data name="SkillValidation_InstructionsTooShort" xml:space="preserve"><value>Las instrucciones tienen ~{0} tokens; probablemente son demasiado escuetas para guiar al modelo.</value></data>
+  <data name="SkillValidation_NoHeadings" xml:space="preserve"><value>Sin títulos de sección: los modelos navegan mejor documentos estructurados.</value></data>
+  <data name="SkillValidation_NoNumberedSteps" xml:space="preserve"><value>Sin pasos numerados: los modelos siguen mejor procedimientos secuenciados.</value></data>
+  <data name="SkillValidation_NoWhenToUse" xml:space="preserve"><value>La descripción no indica cuándo usarla (p. ej. "Use cuando..." o "USE FOR:"); eso mejora la activación.</value></data>
+  <data name="SkillValidation_MissingName" xml:space="preserve"><value>Falta el nombre (1-64 caracteres en minúsculas, números y guiones).</value></data>
+  <data name="SkillValidation_NameTooLong" xml:space="preserve"><value>El nombre '{0}' supera {1} caracteres.</value></data>
+  <data name="SkillValidation_NameFormat" xml:space="preserve"><value>El nombre '{0}' solo puede tener minúsculas, números y guiones.</value></data>
+  <data name="SkillValidation_NameHyphenEdge" xml:space="preserve"><value>El nombre '{0}' no puede empezar ni terminar con guion.</value></data>
+  <data name="SkillValidation_NameConsecutiveHyphens" xml:space="preserve"><value>El nombre '{0}' no puede tener guiones consecutivos.</value></data>
+  <data name="SkillAuthoring_Guide" xml:space="preserve"><value>Redacta una skill del estándar Agent Skills:
+- name: 1-64 caracteres en minúsculas, números y guiones (sin guiones dobles ni al borde), en forma verbo-sustantivo.
+- description: 1-1024 caracteres, en tercera persona: qué hace y CUÁNDO usarla ("USE FOR: ...") y cuándo no
+  ("DO NOT USE FOR: ..."), con las palabras que usaría un usuario. Sin etiquetas XML.
+- instructions (Markdown, idealmente 200-2500 tokens): título, propósito, entradas, flujo de trabajo en pasos
+  numerados, ejemplos concretos en bloques de código, criterios de validación y errores comunes. Escribe
+  instrucciones accionables, no teoría; incluye solo lo que un modelo capaz no sabría por sí mismo.
+- references: material extenso o de consulta ocasional en archivos aparte (references/x.md), enlazados desde
+  las instrucciones con rutas relativas de un nivel.</value></data>
+  <data name="SkillAuthoring_InstructionsIntro" xml:space="preserve"><value>Puedes crear skills reutilizables con create_skill cuando el usuario lo pida o cuando un procedimiento repetible merezca guardarse.</value></data>
+  <data name="SkillAuthoring_CreateDescription" xml:space="preserve"><value>Crea (o actualiza) una skill con instrucciones y archivos de referencia, validada contra el estándar Agent Skills.</value></data>
+  <data name="SkillAuthoring_ValidateDescription" xml:space="preserve"><value>Valida el contenido de un SKILL.md sin guardarlo.</value></data>
+  <data name="SkillAuthoring_AlreadyExists" xml:space="preserve"><value>Ya existe la skill '{0}'.</value></data>
+  <data name="SkillAuthoring_FolderExists" xml:space="preserve"><value>Ya existe la carpeta de la skill '{0}' en '{1}'.</value></data>
+  <data name="SkillAuthoring_PathNotAllowed" xml:space="preserve"><value>Ruta no permitida: '{0}' (archivos ocultos o SKILL.md).</value></data>
+  <data name="SkillAuthoring_ScriptsNotAllowed" xml:space="preserve"><value>No se permite crear scripts ('{0}'): las skills creadas por el agente solo pueden tener instrucciones y archivos de referencia.</value></data>
+  <data name="SkillAuthoring_Param_Name" xml:space="preserve"><value>Nombre en kebab-case.</value></data>
+  <data name="SkillAuthoring_Param_Instructions" xml:space="preserve"><value>Instrucciones en Markdown.</value></data>
+  <data name="SkillAuthoring_Param_DraftDescription" xml:space="preserve"><value>Descripción con qué hace, USE FOR y DO NOT USE FOR.</value></data>
+  <data name="SkillAuthoring_Param_DraftReferences" xml:space="preserve"><value>Archivos de referencia opcionales.</value></data>
+  <data name="SkillAuthoring_Param_DraftFilePath" xml:space="preserve"><value>Ruta, p. ej. references/ejemplos.md.</value></data>
+  <data name="SkillAuthoring_Param_DraftFileContent" xml:space="preserve"><value>Contenido Markdown.</value></data>
+  <data name="SkillAuthoring_Param_FilePath" xml:space="preserve"><value>Ruta relativa, p. ej. references/guia.md o assets/plantilla.html.</value></data>
+  <data name="SkillAuthoring_Param_FileContent" xml:space="preserve"><value>Contenido del archivo.</value></data>
+  <data name="SkillAuthoring_Param_Description" xml:space="preserve"><value>Qué hace y cuándo usarla (máx. 1024 caracteres).</value></data>
+  <data name="SkillAuthoring_Param_Files" xml:space="preserve"><value>Archivos adicionales.</value></data>
+  <data name="SkillAuthoring_Param_SkillMarkdown" xml:space="preserve"><value>Contenido completo de SKILL.md.</value></data>
+  <data name="SkillGenerator_Goal" xml:space="preserve"><value>Objetivo de la skill:
+{0}</value></data>
+  <data name="SkillGenerator_ReferenceMaterial" xml:space="preserve"><value>Material de referencia:</value></data>
+  <data name="SkillGenerator_FixValidation" xml:space="preserve"><value>Tu borrador anterior no pasó la validación. Corrige:</value></data>
+</root>

@@ -2,6 +2,8 @@ using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using AiSdk.Resources;
+using System.Globalization;
 
 namespace AiSdk.Artifacts;
 
@@ -180,7 +182,7 @@ public sealed class FileSystemArtifactStore(string directory) : IArtifactStore, 
     {
         if (id.Length == 0 || id.Any(c => !(char.IsAsciiLetterOrDigit(c) || c is '-' or '_')))
         {
-            throw new ArgumentException($"Id de artifact inválido: '{id}'.", nameof(id));
+            throw new ArgumentException(string.Format(CultureInfo.CurrentCulture, Strings.Artifact_InvalidId, id), nameof(id));
         }
 
         return Path.Combine(directory, id);
@@ -396,17 +398,7 @@ public sealed record ArtifactScope(string? ConversationId, string? Owner)
 public static class ArtifactTools
 {
     /// <summary>Recommended system instructions for agents that create artifacts.</summary>
-    public const string Instructions =
-        """
-        Puedes crear artifacts: contenido sustancial y autocontenido que el usuario querrá ver, reutilizar o modificar
-        (páginas o apps HTML, documentos Markdown largos, código de más de ~15 líneas, diagramas SVG o Mermaid,
-        componentes React). No uses artifacts para respuestas cortas, explicaciones o fragmentos breves.
-        - Usa create_artifact una vez por pieza; para cambios pequeños usa update_artifact con un reemplazo exacto,
-          y rewrite_artifact solo si cambia la mayor parte.
-        - HTML: un único archivo con CSS y JS en línea; diseño responsive y accesible.
-        - React: un componente con export default, sin props obligatorias, con Tailwind para estilos.
-        - Tras crear o editar, resume en una o dos frases qué hiciste; no repitas el contenido en el chat.
-        """;
+    public static string Instructions => Strings.Artifact_Instructions;
 
     public static IReadOnlyList<Tool> Create(IArtifactStore store, ArtifactToolOptions? options = null)
     {
@@ -419,7 +411,7 @@ public static class ArtifactTools
         {
             if (artifact.Content.Length > o.MaxContentLength)
             {
-                throw new ArgumentException($"El contenido supera el máximo de {o.MaxContentLength} caracteres.");
+                throw new ArgumentException(string.Format(CultureInfo.CurrentCulture, Strings.Artifact_ContentTooLong, o.MaxContentLength));
             }
 
             o.Validate?.Invoke(artifact);
@@ -443,7 +435,7 @@ public static class ArtifactTools
         static Artifact Visible(Artifact? artifact, ArtifactScope scope, string id) =>
             artifact is not null && scope.CanAccess(artifact)
                 ? artifact
-                : throw new UnauthorizedAccessException($"No existe el artifact '{id}' en esta conversación.");
+                : throw new UnauthorizedAccessException(string.Format(CultureInfo.CurrentCulture, Strings.Artifact_NotFoundInConversation, id));
 
         async Task<Artifact> LoadAsync(string id, ArtifactScope scope, CancellationToken ct) =>
             Visible(await store.GetAsync(id, cancellationToken: ct).ConfigureAwait(false), scope, id);
@@ -453,13 +445,13 @@ public static class ArtifactTools
         [
             Tool.Create<CreateInput, object>(
                 "create_artifact",
-                $"Crea un artifact nuevo. Tipos: {allowed}.",
+                string.Format(CultureInfo.CurrentCulture, Strings.Artifact_CreateDescription, allowed),
                 async (input, ctx, ct) =>
                 {
                     var scope = Scope(ctx);
                     if (!o.AllowedTypes.Contains(input.Type))
                     {
-                        throw new ArgumentException($"Tipo no permitido: '{input.Type}'. Use uno de: {allowed}.");
+                        throw new ArgumentException(string.Format(CultureInfo.CurrentCulture, Strings.Artifact_TypeNotAllowed, input.Type, allowed));
                     }
 
                     var id = string.IsNullOrWhiteSpace(input.Id) ? Slug(input.Title) : Slug(input.Id);
@@ -476,19 +468,19 @@ public static class ArtifactTools
                 }),
             Tool.Create<UpdateInput, object>(
                 "update_artifact",
-                "Edita un artifact reemplazando un fragmento exacto (oldStr debe aparecer una sola vez). Úsalo para cambios pequeños.",
+                Strings.Artifact_UpdateDescription,
                 async (input, ctx, ct) =>
                 {
                     var current = await LoadAsync(input.Id, Scope(ctx), ct).ConfigureAwait(false);
                     var first = current.Content.IndexOf(input.OldStr, StringComparison.Ordinal);
                     if (input.OldStr.Length == 0 || first < 0)
                     {
-                        throw new ArgumentException("oldStr no aparece en el artifact. Copia el texto exacto (incluidos espacios) o usa rewrite_artifact.");
+                        throw new ArgumentException(Strings.Artifact_OldStrNotFound);
                     }
 
                     if (current.Content.IndexOf(input.OldStr, first + 1, StringComparison.Ordinal) >= 0)
                     {
-                        throw new ArgumentException("oldStr aparece más de una vez; incluye más contexto para que sea único.");
+                        throw new ArgumentException(Strings.Artifact_OldStrNotUnique);
                     }
 
                     var content = string.Concat(current.Content.AsSpan(0, first), input.NewStr, current.Content.AsSpan(first + input.OldStr.Length));
@@ -496,7 +488,7 @@ public static class ArtifactTools
                 }),
             Tool.Create<RewriteInput, object>(
                 "rewrite_artifact",
-                "Reemplaza todo el contenido de un artifact existente (nueva versión).",
+                Strings.Artifact_RewriteDescription,
                 async (input, ctx, ct) =>
                 {
                     var current = await LoadAsync(input.Id, Scope(ctx), ct).ConfigureAwait(false);
@@ -504,7 +496,7 @@ public static class ArtifactTools
                 }),
             Tool.Create<ReadInput, object>(
                 "read_artifact",
-                "Lee el contenido actual (o una versión) de un artifact.",
+                Strings.Artifact_ReadDescription,
                 async (input, ctx, ct) =>
                 {
                     var scope = Scope(ctx);
@@ -512,16 +504,16 @@ public static class ArtifactTools
                     if (input.Version is { } v)
                     {
                         current = Visible(
-                            await store.GetAsync(input.Id, v, ct).ConfigureAwait(false) ?? throw new ArgumentException($"No existe la versión {v}."),
+                            await store.GetAsync(input.Id, v, ct).ConfigureAwait(false) ?? throw new ArgumentException(string.Format(CultureInfo.CurrentCulture, Strings.Artifact_VersionNotFound, v)),
                             scope,
                             input.Id);
                     }
 
-                    return new { id = current.Id, title = current.Title, type = current.Type, version = current.Version, content = current.Data is null ? current.Content : $"[archivo binario {current.FileName}, {current.Data.Length} bytes]" };
+                    return new { id = current.Id, title = current.Title, type = current.Type, version = current.Version, content = current.Data is null ? current.Content : string.Format(CultureInfo.CurrentCulture, Strings.Artifact_BinaryFileContent, current.FileName, current.Data.Length) };
                 }),
             Tool.Create<ListInput, object>(
                 "list_artifacts",
-                "Lista los artifacts de la conversación.",
+                Strings.Artifact_ListDescription,
                 async (_, ctx, ct) =>
                 {
                     var scope = Scope(ctx);
@@ -590,7 +582,7 @@ public static class ArtifactTools
         var scope = ArtifactScope.FromContext(context, options);
         return scope.IsEmpty && !options.AllowUnscoped
             ? throw new UnauthorizedAccessException(
-                $"Los artifacts necesitan el id de conversación ('{options.ConversationIdKey}') o de usuario ('{options.OwnerKey}') en el contexto de ejecución.")
+                string.Format(CultureInfo.CurrentCulture, Strings.Artifact_ScopeRequired, options.ConversationIdKey, options.OwnerKey))
             : scope;
     }
 
@@ -616,25 +608,25 @@ public static class ArtifactTools
     }
 
     private sealed record CreateInput(
-        [property: Description("Título breve.")] string Title,
-        [property: Description("Tipo: html, markdown, code, svg, mermaid, react, json o csv.")] string Type,
-        [property: Description("Contenido completo.")] string Content,
-        [property: Description("Lenguaje si type es code (csharp, python, sql...).")] string? Language = null,
-        [property: Description("Id opcional en kebab-case.")] string? Id = null);
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.Artifact_Param_Title))] string Title,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.Artifact_Param_Type))] string Type,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.Artifact_Param_Content))] string Content,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.Artifact_Param_Language))] string? Language = null,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.Artifact_Param_Id))] string? Id = null);
 
     private sealed record UpdateInput(
-        [property: Description("Id del artifact.")] string Id,
-        [property: Description("Texto exacto a reemplazar (único).")] string OldStr,
-        [property: Description("Texto nuevo.")] string NewStr);
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.Artifact_Param_ArtifactId))] string Id,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.Artifact_Param_OldStr))] string OldStr,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.Artifact_Param_NewStr))] string NewStr);
 
     private sealed record RewriteInput(
-        [property: Description("Id del artifact.")] string Id,
-        [property: Description("Contenido completo nuevo.")] string Content,
-        [property: Description("Título nuevo (opcional).")] string? Title = null);
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.Artifact_Param_ArtifactId))] string Id,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.Artifact_Param_NewContent))] string Content,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.Artifact_Param_NewTitle))] string? Title = null);
 
     private sealed record ReadInput(
-        [property: Description("Id del artifact.")] string Id,
-        [property: Description("Versión (opcional; por defecto la última).")] int? Version = null);
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.Artifact_Param_ArtifactId))] string Id,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.Artifact_Param_Version))] int? Version = null);
 
     private sealed record ListInput;
 }

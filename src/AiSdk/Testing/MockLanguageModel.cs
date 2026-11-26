@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using AiSdk.Internal;
+using AiSdk.Resources;
 
 namespace AiSdk.Testing;
 
@@ -58,7 +59,7 @@ public sealed class MockLanguageModel : ILanguageModel
             _requests.Add(request);
             if (_responses.Count == 0)
             {
-                throw new InvalidOperationException("MockLanguageModel: no quedan respuestas configuradas.");
+                throw new InvalidOperationException(Strings.Mock_NoResponsesLeft);
             }
 
             return Task.FromResult(_responses.Dequeue()(request));

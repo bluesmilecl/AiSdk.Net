@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using AiSdk.Resources;
 
 namespace AiSdk.Skills;
 
@@ -21,7 +22,7 @@ public static class SkillMarkdown
         var end = content.IndexOf("\n---", 3, StringComparison.Ordinal);
         if (end < 0)
         {
-            throw new FormatException("El frontmatter de SKILL.md no está cerrado con '---'.");
+            throw new FormatException(Strings.SkillMarkdown_FrontmatterNotClosed);
         }
 
         var yaml = content[4..(end + 1)];
@@ -46,7 +47,7 @@ public static class SkillMarkdown
             var colon = line.IndexOf(':', StringComparison.Ordinal);
             if (colon <= 0)
             {
-                throw new FormatException($"Línea de frontmatter inválida: '{line}'.");
+                throw new FormatException(string.Format(CultureInfo.CurrentCulture, Strings.SkillMarkdown_InvalidLine, line));
             }
 
             var key = line[..colon].Trim();
@@ -69,7 +70,7 @@ public static class SkillMarkdown
                 {
                     if (block.Any(b => !b.TrimStart().StartsWith('-')))
                     {
-                        throw new FormatException($"Lista inválida en el frontmatter ('{key}'): todas las líneas deben empezar con '-'.");
+                        throw new FormatException(string.Format(CultureInfo.CurrentCulture, Strings.SkillMarkdown_InvalidList, key));
                     }
 
                     result[key] = block.Select(b => Scalar(StripComment(b.TrimStart()[1..]).Trim())).ToList();

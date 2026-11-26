@@ -1,4 +1,6 @@
 using System.Text.RegularExpressions;
+using AiSdk.Resources;
+using System.Globalization;
 
 namespace AiSdk.Skills;
 
@@ -12,7 +14,7 @@ public sealed record SkillValidationResult(IReadOnlyList<string> Errors, IReadOn
     {
         if (!IsValid)
         {
-            throw new FormatException($"La skill '{skillName}' no es válida:\n- {string.Join("\n- ", Errors)}");
+            throw new FormatException(string.Format(CultureInfo.CurrentCulture, Strings.SkillValidation_Invalid, skillName, string.Join("\n- ", Errors)));
         }
     }
 }
@@ -42,30 +44,30 @@ public static partial class SkillValidator
         ValidateName(skill.Name, errors);
         if (directoryName is not null && directoryName != skill.Name)
         {
-            errors.Add($"El nombre '{skill.Name}' no coincide con la carpeta '{directoryName}'.");
+            errors.Add(string.Format(CultureInfo.CurrentCulture, Strings.SkillValidation_NameFolderMismatch, skill.Name, directoryName));
         }
 
         if (string.IsNullOrWhiteSpace(skill.Description))
         {
-            errors.Add("Falta la descripción: el modelo la usa para decidir cuándo activar la skill.");
+            errors.Add(Strings.SkillValidation_MissingDescription);
         }
         else if (skill.Description.Length > MaxDescriptionLength)
         {
-            errors.Add($"La descripción tiene {skill.Description.Length} caracteres; el máximo es {MaxDescriptionLength}.");
+            errors.Add(string.Format(CultureInfo.CurrentCulture, Strings.SkillValidation_DescriptionTooLong, skill.Description.Length, MaxDescriptionLength));
         }
         else if (skill.Description.Length < MinDescriptionLength)
         {
-            errors.Add($"La descripción tiene {skill.Description.Length} caracteres; el mínimo es {MinDescriptionLength}.");
+            errors.Add(string.Format(CultureInfo.CurrentCulture, Strings.SkillValidation_DescriptionTooShort, skill.Description.Length, MinDescriptionLength));
         }
 
         if (XmlTag().IsMatch(skill.Description))
         {
-            errors.Add("La descripción no puede contener etiquetas XML (p. ej. <tag>); Claude las rechaza.");
+            errors.Add(Strings.SkillValidation_DescriptionXmlTags);
         }
 
         if (skill.Compatibility is { } compatibility && (compatibility.Trim().Length == 0 || compatibility.Length > MaxCompatibilityLength))
         {
-            errors.Add($"'compatibility' debe tener entre 1 y {MaxCompatibilityLength} caracteres.");
+            errors.Add(string.Format(CultureInfo.CurrentCulture, Strings.SkillValidation_CompatibilityLength, MaxCompatibilityLength));
         }
 
         foreach (Match reference in FileReference().Matches(skill.Instructions))
@@ -78,41 +80,41 @@ public static partial class SkillValidator
 
             if (path.StartsWith('/') || path.Split('/').Contains(".."))
             {
-                errors.Add($"La referencia '{path}' sale de la carpeta de la skill; use rutas relativas.");
+                errors.Add(string.Format(CultureInfo.CurrentCulture, Strings.SkillValidation_ReferenceOutside, path));
             }
             else if (path.TrimStart('.', '/').Split('/').Length > 2)
             {
-                errors.Add($"La referencia '{path}' tiene más de un nivel de carpetas desde SKILL.md.");
+                errors.Add(string.Format(CultureInfo.CurrentCulture, Strings.SkillValidation_ReferenceTooDeep, path));
             }
             else if (skill.Files != SkillFiles.Empty && !skill.Files.List().Contains(path.StartsWith("./", StringComparison.Ordinal) ? path[2..] : path))
             {
-                warnings.Add($"La referencia '{path}' no existe en los archivos de la skill.");
+                warnings.Add(string.Format(CultureInfo.CurrentCulture, Strings.SkillValidation_ReferenceMissing, path));
             }
         }
 
         var tokens = TokenEstimator.Estimate(skill.Instructions);
         if (tokens > RecommendedMaxTokens)
         {
-            warnings.Add($"Las instrucciones tienen ~{tokens} tokens; las skills muy largas rinden peor. Divídala o mueva detalle a references/.");
+            warnings.Add(string.Format(CultureInfo.CurrentCulture, Strings.SkillValidation_InstructionsTooLong, tokens));
         }
         else if (tokens < 200)
         {
-            warnings.Add($"Las instrucciones tienen ~{tokens} tokens; probablemente son demasiado escuetas para guiar al modelo.");
+            warnings.Add(string.Format(CultureInfo.CurrentCulture, Strings.SkillValidation_InstructionsTooShort, tokens));
         }
 
         if (!skill.Instructions.Contains("\n#", StringComparison.Ordinal) && !skill.Instructions.StartsWith('#'))
         {
-            warnings.Add("Sin títulos de sección: los modelos navegan mejor documentos estructurados.");
+            warnings.Add(Strings.SkillValidation_NoHeadings);
         }
 
         if (!NumberedStep().IsMatch(skill.Instructions))
         {
-            warnings.Add("Sin pasos numerados: los modelos siguen mejor procedimientos secuenciados.");
+            warnings.Add(Strings.SkillValidation_NoNumberedSteps);
         }
 
         if (skill.Description.Length >= MinDescriptionLength && !UsageHint().IsMatch(skill.Description))
         {
-            warnings.Add("La descripción no indica cuándo usarla (p. ej. \"Use cuando...\" o \"USE FOR:\"); eso mejora la activación.");
+            warnings.Add(Strings.SkillValidation_NoWhenToUse);
         }
 
         return new SkillValidationResult(errors, warnings);
@@ -126,14 +128,14 @@ public static partial class SkillValidator
     {
         if (string.IsNullOrWhiteSpace(name))
         {
-            errors.Add("Falta el nombre (1-64 caracteres en minúsculas, números y guiones).");
+            errors.Add(Strings.SkillValidation_MissingName);
             return;
         }
 
-        if (name.Length > MaxNameLength) errors.Add($"El nombre '{name}' supera {MaxNameLength} caracteres.");
-        if (!NameFormat().IsMatch(name)) errors.Add($"El nombre '{name}' solo puede tener minúsculas, números y guiones.");
-        if (name.StartsWith('-') || name.EndsWith('-')) errors.Add($"El nombre '{name}' no puede empezar ni terminar con guion.");
-        if (name.Contains("--", StringComparison.Ordinal)) errors.Add($"El nombre '{name}' no puede tener guiones consecutivos.");
+        if (name.Length > MaxNameLength) errors.Add(string.Format(CultureInfo.CurrentCulture, Strings.SkillValidation_NameTooLong, name, MaxNameLength));
+        if (!NameFormat().IsMatch(name)) errors.Add(string.Format(CultureInfo.CurrentCulture, Strings.SkillValidation_NameFormat, name));
+        if (name.StartsWith('-') || name.EndsWith('-')) errors.Add(string.Format(CultureInfo.CurrentCulture, Strings.SkillValidation_NameHyphenEdge, name));
+        if (name.Contains("--", StringComparison.Ordinal)) errors.Add(string.Format(CultureInfo.CurrentCulture, Strings.SkillValidation_NameConsecutiveHyphens, name));
     }
 
     [GeneratedRegex("^[a-z0-9-]+$")]

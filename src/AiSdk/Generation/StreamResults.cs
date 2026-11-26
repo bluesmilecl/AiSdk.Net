@@ -2,6 +2,8 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using AiSdk.Internal;
+using AiSdk.Resources;
+using System.Globalization;
 
 namespace AiSdk;
 
@@ -57,7 +59,7 @@ public sealed class StreamTextResult
     /// </summary>
     public async IAsyncEnumerable<T> PartialOutputStream<T>([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var output = Options.Output as Output<T> ?? throw new InvalidOperationException($"Output no es de tipo {typeof(T).Name}.");
+        var output = Options.Output as Output<T> ?? throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, Strings.Output_WrongType, typeof(T).Name));
         var text = new StringBuilder();
         string? last = null;
         await foreach (var part in _buffer.ReadAllAsync(cancellationToken).ConfigureAwait(false))

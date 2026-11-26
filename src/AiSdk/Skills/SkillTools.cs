@@ -2,6 +2,8 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO.Enumeration;
 using System.Text;
+using AiSdk.Resources;
+using System.Globalization;
 
 namespace AiSdk.Skills;
 
@@ -49,19 +51,19 @@ public static class SkillTools
         var o = options;
 
         Skill Find(string name) => library.Get(name) ?? throw new ArgumentException(
-            $"No existe la skill '{name}'. Disponibles: {string.Join(", ", library.Skills.Where(s => s.ModelInvocable).Select(s => s.Name))}.");
+            string.Format(CultureInfo.CurrentCulture, Strings.Skill_NotFoundAvailable, name, string.Join(", ", library.Skills.Where(s => s.ModelInvocable).Select(s => s.Name))));
 
         var tools = new List<Tool>
         {
             Tool.Create<LoadInput, string>(
                 "load_skill",
-                "Carga las instrucciones completas de una skill del catálogo <available_skills>. Úsala antes de realizar una tarea que coincida con su descripción.",
+                Strings.Skill_LoadDescription,
                 (input, ctx, _) =>
                 {
                     var skill = Find(input.Name);
                     if (!skill.ModelInvocable)
                     {
-                        throw new InvalidOperationException($"La skill '{skill.Name}' solo puede invocarla el usuario.");
+                        throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, Strings.Skill_UserInvocableOnly, skill.Name));
                     }
 
                     library.RecordActivation(skill.Name);
@@ -74,33 +76,33 @@ public static class SkillTools
                     var builder = new StringBuilder($"<skill name=\"{skill.Name}\">\n{skill.Instructions}\n</skill>");
                     if (files.Count > 0)
                     {
-                        builder.Append("\n\nArchivos de la skill (léelos con read_skill_file solo si los necesitas):\n");
+                        builder.Append("\n\n").Append(Strings.Skill_FilesHeader).Append('\n');
                         builder.AppendJoin('\n', files.Select(f => "- " + f));
                     }
 
                     if (skill.Compatibility is { } compatibility)
                     {
-                        builder.Append("\n\nCompatibilidad: ").Append(compatibility);
+                        builder.Append("\n\n").Append(string.Format(CultureInfo.CurrentCulture, Strings.Skill_Compatibility, compatibility));
                     }
 
                     return Task.FromResult(builder.ToString());
                 }),
             Tool.Create<ReadInput, string>(
                 "read_skill_file",
-                "Lee un archivo de una skill (p. ej. references/guia.md o assets/plantilla.html).",
+                Strings.Skill_ReadFileDescription,
                 async (input, _, ct) =>
                 {
                     var skill = Find(input.Skill);
                     var path = SkillFiles.NormalizePath(input.Path);
                     var data = await skill.Files.ReadAsync(path, ct).ConfigureAwait(false)
-                               ?? throw new ArgumentException($"La skill '{skill.Name}' no tiene el archivo '{path}'. Archivos: {string.Join(", ", skill.Files.List())}.");
+                               ?? throw new ArgumentException(string.Format(CultureInfo.CurrentCulture, Strings.Skill_FileNotFound, skill.Name, path, string.Join(", ", skill.Files.List())));
                     if (IsBinary(data))
                     {
-                        return $"[Archivo binario '{path}' de {data.Length} bytes; no se puede mostrar como texto.]";
+                        return string.Format(CultureInfo.CurrentCulture, Strings.Skill_BinaryFile, path, data.Length);
                     }
 
                     var text = Encoding.UTF8.GetString(data);
-                    return text.Length <= o.MaxFileChars ? text : text[..o.MaxFileChars] + $"\n\n[… recortado: {text.Length - o.MaxFileChars} caracteres más]";
+                    return text.Length <= o.MaxFileChars ? text : text[..o.MaxFileChars] + "\n\n" + string.Format(CultureInfo.CurrentCulture, Strings.Skill_FileTruncated, text.Length - o.MaxFileChars);
                 }),
         };
 
@@ -108,13 +110,13 @@ public static class SkillTools
         {
             var run = Tool.Create<RunInput, object>(
                 "run_skill_script",
-                "Ejecuta un script incluido en una skill (scripts/...) y devuelve su salida.",
+                Strings.Skill_RunScriptDescription,
                 async (input, _, ct) =>
                 {
                     var skill = Find(input.Skill);
                     if (!skill.Trusted && !o.AllowUntrustedScripts)
                     {
-                        throw new UnauthorizedAccessException($"La skill '{skill.Name}' no es de confianza: sus scripts están deshabilitados.");
+                        throw new UnauthorizedAccessException(string.Format(CultureInfo.CurrentCulture, Strings.Skill_UntrustedScripts, skill.Name));
                     }
 
                     var result = await runner.RunAsync(skill, SkillFiles.NormalizePath(input.Script), input.Arguments ?? [], ct).ConfigureAwait(false);
@@ -128,16 +130,16 @@ public static class SkillTools
 
     private static bool IsBinary(byte[] data) => data.AsSpan(0, Math.Min(data.Length, 8000)).Contains((byte)0);
 
-    private sealed record LoadInput([property: Description("Nombre de la skill.")] string Name);
+    private sealed record LoadInput([property: LocalizedDescription(typeof(Strings), nameof(Strings.Skill_Param_Name))] string Name);
 
     private sealed record ReadInput(
-        [property: Description("Nombre de la skill.")] string Skill,
-        [property: Description("Ruta relativa dentro de la skill.")] string Path);
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.Skill_Param_Name))] string Skill,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.Skill_Param_Path))] string Path);
 
     private sealed record RunInput(
-        [property: Description("Nombre de la skill.")] string Skill,
-        [property: Description("Ruta del script, p. ej. scripts/convertir.py.")] string Script,
-        [property: Description("Argumentos de línea de comandos.")] IReadOnlyList<string>? Arguments = null);
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.Skill_Param_Name))] string Skill,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.Skill_Param_Script))] string Script,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.Skill_Param_Arguments))] IReadOnlyList<string>? Arguments = null);
 }
 
 /// <summary>Result of running a skill script.</summary>
@@ -212,12 +214,12 @@ public sealed class ProcessSkillScriptRunner(ProcessSkillScriptRunnerOptions? op
     {
         if (!_options.Interpreters.TryGetValue(Path.GetExtension(script), out var interpreter))
         {
-            throw new NotSupportedException($"No hay intérprete configurado para '{Path.GetExtension(script)}'.");
+            throw new NotSupportedException(string.Format(CultureInfo.CurrentCulture, Strings.Skill_NoInterpreter, Path.GetExtension(script)));
         }
 
         if (!skill.Files.List().Contains(script))
         {
-            throw new ArgumentException($"La skill '{skill.Name}' no tiene el script '{script}'.");
+            throw new ArgumentException(string.Format(CultureInfo.CurrentCulture, Strings.Skill_ScriptNotFound, skill.Name, script));
         }
 
         var workDir = Path.Combine(Path.GetTempPath(), "aisdk-skill-" + Guid.NewGuid().ToString("N"));
@@ -266,7 +268,7 @@ public sealed class ProcessSkillScriptRunner(ProcessSkillScriptRunnerOptions? op
                 info.Environment[key] = value;
             }
 
-            using var process = Process.Start(info) ?? throw new InvalidOperationException($"No se pudo iniciar '{interpreter}'.");
+            using var process = Process.Start(info) ?? throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, Strings.Skill_ProcessStartFailed, interpreter));
             var stdout = new BoundedOutput(_options.MaxOutputChars);
             var stderr = new BoundedOutput(_options.MaxOutputChars);
             using var stopReading = new CancellationTokenSource();
@@ -299,7 +301,7 @@ public sealed class ProcessSkillScriptRunner(ProcessSkillScriptRunnerOptions? op
 
             if (timedOut)
             {
-                return new SkillScriptResult(-1, stdout.Text, $"{stderr.Text}\n[El script superó el tiempo límite de {_options.Timeout.TotalSeconds:0} s y se detuvo.]".TrimStart('\n'));
+                return new SkillScriptResult(-1, stdout.Text, (stderr.Text + "\n" + string.Format(CultureInfo.CurrentCulture, Strings.Skill_ScriptTimeout, _options.Timeout.TotalSeconds)).TrimStart('\n'));
             }
 
             var (created, omitted) = await CollectCreatedFilesAsync(workDir, before, cancellationToken).ConfigureAwait(false);
@@ -433,7 +435,7 @@ public sealed class ProcessSkillScriptRunner(ProcessSkillScriptRunnerOptions? op
             {
                 lock (_text)
                 {
-                    return _dropped == 0 ? _text.ToString() : _text + $"\n[… salida recortada: {_dropped} caracteres más]";
+                    return _dropped == 0 ? _text.ToString() : _text + "\n" + string.Format(CultureInfo.CurrentCulture, Strings.Skill_OutputTruncated, _dropped);
                 }
             }
         }

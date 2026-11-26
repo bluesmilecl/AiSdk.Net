@@ -108,7 +108,7 @@ public class UISecurityTests
         var model = Model();
         var masked = await WriteAsync(model, onError: null);
         Assert.Contains("\"type\":\"tool-output-error\"", masked);
-        Assert.Contains("\"errorText\":\"Se produjo un error.\"", masked);
+        Assert.Contains("\"errorText\":\"An error occurred.\"", masked);
         Assert.DoesNotContain("db-interna", masked);
         // El modelo sí recibió el error real para poder reaccionar.
         Assert.Contains("db-interna", JsonSerializer.Serialize(model.Requests[1].Messages.SelectMany(m => m.Content).OfType<ToolResultPart>().Single().Output));

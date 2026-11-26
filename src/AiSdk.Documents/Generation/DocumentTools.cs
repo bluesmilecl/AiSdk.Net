@@ -152,26 +152,26 @@ public static class DocumentTools
     }
 
     private sealed record MarkdownDocumentInput(
-        [property: Description("Nombre del archivo sin extensión, p. ej. informe-ventas-q3.")] string FileName,
-        [property: Description("Contenido completo en Markdown.")] string Markdown,
-        [property: Description("Título del documento.")] string? Title = null,
-        [property: Description("Subtítulo (portada).")] string? Subtitle = null,
-        [property: Description("Agrega una portada con título, subtítulo y fecha.")] bool? TitlePage = null,
-        [property: Description("Orientación horizontal (tablas anchas).")] bool? Landscape = null);
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.DocParam_FileName))] string FileName,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.DocParam_Markdown))] string Markdown,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.DocParam_Title))] string? Title = null,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.DocParam_Subtitle))] string? Subtitle = null,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.DocParam_TitlePage))] bool? TitlePage = null,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.DocParam_Landscape))] bool? Landscape = null);
 
     private sealed record ColumnInput(
-        [property: Description("Encabezado de la columna.")] string Header,
-        [property: Description("Tipo: auto, text, number, integer, currency, percent, date, dateTime o boolean.")] ColumnType? Type = null,
-        [property: Description("Formato Excel opcional, p. ej. \"#,##0.00\" o \"dd/mm/yyyy\".")] string? Format = null);
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.SheetParam_ColumnHeader))] string Header,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.SheetParam_ColumnType))] ColumnType? Type = null,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.SheetParam_ColumnFormat))] string? Format = null);
 
     private sealed record SheetInput(
-        [property: Description("Nombre de la hoja (máx. 31 caracteres).")] string Name,
-        [property: Description("Columnas en orden.")] IReadOnlyList<ColumnInput> Columns,
-        [property: Description("Filas: arrays con un valor por columna (números como número, fechas ISO yyyy-MM-dd, fórmulas de cálculo con =).")] IReadOnlyList<IReadOnlyList<JsonElement>> Rows,
-        [property: Description("Agrega fila de totales con SUM en columnas numéricas.")] bool? Totals = null);
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.SheetParam_Name))] string Name,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.SheetParam_Columns))] IReadOnlyList<ColumnInput> Columns,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.SheetParam_Rows))] IReadOnlyList<IReadOnlyList<JsonElement>> Rows,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.SheetParam_Totals))] bool? Totals = null);
 
     private sealed record SpreadsheetInput(
-        [property: Description("Nombre del archivo sin extensión.")] string FileName,
-        [property: Description("Hojas del libro.")] IReadOnlyList<SheetInput> Sheets,
-        [property: Description("Título del libro.")] string? Title = null);
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.WorkbookParam_FileName))] string FileName,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.WorkbookParam_Sheets))] IReadOnlyList<SheetInput> Sheets,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.WorkbookParam_Title))] string? Title = null);
 }

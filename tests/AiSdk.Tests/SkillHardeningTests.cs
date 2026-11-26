@@ -266,7 +266,7 @@ public sealed class SkillHardeningTests : IDisposable
             .WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
 
         Assert.Equal("buena", Assert.Single(loaded).Name);
-        Assert.Contains(library.LoadErrors, e => e.Contains("vacío", StringComparison.Ordinal));
+        Assert.Contains(library.LoadErrors, e => e.Contains("empty", StringComparison.Ordinal));
         var read = await loaded[0].Files.ReadAsync("references/fifo.md", TestContext.Current.CancellationToken)
             .WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         Assert.Empty(read!);
@@ -292,7 +292,7 @@ public sealed class SkillHardeningTests : IDisposable
 
         // Sin manejador: error explícito y el script no corre.
         var denied = await RunAsync(new SkillToolOptions { ScriptRunner = runner }, null);
-        Assert.Contains("requiere aprobación", denied.Steps[0].ToolResults[0].Output.GetString());
+        Assert.Contains("requires approval", denied.Steps[0].ToolResults[0].Output.GetString());
         Assert.Equal(0, runner.Calls);
 
         // Con manejador: se pide aprobación con el script y sus argumentos.
@@ -370,7 +370,7 @@ public sealed class SkillHardeningTests : IDisposable
         var noisy = await new ProcessSkillScriptRunner(new ProcessSkillScriptRunnerOptions { MaxOutputChars = 1000, Timeout = TimeSpan.FromSeconds(30) })
             .RunAsync(skill, "scripts/ruido.py", [], TestContext.Current.CancellationToken);
         Assert.Equal(0, noisy.ExitCode);
-        Assert.StartsWith(new string('x', 1000) + "\n[… salida recortada: 4999000", noisy.Stdout);
+        Assert.StartsWith(new string('x', 1000) + "\n[… output truncated: 4999000", noisy.Stdout);
         Assert.Contains("enlace", noisy.OmittedFiles);
         Assert.DoesNotContain("enlace", noisy.CreatedFiles.Keys);
 
@@ -427,7 +427,7 @@ public sealed class SkillHardeningTests : IDisposable
         var mine = library.Get("revisar-contratos")!;
         Assert.True(mine.Trusted);
         Assert.Contains("Haz algo", mine.Instructions);
-        Assert.Contains(library.LoadErrors, e => e.Contains("Ya hay una skill 'revisar-contratos'", StringComparison.Ordinal));
+        Assert.Contains(library.LoadErrors, e => e.Contains("There is already a skill 'revisar-contratos'", StringComparison.Ordinal));
         Assert.Contains(library.LoadErrors, e => e.Contains("con-puntos", StringComparison.Ordinal));
         Assert.Contains(library.LoadErrors, e => e.Contains("rota", StringComparison.Ordinal));
 

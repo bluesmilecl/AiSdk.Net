@@ -1,3 +1,5 @@
+using AiSdk.Resources;
+using System.Globalization;
 namespace AiSdk;
 
 /// <summary>
@@ -100,7 +102,7 @@ public static class Ai
         var images = results.SelectMany(r => r.Images).ToList();
         if (images.Count == 0)
         {
-            throw new AiSdkException("El modelo no generó ninguna imagen.");
+            throw new AiSdkException(Strings.Image_NoneGenerated);
         }
 
         return new GenerateImageResult(images, results.SelectMany(r => r.Warnings).ToList());
@@ -127,7 +129,7 @@ public static class Ai
 
         if (result.Audio.Data.Length == 0)
         {
-            throw new AiSdkException("El modelo no generó audio.");
+            throw new AiSdkException(Strings.Speech_NoAudio);
         }
 
         return new GenerateSpeechResult(result.Audio, result.Warnings);
@@ -193,7 +195,7 @@ public static class Ai
         var plan = await GenerationEngine.PrepareAsync(options, GenerationEngine.InitialMessages(options), []).ConfigureAwait(false);
         return plan.Model is ITokenCountingModel counter
             ? await counter.CountTokensAsync(plan.Request, options.CancellationToken).ConfigureAwait(false)
-            : throw new NotSupportedException($"El modelo '{plan.Model.Provider}:{plan.Model.ModelId}' no permite contar tokens.");
+            : throw new NotSupportedException(string.Format(CultureInfo.CurrentCulture, Strings.Model_TokenCountingNotSupported, plan.Model.Provider, plan.Model.ModelId));
     }
 
     /// <summary>Computes the cosine similarity between two vectors.</summary>
@@ -201,7 +203,7 @@ public static class Ai
     {
         if (a.Length != b.Length)
         {
-            throw new ArgumentException("Los vectores deben tener la misma longitud.");
+            throw new ArgumentException(Strings.Embedding_VectorLengthMismatch);
         }
 
         double dot = 0, na = 0, nb = 0;

@@ -1,4 +1,6 @@
 using System.Collections.Concurrent;
+using AiSdk.Resources;
+using System.Globalization;
 
 namespace AiSdk;
 
@@ -55,7 +57,7 @@ public sealed class InMemoryConversationStore : IConversationStore
 /// </remarks>
 public sealed class AgentSession
 {
-    private const string AbandonedCallMessage = "La llamada no se completó: la conversación continuó sin su resultado.";
+    private static string AbandonedCallMessage => Strings.Session_AbandonedCall;
 
     private readonly Agent _agent;
     private readonly IConversationStore _store;
@@ -137,7 +139,7 @@ public sealed class AgentSession
     {
         if (approvals is not null && (await GetPendingToolCallsAsync(cancellationToken).ConfigureAwait(false)).Count == 0)
         {
-            throw new InvalidOperationException($"La conversación '{ConversationId}' no tiene llamadas pendientes de aprobación.");
+            throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, Strings.Session_NoPendingApprovals, ConversationId));
         }
 
         var stored = await _store.LoadAsync(ConversationId, cancellationToken).ConfigureAwait(false);

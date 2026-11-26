@@ -111,7 +111,7 @@ public class ToolApprovalUITests
         Assert.Single(chunks, c => Type(c) == "tool-output-error" && (string?)c["toolCallId"] == "c1");
         var result = model.Requests[1].Messages[^1].Content.OfType<ToolResultPart>().Single();
         Assert.True(result.IsError);
-        Assert.Contains("requiere aprobación", result.Output.GetString());
+        Assert.Contains("requires approval", result.Output.GetString());
 
         // Diferida pero sin protector en el stream UI: tampoco se pide una aprobación que el servidor no podría verificar.
         var deferred = await ChunksAsync(Ai.StreamText(new GenerateTextOptions
@@ -191,7 +191,7 @@ public class ToolApprovalUITests
 
         var result = model.Requests[1].Messages.SelectMany(m => m.Content).OfType<ToolResultPart>().Single();
         Assert.True(result.IsError);
-        Assert.Contains("denegó", result.Output.GetString());
+        Assert.Contains("denied", result.Output.GetString());
         Assert.Contains("No a ese destinatario", result.Output.GetString());
     }
 
@@ -261,7 +261,7 @@ public class ToolApprovalUITests
         Assert.Single(chunks, c => Type(c) == "tool-output-error" && (string?)c["toolCallId"] == callId);
         var result = model.Requests[^1].Messages.SelectMany(m => m.Content).OfType<ToolResultPart>().Single(r => r.ToolCallId == callId);
         Assert.True(result.IsError);
-        Assert.Contains("no hubo una decisión válida", result.Output.GetString());
+        Assert.Contains("there was no valid decision", result.Output.GetString());
     }
 
     [Fact]
@@ -358,7 +358,7 @@ public class ToolApprovalUITests
         history.Add(new UIMessage { Role = "user", Parts = [Text("ok")] });
         var result = UIMessageConverter.ToModelMessages(history).SelectMany(m => m.Content).OfType<ToolResultPart>().Single();
         Assert.True(result.IsError);
-        Assert.Contains("Motivo: no", result.Output.GetString());
+        Assert.Contains("Reason: no", result.Output.GetString());
     }
 
     [Fact]

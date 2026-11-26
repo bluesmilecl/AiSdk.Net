@@ -1,5 +1,7 @@
 using System.Text.Json;
 using AiSdk.Internal;
+using AiSdk.Resources;
+using System.Globalization;
 
 namespace AiSdk;
 
@@ -32,7 +34,7 @@ internal static class GenerationEngine
 
         if (messages.Count == 0)
         {
-            throw new ArgumentException("Debe indicarse Prompt o Messages.");
+            throw new ArgumentException(Strings.Generation_PromptOrMessagesRequired);
         }
 
         return messages;
@@ -150,7 +152,7 @@ internal static class GenerationEngine
         var tool = Find(call);
         if (tool is null)
         {
-            var error = $"Herramienta desconocida '{call.ToolName}'. Disponibles: {string.Join(", ", plan.Tools.Select(t => t.Name))}.";
+            var error = string.Format(CultureInfo.CurrentCulture, Strings.Tool_Unknown, call.ToolName, string.Join(", ", plan.Tools.Select(t => t.Name)));
             var repaired = await Repair(ToolCallRepairReason.UnknownTool, error).ConfigureAwait(false);
             if (repaired is null || Find(repaired) is null)
             {
@@ -168,7 +170,7 @@ internal static class GenerationEngine
 
         if (call.InvalidInput)
         {
-            const string error = "La entrada de la herramienta no es JSON válido.";
+            var error = Strings.Tool_InvalidJsonInput;
             var repaired = await Repair(ToolCallRepairReason.InvalidJson, error).ConfigureAwait(false);
             if (repaired is null || repaired.InvalidInput)
             {
@@ -183,7 +185,7 @@ internal static class GenerationEngine
             var repaired = await Repair(ToolCallRepairReason.InvalidInput, validationError).ConfigureAwait(false);
             if (repaired is null || tool.ValidateInput(repaired.Input) is not null)
             {
-                return new(call, Error(call, $"Entrada inválida: {validationError}"));
+                return new(call, Error(call, string.Format(CultureInfo.CurrentCulture, Strings.Tool_InvalidInput, validationError)));
             }
 
             call = repaired;
@@ -207,7 +209,7 @@ internal static class GenerationEngine
             {
                 // Falla cerrado: nunca se ejecuta sin aprobación y nunca queda una llamada sin resultado (que haría
                 // fallar en el proveedor cualquier petición posterior con ese historial).
-                return new(call, Error(call, $"La herramienta '{call.ToolName}' requiere aprobación y no hay un manejador de aprobación configurado (OnToolApproval); no se ejecutó."));
+                return new(call, Error(call, string.Format(CultureInfo.CurrentCulture, Strings.Approval_NoHandler, call.ToolName)));
             }
         }
 
@@ -241,15 +243,15 @@ internal static class GenerationEngine
     }
 
     /// <summary>Result the model receives when the user denies a call.</summary>
-    internal const string DeniedMessage = "El usuario denegó la ejecución de la herramienta.";
+    internal static string DeniedMessage => Strings.Tool_Denied;
 
-    private const string AmbiguousCallMessage = "Hay más de una llamada distinta con este id en el historial; no se ejecutó ninguna.";
+    private static string AmbiguousCallMessage => Strings.Approval_AmbiguousCallId;
 
-    private const string NoDecisionMessage = "La llamada requería aprobación y no hubo una decisión válida al reanudar; no se ejecutó.";
+    private static string NoDecisionMessage => Strings.Approval_NoValidDecision;
 
     /// <summary>Error result for a denied call, with the user's optional reason.</summary>
     internal static ToolResultPart Denied(ToolCallPart call, string? reason) =>
-        Error(call, reason is { Length: > 0 } ? $"{DeniedMessage} Motivo: {reason}" : DeniedMessage);
+        Error(call, reason is { Length: > 0 } ? string.Format(CultureInfo.CurrentCulture, Strings.Tool_DeniedWithReason, reason) : DeniedMessage);
 
     /// <summary>
     /// Resumes deferred approvals: resolves, using <see cref="GenerateTextOptions.ToolApprovals"/>, the calls without
@@ -271,7 +273,7 @@ internal static class GenerationEngine
             }
 
             throw new ArgumentException(
-                "ToolApprovals requiere que los mensajes terminen en el mensaje del asistente con las llamadas pendientes (opcionalmente seguido de resultados de herramientas).",
+                Strings.Approval_MessagesMustEndWithAssistant,
                 nameof(o));
         }
 

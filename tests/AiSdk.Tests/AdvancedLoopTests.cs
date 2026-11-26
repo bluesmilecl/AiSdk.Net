@@ -254,7 +254,7 @@ public class ToolRepairTests
         });
 
         Assert.True(result.Steps[0].ToolResults[0].IsError);
-        Assert.StartsWith("Entrada inválida", result.Steps[0].ToolResults[0].Output.GetString());
+        Assert.StartsWith("Invalid input", result.Steps[0].ToolResults[0].Output.GetString());
     }
 }
 

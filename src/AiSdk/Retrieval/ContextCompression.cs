@@ -1,5 +1,7 @@
 using System.Text;
 using System.Text.Json;
+using AiSdk.Resources;
+using System.Globalization;
 
 namespace AiSdk;
 
@@ -63,10 +65,7 @@ public sealed class ContextCompressionOptions
     public ILanguageModel? Summarizer { get; init; }
 
     /// <summary>Gets or sets the summary instructions.</summary>
-    public string SummaryInstructions { get; init; } =
-        "Resume la conversación anterior para que un asistente pueda continuarla sin perder contexto. " +
-        "Conserva datos concretos (nombres, cifras, fechas, ids, decisiones, preferencias del usuario, " +
-        "resultados de herramientas y tareas pendientes). Escribe en el idioma de la conversación, en viñetas concisas.";
+    public string SummaryInstructions { get; init; } = Strings.Compression_SummaryInstructions;
 
     /// <summary>Gets or sets the maximum size (in tokens) of old tool results before they are trimmed.</summary>
     public int MaxToolResultTokens { get; init; } = 500;
@@ -181,9 +180,8 @@ public static class ContextCompressor
 
     private static async Task<string> SummarizeOnceAsync(ILanguageModel model, string text, int maxTokens, string? focus, CancellationToken cancellationToken)
     {
-        var instructions = $"Resume el siguiente texto en Markdown en un máximo aproximado de {maxTokens} tokens. " +
-                           "Conserva cifras, nombres, fechas, definiciones y conclusiones; no inventes nada. Responde solo con el resumen." +
-                           (focus is null ? string.Empty : $" Prioriza: {focus}.");
+        var instructions = string.Format(CultureInfo.CurrentCulture, Strings.Summarize_Instructions, maxTokens) +
+                           (focus is null ? string.Empty : " " + string.Format(CultureInfo.CurrentCulture, Strings.Summarize_Focus, focus));
         var result = await Ai.GenerateTextAsync(new GenerateTextOptions
         {
             Model = model,
@@ -261,8 +259,8 @@ internal sealed class ContextCompressionMiddleware(ContextCompressionOptions opt
         var note = older.Count == 0
             ? null
             : options.Summarizer is null
-                ? $"[Se omitieron {older.Count} mensajes anteriores de la conversación para ajustarse al contexto.]"
-                : "Resumen de la conversación anterior:\n" + await SummarizeAsync(older, cancellationToken).ConfigureAwait(false);
+                ? string.Format(CultureInfo.CurrentCulture, Strings.Compression_OmittedMessages, older.Count)
+                : string.Format(CultureInfo.CurrentCulture, Strings.Compression_PreviousConversationSummary, await SummarizeAsync(older, cancellationToken).ConfigureAwait(false));
 
         return request with { Messages = [.. system, .. note is null ? [] : new[] { ModelMessage.System(note) }, .. rest.Skip(recentStart)] };
     }
@@ -292,7 +290,7 @@ internal sealed class ContextCompressionMiddleware(ContextCompressionOptions opt
         return message with
         {
             Content = message.Content.Select(part => part is ToolResultPart r && r.Output.GetRawText().Length > maxChars
-                ? r with { Output = JsonSerializer.SerializeToElement(r.Output.GetRawText()[..maxChars] + "… [resultado recortado]") }
+                ? r with { Output = JsonSerializer.SerializeToElement(r.Output.GetRawText()[..maxChars] + Strings.Compression_ToolResultTrimmed) }
                 : part).ToList(),
         };
     }
@@ -315,7 +313,7 @@ internal sealed class ContextCompressionMiddleware(ContextCompressionOptions opt
         string input;
         if (previous is { } q && q.Count < older.Count && Hash(older.Take(q.Count)) == q.Key)
         {
-            input = $"Resumen previo:\n{q.Summary}\n\nMensajes nuevos:\n{Render(older.Skip(q.Count))}";
+            input = string.Format(CultureInfo.CurrentCulture, Strings.Compression_IncrementalInput, q.Summary, Render(older.Skip(q.Count)));
         }
         else
         {
@@ -350,10 +348,10 @@ internal sealed class ContextCompressionMiddleware(ContextCompressionOptions opt
                 var text = part switch
                 {
                     TextPart t => t.Text,
-                    ToolCallPart c => $"[llamada a {c.ToolName}: {Truncate(c.Input.GetRawText(), 1500)}]",
-                    ToolResultPart r => $"[resultado de {r.ToolName}: {Truncate(r.Output.GetRawText(), 1500)}]",
-                    ImagePart => "[imagen]",
-                    FilePart f => $"[archivo {f.Filename ?? f.MediaType}]",
+                    ToolCallPart c => string.Format(CultureInfo.CurrentCulture, Strings.Compression_RenderToolCall, c.ToolName, Truncate(c.Input.GetRawText(), 1500)),
+                    ToolResultPart r => string.Format(CultureInfo.CurrentCulture, Strings.Compression_RenderToolResult, r.ToolName, Truncate(r.Output.GetRawText(), 1500)),
+                    ImagePart => Strings.Compression_RenderImage,
+                    FilePart f => string.Format(CultureInfo.CurrentCulture, Strings.Compression_RenderFile, f.Filename ?? f.MediaType),
                     _ => null,
                 };
                 if (text is not null)

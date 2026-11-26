@@ -231,7 +231,7 @@ public sealed partial class PdfConverter : IDocumentConverter
                     sourceKind = PageTextSource.Vision;
                 }
 
-                if (!string.IsNullOrWhiteSpace(text) && text.Trim() != "(sin texto)")
+                if (!string.IsNullOrWhiteSpace(text) && !VisionModelOcr.IsNoTextReply(text))
                 {
                     // En modo Always se prefiere el OCR solo si aporta más texto que la extracción directa.
                     if (text.Length >= pages[index].Markdown.Length / 2)

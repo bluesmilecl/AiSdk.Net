@@ -1,3 +1,5 @@
+using AiSdk.Resources;
+using System.Globalization;
 namespace AiSdk;
 
 /// <summary>Model provider (OpenAI, Anthropic, ...).</summary>
@@ -9,19 +11,19 @@ public interface IProvider
 
     /// <summary>Returns an embedding model or throws <see cref="NotSupportedException"/>.</summary>
     IEmbeddingModel EmbeddingModel(string modelId) =>
-        throw new NotSupportedException($"El proveedor '{Name}' no ofrece modelos de embeddings.");
+        throw new NotSupportedException(string.Format(CultureInfo.CurrentCulture, Strings.Registry_NoEmbeddingModels, Name));
 
     IImageModel ImageModel(string modelId) =>
-        throw new NotSupportedException($"El proveedor '{Name}' no ofrece modelos de imágenes.");
+        throw new NotSupportedException(string.Format(CultureInfo.CurrentCulture, Strings.Registry_NoImageModels, Name));
 
     ISpeechModel SpeechModel(string modelId) =>
-        throw new NotSupportedException($"El proveedor '{Name}' no ofrece modelos de voz.");
+        throw new NotSupportedException(string.Format(CultureInfo.CurrentCulture, Strings.Registry_NoSpeechModels, Name));
 
     ITranscriptionModel TranscriptionModel(string modelId) =>
-        throw new NotSupportedException($"El proveedor '{Name}' no ofrece modelos de transcripción.");
+        throw new NotSupportedException(string.Format(CultureInfo.CurrentCulture, Strings.Registry_NoTranscriptionModels, Name));
 
     IRerankingModel RerankingModel(string modelId) =>
-        throw new NotSupportedException($"El proveedor '{Name}' no ofrece modelos de reranking.");
+        throw new NotSupportedException(string.Format(CultureInfo.CurrentCulture, Strings.Registry_NoRerankingModels, Name));
 }
 
 /// <summary>
@@ -64,7 +66,7 @@ public sealed class ProviderRegistry
     {
         if (modelIds.Length == 0)
         {
-            throw new ArgumentException("Se necesita al menos un modelo.", nameof(modelIds));
+            throw new ArgumentException(Strings.Model_AtLeastOneRequired, nameof(modelIds));
         }
 
         return Alias(alias, () => new FallbackLanguageModel(modelIds.Select(LanguageModel).ToList()));
@@ -79,7 +81,7 @@ public sealed class ProviderRegistry
             var resolving = _resolving ??= [];
             if (resolving.Contains(id, StringComparer.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException($"Ciclo de alias de modelos: {string.Join(" → ", resolving)} → {id}.");
+                throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, Strings.Registry_AliasCycle, string.Join(" → ", resolving), id));
             }
 
             resolving.Add(id);
@@ -132,12 +134,12 @@ public sealed class ProviderRegistry
         var index = id.IndexOf(Separator);
         if (index <= 0)
         {
-            throw new ArgumentException($"Identificador inválido '{id}'. Usa el formato 'proveedor{Separator}modelo'.", nameof(id));
+            throw new ArgumentException(string.Format(CultureInfo.CurrentCulture, Strings.Registry_InvalidId, id, Separator), nameof(id));
         }
 
         var name = id[..index];
         return _providers.TryGetValue(name, out var provider)
             ? (provider, id[(index + 1)..])
-            : throw new KeyNotFoundException($"Proveedor '{name}' no registrado. Registrados: {string.Join(", ", _providers.Keys)}.");
+            : throw new KeyNotFoundException(string.Format(CultureInfo.CurrentCulture, Strings.Registry_ProviderNotRegistered, name, string.Join(", ", _providers.Keys)));
     }
 }

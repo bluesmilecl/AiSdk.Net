@@ -1,3 +1,4 @@
+using AiSdk.Resources;
 namespace AiSdk;
 
 /// <summary>
@@ -46,10 +47,20 @@ public sealed record OcrResult(IReadOnlyList<OcrPage> Pages)
 /// </summary>
 public sealed class VisionModelOcr(ILanguageModel model, string? instructions = null) : IOcrEngine
 {
-    public const string DefaultInstructions =
-        "Transcribe todo el texto visible de la imagen a Markdown, respetando el orden de lectura. " +
-        "Usa encabezados, listas y tablas Markdown cuando correspondan. No traduzcas, no resumas ni agregues comentarios. " +
-        "Si no hay texto, responde exactamente: (sin texto)";
+    /// <summary>
+    /// Gets the default transcription instructions, in the language of <see cref="System.Globalization.CultureInfo.CurrentUICulture"/>.
+    /// They ask the model to reply exactly <c>(no text)</c> (or <c>(sin texto)</c> in Spanish) when the image has no text.
+    /// </summary>
+    public static string DefaultInstructions => Strings.Ocr_DefaultInstructions;
+
+    /// <summary>
+    /// Returns <see langword="true"/> if <paramref name="reply"/> is the "no text" answer the default instructions ask
+    /// for, in any of the supported languages (<c>(no text)</c>, <c>(sin texto)</c>).
+    /// </summary>
+    /// <param name="reply">The model's reply.</param>
+    public static bool IsNoTextReply(string? reply) =>
+        reply?.Trim() is { } trimmed
+        && (trimmed.Equals("(no text)", StringComparison.OrdinalIgnoreCase) || trimmed.Equals("(sin texto)", StringComparison.OrdinalIgnoreCase));
 
     public string Name => $"{model.Provider}:{model.ModelId}";
 
@@ -69,6 +80,6 @@ public sealed class VisionModelOcr(ILanguageModel model, string? instructions = 
             CancellationToken = cancellationToken,
         }).ConfigureAwait(false);
         var text = result.Text.Trim();
-        return new OcrResult([new OcrPage(1, text == "(sin texto)" ? string.Empty : text)]);
+        return new OcrResult([new OcrPage(1, IsNoTextReply(text) ? string.Empty : text)]);
     }
 }

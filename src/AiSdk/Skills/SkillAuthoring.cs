@@ -1,5 +1,7 @@
 using System.ComponentModel;
 using System.Text;
+using AiSdk.Resources;
+using System.Globalization;
 
 namespace AiSdk.Skills;
 
@@ -104,28 +106,17 @@ public sealed class SkillBuilder(string name)
 public static class SkillGenerator
 {
     /// <summary>Authoring guide given to the model (a summary of agentskills.io and dotnet/skills).</summary>
-    public const string AuthoringGuide =
-        """
-        Redacta una skill del estándar Agent Skills:
-        - name: 1-64 caracteres en minúsculas, números y guiones (sin guiones dobles ni al borde), en forma verbo-sustantivo.
-        - description: 1-1024 caracteres, en tercera persona: qué hace y CUÁNDO usarla ("USE FOR: ...") y cuándo no
-          ("DO NOT USE FOR: ..."), con las palabras que usaría un usuario. Sin etiquetas XML.
-        - instructions (Markdown, idealmente 200-2500 tokens): título, propósito, entradas, flujo de trabajo en pasos
-          numerados, ejemplos concretos en bloques de código, criterios de validación y errores comunes. Escribe
-          instrucciones accionables, no teoría; incluye solo lo que un modelo capaz no sabría por sí mismo.
-        - references: material extenso o de consulta ocasional en archivos aparte (references/x.md), enlazados desde
-          las instrucciones con rutas relativas de un nivel.
-        """;
+    public static string AuthoringGuide => Strings.SkillAuthoring_Guide;
 
     private sealed record Draft(
-        [property: Description("Nombre en kebab-case.")] string Name,
-        [property: Description("Descripción con qué hace, USE FOR y DO NOT USE FOR.")] string Description,
-        [property: Description("Instrucciones en Markdown.")] string Instructions,
-        [property: Description("Archivos de referencia opcionales.")] IReadOnlyList<DraftFile>? References = null);
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.SkillAuthoring_Param_Name))] string Name,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.SkillAuthoring_Param_DraftDescription))] string Description,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.SkillAuthoring_Param_Instructions))] string Instructions,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.SkillAuthoring_Param_DraftReferences))] IReadOnlyList<DraftFile>? References = null);
 
     private sealed record DraftFile(
-        [property: Description("Ruta, p. ej. references/ejemplos.md.")] string Path,
-        [property: Description("Contenido Markdown.")] string Content);
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.SkillAuthoring_Param_DraftFilePath))] string Path,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.SkillAuthoring_Param_DraftFileContent))] string Content);
 
     /// <summary>
     /// Drafts a skill from a goal and, optionally, reference material (procedures,
@@ -141,9 +132,9 @@ public static class SkillGenerator
         string? feedback = null;
         for (var attempt = 1; ; attempt++)
         {
-            var prompt = new StringBuilder($"Objetivo de la skill:\n{goal}");
-            if (referenceMaterial is not null) prompt.Append("\n\nMaterial de referencia:\n").Append(referenceMaterial);
-            if (feedback is not null) prompt.Append("\n\nTu borrador anterior no pasó la validación. Corrige:\n").Append(feedback);
+            var prompt = new StringBuilder(string.Format(CultureInfo.CurrentCulture, Strings.SkillGenerator_Goal, goal));
+            if (referenceMaterial is not null) prompt.Append("\n\n").Append(Strings.SkillGenerator_ReferenceMaterial).Append('\n').Append(referenceMaterial);
+            if (feedback is not null) prompt.Append("\n\n").Append(Strings.SkillGenerator_FixValidation).Append('\n').Append(feedback);
 
             var draft = (await Ai.GenerateObjectAsync<Draft>(new GenerateObjectOptions
             {
@@ -207,9 +198,8 @@ public sealed class SkillAuthoringOptions
 /// </summary>
 public static class SkillAuthoringTools
 {
-    public const string Instructions =
-        "Puedes crear skills reutilizables con create_skill cuando el usuario lo pida o cuando un procedimiento " +
-        "repetible merezca guardarse. " + SkillGenerator.AuthoringGuide;
+    /// <summary>Gets the recommended system instructions for agents that author skills (localized).</summary>
+    public static string Instructions => Strings.SkillAuthoring_InstructionsIntro + " " + SkillGenerator.AuthoringGuide;
 
     public static IReadOnlyList<Tool> Create(SkillLibrary library, SkillAuthoringOptions? options = null)
     {
@@ -219,12 +209,12 @@ public static class SkillAuthoringTools
         [
             Tool.Create<CreateInput, object>(
                 "create_skill",
-                "Crea (o actualiza) una skill con instrucciones y archivos de referencia, validada contra el estándar Agent Skills.",
+                Strings.SkillAuthoring_CreateDescription,
                 async (input, _, ct) =>
                 {
                     if (library.Contains(input.Name) && !o.AllowOverwrite)
                     {
-                        throw new InvalidOperationException($"Ya existe la skill '{input.Name}'.");
+                        throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, Strings.SkillAuthoring_AlreadyExists, input.Name));
                     }
 
                     var fileErrors = CheckFiles(input.Files ?? [], o);
@@ -252,7 +242,7 @@ public static class SkillAuthoringTools
                     {
                         if (!o.AllowOverwrite && System.IO.Directory.Exists(Path.Combine(directory, skill.Name)))
                         {
-                            throw new InvalidOperationException($"Ya existe la carpeta de la skill '{skill.Name}' en '{directory}'.");
+                            throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, Strings.SkillAuthoring_FolderExists, skill.Name, directory));
                         }
 
                         // En disco queda siempre como no confiable (marcador de procedencia), con independencia de
@@ -265,7 +255,7 @@ public static class SkillAuthoringTools
                 }),
             Tool.Create<ValidateInput, object>(
                 "validate_skill",
-                "Valida el contenido de un SKILL.md sin guardarlo.",
+                Strings.SkillAuthoring_ValidateDescription,
                 input =>
                 {
                     try
@@ -307,11 +297,11 @@ public static class SkillAuthoringTools
 
             if (path.Split('/').Any(s => s.StartsWith('.')) || string.Equals(path, "SKILL.md", StringComparison.OrdinalIgnoreCase))
             {
-                errors.Add($"Ruta no permitida: '{path}' (archivos ocultos o SKILL.md).");
+                errors.Add(string.Format(CultureInfo.CurrentCulture, Strings.SkillAuthoring_PathNotAllowed, path));
             }
             else if (!options.AllowScripts && (path.StartsWith("scripts/", StringComparison.OrdinalIgnoreCase) || ExecutableExtensions.Contains(Path.GetExtension(path))))
             {
-                errors.Add($"No se permite crear scripts ('{path}'): las skills creadas por el agente solo pueden tener instrucciones y archivos de referencia.");
+                errors.Add(string.Format(CultureInfo.CurrentCulture, Strings.SkillAuthoring_ScriptsNotAllowed, path));
             }
         }
 
@@ -319,14 +309,14 @@ public static class SkillAuthoringTools
     }
 
     private sealed record FileInput(
-        [property: Description("Ruta relativa, p. ej. references/guia.md o assets/plantilla.html.")] string Path,
-        [property: Description("Contenido del archivo.")] string Content);
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.SkillAuthoring_Param_FilePath))] string Path,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.SkillAuthoring_Param_FileContent))] string Content);
 
     private sealed record CreateInput(
-        [property: Description("Nombre en kebab-case.")] string Name,
-        [property: Description("Qué hace y cuándo usarla (máx. 1024 caracteres).")] string Description,
-        [property: Description("Instrucciones en Markdown.")] string Instructions,
-        [property: Description("Archivos adicionales.")] IReadOnlyList<FileInput>? Files = null);
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.SkillAuthoring_Param_Name))] string Name,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.SkillAuthoring_Param_Description))] string Description,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.SkillAuthoring_Param_Instructions))] string Instructions,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.SkillAuthoring_Param_Files))] IReadOnlyList<FileInput>? Files = null);
 
-    private sealed record ValidateInput([property: Description("Contenido completo de SKILL.md.")] string SkillMarkdown);
+    private sealed record ValidateInput([property: LocalizedDescription(typeof(Strings), nameof(Strings.SkillAuthoring_Param_SkillMarkdown))] string SkillMarkdown);
 }

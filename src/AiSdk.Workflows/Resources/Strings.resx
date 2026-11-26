@@ -55,4 +55,11 @@ cancel_scheduled_task to manage them.</value></data>
   <data name="AgentTasks_NeverRun" xml:space="preserve"><value>never run</value></data>
   <data name="AgentTasks_MinimumInterval" xml:space="preserve"><value>The minimum interval is {0} minutes.</value></data>
   <data name="AgentTasks_CronTooFrequent" xml:space="preserve"><value>The cron expression runs more often than the minimum allowed ({0} minutes).</value></data>
+  <data name="TaskParam_Name" xml:space="preserve"><value>Short name of the task.</value></data>
+  <data name="TaskParam_Prompt" xml:space="preserve"><value>Complete, self-contained instructions the agent will run.</value></data>
+  <data name="TaskParam_Cron" xml:space="preserve"><value>5-field cron expression, e.g. "0 9 * * 1-5" (weekdays at 9:00).</value></data>
+  <data name="TaskParam_RunAt" xml:space="preserve"><value>ISO 8601 date and time for a single run, e.g. 2026-11-01T09:00:00-03:00.</value></data>
+  <data name="TaskParam_EveryMinutes" xml:space="preserve"><value>Repeat every N minutes.</value></data>
+  <data name="TaskParam_TimeZone" xml:space="preserve"><value>IANA time zone for cron, e.g. America/Santiago.</value></data>
+  <data name="TaskParam_Id" xml:space="preserve"><value>Task id.</value></data>
 </root>

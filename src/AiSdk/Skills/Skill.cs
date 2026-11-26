@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using System.IO.Compression;
 using System.Text;
+using AiSdk.Resources;
+using System.Globalization;
 
 namespace AiSdk.Skills;
 
@@ -68,7 +70,7 @@ public sealed record Skill
         var (frontmatter, body) = SkillMarkdown.Parse(skillMarkdown);
         if (frontmatter is null)
         {
-            throw new FormatException("SKILL.md no tiene frontmatter YAML (--- name/description ---).");
+            throw new FormatException(Strings.Skill_NoFrontmatter);
         }
 
         string? Text(string key) => frontmatter.TryGetValue(key, out var v) ? v as string : null;
@@ -76,8 +78,8 @@ public sealed record Skill
         var known = new HashSet<string>(StringComparer.Ordinal) { "name", "description", "license", "compatibility", "metadata", "allowed-tools" };
         return new Skill
         {
-            Name = Text("name") ?? throw new FormatException("Falta 'name' en el frontmatter de SKILL.md."),
-            Description = Text("description") ?? throw new FormatException("Falta 'description' en el frontmatter de SKILL.md."),
+            Name = Text("name") ?? throw new FormatException(Strings.Skill_MissingName),
+            Description = Text("description") ?? throw new FormatException(Strings.Skill_MissingDescription),
             Instructions = body,
             License = Text("license"),
             Compatibility = Text("compatibility"),
@@ -140,7 +142,7 @@ public static class SkillFiles
         if (normalized.Length == 0 || normalized.StartsWith('/') || normalized.Contains(':', StringComparison.Ordinal)
             || normalized.Split('/').Any(segment => segment is ".." or ""))
         {
-            throw new ArgumentException($"Ruta inválida dentro de la skill: '{path}'.", nameof(path));
+            throw new ArgumentException(string.Format(CultureInfo.CurrentCulture, Strings.Skill_InvalidPath, path), nameof(path));
         }
 
         return normalized;
@@ -229,7 +231,7 @@ public static class SkillFiles
             var length = new FileInfo(full).Length;
             if (length > maxFileBytes)
             {
-                throw new IOException($"El archivo '{relative}' de la skill supera el tamaño máximo ({maxFileBytes} bytes).");
+                throw new IOException(string.Format(CultureInfo.CurrentCulture, Strings.Skill_FileTooLarge, relative, maxFileBytes));
             }
 
             // Longitud 0: no se abre (un FIFO también mide 0 y bloquearía la lectura hasta que alguien escriba).
@@ -299,7 +301,7 @@ internal static class SkillArchive
     {
         if (zip.CanSeek && zip.Length - zip.Position > options.MaxArchiveBytes)
         {
-            throw new InvalidDataException($"El ZIP supera el tamaño máximo de {options.MaxArchiveBytes} bytes.");
+            throw new InvalidDataException(string.Format(CultureInfo.CurrentCulture, Strings.Skill_ZipTooLarge, options.MaxArchiveBytes));
         }
 
         using var archive = new ZipArchive(zip, ZipArchiveMode.Read, leaveOpen: true); // el stream es del llamador
@@ -340,18 +342,18 @@ internal static class SkillArchive
 
                     if (entry.Length > options.MaxFileBytes || files.Count >= options.MaxFiles)
                     {
-                        throw new InvalidDataException($"La skill en '{folder}' supera los límites de tamaño ({path}).");
+                        throw new InvalidDataException(string.Format(CultureInfo.CurrentCulture, Strings.Skill_ArchivedSkillTooLarge, folder, path));
                     }
 
-                    files[path] = ReadBounded(entry, options.MaxFileBytes, $"La skill en '{folder}' supera los límites de tamaño ({path}).");
+                    files[path] = ReadBounded(entry, options.MaxFileBytes, string.Format(CultureInfo.CurrentCulture, Strings.Skill_ArchivedSkillTooLarge, folder, path));
                     extracted += files[path].Length;
                     if (extracted > options.MaxArchiveExtractedBytes)
                     {
-                        throw new InvalidDataException($"El ZIP supera el máximo de {options.MaxArchiveExtractedBytes} bytes descomprimidos.");
+                        throw new InvalidDataException(string.Format(CultureInfo.CurrentCulture, Strings.Skill_ZipExtractedTooLarge, options.MaxArchiveExtractedBytes));
                     }
                 }
 
-                var markdown = Encoding.UTF8.GetString(ReadBounded(skillMd, options.MaxFileBytes, $"El SKILL.md de '{folder}' supera el tamaño máximo."));
+                var markdown = Encoding.UTF8.GetString(ReadBounded(skillMd, options.MaxFileBytes, string.Format(CultureInfo.CurrentCulture, Strings.Skill_ArchivedMarkdownTooLarge, folder)));
                 var untrusted = names.Contains(folder + SkillLibrary.ProvenanceFileName);
                 skills.Add(new ArchivedSkill(folderName, markdown, files, untrusted, null));
             }

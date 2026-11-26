@@ -1,5 +1,7 @@
 using System.Text.Json;
 using AiSdk.Internal;
+using AiSdk.Resources;
+using System.Globalization;
 
 namespace AiSdk;
 
@@ -18,20 +20,13 @@ public static class ToolCallRepair
                 return null;
             }
 
-            var prompt =
-                $"""
-                 El modelo intentó llamar a la herramienta "{tool.Name}" con una entrada inválida.
-                 Error: {context.Error}
-
-                 Entrada original:
-                 {(context.ToolCall.Input.ValueKind == JsonValueKind.String ? context.ToolCall.Input.GetString() : context.ToolCall.Input.GetRawText())}
-
-                 Esquema JSON de la entrada:
-                 {tool.InputSchema.GetRawText()}
-
-                 Devuelve únicamente la entrada corregida como un objeto JSON que cumpla el esquema,
-                 conservando la intención original.
-                 """;
+            var prompt = string.Format(
+                CultureInfo.CurrentCulture,
+                Strings.Repair_Prompt,
+                tool.Name,
+                context.Error,
+                context.ToolCall.Input.ValueKind == JsonValueKind.String ? context.ToolCall.Input.GetString() : context.ToolCall.Input.GetRawText(),
+                tool.InputSchema.GetRawText());
 
             var result = await Retry.ExecuteAsync(
                 ct => model.GenerateAsync(new LanguageModelRequest

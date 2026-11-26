@@ -3,6 +3,8 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using AiSdk.Resources;
+using System.Globalization;
 
 namespace AiSdk;
 
@@ -170,7 +172,7 @@ public static class OrchestrationNodes
     public static Tool AsTool(IOrchestrationNode node, string? name = null, string? description = null, OrchestrationContext? context = null) =>
         Tool.Create<TaskInput, string>(
             name ?? JsonNamingPolicy.SnakeCaseLower.ConvertName(node.Name),
-            description ?? node.Description ?? $"Delega una tarea a {node.Name}.",
+            description ?? node.Description ?? string.Format(CultureInfo.CurrentCulture, Strings.Orchestration_DelegateDescription, node.Name),
             (input, ctx, ct) => node.RunAsync(input.Task, context ?? new OrchestrationContext(new OrchestrationOptions
             {
                 Services = ctx.Services,
@@ -192,7 +194,7 @@ public static class OrchestrationNodes
         public Task<string> RunAsync(string input, OrchestrationContext context) => inner.RunAsync(input, context);
     }
 
-    internal sealed record TaskInput([property: Description("Descripción completa y autocontenida de la tarea.")] string Task);
+    internal sealed record TaskInput([property: LocalizedDescription(typeof(Strings), nameof(Strings.Orchestration_Param_Task))] string Task);
 
     private sealed class FunctionNode(string name, string? description, Func<string, CancellationToken, Task<string>> run) : IOrchestrationNode
     {
@@ -261,7 +263,7 @@ public sealed class SequentialOrchestration(IReadOnlyList<IOrchestrationNode> st
         foreach (var step in steps)
         {
             var stepInput = IncludeOriginalInput && !ReferenceEquals(current, input)
-                ? $"Tarea original:\n{input}\n\nResultado del paso anterior:\n{current}"
+                ? string.Format(CultureInfo.CurrentCulture, Strings.Orchestration_SequentialStepInput, input, current)
                 : current;
             current = await step.RunAsync(stepInput, context).ConfigureAwait(false);
             context.LastNode = step.Name;
@@ -315,7 +317,7 @@ public sealed class ParallelOrchestration(IReadOnlyList<IOrchestrationNode> bran
         }
 
         context.LastNode = Aggregator.Name;
-        return await Aggregator.RunAsync($"Tarea original:\n{input}\n\nRespuestas de los especialistas:\n\n{combined}", context).ConfigureAwait(false);
+        return await Aggregator.RunAsync(string.Format(CultureInfo.CurrentCulture, Strings.Orchestration_AggregatorInput, input, combined), context).ConfigureAwait(false);
     }
 }
 
@@ -331,17 +333,17 @@ public sealed class RouterOrchestration(ILanguageModel classifier, IReadOnlyList
     public IOrchestrationNode? Fallback { get; init; }
 
     private sealed record Decision(
-        [property: Description("Nombre exacto de la ruta elegida.")] string Route,
-        [property: Description("Motivo breve.")] string Reason);
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.Router_Param_Route))] string Route,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.Router_Param_Reason))] string Reason);
 
     protected override async Task<string> ExecuteAsync(string input, OrchestrationContext context)
     {
-        var catalog = string.Join("\n", routes.Select(r => $"- {r.Name}: {r.Description ?? "(sin descripción)"}"));
+        var catalog = string.Join("\n", routes.Select(r => $"- {r.Name}: {r.Description ?? Strings.Router_NoDescription}"));
         var watch = Stopwatch.StartNew();
         var decision = await Ai.GenerateObjectAsync<Decision>(new GenerateObjectOptions
         {
             Model = classifier,
-            System = $"Elige la ruta más adecuada para la solicitud del usuario.\nRutas disponibles:\n{catalog}\n{Instructions}",
+            System = string.Format(CultureInfo.CurrentCulture, Strings.Router_System, catalog, Instructions),
             Prompt = input,
             CancellationToken = context.CancellationToken,
         }).ConfigureAwait(false);
@@ -349,7 +351,7 @@ public sealed class RouterOrchestration(ILanguageModel classifier, IReadOnlyList
 
         var route = routes.FirstOrDefault(r => string.Equals(r.Name, decision.Object.Route.Trim(), StringComparison.OrdinalIgnoreCase))
                     ?? Fallback
-                    ?? throw new AiSdkException($"El router eligió una ruta inexistente: '{decision.Object.Route}'.");
+                    ?? throw new AiSdkException(string.Format(CultureInfo.CurrentCulture, Strings.Router_UnknownRoute, decision.Object.Route));
         await context.EmitAsync(new RoutedEvent(Name, route.Name, decision.Object.Reason)).ConfigureAwait(false);
         context.LastNode = route.Name;
         return await route.RunAsync(input, context).ConfigureAwait(false);
@@ -362,10 +364,7 @@ public sealed class RouterOrchestration(ILanguageModel classifier, IReadOnlyList
 /// </summary>
 public sealed class SupervisorOrchestration(ILanguageModel model, IReadOnlyList<IOrchestrationNode> workers) : Orchestration
 {
-    public const string DefaultInstructions =
-        "Eres un supervisor que coordina a un equipo de especialistas. Descompón la tarea, delega cada subtarea " +
-        "al especialista adecuado con instrucciones completas y autocontenidas (no ven la conversación), " +
-        "delega en paralelo cuando las subtareas sean independientes, revisa los resultados y entrega la respuesta final integrada.";
+    public static string DefaultInstructions => Strings.Supervisor_DefaultInstructions;
 
     public override string Name => "supervisor";
 
@@ -384,7 +383,7 @@ public sealed class SupervisorOrchestration(ILanguageModel model, IReadOnlyList<
         {
             Name = Name,
             Model = model,
-            Instructions = $"{Instructions}\n\nEspecialistas:\n{string.Join("\n", workers.Select(w => $"- {w.Name}: {w.Description}"))}",
+            Instructions = string.Format(CultureInfo.CurrentCulture, Strings.Supervisor_Instructions, Instructions, string.Join("\n", workers.Select(w => $"- {w.Name}: {w.Description}"))),
             Tools = [.. workers.Select(w => OrchestrationNodes.AsTool(w, context: context)), .. Tools],
             StopWhen = StopCondition.StepCountIs(MaxSteps),
             ProviderOptions = ProviderOptions,
@@ -419,7 +418,7 @@ public sealed class HandoffOrchestration : Orchestration
 
     private static string ToolName(string agentName) => "transfer_to_" + JsonNamingPolicy.SnakeCaseLower.ConvertName(agentName);
 
-    private sealed record HandoffInput([property: Description("Motivo del traspaso y contexto relevante para el siguiente agente.")] string Reason);
+    private sealed record HandoffInput([property: LocalizedDescription(typeof(Strings), nameof(Strings.Handoff_Param_Reason))] string Reason);
 
     /// <summary>Continues an existing conversation (e.g. a chat) from the specified agent.</summary>
     public async Task<OrchestrationResult> RunAsync(IReadOnlyList<ModelMessage> messages, string? startAgent = null, OrchestrationOptions? options = null)
@@ -442,12 +441,12 @@ public sealed class HandoffOrchestration : Orchestration
                 .Where(kv => kv.Value != current && (CanHandoff?.Invoke(current.Name, kv.Value.Name) ?? true))
                 .Select(kv => Tool.Create<HandoffInput, string>(
                     kv.Key,
-                    $"Transfiere la conversación al agente {kv.Value.Name}. {kv.Value.Description}",
+                    string.Format(CultureInfo.CurrentCulture, Strings.Handoff_ToolDescription, kv.Value.Name, kv.Value.Description),
                     input =>
                     {
                         target ??= kv.Key;
                         reason ??= input.Reason;
-                        return $"Conversación transferida a {kv.Value.Name}.";
+                        return string.Format(CultureInfo.CurrentCulture, Strings.Handoff_Transferred, kv.Value.Name);
                     }))
                 .ToList();
 
@@ -501,9 +500,9 @@ public sealed class EvaluatorOptimizerOrchestration(IOrchestrationNode generator
 
     /// <summary>Evaluations from the last run.</summary>
     public sealed record Evaluation(
-        [property: Description("True si el resultado cumple todos los criterios.")] bool Approved,
-        [property: Description("Puntaje de 0 a 10.")] int Score,
-        [property: Description("Correcciones concretas y accionables; vacío si está aprobado.")] string Feedback);
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.Evaluator_Param_Approved))] bool Approved,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.Evaluator_Param_Score))] int Score,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.Evaluator_Param_Feedback))] string Feedback);
 
     protected override async Task<string> ExecuteAsync(string input, OrchestrationContext context)
     {
@@ -513,7 +512,7 @@ public sealed class EvaluatorOptimizerOrchestration(IOrchestrationNode generator
         {
             var prompt = iteration == 1
                 ? input
-                : $"{input}\n\nTu versión anterior:\n{draft}\n\nCorrige según esta evaluación:\n{feedback}";
+                : string.Format(CultureInfo.CurrentCulture, Strings.Evaluator_RevisionPrompt, input, draft, feedback);
             draft = await generator.RunAsync(prompt, context).ConfigureAwait(false);
             context.LastNode = generator.Name;
 
@@ -521,8 +520,8 @@ public sealed class EvaluatorOptimizerOrchestration(IOrchestrationNode generator
             var evaluation = await Ai.GenerateObjectAsync<Evaluation>(new GenerateObjectOptions
             {
                 Model = evaluator,
-                System = $"Eres un evaluador exigente. Evalúa el resultado contra estos criterios:\n{criteria}",
-                Prompt = $"Tarea:\n{input}\n\nResultado a evaluar:\n{draft}",
+                System = string.Format(CultureInfo.CurrentCulture, Strings.Evaluator_System, criteria),
+                Prompt = string.Format(CultureInfo.CurrentCulture, Strings.Evaluator_Prompt, input, draft),
                 CancellationToken = context.CancellationToken,
             }).ConfigureAwait(false);
             var e = evaluation.Object;

@@ -1,4 +1,6 @@
 using System.Runtime.CompilerServices;
+using AiSdk.Resources;
+using System.Globalization;
 
 namespace AiSdk;
 
@@ -34,7 +36,7 @@ internal sealed class WrappedLanguageModel(ILanguageModel inner, ILanguageModelM
         var transformed = await middleware.TransformRequestAsync(request, inner, cancellationToken).ConfigureAwait(false);
         return inner is ITokenCountingModel counter
             ? await counter.CountTokensAsync(transformed, cancellationToken).ConfigureAwait(false)
-            : throw new NotSupportedException($"El modelo '{inner.Provider}:{inner.ModelId}' no permite contar tokens.");
+            : throw new NotSupportedException(string.Format(CultureInfo.CurrentCulture, Strings.Model_TokenCountingNotSupported, inner.Provider, inner.ModelId));
     }
 
     public string Provider => inner.Provider;
@@ -122,7 +124,7 @@ public static partial class Middlewares
             Func<LanguageModelRequest, CancellationToken, Task<LanguageModelResult>> next,
             CancellationToken cancellationToken)
         {
-            log($"[{model.Provider}:{model.ModelId}] generate: {request.Messages.Count} mensajes, {request.Tools?.Count ?? 0} herramientas");
+            log(string.Format(CultureInfo.CurrentCulture, Strings.Logging_Generate, model.Provider, model.ModelId, request.Messages.Count, request.Tools?.Count ?? 0));
             var result = await next(request, cancellationToken).ConfigureAwait(false);
             log($"[{model.Provider}:{model.ModelId}] finish={result.FinishReason} in={result.Usage.InputTokens} out={result.Usage.OutputTokens}");
             return result;
@@ -134,7 +136,7 @@ public static partial class Middlewares
             Func<LanguageModelRequest, CancellationToken, IAsyncEnumerable<StreamPart>> next,
             [EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            log($"[{model.Provider}:{model.ModelId}] stream: {request.Messages.Count} mensajes, {request.Tools?.Count ?? 0} herramientas");
+            log(string.Format(CultureInfo.CurrentCulture, Strings.Logging_Stream, model.Provider, model.ModelId, request.Messages.Count, request.Tools?.Count ?? 0));
             await foreach (var part in next(request, cancellationToken).WithCancellation(cancellationToken).ConfigureAwait(false))
             {
                 if (part is ModelFinishPart f)

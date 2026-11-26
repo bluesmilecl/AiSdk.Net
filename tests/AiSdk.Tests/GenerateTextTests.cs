@@ -127,7 +127,7 @@ public class GenerateTextTests
         Assert.Equal("servicio caído", first.Output.GetString());
         var second = Assert.Single(result.Steps[1].ToolResults);
         Assert.True(second.IsError);
-        Assert.Contains("Herramienta desconocida", second.Output.GetString());
+        Assert.Contains("Unknown tool", second.Output.GetString());
     }
 
     [Fact]
@@ -211,7 +211,7 @@ public class GenerateTextTests
         Assert.Empty(result.PendingToolCalls);
         var error = Assert.Single(result.Steps[0].ToolResults);
         Assert.True(error.IsError);
-        Assert.Contains("requiere aprobación", error.Output.GetString());
+        Assert.Contains("requires approval", error.Output.GetString());
         Assert.Equal("No pude borrarlo.", result.Text);
     }
 

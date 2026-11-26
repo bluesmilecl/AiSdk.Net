@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using AiSdk.Resources;
 
 namespace AiSdk;
 
@@ -24,7 +25,7 @@ public sealed class FallbackLanguageModel : ILanguageModel
     {
         if (models.Count == 0)
         {
-            throw new ArgumentException("Se necesita al menos un modelo.", nameof(models));
+            throw new ArgumentException(Strings.Model_AtLeastOneRequired, nameof(models));
         }
 
         _models = models;
@@ -56,7 +57,7 @@ public sealed class FallbackLanguageModel : ILanguageModel
             }
         }
 
-        throw new InvalidOperationException("Inalcanzable.");
+        throw new InvalidOperationException(Strings.Common_Unreachable);
     }
 
     public async IAsyncEnumerable<StreamPart> StreamAsync(LanguageModelRequest request, [EnumeratorCancellation] CancellationToken cancellationToken = default)

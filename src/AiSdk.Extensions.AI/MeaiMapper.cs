@@ -2,6 +2,8 @@ using System.Text.Json;
 using AiSdk.Internal;
 using Microsoft.Extensions.AI;
 using MEAI = Microsoft.Extensions.AI;
+using AiSdk.Extensions.AI.Resources;
+using System.Globalization;
 
 namespace AiSdk.Extensions.AI;
 
@@ -75,10 +77,10 @@ internal static class MeaiMapper
 
     private static Dictionary<string, object?>? ParseArguments(ToolCallPart call) => call switch
     {
-        { InvalidInput: true } => throw new JsonException($"The model produced an invalid JSON input for tool '{call.ToolName}'."),
+        { InvalidInput: true } => throw new JsonException(string.Format(CultureInfo.CurrentCulture, Strings.Meai_InvalidToolInputJson, call.ToolName)),
         { Input.ValueKind: JsonValueKind.Object } => call.Input.Deserialize<Dictionary<string, object?>>(AIJsonUtilities.DefaultOptions),
         { Input.ValueKind: JsonValueKind.Null or JsonValueKind.Undefined } => null,
-        _ => throw new JsonException($"The input of tool '{call.ToolName}' is not a JSON object."),
+        _ => throw new JsonException(string.Format(CultureInfo.CurrentCulture, Strings.Meai_ToolInputNotObject, call.ToolName)),
     };
 
     private static CitationAnnotation ToCitation(SourcePart source) => new()

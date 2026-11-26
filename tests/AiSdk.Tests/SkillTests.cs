@@ -78,9 +78,9 @@ public class SkillTests
     }
 
     [Theory]
-    [InlineData("Mi-Skill", "minúsculas")]
-    [InlineData("-skill", "guion")]
-    [InlineData("mi--skill", "consecutivos")]
+    [InlineData("Mi-Skill", "lowercase")]
+    [InlineData("-skill", "hyphen")]
+    [InlineData("mi--skill", "consecutive")]
     public void ValidatesNamesAgainstTheSpec(string name, string expected)
     {
         var skill = new Skill { Name = name, Description = "Hace algo útil. Úsala cuando haga falta.", Instructions = "# x" };
@@ -104,14 +104,14 @@ public class SkillTests
         var errors = bad.Validate("otra-carpeta").Errors;
         Assert.Contains(errors, e => e.Contains("1024"));
         Assert.Contains(errors, e => e.Contains("XML"));
-        Assert.Contains(errors, e => e.Contains("sale de la carpeta"));
-        Assert.Contains(errors, e => e.Contains("más de un nivel"));
+        Assert.Contains(errors, e => e.Contains("points outside the skill folder"));
+        Assert.Contains(errors, e => e.Contains("more than one folder level"));
         Assert.Contains(errors, e => e.Contains("compatibility"));
-        Assert.Contains(errors, e => e.Contains("no coincide con la carpeta"));
+        Assert.Contains(errors, e => e.Contains("does not match the folder"));
 
         var warnings = ContractSkillWithFiles().Validate().Warnings;
-        Assert.DoesNotContain(warnings, w => w.Contains("no existe")); // la referencia existe
-        Assert.Contains(warnings, w => w.Contains("escuetas"));
+        Assert.DoesNotContain(warnings, w => w.Contains("does not exist")); // la referencia existe
+        Assert.Contains(warnings, w => w.Contains("too terse"));
     }
 
     [Fact]
@@ -346,7 +346,7 @@ public class SkillTests
 
         Assert.Equal("hacer-x", skill.Name);
         Assert.Equal(["references/x.md"], skill.Files.List());
-        Assert.Contains("solo puede tener minúsculas", model.Requests[1].Messages[^1].Text);
+        Assert.Contains("can only contain lowercase", model.Requests[1].Messages[^1].Text);
     }
 
     [Fact]

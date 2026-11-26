@@ -3,6 +3,7 @@ using System.Buffers.Text;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Json;
+using AiSdk.Resources;
 
 namespace AiSdk.UI;
 
@@ -73,7 +74,7 @@ public abstract class ToolApprovalProtector
     {
         if (key.Length < 32)
         {
-            throw new ArgumentException("La clave debe tener al menos 32 bytes (256 bits) aleatorios.", nameof(key));
+            throw new ArgumentException(Strings.Approval_KeyTooShort, nameof(key));
         }
 
         ArgumentException.ThrowIfNullOrEmpty(scope);

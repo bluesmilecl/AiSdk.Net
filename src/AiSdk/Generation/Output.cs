@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using AiSdk.Internal;
+using AiSdk.Resources;
 
 namespace AiSdk;
 
@@ -45,7 +46,7 @@ public abstract class Output<T> : Output
     public override object? ParsePartialUntyped(string text) => ParsePartial(text);
 
     internal static NoObjectGeneratedException Fail(string text, Exception? inner = null) =>
-        new("No se pudo interpretar la respuesta del modelo según el esquema solicitado.", text, inner);
+        new(Strings.Output_ParseFailed, text, inner);
 }
 
 internal sealed class TextOutput : Output<string>

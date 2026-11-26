@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using AiSdk.Internal;
+using AiSdk.Resources;
 
 namespace AiSdk.UI;
 
@@ -487,7 +488,7 @@ public static partial class UIMessageStream
         {
             // Falla cerrado: una aprobación que el servidor no podrá verificar nunca se ejecutaría.
             var error = new ToolErrorException(call.ToolName, call.ToolCallId,
-                "La herramienta requiere aprobación, pero el stream UI no tiene un ToolApprovalProtector (toolApprovals) para pedirla; no se ejecutó.");
+                Strings.UI_ApprovalWithoutProtector);
             yield return new JsonObject { ["type"] = "tool-output-error", ["toolCallId"] = call.ToolCallId, ["errorText"] = ErrorText(error, onError) };
             yield break;
         }
@@ -515,7 +516,7 @@ public static partial class UIMessageStream
     /// <summary>Error text the client receives: the one from <paramref name="onError"/> or a generic one.</summary>
     internal static string ErrorText(Exception error, Func<Exception, string>? onError) => onError?.Invoke(error) ?? DefaultErrorText;
 
-    internal const string DefaultErrorText = "Se produjo un error.";
+    internal static string DefaultErrorText => Strings.UI_DefaultErrorText;
 
     private static string ToolErrorMessage(JsonElement output) =>
         output.ValueKind switch

@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text;
+using AiSdk.Resources;
 
 namespace AiSdk;
 
@@ -113,17 +114,17 @@ public static class VectorStoreExtensions
 {
     /// <summary>
     /// Exposes the store as a search tool so the agent can query the knowledge
-    /// base when it needs to (agentic RAG).
+    /// base when it needs to (agentic RAG). Without <paramref name="description"/>, a localized default is used.
     /// </summary>
     public static Tool AsTool(
         this IVectorStore store,
         string name = "search_knowledge_base",
-        string description = "Busca información relevante en la base de conocimiento. Úsala antes de responder preguntas sobre los documentos.",
+        string? description = null,
         int topK = 5,
         IRerankingModel? reranker = null,
         VectorFilter? filter = null,
         bool hybrid = false) =>
-        Tool.Create<KnowledgeQuery, IReadOnlyList<KnowledgeHit>>(name, description, async (input, ct) =>
+        Tool.Create<KnowledgeQuery, IReadOnlyList<KnowledgeHit>>(name, description ?? Strings.Knowledge_ToolDescription, async (input, ct) =>
         {
             var take = reranker is null ? topK : topK * 3;
             // Búsqueda híbrida (vectores + palabras clave) si el almacén la soporta.
@@ -152,7 +153,7 @@ public static class VectorStoreExtensions
         return sb.ToString().TrimEnd();
     }
 
-    private sealed record KnowledgeQuery([property: Description("Consulta de búsqueda en lenguaje natural.")] string Query);
+    private sealed record KnowledgeQuery([property: LocalizedDescription(typeof(Strings), nameof(Strings.Knowledge_Param_Query))] string Query);
 
     private sealed record KnowledgeHit(string Id, string Text, double Score, IReadOnlyDictionary<string, string>? Metadata);
 }

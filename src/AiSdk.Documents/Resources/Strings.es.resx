@@ -97,4 +97,20 @@ Escribe contenido completo y bien estructurado. Después de generar, entrega el 
   <data name="Tools_CreateWordDocument" xml:space="preserve"><value>Genera un documento Word (.docx) editable a partir de Markdown.</value></data>
   <data name="Tools_CreatePdf" xml:space="preserve"><value>Genera un PDF a partir de Markdown (informes, cartas, contratos, cotizaciones).</value></data>
   <data name="Tools_CreateSpreadsheet" xml:space="preserve"><value>Genera un archivo Excel (.xlsx) con una o más hojas, columnas tipadas, formatos, filtros y totales.</value></data>
+  <data name="DocParam_FileName" xml:space="preserve"><value>Nombre del archivo sin extensión, p. ej. informe-ventas-q3.</value></data>
+  <data name="DocParam_Markdown" xml:space="preserve"><value>Contenido completo en Markdown.</value></data>
+  <data name="DocParam_Title" xml:space="preserve"><value>Título del documento.</value></data>
+  <data name="DocParam_Subtitle" xml:space="preserve"><value>Subtítulo (portada).</value></data>
+  <data name="DocParam_TitlePage" xml:space="preserve"><value>Agrega una portada con título, subtítulo y fecha.</value></data>
+  <data name="DocParam_Landscape" xml:space="preserve"><value>Orientación horizontal (tablas anchas).</value></data>
+  <data name="SheetParam_ColumnHeader" xml:space="preserve"><value>Encabezado de la columna.</value></data>
+  <data name="SheetParam_ColumnType" xml:space="preserve"><value>Tipo: auto, text, number, integer, currency, percent, date, dateTime o boolean.</value></data>
+  <data name="SheetParam_ColumnFormat" xml:space="preserve"><value>Formato Excel opcional, p. ej. "#,##0.00" o "dd/mm/yyyy".</value></data>
+  <data name="SheetParam_Name" xml:space="preserve"><value>Nombre de la hoja (máx. 31 caracteres).</value></data>
+  <data name="SheetParam_Columns" xml:space="preserve"><value>Columnas en orden.</value></data>
+  <data name="SheetParam_Rows" xml:space="preserve"><value>Filas: arrays con un valor por columna (números como número, fechas ISO yyyy-MM-dd, fórmulas de cálculo con =).</value></data>
+  <data name="SheetParam_Totals" xml:space="preserve"><value>Agrega fila de totales con SUM en columnas numéricas.</value></data>
+  <data name="WorkbookParam_FileName" xml:space="preserve"><value>Nombre del archivo sin extensión.</value></data>
+  <data name="WorkbookParam_Sheets" xml:space="preserve"><value>Hojas del libro.</value></data>
+  <data name="WorkbookParam_Title" xml:space="preserve"><value>Título del libro.</value></data>
 </root>

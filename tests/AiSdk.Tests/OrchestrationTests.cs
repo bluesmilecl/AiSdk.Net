@@ -41,7 +41,7 @@ public class OrchestrationTests
 
         Assert.Equal("Aprobar", result.Text);
         var prompt = LastUserText(judge.Requests[0]);
-        Assert.Contains("Tarea original:\n¿Compramos la empresa X?", prompt);
+        Assert.Contains("Original task:\n¿Compramos la empresa X?", prompt);
         Assert.Contains("## legal\n\nsin riesgos legales", prompt);
         Assert.Contains("## finanzas\n\nROI de 20%", prompt);
         Assert.Equal("¿Compramos la empresa X?", LastUserText(legal.Requests[0]));
@@ -127,7 +127,7 @@ public class OrchestrationTests
             .RunAsync("Escribe un saludo", new OrchestrationOptions { OnEvent = e => { if (e is EvaluationEvent ev) evaluations.Add(ev); return ValueTask.CompletedTask; } });
 
         Assert.Equal("Estimado cliente: hola.", result.Text);
-        Assert.Contains("Corrige según esta evaluación:\nUsa un saludo formal.", LastUserText(generator.Requests[1]));
+        Assert.Contains("Revise it according to this evaluation:\nUsa un saludo formal.", LastUserText(generator.Requests[1]));
         Assert.Equal([false, true], evaluations.Select(e => e.Approved));
     }
 

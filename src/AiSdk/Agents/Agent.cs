@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using System.Text.Json;
 using AiSdk.Skills;
+using AiSdk.Resources;
+using System.Globalization;
 
 namespace AiSdk;
 
@@ -142,7 +144,7 @@ public abstract class Agent : IAgent, IOrchestrationNode
     public Tool AsTool(string? name = null, string? description = null) =>
         Tool.Create<SubAgentInput, string>(
             name ?? ToSnakeCase(Name),
-            description ?? Description ?? $"Delega una tarea al agente {Name}.",
+            description ?? Description ?? string.Format(CultureInfo.CurrentCulture, Strings.Agent_DelegateDescription, Name),
             async (input, ctx, ct) =>
             {
                 var result = await GenerateAsync(new AgentCallOptions
@@ -164,8 +166,7 @@ public abstract class Agent : IAgent, IOrchestrationNode
         if (pending.Count > 0)
         {
             throw new InvalidOperationException(
-                $"El agente '{agentName}' se detuvo con llamadas sin resolver ({string.Join(", ", pending.Select(c => c.ToolName))}): " +
-                "requieren aprobación o son herramientas de cliente, y no se pueden reanudar desde aquí. Configure OnToolApproval en el agente principal o en este agente.");
+                string.Format(CultureInfo.CurrentCulture, Strings.Agent_UnresolvedCalls, agentName, string.Join(", ", pending.Select(c => c.ToolName))));
         }
     }
 
@@ -226,7 +227,7 @@ public abstract class Agent : IAgent, IOrchestrationNode
 
     private static string ToSnakeCase(string name) => JsonNamingPolicy.SnakeCaseLower.ConvertName(name);
 
-    private sealed record SubAgentInput([property: Description("Descripción completa de la tarea a realizar.")] string Task);
+    private sealed record SubAgentInput([property: LocalizedDescription(typeof(Strings), nameof(Strings.Agent_Param_Task))] string Task);
 }
 
 /// <summary>Settings for <see cref="ToolLoopAgent"/>.</summary>

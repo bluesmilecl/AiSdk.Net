@@ -1,3 +1,4 @@
+using AiSdk.Resources;
 namespace AiSdk;
 
 /// <summary>Result of a step (one model call + tool execution).</summary>
@@ -93,7 +94,7 @@ public sealed class GenerateTextResult
 
     /// <summary>Gets the structured output (if <see cref="GenerateTextOptions.Output"/> was configured).</summary>
     /// <exception cref="NoObjectGeneratedException">The final text does not conform to the schema.</exception>
-    public object? Output => _output is not null ? _output.Value : throw new InvalidOperationException("No se configuró una salida estructurada (Output).");
+    public object? Output => _output is not null ? _output.Value : throw new InvalidOperationException(Strings.Output_NotConfigured);
 
     public T GetOutput<T>() => (T)Output!;
 }

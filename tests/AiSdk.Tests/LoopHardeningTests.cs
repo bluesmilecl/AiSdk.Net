@@ -109,7 +109,7 @@ public sealed class LoopHardeningTests
         Assert.True(denied.IsError && unanswered.IsError);
         Assert.Equal(("c1", "c2"), (denied.ToolCallId, unanswered.ToolCallId));
         Assert.Contains("no está autorizado", denied.Output.GetString());
-        Assert.Contains("no hubo una decisión", unanswered.Output.GetString());
+        Assert.Contains("there was no valid decision", unanswered.Output.GetString());
         Assert.Equal("Entendido.", await resumed.Text);
     }
 
@@ -211,7 +211,7 @@ public sealed class LoopHardeningTests
             Tools = [SubAgent(unattended).AsTool()],
             StopWhen = StopCondition.StepCountIs(3),
         });
-        Assert.Contains("requiere aprobación", unattended.Requests[1].Messages[^1].Content.OfType<ToolResultPart>().Single().Output.GetString());
+        Assert.Contains("requires approval", unattended.Requests[1].Messages[^1].Content.OfType<ToolResultPart>().Single().Output.GetString());
 
         // Un sub-agente que difiere aprobaciones no puede reanudarse: error explícito en vez de texto vacío.
         var deferred = await Ai.GenerateTextAsync(new GenerateTextOptions
@@ -223,7 +223,7 @@ public sealed class LoopHardeningTests
         });
         var error = deferred.Steps[0].ToolResults[0];
         Assert.True(error.IsError);
-        Assert.Contains("sin resolver", error.Output.GetString());
+        Assert.Contains("unresolved calls", error.Output.GetString());
     }
 
     // -----------------------------------------------------------------

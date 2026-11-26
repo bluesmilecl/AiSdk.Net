@@ -3,6 +3,8 @@ using System.Net;
 using System.Reflection;
 using System.Text;
 using AiSdk.Http;
+using AiSdk.Resources;
+using System.Globalization;
 
 namespace AiSdk.Skills;
 
@@ -101,7 +103,7 @@ public sealed class SkillLibrary
         var loaded = new List<Skill>();
         if (!Directory.Exists(root))
         {
-            throw new DirectoryNotFoundException($"No existe la carpeta de skills '{root}'.");
+            throw new DirectoryNotFoundException(string.Format(CultureInfo.CurrentCulture, Strings.Skill_DirectoryNotFound, root));
         }
 
         // No se siguen enlaces simbólicos ni junctions (ni carpetas ni SKILL.md enlazados): una skill no puede
@@ -116,19 +118,19 @@ public sealed class SkillLibrary
                     var length = new FileInfo(skillMd).Length;
                     if (length > options.MaxFileBytes)
                     {
-                        throw new InvalidDataException($"El SKILL.md supera el tamaño máximo ({options.MaxFileBytes} bytes).");
+                        throw new InvalidDataException(string.Format(CultureInfo.CurrentCulture, Strings.Skill_MarkdownTooLarge, options.MaxFileBytes));
                     }
 
                     if (length == 0)
                     {
                         // Vacío o un FIFO (que también mide 0): abrirlo bloquearía la carga hasta que alguien escriba.
-                        throw new InvalidDataException("El SKILL.md está vacío.");
+                        throw new InvalidDataException(Strings.Skill_MarkdownEmpty);
                     }
 
                     var files = SkillFiles.FromDirectory(folder, options.MaxFileBytes);
                     if (files.List().Count > options.MaxFiles)
                     {
-                        throw new InvalidDataException($"La skill tiene más de {options.MaxFiles} archivos.");
+                        throw new InvalidDataException(string.Format(CultureInfo.CurrentCulture, Strings.Skill_TooManyFiles, options.MaxFiles));
                     }
 
                     return Skill.Parse(File.ReadAllText(skillMd), files, folder, options.Trusted && !HasProvenanceMarker(folder));
@@ -189,7 +191,7 @@ public sealed class SkillLibrary
     {
         if (repository.Count(c => c == '/') != 1 || repository.Any(c => !(char.IsAsciiLetterOrDigit(c) || c is '/' or '-' or '_' or '.')))
         {
-            throw new ArgumentException("Use el formato 'propietario/repositorio'.", nameof(repository));
+            throw new ArgumentException(Strings.Skill_GitHubRepositoryFormat, nameof(repository));
         }
 
         options ??= SkillLoadOptions.Default;
@@ -198,11 +200,11 @@ public sealed class SkillLibrary
             .GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
-            throw new InvalidOperationException($"No se encontró {repository}@{reference} en GitHub (¿repositorio privado o rama inexistente?).");
+            throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, Strings.Skill_GitHubNotFound, repository, reference));
         }
 
         response.EnsureSuccessStatusCode();
-        var tooLarge = $"El ZIP de {repository}@{reference} supera el tamaño máximo de {options.MaxArchiveBytes} bytes (SkillLoadOptions.MaxArchiveBytes).";
+        var tooLarge = string.Format(CultureInfo.CurrentCulture, Strings.Skill_GitHubZipTooLarge, repository, reference, options.MaxArchiveBytes);
         if (response.Content.Headers.ContentLength > options.MaxArchiveBytes)
         {
             throw new InvalidDataException(tooLarge);
@@ -265,7 +267,7 @@ public sealed class SkillLibrary
                     validation.ThrowIfInvalid(skill.Name);
                 }
 
-                _loadErrors.Enqueue($"{location}: aceptada en modo no estricto: {string.Join(" ", validation.Errors)}");
+                _loadErrors.Enqueue(string.Format(CultureInfo.CurrentCulture, Strings.Skill_AcceptedNonStrict, location, string.Join(" ", validation.Errors)));
             }
 
             if (options.ReplaceExisting)
@@ -277,7 +279,9 @@ public sealed class SkillLibrary
                 // Una carga posterior (p. ej. de GitHub) no reemplaza en silencio una skill ya cargada.
                 var existing = _skills.TryGetValue(skill.Name, out var current) ? current.Location : null;
                 throw new InvalidOperationException(
-                    $"Ya hay una skill '{skill.Name}'{(existing is null ? string.Empty : $" (de {existing})")}; se conserva la primera. Use SkillLoadOptions.ReplaceExisting para reemplazarla.");
+                    existing is null
+                        ? string.Format(CultureInfo.CurrentCulture, Strings.Skill_Duplicate, skill.Name)
+                        : string.Format(CultureInfo.CurrentCulture, Strings.Skill_DuplicateFrom, skill.Name, existing));
             }
 
             loaded.Add(skill);
@@ -320,7 +324,7 @@ public sealed class SkillLibrary
                 ["trusted"] = false,
                 ["source"] = untrustedSource,
                 ["savedAt"] = DateTimeOffset.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
-                ["note"] = "Skill no confiable: revísela y borre este archivo para confiar en ella.",
+                ["note"] = Strings.Skill_ProvenanceNote,
             };
             await WriteReplacingAsync(marker, Encoding.UTF8.GetBytes(provenance.ToJsonString()), cancellationToken).ConfigureAwait(false);
         }
@@ -399,7 +403,7 @@ public sealed class SkillLibrary
             current = Path.Combine(current, segment);
             if (new FileInfo(current).LinkTarget is not null)
             {
-                throw new IOException($"No se escribe la skill a través del enlace '{current}'.");
+                throw new IOException(string.Format(CultureInfo.CurrentCulture, Strings.Skill_WriteThroughLink, current));
             }
         }
     }
@@ -453,14 +457,7 @@ public sealed class SkillLibrary
 
     /// <summary>System instructions that explain to the model how to use the skills, including the catalog.</summary>
     public string SystemPrompt(int maxCatalogChars = 15_000) =>
-        $"""
-        Tienes skills: paquetes de instrucciones y recursos para tareas especializadas. Cuando una tarea coincida
-        con la descripción de una skill, actívala con load_skill ANTES de responder y sigue sus instrucciones.
-        Lee los archivos que mencione (references/, assets/) con read_skill_file solo cuando los necesites.
-        No inventes el contenido de una skill que no cargaste.
-
-        {Catalog(maxCatalogChars)}
-        """;
+        string.Format(CultureInfo.CurrentCulture, Strings.Skill_SystemPrompt, Catalog(maxCatalogChars));
 
     /// <summary>
     /// Explicit invocation by the user (like <c>/name arguments</c>): returns the instructions with
@@ -468,7 +465,7 @@ public sealed class SkillLibrary
     /// </summary>
     public string Invoke(string name, string? arguments = null)
     {
-        var skill = Get(name) ?? throw new KeyNotFoundException($"No existe la skill '{name}'.");
+        var skill = Get(name) ?? throw new KeyNotFoundException(string.Format(CultureInfo.CurrentCulture, Strings.Skill_NotFound, name));
         RecordActivation(name, arguments);
         var instructions = skill.Instructions.Contains("$ARGUMENTS", StringComparison.Ordinal)
             ? skill.Instructions.Replace("$ARGUMENTS", arguments ?? string.Empty, StringComparison.Ordinal)

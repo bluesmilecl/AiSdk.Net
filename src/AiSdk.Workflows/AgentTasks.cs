@@ -207,14 +207,14 @@ public static class AgentTasks
     }
 
     private sealed record ScheduleInput(
-        [property: Description("Nombre corto de la tarea.")] string Name,
-        [property: Description("Instrucciones completas y autocontenidas que ejecutará el agente.")] string Prompt,
-        [property: Description("Expresión cron de 5 campos, p. ej. \"0 9 * * 1-5\" (días hábiles a las 9:00).")] string? Cron = null,
-        [property: Description("Fecha y hora ISO 8601 para una única ejecución, p. ej. 2026-11-01T09:00:00-03:00.")] string? RunAt = null,
-        [property: Description("Repetir cada N minutos.")] int? EveryMinutes = null,
-        [property: Description("Zona horaria IANA para cron, p. ej. America/Santiago.")] string? TimeZone = null);
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.TaskParam_Name))] string Name,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.TaskParam_Prompt))] string Prompt,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.TaskParam_Cron))] string? Cron = null,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.TaskParam_RunAt))] string? RunAt = null,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.TaskParam_EveryMinutes))] int? EveryMinutes = null,
+        [property: LocalizedDescription(typeof(Strings), nameof(Strings.TaskParam_TimeZone))] string? TimeZone = null);
 
-    private sealed record TaskIdInput([property: Description("Id de la tarea.")] string Id);
+    private sealed record TaskIdInput([property: LocalizedDescription(typeof(Strings), nameof(Strings.TaskParam_Id))] string Id);
 
     private sealed record EmptyInput;
 }

@@ -3,6 +3,8 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using AiSdk.Resources;
+using System.Globalization;
 
 namespace AiSdk.Http;
 
@@ -67,7 +69,7 @@ public static class ProviderHttp
         !string.IsNullOrWhiteSpace(apiKey)
             ? apiKey
             : Environment.GetEnvironmentVariable(environmentVariable)
-              ?? throw new AiSdkException($"Falta la API key de {providerName}. Pásala en las opciones o define la variable de entorno {environmentVariable}.");
+              ?? throw new AiSdkException(string.Format(CultureInfo.CurrentCulture, Strings.Http_MissingApiKey, providerName, environmentVariable));
 
     public static HttpRequestMessage CreateJsonRequest(Uri url, JsonObject body, IEnumerable<KeyValuePair<string, string>> headers, bool stream)
     {
@@ -175,7 +177,7 @@ public static class ProviderHttp
     {
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         return (await JsonNode.ParseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false)) as JsonObject
-               ?? throw new AiSdkException("Respuesta JSON inválida del proveedor.");
+               ?? throw new AiSdkException(Strings.Http_InvalidJsonResponse);
     }
 
     /// <summary>Reads an SSE stream event by event, with the limits of <see cref="SseReadOptions.Default"/>.</summary>
@@ -248,7 +250,7 @@ public static class ProviderHttp
 
                     if (data.Length + value.Length > options.MaxEventChars)
                     {
-                        throw new AiSdkException($"Evento SSE demasiado grande (más de {options.MaxEventChars} caracteres).");
+                        throw new AiSdkException(string.Format(CultureInfo.CurrentCulture, Strings.Http_SseEventTooLarge, options.MaxEventChars));
                     }
 
                     data.Append(value);
@@ -283,7 +285,7 @@ public static class ProviderHttp
         catch (JsonException ex)
         {
             var snippet = sse.Data.Length > 200 ? sse.Data[..200] + "…" : sse.Data;
-            throw new AiSdkException($"El stream de {providerName} envió un evento con JSON inválido: {snippet}", ex);
+            throw new AiSdkException(string.Format(CultureInfo.CurrentCulture, Strings.Http_StreamInvalidJson, providerName, snippet), ex);
         }
     }
 
@@ -340,7 +342,7 @@ public static class ProviderHttp
         {
             if (_line.Length + chunk.Length > options.MaxLineChars)
             {
-                throw new AiSdkException($"Línea SSE demasiado grande (más de {options.MaxLineChars} caracteres).");
+                throw new AiSdkException(string.Format(CultureInfo.CurrentCulture, Strings.Http_SseLineTooLarge, options.MaxLineChars));
             }
 
             _line.Append(chunk);
@@ -360,7 +362,7 @@ public static class ProviderHttp
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
-                throw new TimeoutException($"El stream no envió datos en {timeout.TotalSeconds:0} s.");
+                throw new TimeoutException(string.Format(CultureInfo.CurrentCulture, Strings.Http_StreamIdleTimeout, timeout.TotalSeconds));
             }
         }
     }

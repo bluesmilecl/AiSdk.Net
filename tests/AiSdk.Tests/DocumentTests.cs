@@ -473,7 +473,7 @@ public class CompressionTests
 
         var sent = inner.Requests[0].Messages;
         Assert.Equal(ChatRole.System, sent[0].Role);
-        Assert.StartsWith("Resumen de la conversación anterior:\n- El usuario", sent[1].Text);
+        Assert.StartsWith("Summary of the previous conversation:\n- El usuario", sent[1].Text);
         Assert.NotEqual(ChatRole.Tool, sent[2].Role); // nunca empieza con un resultado huérfano
         Assert.Equal("Respuesta 5", sent[^1].Text);
         Assert.True(TokenEstimator.Estimate(sent) <= 800);
@@ -481,8 +481,8 @@ public class CompressionTests
         // Siguiente turno: solo se resumen los mensajes nuevos junto al resumen previo.
         messages.AddRange(LongConversation(2).Skip(1));
         await Ai.GenerateTextAsync(new GenerateTextOptions { Model = model, Messages = messages });
-        Assert.StartsWith("Resumen previo:\n- El usuario", summarizer.Requests[1].Messages[^1].Text);
-        Assert.Equal("Resumen de la conversación anterior:\n- Resumen actualizado", inner.Requests[1].Messages[1].Text);
+        Assert.StartsWith("Previous summary:\n- El usuario", summarizer.Requests[1].Messages[^1].Text);
+        Assert.Equal("Summary of the previous conversation:\n- Resumen actualizado", inner.Requests[1].Messages[1].Text);
     }
 
     [Fact]
@@ -494,13 +494,13 @@ public class CompressionTests
         await Ai.GenerateTextAsync(new GenerateTextOptions { Model = model, Messages = LongConversation(4) });
         var sent = inner.Requests[0].Messages;
         Assert.Equal(17, sent.Count); // nada descartado, solo recortado
-        Assert.Contains("[resultado recortado]", sent[3].Content.OfType<ToolResultPart>().Single().Output.GetString());
+        Assert.Contains("[result trimmed]", sent[3].Content.OfType<ToolResultPart>().Single().Output.GetString());
         Assert.Equal(3000, sent[^2].Content.OfType<ToolResultPart>().Single().Output.GetString()!.Length); // reciente intacto
 
         // Sin resumidor y con poco presupuesto se descartan los antiguos con una nota.
         var tight = inner.WithMiddleware(Middlewares.CompressContext(300));
         await Ai.GenerateTextAsync(new GenerateTextOptions { Model = tight, Messages = LongConversation(4) });
-        Assert.Contains("Se omitieron", inner.Requests[1].Messages[1].Text);
+        Assert.Contains("were omitted to fit the context", inner.Requests[1].Messages[1].Text);
     }
 
     [Fact]
